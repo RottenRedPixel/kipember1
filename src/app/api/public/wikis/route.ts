@@ -12,9 +12,9 @@ export async function GET(request: NextRequest) {
         ...(query
           ? {
               OR: [
-                { content: { contains: query, mode: 'insensitive' } },
-                { image: { originalName: { contains: query, mode: 'insensitive' } } },
-                { image: { description: { contains: query, mode: 'insensitive' } } },
+                { content: { contains: query } },
+                { image: { originalName: { contains: query } } },
+                { image: { description: { contains: query } } },
               ],
             }
           : {}),
