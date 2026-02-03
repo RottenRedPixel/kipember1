@@ -5,7 +5,8 @@ import { prisma } from '@/lib/db';
 const COOKIE_NAME = 'mw_access';
 
 export async function requireAccess(): Promise<NextResponse | null> {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
