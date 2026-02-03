@@ -79,3 +79,24 @@ enum Visibility {
   PRIVATE
   SHARED
 }
+
+model AccessPass {
+  id        String          @id @default(cuid())
+  label     String?
+  codeHash  String
+  salt      String
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  revokedAt DateTime?
+  sessions  AccessSession[]
+}
+
+model AccessSession {
+  id        String     @id @default(cuid())
+  token     String     @unique
+  passId    String
+  pass      AccessPass @relation(fields: [passId], references: [id], onDelete: Cascade)
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  revokedAt DateTime?
+}
