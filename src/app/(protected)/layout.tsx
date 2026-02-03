@@ -9,7 +9,8 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
 
   if (!token) {
     redirect('/access');
