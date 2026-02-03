@@ -59,9 +59,10 @@ async function sendInvite(contributorId: string): Promise<{ success: boolean }> 
   // Build the invite link
   const inviteUrl = `${BASE_URL}/contribute/${contributor.token}`;
 
-  // Build the message
   const greeting = contributor.name ? `Hi ${contributor.name}!` : 'Hi!';
-  const message = `${greeting} You're invited to share your memories about a special photo. Tap here to start: ${inviteUrl}`;
+  const intro = `${greeting} You're invited to share your memories about a special photo.`;
+  const linkMessage = `Tap here to start: ${inviteUrl}`;
+  const combinedMessage = `${intro} ${linkMessage}`;
 
   // Format phone number
   const phone = contributor.phoneNumber.startsWith('+')
@@ -71,7 +72,12 @@ async function sendInvite(contributorId: string): Promise<{ success: boolean }> 
       : `+${contributor.phoneNumber}`;
 
   try {
-    await sendSMS(phone, message);
+    if (combinedMessage.length <= 160) {
+      await sendSMS(phone, combinedMessage);
+    } else {
+      await sendSMS(phone, intro);
+      await sendSMS(phone, linkMessage);
+    }
 
     // Mark as sent
     await prisma.contributor.update({
