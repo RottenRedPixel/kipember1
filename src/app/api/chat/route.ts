@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { retriever } from '@/lib/context-retrieval';
 import { chat } from '@/lib/claude';
+import { requireAccess } from '@/lib/access-server';
 
 export async function POST(request: NextRequest) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { imageId, message, history } = await request.json();
 
     if (!imageId || !message) {

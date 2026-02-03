@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { chat } from '@/lib/claude';
+import { requireAccess } from '@/lib/access-server';
 
 // GET - Fetch contributor info and conversation
 export async function GET(
@@ -8,6 +9,9 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { token } = await params;
 
     const contributor = await prisma.contributor.findUnique({
@@ -56,6 +60,9 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { token } = await params;
     const { message } = await request.json();
 

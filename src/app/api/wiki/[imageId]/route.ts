@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateWikiForImage } from '@/lib/wiki-generator';
+import { requireAccess } from '@/lib/access-server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ imageId: string }> }
 ) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { imageId } = await params;
 
     const wiki = await prisma.wiki.findUnique({
@@ -41,6 +45,9 @@ export async function POST(
   { params }: { params: Promise<{ imageId: string }> }
 ) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { imageId } = await params;
 
     const content = await generateWikiForImage(imageId);

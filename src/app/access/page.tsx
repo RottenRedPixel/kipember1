@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 export default function AccessPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const returnTo = searchParams.get('returnTo') || '/';
 
   const [passcode, setPasscode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,7 +32,7 @@ export default function AccessPage() {
         throw new Error(data.error || 'Invalid passcode');
       }
 
-      router.push(returnTo);
+      router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to verify passcode');
     } finally {

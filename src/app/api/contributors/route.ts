@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireAccess } from '@/lib/access-server';
 
 export async function POST(request: NextRequest) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { imageId, phoneNumber, name } = await request.json();
 
     if (!imageId || !phoneNumber) {
@@ -59,6 +63,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { requireAccess } from '@/lib/access-server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { id } = await params;
 
     const image = await prisma.image.findUnique({
@@ -44,6 +48,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { id } = await params;
 
     await prisma.image.delete({
@@ -65,6 +72,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { id } = await params;
     const body = await request.json();
     const visibilityInput = body?.visibility as string | undefined;

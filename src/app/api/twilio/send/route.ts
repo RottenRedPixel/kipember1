@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendSMS } from '@/lib/twilio';
+import { requireAccess } from '@/lib/access-server';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
 
 export async function POST(request: NextRequest) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const { imageId, contributorId } = await request.json();
 
     if (contributorId) {

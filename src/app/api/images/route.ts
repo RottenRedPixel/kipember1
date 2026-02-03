@@ -3,9 +3,13 @@ import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
+import { requireAccess } from '@/lib/access-server';
 
 export async function POST(request: NextRequest) {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const description = formData.get('description') as string;
@@ -55,6 +59,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    const access = await requireAccess();
+    if (access) return access;
+
     const images = await prisma.image.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
