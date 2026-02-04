@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     if (!session.personaName) {
       const contributorNames = extractContributorNames(context);
-      const recentUserNames = extractUserNames(conversationHistory);
+      const recentUserNames = extractUserNames([]);
       const blacklist = new Set<string>([...contributorNames, ...recentUserNames]);
 
       const personaPrompt = `Create a vivid, human persona for a living memory that speaks in first person. Base it on the context below, but do NOT mention "photo" or "image". Choose a first name that is NOT in this list: ${[...blacklist].join(', ') || 'none'}. Return ONLY valid JSON with:
