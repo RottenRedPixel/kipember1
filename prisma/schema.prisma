@@ -109,6 +109,10 @@ model ChatSession {
   image     Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
   messages  ChatMessage[]
   createdAt DateTime      @default(now())
+  personaName String?
+  personaTraits String?
+  personaVoice String?
+  personaBackstory String?
 
   @@unique([browserId, imageId])
 }

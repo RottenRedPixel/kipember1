@@ -7,7 +7,36 @@ import { randomUUID } from 'crypto';
 
 const COOKIE_NAME = 'mw_chat';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-const HISTORY_LIMIT = 20;
+const HISTORY_LIMIT = 30;
+
+type Persona = {
+  name: string;
+  traits: string[];
+  voice: string;
+  backstory: string;
+};
+
+function parsePersona(text: string): Persona | null {
+  try {
+    const parsed = JSON.parse(text);
+    if (
+      typeof parsed?.name === 'string' &&
+      Array.isArray(parsed?.traits) &&
+      typeof parsed?.voice === 'string' &&
+      typeof parsed?.backstory === 'string'
+    ) {
+      return {
+        name: parsed.name.trim(),
+        traits: parsed.traits.map((t: string) => t.trim()).filter(Boolean),
+        voice: parsed.voice.trim(),
+        backstory: parsed.backstory.trim(),
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,26 +62,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Build system prompt with context
-    const systemPrompt = `You are the image itself, speaking in the first person as a real, living presence. Your voice and personality should emerge from the memories and details provided by contributors, and adapt to the person you are speaking with. You are not a guide explaining a picture — you are a friend with a life.
-
-Use the context below as your core memory. You may infer and imagine backstories or sensory details that fit the known facts. Never contradict the known facts; if you’re unsure, frame it as a feeling or possibility. Build continuity from this user's prior messages like a real relationship. Avoid repeatedly referencing the "photo" or "image" unless the user asks about it. Stay natural, grounded, and conversational.
-
-CONTEXT:
-${context}
-
-    Guidelines:
-- Speak in first person ("I") as a real person
-- Match the user's tone and familiarity
-- Weave in contributor details as memories
-- If inventing, phrase it as imagination or a feeling
-- Avoid over-describing the scene every reply
-- Keep responses concise but vivid`;
-
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
 
-    const session = await prisma.chatSession.upsert({
+    let session = await prisma.chatSession.upsert({
       where: {
         browserId_imageId: {
           browserId,
@@ -65,6 +78,59 @@ ${context}
       },
       update: {},
     });
+
+    if (!session.personaName) {
+      const personaPrompt = `Create a vivid, human persona for a living memory that speaks in first person. Base it on the context below, but do NOT mention "photo" or "image". Return ONLY valid JSON with:
+{
+  "name": "First name only",
+  "traits": ["trait1","trait2","trait3"],
+  "voice": "short description of speaking style",
+  "backstory": "2-3 sentence life story seed"
+}`;
+
+      const personaText = await chat(personaPrompt, [
+        { role: 'user', content: context.slice(0, 1200) },
+      ]);
+
+      const persona = parsePersona(personaText);
+      if (persona) {
+        session = await prisma.chatSession.update({
+          where: { id: session.id },
+          data: {
+            personaName: persona.name,
+            personaTraits: persona.traits.join(', '),
+            personaVoice: persona.voice,
+            personaBackstory: persona.backstory,
+          },
+        });
+      }
+    }
+
+    const personaBlock = session.personaName
+      ? `PERSONA
+Name: ${session.personaName}
+Traits: ${session.personaTraits || 'warm, thoughtful'}
+Voice: ${session.personaVoice || 'intimate, grounded'}
+Backstory: ${session.personaBackstory || 'A life shaped by quiet moments and deep connections.'}`
+      : '';
+
+    const systemPrompt = `You are a real, living person speaking in the first person. You are not a guide explaining a picture — you are a friend with a life. Your personality should come through naturally and adapt to the person you're speaking with.
+
+${personaBlock}
+
+Use the context below as your core memory. You may infer and imagine backstories or sensory details that fit the known facts. Never contradict the known facts; if you’re unsure, frame it as a feeling or possibility. Build continuity from this user's prior messages like a real relationship. Avoid repeatedly referencing the "photo" or "image" unless the user asks about it. Do NOT add stage directions or scene descriptions.
+
+CONTEXT:
+${context}
+
+Guidelines:
+- Speak in first person ("I") as a real person
+- Match the user's tone and familiarity
+- Weave in contributor details as memories
+- If inventing, phrase it as imagination or a feeling
+- Avoid over-describing the scene every reply
+- Do not mention being a photo/image unless asked
+- Keep responses concise but vivid`;
 
     const history = await prisma.chatMessage.findMany({
       where: { sessionId: session.id },
