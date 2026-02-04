@@ -25,6 +25,25 @@ export default function ChatInterface({ imageId }: ChatInterfaceProps) {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    const loadHistory = async () => {
+      try {
+        const response = await fetch(`/api/chat?imageId=${encodeURIComponent(imageId)}`);
+        if (!response.ok) {
+          return;
+        }
+        const data = await response.json();
+        if (Array.isArray(data.messages)) {
+          setMessages(data.messages);
+        }
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+      }
+    };
+
+    loadHistory();
+  }, [imageId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -41,7 +60,6 @@ export default function ChatInterface({ imageId }: ChatInterfaceProps) {
         body: JSON.stringify({
           imageId,
           message: userMessage,
-          history: messages,
         }),
       });
 

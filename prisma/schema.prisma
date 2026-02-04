@@ -19,6 +19,7 @@ model Image {
   createdAt    DateTime      @default(now())
   contributors Contributor[]
   wiki         Wiki?
+  chatSessions ChatSession[]
 }
 
 model Contributor {
@@ -99,4 +100,24 @@ model AccessSession {
   active    Boolean    @default(true)
   createdAt DateTime   @default(now())
   revokedAt DateTime?
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  browserId String
+  imageId   String
+  image     Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+
+  @@unique([browserId, imageId])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String      // "user" or "assistant"
+  content   String
+  createdAt DateTime    @default(now())
 }
