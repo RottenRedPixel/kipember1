@@ -16,6 +16,49 @@ type Persona = {
   backstory: string;
 };
 
+function extractContributorNames(context: string): Set<string> {
+  const names = new Set<string>();
+  const matches = context.matchAll(/\[([^\]]+)\]/g);
+  for (const match of matches) {
+    const name = match[1]?.trim();
+    if (name && name.toLowerCase() !== 'anonymous') {
+      names.add(name);
+    }
+  }
+  return names;
+}
+
+function extractUserNames(messages: { role: 'user' | 'assistant'; content: string }[]): Set<string> {
+  const names = new Set<string>();
+  const patterns = [
+    /\bmy name is\s+([A-Za-z'-]{2,})/i,
+    /\bi am\s+([A-Za-z'-]{2,})/i,
+    /\bi'm\s+([A-Za-z'-]{2,})/i,
+  ];
+
+  for (const msg of messages) {
+    if (msg.role !== 'user') continue;
+    for (const pattern of patterns) {
+      const match = msg.content.match(pattern);
+      if (match?.[1]) {
+        names.add(match[1]);
+      }
+    }
+  }
+  return names;
+}
+
+function isNameAllowed(name: string, blacklist: Set<string>): boolean {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return false;
+  for (const item of blacklist) {
+    if (normalized === item.trim().toLowerCase()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function parsePersona(text: string): Persona | null {
   try {
     const parsed = JSON.parse(text);
@@ -80,7 +123,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!session.personaName) {
-      const personaPrompt = `Create a vivid, human persona for a living memory that speaks in first person. Base it on the context below, but do NOT mention "photo" or "image". Return ONLY valid JSON with:
+      const contributorNames = extractContributorNames(context);
+      const recentUserNames = extractUserNames(conversationHistory);
+      const blacklist = new Set<string>([...contributorNames, ...recentUserNames]);
+
+      const personaPrompt = `Create a vivid, human persona for a living memory that speaks in first person. Base it on the context below, but do NOT mention "photo" or "image". Choose a first name that is NOT in this list: ${[...blacklist].join(', ') || 'none'}. Return ONLY valid JSON with:
 {
   "name": "First name only",
   "traits": ["trait1","trait2","trait3"],
@@ -88,11 +135,19 @@ export async function POST(request: NextRequest) {
   "backstory": "2-3 sentence life story seed"
 }`;
 
-      const personaText = await chat(personaPrompt, [
-        { role: 'user', content: context.slice(0, 1200) },
-      ]);
+      let persona: Persona | null = null;
 
-      const persona = parsePersona(personaText);
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const personaText = await chat(personaPrompt, [
+          { role: 'user', content: context.slice(0, 1200) },
+        ]);
+        const candidate = parsePersona(personaText);
+        if (candidate && isNameAllowed(candidate.name, blacklist)) {
+          persona = candidate;
+          break;
+        }
+      }
+
       if (persona) {
         session = await prisma.chatSession.update({
           where: { id: session.id },
