@@ -123,8 +123,8 @@ export async function POST(
 
       // Add welcome message
       welcomeMessage = contributor.name
-        ? `Hi ${contributor.name}! Thanks for sharing your memories about this image. Let's start - can you describe what you see or remember about this moment?`
-        : `Hi! Thanks for sharing your memories about this image. Let's start - can you describe what you see or remember about this moment?`;
+        ? `Hi ${contributor.name}! I'm Ember. Thanks for sharing your memories about this image. To start, can you describe what you see or remember about this moment?`
+        : `Hi! I'm Ember. Thanks for sharing your memories about this image. To start, can you describe what you see or remember about this moment?`;
 
       await prisma.message.create({
         data: {

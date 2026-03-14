@@ -65,8 +65,8 @@ async function sendInvite(contributorId: string): Promise<{ success: boolean }> 
   const inviteUrl = `${BASE_URL}/contribute/${contributor.token}`;
 
   const greeting = contributor.name ? `Hi ${contributor.name}!` : 'Hi!';
-  const intro = `${greeting} You're invited to share your memories about a special photo.`;
-  const linkMessage = `Tap here to start: ${inviteUrl}`;
+  const intro = `${greeting} You're invited to share your memories about a special photo with Ember.`;
+  const linkMessage = `Tap here to text with Ember or speak with Ember: ${inviteUrl}`;
   const combinedMessage = `${intro} ${linkMessage}`;
 
   // Format phone number

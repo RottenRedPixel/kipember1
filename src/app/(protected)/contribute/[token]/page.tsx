@@ -144,7 +144,7 @@ export default function ContributePage() {
       }
     } catch (err) {
       console.error('Failed to start:', err);
-      setActionError('Failed to start the text interview');
+      setActionError('Failed to start texting with Ember');
     } finally {
       setIsSending(false);
     }
@@ -175,17 +175,17 @@ export default function ContributePage() {
   const voiceStatusLabel = (status: string) => {
     switch (status) {
       case 'registered':
-        return 'We are dialing your phone now.';
+        return 'Ember is dialing your phone now.';
       case 'ongoing':
-        return 'Your voice interview is in progress.';
+        return 'Your conversation with Ember is in progress.';
       case 'ended':
-        return 'Your voice interview finished. We will sync it shortly.';
+        return 'Your call with Ember finished. We will sync it shortly.';
       case 'not_connected':
-        return 'We could not connect the voice interview.';
+        return 'We could not connect your call with Ember.';
       case 'error':
-        return 'The voice interview hit an error.';
+        return 'Your call with Ember hit an error.';
       default:
-        return `Voice interview status: ${status}`;
+        return `Speak with Ember status: ${status}`;
     }
   };
 
@@ -253,7 +253,7 @@ export default function ContributePage() {
             {messages.length === 0 && !isComplete ? (
               <div className="text-center py-8">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Ready to share your memories about this image?
+                  Choose how you want to share your memories with Ember.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-3">
                   <button
@@ -261,7 +261,7 @@ export default function ContributePage() {
                     disabled={isSending || isCalling}
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-full transition-colors"
                   >
-                    {isSending ? 'Starting...' : "Let's Start!"}
+                    {isSending ? 'Starting...' : 'Text with Ember'}
                   </button>
                   <button
                     onClick={startVoiceCall}
@@ -273,7 +273,7 @@ export default function ContributePage() {
                     }
                     className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-full transition-colors"
                   >
-                    {isCalling ? 'Calling...' : 'Prefer a Phone Call?'}
+                    {isCalling ? 'Calling...' : 'Speak with Ember'}
                   </button>
                 </div>
               </div>

@@ -38,6 +38,7 @@ export default function ContributorList({
   const [name, setName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [sendingContributorId, setSendingContributorId] = useState<string | null>(null);
   const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
@@ -112,6 +113,30 @@ export default function ContributorList({
       setError(err instanceof Error ? err.message : 'Failed to send invites');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleSendInvite = async (contributorId: string) => {
+    setSendingContributorId(contributorId);
+    setError('');
+
+    try {
+      const response = await fetch('/api/twilio/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributorId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send invite');
+      }
+
+      onUpdate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send invite');
+    } finally {
+      setSendingContributorId(null);
     }
   };
 
@@ -264,8 +289,22 @@ export default function ContributorList({
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => handleSendInvite(contributor.id)}
+                    disabled={isSending || sendingContributorId === contributor.id}
+                    className="text-indigo-600 hover:text-indigo-700 disabled:text-indigo-300 p-2 text-sm"
+                    title="Send text invite"
+                  >
+                    {sendingContributorId === contributor.id
+                      ? 'Sending...'
+                      : contributor.inviteSent
+                        ? 'Resend Text'
+                        : 'Send Text'}
+                  </button>
+                  <button
                     onClick={() => handleStartVoiceCall(contributor.id)}
                     disabled={
+                      isSending ||
+                      sendingContributorId === contributor.id ||
                       callingContributorId === contributor.id ||
                       latestVoiceCall?.status === 'registered' ||
                       latestVoiceCall?.status === 'ongoing'
@@ -301,7 +340,7 @@ export default function ContributorList({
           {contributors.filter((c) => !c.inviteSent).length > 0 ? (
             <button
               onClick={handleSendInvites}
-              disabled={isSending}
+              disabled={isSending || sendingContributorId !== null}
               className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg transition-colors"
             >
               {isSending
