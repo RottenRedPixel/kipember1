@@ -25,6 +25,18 @@ export async function GET(
             },
           },
         },
+        voiceCalls: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            startedAt: true,
+            endedAt: true,
+            createdAt: true,
+            callSummary: true,
+          },
+        },
       },
     });
 
@@ -47,6 +59,7 @@ export async function GET(
         description: contributor.image.description,
       },
       conversation: contributor.conversation,
+      latestVoiceCall: contributor.voiceCalls[0] ?? null,
     });
   } catch (error) {
     console.error('Error fetching contributor:', error);
@@ -94,6 +107,7 @@ export async function POST(
 
     // Create conversation if doesn't exist
     let conversation = contributor.conversation;
+    let welcomeMessage: string | null = null;
     if (!conversation) {
       conversation = await prisma.conversation.create({
         data: {
@@ -108,7 +122,7 @@ export async function POST(
       });
 
       // Add welcome message
-      const welcomeMsg = contributor.name
+      welcomeMessage = contributor.name
         ? `Hi ${contributor.name}! Thanks for sharing your memories about this image. Let's start - can you describe what you see or remember about this moment?`
         : `Hi! Thanks for sharing your memories about this image. Let's start - can you describe what you see or remember about this moment?`;
 
@@ -116,8 +130,22 @@ export async function POST(
         data: {
           conversationId: conversation.id,
           role: 'assistant',
-          content: welcomeMsg,
+          content: welcomeMessage,
+          source: 'web',
         },
+      });
+    }
+
+    if (message === '__START__') {
+      const latestAssistantMessage =
+        contributor.conversation?.messages
+          ?.slice()
+          .reverse()
+          .find((entry) => entry.role === 'assistant')?.content || welcomeMessage;
+
+      return NextResponse.json({
+        response: latestAssistantMessage || 'Thanks for joining the interview.',
+        isComplete: conversation.status === 'completed',
       });
     }
 
@@ -127,6 +155,7 @@ export async function POST(
         conversationId: conversation.id,
         role: 'user',
         content: message,
+        source: 'web',
       },
     });
 
@@ -140,11 +169,7 @@ export async function POST(
     });
 
     // Generate AI response based on interview flow
-    const response = await generateInterviewResponse(
-      contributor,
-      updatedConversation!,
-      message
-    );
+    const response = await generateInterviewResponse(updatedConversation!, message);
 
     // Save assistant response
     await prisma.message.create({
@@ -152,6 +177,7 @@ export async function POST(
         conversationId: conversation.id,
         role: 'assistant',
         content: response.message,
+        source: 'web',
       },
     });
 
@@ -163,6 +189,7 @@ export async function POST(
           questionType: response.questionType,
           question: response.question || '',
           answer: response.answer,
+          source: 'web',
         },
       });
     }
@@ -200,9 +227,16 @@ const INTERVIEW_QUESTIONS: Record<string, string> = {
 
 const STEP_ORDER = ['context', 'who', 'when', 'where', 'what', 'why', 'how', 'completed'];
 
+type InterviewConversation = {
+  currentStep: string;
+  messages: Array<{
+    role: string;
+    content: string;
+  }>;
+};
+
 async function generateInterviewResponse(
-  contributor: any,
-  conversation: any,
+  conversation: InterviewConversation,
   userMessage: string
 ): Promise<{
   message: string;
@@ -226,7 +260,7 @@ async function generateInterviewResponse(
   const nextStep = STEP_ORDER[currentIndex + 1] || 'completed';
 
   // Build conversation history for Claude
-  const conversationHistory = messages.map((m: any) => ({
+  const conversationHistory = messages.map((m) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
   }));

@@ -31,6 +31,7 @@ model Contributor {
   imageId      String
   image        Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
   conversation Conversation?
+  voiceCalls   VoiceCall[]
   createdAt    DateTime      @default(now())
 }
 
@@ -42,6 +43,7 @@ model Conversation {
   currentStep   String      @default("greeting") // greeting, context, who, what, when, where, why, how, followup, closing
   messages      Message[]
   responses     Response[]
+  voiceCalls    VoiceCall[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -52,6 +54,7 @@ model Message {
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   role           String       // "assistant" or "user"
   content        String
+  source         String       @default("web") // web, sms, voice
   createdAt      DateTime     @default(now())
 }
 
@@ -62,6 +65,7 @@ model Response {
   questionType   String       // context, who, what, when, where, why, how, followup
   question       String
   answer         String
+  source         String       @default("web") // web, sms, voice
   createdAt      DateTime     @default(now())
 }
 
@@ -124,4 +128,55 @@ model ChatMessage {
   role      String      // "user" or "assistant"
   content   String
   createdAt DateTime    @default(now())
+}
+
+model VoiceCall {
+  id                         String           @id @default(cuid())
+  contributorId              String
+  contributor                Contributor      @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  conversationId             String?
+  conversation               Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  retellCallId               String           @unique
+  initiatedBy                String           @default("system") // owner, contributor, system
+  callType                   String           @default("phone_call")
+  direction                  String?
+  fromNumber                 String?
+  toNumber                   String?
+  agentId                    String?
+  agentVersion               Int?
+  status                     String           @default("registered")
+  lastEventType              String?
+  disconnectionReason        String?
+  recordingUrl               String?
+  publicLogUrl               String?
+  transcript                 String?
+  transcriptObjectJson       String?
+  transcriptWithToolCallsJson String?
+  metadataJson               String?
+  dynamicVariablesJson       String?
+  callAnalysisJson           String?
+  callSummary                String?
+  callSuccessful             Boolean?
+  durationMs                 Int?
+  startedAt                  DateTime?
+  endedAt                    DateTime?
+  analyzedAt                 DateTime?
+  memorySyncedAt             DateTime?
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @updatedAt
+  events                     VoiceCallEvent[]
+
+  @@index([contributorId, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+model VoiceCallEvent {
+  id          String    @id @default(cuid())
+  voiceCallId String
+  voiceCall   VoiceCall @relation(fields: [voiceCallId], references: [id], onDelete: Cascade)
+  eventType   String
+  payloadJson String
+  createdAt   DateTime  @default(now())
+
+  @@index([voiceCallId, createdAt])
 }

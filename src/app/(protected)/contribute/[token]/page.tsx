@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 
 interface Message {
@@ -23,6 +23,14 @@ interface ContributorData {
     messages: Message[];
     status: string;
   } | null;
+  latestVoiceCall: {
+    id: string;
+    status: string;
+    startedAt: string | null;
+    endedAt: string | null;
+    createdAt: string;
+    callSummary: string | null;
+  } | null;
 }
 
 export default function ContributePage() {
@@ -32,8 +40,10 @@ export default function ContributePage() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isCalling, setIsCalling] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -51,6 +61,7 @@ export default function ContributePage() {
         if (!response.ok) {
           throw new Error('Invalid or expired link');
         }
+
         const result = await response.json();
         setData(result);
 
@@ -59,7 +70,7 @@ export default function ContributePage() {
           setIsComplete(result.conversation.status === 'completed');
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load');
+        setLoadError(err instanceof Error ? err.message : 'Failed to load');
       } finally {
         setIsLoading(false);
       }
@@ -67,6 +78,21 @@ export default function ContributePage() {
 
     fetchData();
   }, [params.token]);
+
+  const refreshContributorData = async () => {
+    const response = await fetch(`/api/contribute/${params.token}`);
+    if (!response.ok) {
+      return;
+    }
+
+    const result = await response.json();
+    setData(result);
+
+    if (result.conversation?.messages) {
+      setMessages(result.conversation.messages);
+      setIsComplete(result.conversation.status === 'completed');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +102,7 @@ export default function ContributePage() {
     setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
     setIsSending(true);
+    setActionError('');
 
     try {
       const response = await fetch(`/api/contribute/${params.token}`, {
@@ -91,7 +118,7 @@ export default function ContributePage() {
       const result = await response.json();
       setMessages((prev) => [...prev, { role: 'assistant', content: result.response }]);
       setIsComplete(result.isComplete);
-    } catch (err) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' },
@@ -103,6 +130,8 @@ export default function ContributePage() {
 
   const startConversation = async () => {
     setIsSending(true);
+    setActionError('');
+
     try {
       const response = await fetch(`/api/contribute/${params.token}`, {
         method: 'POST',
@@ -111,17 +140,52 @@ export default function ContributePage() {
       });
 
       if (response.ok) {
-        // Refetch to get the welcome message
-        const dataResponse = await fetch(`/api/contribute/${params.token}`);
-        const result = await dataResponse.json();
-        if (result.conversation?.messages) {
-          setMessages(result.conversation.messages);
-        }
+        await refreshContributorData();
       }
     } catch (err) {
       console.error('Failed to start:', err);
+      setActionError('Failed to start the text interview');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const startVoiceCall = async () => {
+    setIsCalling(true);
+    setActionError('');
+
+    try {
+      const response = await fetch(`/api/contribute/${params.token}/call`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to start voice call');
+      }
+
+      await refreshContributorData();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to start voice call');
+    } finally {
+      setIsCalling(false);
+    }
+  };
+
+  const voiceStatusLabel = (status: string) => {
+    switch (status) {
+      case 'registered':
+        return 'We are dialing your phone now.';
+      case 'ongoing':
+        return 'Your voice interview is in progress.';
+      case 'ended':
+        return 'Your voice interview finished. We will sync it shortly.';
+      case 'not_connected':
+        return 'We could not connect the voice interview.';
+      case 'error':
+        return 'The voice interview hit an error.';
+      default:
+        return `Voice interview status: ${status}`;
     }
   };
 
@@ -133,16 +197,16 @@ export default function ContributePage() {
     );
   }
 
-  if (error || !data) {
+  if (loadError || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-black">
         <div className="text-center p-8">
-          <div className="text-6xl mb-4">😕</div>
+          <div className="text-6xl mb-4">:(</div>
           <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             Link Not Found
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            {error || 'This link may have expired or is invalid.'}
+            {loadError || 'This link may have expired or is invalid.'}
           </p>
         </div>
       </div>
@@ -152,7 +216,6 @@ export default function ContributePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-black">
       <div className="container mx-auto px-4 py-6 max-w-2xl">
-        {/* Header with image */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-4">
           <img
             src={`/api/uploads/${data.image.filename}`}
@@ -171,22 +234,48 @@ export default function ContributePage() {
           </div>
         </div>
 
-        {/* Chat area */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
-          {/* Messages */}
+          {actionError && (
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-900/20">
+              <p className="text-sm text-red-700 dark:text-red-300">{actionError}</p>
+            </div>
+          )}
+
+          {data.latestVoiceCall && (
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-emerald-50 dark:bg-emerald-900/20">
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                {voiceStatusLabel(data.latestVoiceCall.status)}
+              </p>
+            </div>
+          )}
+
           <div className="h-80 overflow-y-auto p-4 space-y-3">
             {messages.length === 0 && !isComplete ? (
               <div className="text-center py-8">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Ready to share your memories about this image?
                 </p>
-                <button
-                  onClick={startConversation}
-                  disabled={isSending}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-full transition-colors"
-                >
-                  {isSending ? 'Starting...' : "Let's Start!"}
-                </button>
+                <div className="flex flex-col sm:flex-row justify-center gap-3">
+                  <button
+                    onClick={startConversation}
+                    disabled={isSending || isCalling}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-full transition-colors"
+                  >
+                    {isSending ? 'Starting...' : "Let's Start!"}
+                  </button>
+                  <button
+                    onClick={startVoiceCall}
+                    disabled={
+                      isSending ||
+                      isCalling ||
+                      data.latestVoiceCall?.status === 'registered' ||
+                      data.latestVoiceCall?.status === 'ongoing'
+                    }
+                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-full transition-colors"
+                  >
+                    {isCalling ? 'Calling...' : 'Prefer a Phone Call?'}
+                  </button>
+                </div>
               </div>
             ) : (
               messages.map((message, index) => (
@@ -211,8 +300,14 @@ export default function ContributePage() {
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-2">
                   <div className="flex gap-1">
                     <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                    <span
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '0.1s' }}
+                    />
+                    <span
+                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                      style={{ animationDelay: '0.2s' }}
+                    />
                   </div>
                 </div>
               </div>
@@ -220,7 +315,6 @@ export default function ContributePage() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
           {!isComplete && messages.length > 0 && (
             <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-gray-800">
               <div className="flex gap-2">
@@ -243,7 +337,6 @@ export default function ContributePage() {
             </form>
           )}
 
-          {/* Completion message */}
           {isComplete && (
             <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-green-50 dark:bg-green-900/20">
               <p className="text-center text-green-700 dark:text-green-400 text-sm">
@@ -253,10 +346,7 @@ export default function ContributePage() {
           )}
         </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-gray-400 mt-4">
-          Memory Wiki
-        </p>
+        <p className="text-center text-xs text-gray-400 mt-4">Memory Wiki</p>
       </div>
     </div>
   );

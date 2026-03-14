@@ -22,6 +22,15 @@ interface Image {
       status: string;
       currentStep: string;
     } | null;
+    voiceCalls: {
+      id: string;
+      status: string;
+      startedAt: string | null;
+      endedAt: string | null;
+      createdAt: string;
+      callSummary: string | null;
+      initiatedBy: string;
+    }[];
   }[];
   wiki: {
     id: string;

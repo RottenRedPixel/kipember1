@@ -12,6 +12,15 @@ interface Contributor {
     status: string;
     currentStep: string;
   } | null;
+  voiceCalls: {
+    id: string;
+    status: string;
+    startedAt: string | null;
+    endedAt: string | null;
+    createdAt: string;
+    callSummary: string | null;
+    initiatedBy: string;
+  }[];
 }
 
 interface ContributorListProps {
@@ -29,6 +38,7 @@ export default function ContributorList({
   const [name, setName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   const formatPhoneNumber = (value: string) => {
@@ -105,6 +115,30 @@ export default function ContributorList({
     }
   };
 
+  const handleStartVoiceCall = async (contributorId: string) => {
+    setCallingContributorId(contributorId);
+    setError('');
+
+    try {
+      const response = await fetch('/api/voice/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributorId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to start voice call');
+      }
+
+      onUpdate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start voice call');
+    } finally {
+      setCallingContributorId(null);
+    }
+  };
+
   const getStatusBadge = (contributor: Contributor) => {
     if (contributor.conversation?.status === 'completed') {
       return (
@@ -137,6 +171,25 @@ export default function ContributorList({
     );
   };
 
+  const getLatestVoiceCall = (contributor: Contributor) => contributor.voiceCalls[0] || null;
+
+  const getVoiceCallLabel = (status: string) => {
+    switch (status) {
+      case 'registered':
+        return 'Voice call starting';
+      case 'ongoing':
+        return 'Voice call live';
+      case 'ended':
+        return 'Voice call complete';
+      case 'error':
+        return 'Voice call failed';
+      case 'not_connected':
+        return 'Voice call missed';
+      default:
+        return `Voice: ${status}`;
+    }
+  };
+
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/contribute/${token}`;
     navigator.clipboard.writeText(url);
@@ -149,7 +202,6 @@ export default function ContributorList({
         Contributors
       </h2>
 
-      {/* Add contributor form */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <input
           type="text"
@@ -180,64 +232,91 @@ export default function ContributorList({
         </div>
       )}
 
-      {/* Contributor list */}
       {contributors.length === 0 ? (
         <p className="text-gray-500 dark:text-gray-400 text-center py-8">
           No contributors yet. Add phone numbers above.
         </p>
       ) : (
         <div className="space-y-3 mb-6">
-          {contributors.map((contributor) => (
-            <div
-              key={contributor.id}
-              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-            >
-              <div className="flex items-center gap-3">
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {contributor.name || 'Anonymous'}
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {formatPhoneNumber(contributor.phoneNumber)}
-                  </p>
+          {contributors.map((contributor) => {
+            const latestVoiceCall = getLatestVoiceCall(contributor);
+
+            return (
+              <div
+                key={contributor.id}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {contributor.name || 'Anonymous'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {formatPhoneNumber(contributor.phoneNumber)}
+                    </p>
+                    {latestVoiceCall && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {getVoiceCallLabel(latestVoiceCall.status)}
+                      </p>
+                    )}
+                  </div>
+                  {getStatusBadge(contributor)}
                 </div>
-                {getStatusBadge(contributor)}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleStartVoiceCall(contributor.id)}
+                    disabled={
+                      callingContributorId === contributor.id ||
+                      latestVoiceCall?.status === 'registered' ||
+                      latestVoiceCall?.status === 'ongoing'
+                    }
+                    className="text-emerald-600 hover:text-emerald-700 disabled:text-emerald-300 p-2 text-sm"
+                    title="Start voice interview"
+                  >
+                    {callingContributorId === contributor.id ? 'Calling...' : 'Call Now'}
+                  </button>
+                  <button
+                    onClick={() => copyLink(contributor.token)}
+                    className="text-blue-500 hover:text-blue-700 p-2 text-sm"
+                    title="Copy invite link"
+                  >
+                    Copy Link
+                  </button>
+                  <button
+                    onClick={() => handleRemoveContributor(contributor.id)}
+                    className="text-red-500 hover:text-red-700 p-2"
+                    title="Remove contributor"
+                  >
+                    X
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => copyLink(contributor.token)}
-                  className="text-blue-500 hover:text-blue-700 p-2 text-sm"
-                  title="Copy invite link"
-                >
-                  Copy Link
-                </button>
-                <button
-                  onClick={() => handleRemoveContributor(contributor.id)}
-                  className="text-red-500 hover:text-red-700 p-2"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
-      {/* Send invites button */}
       {contributors.length > 0 && (
         <>
-          {contributors.filter(c => !c.inviteSent).length > 0 ? (
+          {contributors.filter((c) => !c.inviteSent).length > 0 ? (
             <button
               onClick={handleSendInvites}
               disabled={isSending}
               className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg transition-colors"
             >
-              {isSending ? 'Sending...' : `Send SMS Invites (${contributors.filter(c => !c.inviteSent).length})`}
+              {isSending
+                ? 'Sending...'
+                : `Send SMS Invites (${contributors.filter((c) => !c.inviteSent).length})`}
             </button>
           ) : (
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-              All invites sent! Use "Copy Link" to manually share.
-            </p>
+            <div className="space-y-2">
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                All invites sent! Use &quot;Copy Link&quot; to manually share.
+              </p>
+              <p className="text-center text-xs text-gray-400 dark:text-gray-500">
+                Retell voice calls can also be started per contributor above.
+              </p>
+            </div>
           )}
         </>
       )}

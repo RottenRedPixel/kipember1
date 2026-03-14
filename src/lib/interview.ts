@@ -76,6 +76,7 @@ export async function startConversation(contributorId: string): Promise<string> 
       conversationId: conversation.id,
       role: 'assistant',
       content: greeting,
+      source: 'sms',
     },
   });
 
@@ -143,6 +144,7 @@ export async function handleIncomingMessage(
       conversationId: conversation.id,
       role: 'user',
       content: message,
+      source: 'sms',
     },
   });
 
@@ -178,6 +180,7 @@ export async function handleIncomingMessage(
         questionType: 'followup',
         question: conversation.messages[conversation.messages.length - 1]?.content || 'Follow-up question',
         answer: message,
+        source: 'sms',
       },
     });
 
@@ -216,6 +219,7 @@ export async function handleIncomingMessage(
         questionType: currentStep,
         question: STEP_QUESTIONS[currentStep],
         answer: message,
+        source: 'sms',
       },
     });
 
@@ -275,6 +279,7 @@ export async function handleIncomingMessage(
       conversationId: conversation.id,
       role: 'assistant',
       content: response,
+      source: 'sms',
     },
   });
 
