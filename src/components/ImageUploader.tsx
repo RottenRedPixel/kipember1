@@ -61,8 +61,13 @@ export default function ImageUploader() {
         throw new Error('Upload failed');
       }
 
-      const { id } = await response.json();
-      router.push(`/image/${id}`);
+      const { id, wikiGenerated, warning } = await response.json();
+
+      if (warning) {
+        alert(`Image uploaded, but the automatic wiki did not finish: ${warning}`);
+      }
+
+      router.push(wikiGenerated ? `/image/${id}/wiki` : `/image/${id}`);
     } catch (error) {
       console.error('Upload error:', error);
       alert('Failed to upload image. Please try again.');
@@ -165,7 +170,7 @@ export default function ImageUploader() {
             disabled={isUploading}
             className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
           >
-            {isUploading ? 'Uploading...' : 'Upload & Continue'}
+            {isUploading ? 'Uploading & Building Wiki...' : 'Upload & Build Wiki'}
           </button>
         </div>
       )}

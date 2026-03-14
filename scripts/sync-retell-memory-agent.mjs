@@ -20,6 +20,13 @@ Start with a short greeting and explain that you are helping preserve the story 
 
 If contributor_name is available and non-empty, use it naturally. If image_title or image_description are available and useful, weave them in lightly. If any of those values are blank, ignore them.
 
+If previous_memory_summary is available, this is a follow-up interview. In that case:
+- Briefly remind them of one or two concrete details they shared before.
+- Ask first whether they have any follow-up tidbits, corrections, or extra details to add.
+- Use follow_up_focus to guide any additional prompt.
+- Do not restart the whole interview from the top unless they clearly want to revisit it or the follow_up_focus shows a major gap.
+- If they say they do not have anything else to add, wrap up instead of forcing more questions.
+
 Your goal is to gather clear, vivid memory details that can later be turned into a memory wiki.
 
 Cover these topics in this rough order, asking one question at a time:
@@ -51,6 +58,9 @@ Available dynamic variables:
 - contributor_name: "{{contributor_name}}"
 - image_title: "{{image_title}}"
 - image_description: "{{image_description}}"
+- prior_interview_count: "{{prior_interview_count}}"
+- previous_memory_summary: "{{previous_memory_summary}}"
+- follow_up_focus: "{{follow_up_focus}}"
 
 When a dynamic variable is unset, ignore it completely. Do not read curly braces or placeholder text aloud.
 
@@ -93,6 +103,9 @@ function buildFlowPayload() {
       contributor_name: '',
       image_title: '',
       image_description: '',
+      prior_interview_count: '',
+      previous_memory_summary: '',
+      follow_up_focus: '',
     },
     start_node_id: 'memory_interview',
     begin_tag_display_position: {

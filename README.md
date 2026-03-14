@@ -56,6 +56,16 @@ Voice flow summary:
 - Retell webhook events are verified and stored in `VoiceCall` / `VoiceCallEvent`.
 - Final transcripts are extracted into the existing `Conversation.responses` table with `source="voice"` so wiki generation and image chat can use the same memory data.
 
+## Automatic photo analysis
+
+When a photo is uploaded, the app now tries to:
+
+- read embedded photo metadata such as capture date, camera details, and GPS coordinates when present
+- run visual analysis on the photo
+- generate an initial wiki automatically before any contributor interviews
+
+This requires `ANTHROPIC_API_KEY` to be configured. The optional `ANTHROPIC_IMAGE_ANALYSIS_MODEL` env var can override the default image-analysis model.
+
 ## Access control
 
 Set `ACCESS_LOCK_ENABLED=true` if you want the app behind the passcode wall.

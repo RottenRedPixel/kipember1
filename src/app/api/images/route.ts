@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { requireAccess } from '@/lib/access-server';
+import { generateWikiForImage } from '@/lib/wiki-generator';
+import { getUploadPath, getUploadsDir } from '@/lib/uploads';
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,14 +29,13 @@ export async function POST(request: NextRequest) {
     const filename = `${randomUUID()}.${ext}`;
 
     // Ensure uploads directory exists
-    const uploadsDir =
-      process.env.UPLOADS_DIR || join(process.cwd(), 'public', 'uploads');
+    const uploadsDir = getUploadsDir();
     await mkdir(uploadsDir, { recursive: true });
 
     // Save file
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(join(uploadsDir, filename), buffer);
+    await writeFile(getUploadPath(filename), buffer);
 
     // Create database record
     const image = await prisma.image.create({
@@ -47,7 +47,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ id: image.id });
+    let wikiGenerated = false;
+    let warning: string | null = null;
+
+    try {
+      await generateWikiForImage(image.id);
+      wikiGenerated = true;
+    } catch (error) {
+      console.error('Auto wiki generation failed:', error);
+      warning =
+        error instanceof Error
+          ? error.message
+          : 'Image uploaded, but the automatic wiki could not be generated';
+    }
+
+    return NextResponse.json({ id: image.id, wikiGenerated, warning });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(

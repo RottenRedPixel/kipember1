@@ -1,11 +1,31 @@
 import { prisma } from './db';
+import { ensureImageAnalysisForImage } from './image-analysis';
 import { generateWiki } from './claude';
 
-export async function generateWikiForImage(imageId: string): Promise<string> {
-  // Get image with all completed conversation responses
-  const image = await prisma.image.findUnique({
+type ParsedEntity = {
+  label: string;
+  details: string;
+  confidence: string;
+};
+
+function parseJsonArray<T>(value: string | null): T[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function fetchImageForWiki(imageId: string) {
+  return prisma.image.findUnique({
     where: { id: imageId },
     include: {
+      analysis: true,
       contributors: {
         include: {
           conversation: {
@@ -18,6 +38,14 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       },
     },
   });
+}
+
+export async function generateWikiForImage(imageId: string): Promise<string> {
+  await ensureImageAnalysisForImage(imageId).catch((error) => {
+    console.error('Image analysis failed during wiki generation:', error);
+  });
+
+  const image = await fetchImageForWiki(imageId);
 
   if (!image) {
     throw new Error('Image not found');
@@ -44,15 +72,38 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     }
   }
 
-  if (allResponses.length === 0) {
-    throw new Error('No completed interviews to generate wiki from');
+  if (!image.analysis && allResponses.length === 0 && !image.description?.trim()) {
+    throw new Error('No image analysis or completed interviews available to generate a wiki');
   }
 
-  // Generate wiki content using Claude
-  const wikiContent = await generateWiki(
-    image.description || image.originalName,
-    allResponses
-  );
+  const wikiContent = await generateWiki({
+    imageTitle: image.originalName,
+    imageDescription: image.description,
+    analysis: image.analysis
+      ? {
+          status: image.analysis.status,
+          errorMessage: image.analysis.errorMessage,
+          summary: image.analysis.summary,
+          visualDescription: image.analysis.visualDescription,
+          metadataSummary: image.analysis.metadataSummary,
+          mood: image.analysis.mood,
+          capturedAt: image.analysis.capturedAt?.toISOString() || null,
+          latitude: image.analysis.latitude,
+          longitude: image.analysis.longitude,
+          cameraMake: image.analysis.cameraMake,
+          cameraModel: image.analysis.cameraModel,
+          lensModel: image.analysis.lensModel,
+          people: parseJsonArray<ParsedEntity>(image.analysis.peopleJson),
+          places: parseJsonArray<ParsedEntity>(image.analysis.placesJson),
+          things: parseJsonArray<ParsedEntity>(image.analysis.thingsJson),
+          activities: parseJsonArray<string>(image.analysis.activitiesJson),
+          visibleText: parseJsonArray<string>(image.analysis.visibleTextJson),
+          keywords: parseJsonArray<string>(image.analysis.keywordsJson),
+          openQuestions: parseJsonArray<string>(image.analysis.openQuestionsJson),
+        }
+      : null,
+    responses: allResponses,
+  });
 
   // Save or update wiki
   const existingWiki = await prisma.wiki.findUnique({

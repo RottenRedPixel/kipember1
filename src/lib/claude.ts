@@ -4,6 +4,41 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+type WikiContributorResponse = {
+  contributorName: string;
+  questionType: string;
+  question: string;
+  answer: string;
+};
+
+type WikiAnalysisEntity = {
+  label: string;
+  details: string;
+  confidence: string;
+};
+
+type WikiImageAnalysis = {
+  status: string;
+  errorMessage: string | null;
+  summary: string | null;
+  visualDescription: string | null;
+  metadataSummary: string | null;
+  mood: string | null;
+  capturedAt: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  cameraMake: string | null;
+  cameraModel: string | null;
+  lensModel: string | null;
+  people: WikiAnalysisEntity[];
+  places: WikiAnalysisEntity[];
+  things: WikiAnalysisEntity[];
+  activities: string[];
+  visibleText: string[];
+  keywords: string[];
+  openQuestions: string[];
+};
+
 export async function chat(
   systemPrompt: string,
   messages: { role: 'user' | 'assistant'; content: string }[]
@@ -19,10 +54,17 @@ export async function chat(
   return textBlock?.type === 'text' ? textBlock.text : '';
 }
 
-export async function generateWiki(
-  imageDescription: string,
-  responses: { contributorName: string; questionType: string; question: string; answer: string }[]
-): Promise<string> {
+export async function generateWiki({
+  imageTitle,
+  imageDescription,
+  analysis,
+  responses,
+}: {
+  imageTitle: string;
+  imageDescription: string | null;
+  analysis: WikiImageAnalysis | null;
+  responses: WikiContributorResponse[];
+}): Promise<string> {
   const responsesText = responses
     .map(
       (r) =>
@@ -30,23 +72,66 @@ export async function generateWiki(
     )
     .join('\n\n');
 
-  const systemPrompt = `You are a wiki editor. Your task is to synthesize interview responses about an image/memory into a well-structured wiki entry.
+  const analysisText = analysis
+    ? `STATUS: ${analysis.status}
+SUMMARY: ${analysis.summary || 'None'}
+VISUAL DESCRIPTION: ${analysis.visualDescription || 'None'}
+MOOD: ${analysis.mood || 'None'}
+METADATA SUMMARY: ${analysis.metadataSummary || 'None'}
+CAPTURED AT: ${analysis.capturedAt || 'Unknown'}
+GPS: ${
+      analysis.latitude != null && analysis.longitude != null
+        ? `${analysis.latitude}, ${analysis.longitude}`
+        : 'Unknown'
+    }
+CAMERA: ${[analysis.cameraMake, analysis.cameraModel].filter(Boolean).join(' ') || 'Unknown'}
+LENS: ${analysis.lensModel || 'Unknown'}
+PEOPLE OBSERVED:
+${analysis.people.map((item) => `- ${item.label} (${item.confidence}): ${item.details}`).join('\n') || '- None'}
+PLACE SIGNALS:
+${analysis.places.map((item) => `- ${item.label} (${item.confidence}): ${item.details}`).join('\n') || '- None'}
+NOTABLE THINGS:
+${analysis.things.map((item) => `- ${item.label} (${item.confidence}): ${item.details}`).join('\n') || '- None'}
+ACTIVITIES:
+${analysis.activities.map((item) => `- ${item}`).join('\n') || '- None'}
+VISIBLE TEXT:
+${analysis.visibleText.map((item) => `- ${item}`).join('\n') || '- None'}
+KEYWORDS:
+${analysis.keywords.map((item) => `- ${item}`).join('\n') || '- None'}
+OPEN QUESTIONS:
+${analysis.openQuestions.map((item) => `- ${item}`).join('\n') || '- None'}
+ANALYSIS ERROR: ${analysis.errorMessage || 'None'}`
+    : 'No automatic image analysis available.';
+
+  const systemPrompt = `You are a wiki editor. Your task is to synthesize automatic photo analysis, file metadata, and contributor memories into a well-structured wiki entry.
+
+Evidence rules:
+- Treat embedded metadata and direct contributor memories as the strongest sources.
+- Treat automatic visual analysis as helpful but potentially uncertain. If something is inferred rather than confirmed, phrase it carefully.
+- Never claim that an unknown person has been identified by name from appearance alone.
 
 The wiki should include:
 - Overview: A brief summary of the image/memory
-- People: Who is in the image and their relationships
-- Timeline: When this happened
-- Location: Where it took place
+- What the Photo Shows: A grounded visual description
+- People: Visible people plus any known relationships
+- Timeline: When this happened or likely happened
+- Location: Where it took place or what the setting appears to be
 - Story: What was happening and the backstory
-- Significance: Why this memory matters
-- Quotes: Notable quotes from contributors (attributed)
+- Photo Metadata: Relevant camera/date/location metadata if present
+- Significance: Why this memory matters, if contributor memories provide that
+- Quotes: Notable quotes from contributors (attributed), if available
+- Open Questions: Only include this if there are meaningful unanswered details
 
 Write in an engaging, informative style. Use markdown formatting.`;
 
-  const userMessage = `Image description: ${imageDescription || 'No description provided'}
+  const userMessage = `Image title: ${imageTitle}
+Image description: ${imageDescription || 'No description provided'}
+
+Automatic image analysis:
+${analysisText}
 
 Contributor responses:
-${responsesText}
+${responsesText || 'No contributor memories yet.'}
 
 Please create a wiki entry for this memory.`;
 

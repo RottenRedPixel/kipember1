@@ -36,6 +36,15 @@ type RetellWebhookPayload = {
 
 const ACTIVE_CALL_STATUSES = new Set(['registered', 'ongoing']);
 const ACTIVE_CALL_WINDOW_MS = 30 * 60 * 1000;
+const FOLLOW_UP_QUESTION_ORDER: QuestionType[] = [
+  'context',
+  'who',
+  'when',
+  'where',
+  'what',
+  'why',
+  'how',
+];
 
 function stringifyJson(value: unknown): string | null {
   if (value == null) {
@@ -131,6 +140,130 @@ function pickDynamicVariables(input: Record<string, string | null | undefined>):
       return [];
     })
   );
+}
+
+type PriorMemoryContext = {
+  priorInterviewCount: number;
+  previousMemorySummary: string | null;
+  followUpFocus: string | null;
+};
+
+function summarizeAnswer(answer: string, maxLength = 180): string {
+  const compact = answer.replace(/\s+/g, ' ').trim();
+  if (compact.length <= maxLength) {
+    return compact;
+  }
+
+  return `${compact.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function truncateDynamicValue(value: string | null, maxLength: number): string | null {
+  if (!value) {
+    return null;
+  }
+
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+async function buildPriorMemoryContext({
+  contributorId,
+  conversationId,
+}: {
+  contributorId: string;
+  conversationId?: string | null;
+}): Promise<PriorMemoryContext> {
+  const [conversation, voiceCalls] = await Promise.all([
+    conversationId
+      ? prisma.conversation.findUnique({
+          where: { id: conversationId },
+          include: {
+            responses: {
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        })
+      : prisma.conversation.findUnique({
+          where: { contributorId },
+          include: {
+            responses: {
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        }),
+    prisma.voiceCall.findMany({
+      where: {
+        contributorId,
+        memorySyncedAt: {
+          not: null,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: {
+        id: true,
+        callSummary: true,
+      },
+    }),
+  ]);
+
+  const latestResponseByQuestion = new Map<QuestionType, string>();
+
+  for (const response of conversation?.responses || []) {
+    if (response.questionType in QUESTION_PROMPTS && response.answer.trim()) {
+      latestResponseByQuestion.set(
+        response.questionType as QuestionType,
+        response.answer.trim()
+      );
+    }
+  }
+
+  const previousSummaryParts = FOLLOW_UP_QUESTION_ORDER.flatMap((questionType) => {
+    const answer = latestResponseByQuestion.get(questionType);
+    if (!answer) {
+      return [];
+    }
+
+    const label = questionType[0].toUpperCase() + questionType.slice(1);
+    return [`${label}: ${summarizeAnswer(answer)}`];
+  });
+
+  const recentVoiceSummaries = voiceCalls
+    .map((voiceCall) => voiceCall.callSummary?.trim())
+    .filter((summary): summary is string => Boolean(summary));
+
+  if (recentVoiceSummaries.length > 0) {
+    previousSummaryParts.push(
+      `Recent interview recap: ${summarizeAnswer(recentVoiceSummaries[0], 220)}`
+    );
+  }
+
+  const missingTopics = FOLLOW_UP_QUESTION_ORDER.filter(
+    (questionType) => !latestResponseByQuestion.has(questionType)
+  );
+
+  let followUpFocus: string | null = null;
+
+  if (missingTopics.length > 0) {
+    followUpFocus = `If they are open to adding more, focus on the biggest missing topics: ${missingTopics
+      .map((questionType) => questionType)
+      .join(', ')}.`;
+  } else if (latestResponseByQuestion.size > 0) {
+    followUpFocus =
+      'Start by asking whether they have any follow-up tidbits, corrections, or one extra vivid detail to add. If they say no, wrap up without repeating the full interview.';
+  }
+
+  return {
+    priorInterviewCount: Math.max(voiceCalls.length, latestResponseByQuestion.size > 0 ? 1 : 0),
+    previousMemorySummary: truncateDynamicValue(
+      previousSummaryParts.length > 0 ? previousSummaryParts.join(' | ') : null,
+      900
+    ),
+    followUpFocus: truncateDynamicValue(followUpFocus, 240),
+  };
 }
 
 async function ensureConversation(contributorId: string, conversationId?: string | null) {
@@ -374,7 +507,11 @@ export async function startVoiceCallForContributor({
     where: { id: contributorId },
     include: {
       image: true,
-      conversation: true,
+      conversation: {
+        select: {
+          id: true,
+        },
+      },
       voiceCalls: {
         orderBy: { createdAt: 'desc' },
         take: 1,
@@ -400,10 +537,21 @@ export async function startVoiceCallForContributor({
     contributor.conversation?.id
   );
 
+  const priorMemoryContext = await buildPriorMemoryContext({
+    contributorId: contributor.id,
+    conversationId: conversation.id,
+  });
+
   const dynamicVariables = pickDynamicVariables({
     contributor_name: contributor.name,
     image_title: contributor.image.originalName,
     image_description: contributor.image.description,
+    prior_interview_count:
+      priorMemoryContext.priorInterviewCount > 0
+        ? String(priorMemoryContext.priorInterviewCount)
+        : null,
+    previous_memory_summary: priorMemoryContext.previousMemorySummary,
+    follow_up_focus: priorMemoryContext.followUpFocus,
   });
 
   const call = await createRetellPhoneCall({
