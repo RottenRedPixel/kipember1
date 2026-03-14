@@ -8,6 +8,86 @@ type ParsedEntity = {
   confidence: string;
 };
 
+type ParsedSceneInsights = {
+  peopleAndDemographics: {
+    numberOfPeopleVisible: number | null;
+    estimatedAgeRanges: string[];
+    genderPresentation: string | null;
+    clothingAndStyle: string | null;
+    bodyLanguageAndExpressions: string | null;
+    relationshipInference: string | null;
+  };
+  settingAndEnvironment: {
+    locationType: string | null;
+    timeOfDayAndLighting: string | null;
+    weatherConditions: string | null;
+    backgroundDetails: string | null;
+    architectureOrLandscape: string | null;
+  };
+  activitiesAndContext: {
+    whatAppearsToBeHappening: string | null;
+    socialDynamics: string | null;
+    eventType: string | null;
+    visibleActivities: string[];
+  };
+  technicalDetails: {
+    photoQualityAndComposition: string | null;
+    lightingAnalysis: string | null;
+    notablePhotographicElements: string | null;
+    objectsOfInterest: string[];
+  };
+  emotionalContext: {
+    overallMoodAndAtmosphere: string | null;
+    emotionalExpressions: string | null;
+    socialEnergy: string | null;
+  };
+  storyElements: {
+    storyThisImageTells: string | null;
+    whatMightHaveHappenedBefore: string | null;
+    whatMightHappenNext: string | null;
+  };
+};
+
+const EMPTY_SCENE_INSIGHTS: ParsedSceneInsights = {
+  peopleAndDemographics: {
+    numberOfPeopleVisible: null,
+    estimatedAgeRanges: [],
+    genderPresentation: null,
+    clothingAndStyle: null,
+    bodyLanguageAndExpressions: null,
+    relationshipInference: null,
+  },
+  settingAndEnvironment: {
+    locationType: null,
+    timeOfDayAndLighting: null,
+    weatherConditions: null,
+    backgroundDetails: null,
+    architectureOrLandscape: null,
+  },
+  activitiesAndContext: {
+    whatAppearsToBeHappening: null,
+    socialDynamics: null,
+    eventType: null,
+    visibleActivities: [],
+  },
+  technicalDetails: {
+    photoQualityAndComposition: null,
+    lightingAnalysis: null,
+    notablePhotographicElements: null,
+    objectsOfInterest: [],
+  },
+  emotionalContext: {
+    overallMoodAndAtmosphere: null,
+    emotionalExpressions: null,
+    socialEnergy: null,
+  },
+  storyElements: {
+    storyThisImageTells: null,
+    whatMightHaveHappenedBefore: null,
+    whatMightHappenNext: null,
+  },
+};
+
 function parseJsonArray<T>(value: string | null): T[] {
   if (!value) {
     return [];
@@ -18,6 +98,53 @@ function parseJsonArray<T>(value: string | null): T[] {
     return Array.isArray(parsed) ? (parsed as T[]) : [];
   } catch {
     return [];
+  }
+}
+
+function parseSceneInsights(value: string | null): ParsedSceneInsights {
+  if (!value) {
+    return EMPTY_SCENE_INSIGHTS;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as ParsedSceneInsights;
+    return {
+      peopleAndDemographics: {
+        ...EMPTY_SCENE_INSIGHTS.peopleAndDemographics,
+        ...parsed.peopleAndDemographics,
+        estimatedAgeRanges: Array.isArray(parsed.peopleAndDemographics?.estimatedAgeRanges)
+          ? parsed.peopleAndDemographics.estimatedAgeRanges
+          : [],
+      },
+      settingAndEnvironment: {
+        ...EMPTY_SCENE_INSIGHTS.settingAndEnvironment,
+        ...parsed.settingAndEnvironment,
+      },
+      activitiesAndContext: {
+        ...EMPTY_SCENE_INSIGHTS.activitiesAndContext,
+        ...parsed.activitiesAndContext,
+        visibleActivities: Array.isArray(parsed.activitiesAndContext?.visibleActivities)
+          ? parsed.activitiesAndContext.visibleActivities
+          : [],
+      },
+      technicalDetails: {
+        ...EMPTY_SCENE_INSIGHTS.technicalDetails,
+        ...parsed.technicalDetails,
+        objectsOfInterest: Array.isArray(parsed.technicalDetails?.objectsOfInterest)
+          ? parsed.technicalDetails.objectsOfInterest
+          : [],
+      },
+      emotionalContext: {
+        ...EMPTY_SCENE_INSIGHTS.emotionalContext,
+        ...parsed.emotionalContext,
+      },
+      storyElements: {
+        ...EMPTY_SCENE_INSIGHTS.storyElements,
+        ...parsed.storyElements,
+      },
+    };
+  } catch {
+    return EMPTY_SCENE_INSIGHTS;
   }
 }
 
@@ -100,6 +227,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
           visibleText: parseJsonArray<string>(image.analysis.visibleTextJson),
           keywords: parseJsonArray<string>(image.analysis.keywordsJson),
           openQuestions: parseJsonArray<string>(image.analysis.openQuestionsJson),
+          sceneInsights: parseSceneInsights(image.analysis.sceneInsightsJson),
         }
       : null,
     responses: allResponses,

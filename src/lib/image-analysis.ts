@@ -25,6 +25,45 @@ type ParsedVisionAnalysis = {
   visibleText: string[];
   searchableKeywords: string[];
   openQuestions: string[];
+  sceneInsights: {
+    peopleAndDemographics: {
+      numberOfPeopleVisible: number | null;
+      estimatedAgeRanges: string[];
+      genderPresentation: string | null;
+      clothingAndStyle: string | null;
+      bodyLanguageAndExpressions: string | null;
+      relationshipInference: string | null;
+    };
+    settingAndEnvironment: {
+      locationType: string | null;
+      timeOfDayAndLighting: string | null;
+      weatherConditions: string | null;
+      backgroundDetails: string | null;
+      architectureOrLandscape: string | null;
+    };
+    activitiesAndContext: {
+      whatAppearsToBeHappening: string | null;
+      socialDynamics: string | null;
+      eventType: string | null;
+      visibleActivities: string[];
+    };
+    technicalDetails: {
+      photoQualityAndComposition: string | null;
+      lightingAnalysis: string | null;
+      notablePhotographicElements: string | null;
+      objectsOfInterest: string[];
+    };
+    emotionalContext: {
+      overallMoodAndAtmosphere: string | null;
+      emotionalExpressions: string | null;
+      socialEnergy: string | null;
+    };
+    storyElements: {
+      storyThisImageTells: string | null;
+      whatMightHaveHappenedBefore: string | null;
+      whatMightHappenNext: string | null;
+    };
+  };
 };
 
 type ParsedMetadata = {
@@ -64,6 +103,7 @@ const VISION_SCHEMA = {
     'visibleText',
     'searchableKeywords',
     'openQuestions',
+    'sceneInsights',
   ],
   properties: {
     title: { type: 'string' },
@@ -125,8 +165,213 @@ const VISION_SCHEMA = {
       type: 'array',
       items: { type: 'string' },
     },
+    sceneInsights: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'peopleAndDemographics',
+        'settingAndEnvironment',
+        'activitiesAndContext',
+        'technicalDetails',
+        'emotionalContext',
+        'storyElements',
+      ],
+      properties: {
+        peopleAndDemographics: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'numberOfPeopleVisible',
+            'estimatedAgeRanges',
+            'genderPresentation',
+            'clothingAndStyle',
+            'bodyLanguageAndExpressions',
+            'relationshipInference',
+          ],
+          properties: {
+            numberOfPeopleVisible: {
+              anyOf: [{ type: 'number' }, { type: 'null' }],
+            },
+            estimatedAgeRanges: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            genderPresentation: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            clothingAndStyle: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            bodyLanguageAndExpressions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            relationshipInference: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+          },
+        },
+        settingAndEnvironment: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'locationType',
+            'timeOfDayAndLighting',
+            'weatherConditions',
+            'backgroundDetails',
+            'architectureOrLandscape',
+          ],
+          properties: {
+            locationType: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            timeOfDayAndLighting: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            weatherConditions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            backgroundDetails: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            architectureOrLandscape: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+          },
+        },
+        activitiesAndContext: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'whatAppearsToBeHappening',
+            'socialDynamics',
+            'eventType',
+            'visibleActivities',
+          ],
+          properties: {
+            whatAppearsToBeHappening: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            socialDynamics: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            eventType: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            visibleActivities: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+        technicalDetails: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'photoQualityAndComposition',
+            'lightingAnalysis',
+            'notablePhotographicElements',
+            'objectsOfInterest',
+          ],
+          properties: {
+            photoQualityAndComposition: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            lightingAnalysis: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            notablePhotographicElements: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            objectsOfInterest: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+        emotionalContext: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'overallMoodAndAtmosphere',
+            'emotionalExpressions',
+            'socialEnergy',
+          ],
+          properties: {
+            overallMoodAndAtmosphere: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            emotionalExpressions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            socialEnergy: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+          },
+        },
+        storyElements: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'storyThisImageTells',
+            'whatMightHaveHappenedBefore',
+            'whatMightHappenNext',
+          ],
+          properties: {
+            storyThisImageTells: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            whatMightHaveHappenedBefore: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            whatMightHappenNext: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+          },
+        },
+      },
+    },
   },
 } as const;
+
+const EMPTY_SCENE_INSIGHTS: ParsedVisionAnalysis['sceneInsights'] = {
+  peopleAndDemographics: {
+    numberOfPeopleVisible: null,
+    estimatedAgeRanges: [],
+    genderPresentation: null,
+    clothingAndStyle: null,
+    bodyLanguageAndExpressions: null,
+    relationshipInference: null,
+  },
+  settingAndEnvironment: {
+    locationType: null,
+    timeOfDayAndLighting: null,
+    weatherConditions: null,
+    backgroundDetails: null,
+    architectureOrLandscape: null,
+  },
+  activitiesAndContext: {
+    whatAppearsToBeHappening: null,
+    socialDynamics: null,
+    eventType: null,
+    visibleActivities: [],
+  },
+  technicalDetails: {
+    photoQualityAndComposition: null,
+    lightingAnalysis: null,
+    notablePhotographicElements: null,
+    objectsOfInterest: [],
+  },
+  emotionalContext: {
+    overallMoodAndAtmosphere: null,
+    emotionalExpressions: null,
+    socialEnergy: null,
+  },
+  storyElements: {
+    storyThisImageTells: null,
+    whatMightHaveHappenedBefore: null,
+    whatMightHappenNext: null,
+  },
+};
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -172,6 +417,10 @@ function sanitizeStringList(value: unknown): string[] {
   });
 }
 
+function sanitizeNullableString(value: unknown): string | null {
+  return value === null ? null : sanitizeString(value);
+}
+
 function sanitizeEntityList(value: unknown): VisualEntity[] {
   if (!Array.isArray(value)) {
     return [];
@@ -198,6 +447,63 @@ function sanitizeEntityList(value: unknown): VisualEntity[] {
   });
 }
 
+function normalizeSceneInsights(value: unknown): ParsedVisionAnalysis['sceneInsights'] {
+  const record = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+
+  const people = record.peopleAndDemographics as Record<string, unknown> | undefined;
+  const setting = record.settingAndEnvironment as Record<string, unknown> | undefined;
+  const activities = record.activitiesAndContext as Record<string, unknown> | undefined;
+  const technical = record.technicalDetails as Record<string, unknown> | undefined;
+  const emotional = record.emotionalContext as Record<string, unknown> | undefined;
+  const story = record.storyElements as Record<string, unknown> | undefined;
+
+  return {
+    peopleAndDemographics: {
+      ...EMPTY_SCENE_INSIGHTS.peopleAndDemographics,
+      numberOfPeopleVisible: sanitizeNumber(people?.numberOfPeopleVisible),
+      estimatedAgeRanges: sanitizeStringList(people?.estimatedAgeRanges),
+      genderPresentation: sanitizeNullableString(people?.genderPresentation),
+      clothingAndStyle: sanitizeNullableString(people?.clothingAndStyle),
+      bodyLanguageAndExpressions: sanitizeNullableString(people?.bodyLanguageAndExpressions),
+      relationshipInference: sanitizeNullableString(people?.relationshipInference),
+    },
+    settingAndEnvironment: {
+      ...EMPTY_SCENE_INSIGHTS.settingAndEnvironment,
+      locationType: sanitizeNullableString(setting?.locationType),
+      timeOfDayAndLighting: sanitizeNullableString(setting?.timeOfDayAndLighting),
+      weatherConditions: sanitizeNullableString(setting?.weatherConditions),
+      backgroundDetails: sanitizeNullableString(setting?.backgroundDetails),
+      architectureOrLandscape: sanitizeNullableString(setting?.architectureOrLandscape),
+    },
+    activitiesAndContext: {
+      ...EMPTY_SCENE_INSIGHTS.activitiesAndContext,
+      whatAppearsToBeHappening: sanitizeNullableString(activities?.whatAppearsToBeHappening),
+      socialDynamics: sanitizeNullableString(activities?.socialDynamics),
+      eventType: sanitizeNullableString(activities?.eventType),
+      visibleActivities: sanitizeStringList(activities?.visibleActivities),
+    },
+    technicalDetails: {
+      ...EMPTY_SCENE_INSIGHTS.technicalDetails,
+      photoQualityAndComposition: sanitizeNullableString(technical?.photoQualityAndComposition),
+      lightingAnalysis: sanitizeNullableString(technical?.lightingAnalysis),
+      notablePhotographicElements: sanitizeNullableString(technical?.notablePhotographicElements),
+      objectsOfInterest: sanitizeStringList(technical?.objectsOfInterest),
+    },
+    emotionalContext: {
+      ...EMPTY_SCENE_INSIGHTS.emotionalContext,
+      overallMoodAndAtmosphere: sanitizeNullableString(emotional?.overallMoodAndAtmosphere),
+      emotionalExpressions: sanitizeNullableString(emotional?.emotionalExpressions),
+      socialEnergy: sanitizeNullableString(emotional?.socialEnergy),
+    },
+    storyElements: {
+      ...EMPTY_SCENE_INSIGHTS.storyElements,
+      storyThisImageTells: sanitizeNullableString(story?.storyThisImageTells),
+      whatMightHaveHappenedBefore: sanitizeNullableString(story?.whatMightHaveHappenedBefore),
+      whatMightHappenNext: sanitizeNullableString(story?.whatMightHappenNext),
+    },
+  };
+}
+
 function normalizeVisionAnalysis(raw: unknown): ParsedVisionAnalysis {
   const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 
@@ -217,6 +523,7 @@ function normalizeVisionAnalysis(raw: unknown): ParsedVisionAnalysis {
     visibleText: sanitizeStringList(record.visibleText),
     searchableKeywords: sanitizeStringList(record.searchableKeywords),
     openQuestions: sanitizeStringList(record.openQuestions),
+    sceneInsights: normalizeSceneInsights(record.sceneInsights),
   };
 }
 
@@ -395,7 +702,10 @@ Rules:
               `Filename: ${originalName}`,
               `User description: ${userDescription || 'None provided.'}`,
               `Metadata summary: ${metadataSummary || 'No metadata available.'}`,
-              'Analyze the photo for a memory wiki. Return structured observations about visible people, places, objects, activities, mood, visible text, and open questions that future contributors could answer.',
+              'Analyze the photo for a memory wiki.',
+              'Return grounded structured observations about visible people, places, objects, activities, mood, visible text, open questions, and richer scene insights.',
+              'In scene insights, include the kinds of fields a human reviewer would want: people/demographics, setting/environment, activities/context, technical photo observations, emotional tone, and likely story context.',
+              'Be explicit when something is only an appearance-based inference instead of a confirmed fact.',
             ].join('\n'),
           },
           {
@@ -514,6 +824,7 @@ export async function ensureImageAnalysisForImage(imageId: string) {
           )
         ),
         openQuestionsJson: stringifyJson(vision?.openQuestions || []),
+        sceneInsightsJson: stringifyJson(vision?.sceneInsights || null),
         metadataJson: stringifyJson({
           capturedAt: metadata.capturedAt?.toISOString() || null,
           latitude: metadata.latitude,

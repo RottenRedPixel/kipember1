@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import WikiView from '@/components/WikiView';
@@ -24,7 +24,7 @@ export default function WikiPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchWiki = async () => {
+  const fetchWiki = useCallback(async () => {
     try {
       const response = await fetch(`/api/wiki/${params.id}`);
       if (response.ok) {
@@ -40,11 +40,11 @@ export default function WikiPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id]);
 
   useEffect(() => {
     fetchWiki();
-  }, [params.id]);
+  }, [fetchWiki]);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -100,6 +100,12 @@ export default function WikiPage() {
               className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
             >
               Kids Mode
+            </Link>
+            <Link
+              href={`/image/${params.id}/story-circle`}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Story Circle
             </Link>
             <Link
               href={`/image/${params.id}/chat`}

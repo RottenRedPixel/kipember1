@@ -37,6 +37,45 @@ type WikiImageAnalysis = {
   visibleText: string[];
   keywords: string[];
   openQuestions: string[];
+  sceneInsights: {
+    peopleAndDemographics: {
+      numberOfPeopleVisible: number | null;
+      estimatedAgeRanges: string[];
+      genderPresentation: string | null;
+      clothingAndStyle: string | null;
+      bodyLanguageAndExpressions: string | null;
+      relationshipInference: string | null;
+    };
+    settingAndEnvironment: {
+      locationType: string | null;
+      timeOfDayAndLighting: string | null;
+      weatherConditions: string | null;
+      backgroundDetails: string | null;
+      architectureOrLandscape: string | null;
+    };
+    activitiesAndContext: {
+      whatAppearsToBeHappening: string | null;
+      socialDynamics: string | null;
+      eventType: string | null;
+      visibleActivities: string[];
+    };
+    technicalDetails: {
+      photoQualityAndComposition: string | null;
+      lightingAnalysis: string | null;
+      notablePhotographicElements: string | null;
+      objectsOfInterest: string[];
+    };
+    emotionalContext: {
+      overallMoodAndAtmosphere: string | null;
+      emotionalExpressions: string | null;
+      socialEnergy: string | null;
+    };
+    storyElements: {
+      storyThisImageTells: string | null;
+      whatMightHaveHappenedBefore: string | null;
+      whatMightHappenNext: string | null;
+    };
+  };
 };
 
 export async function chat(
@@ -100,6 +139,37 @@ KEYWORDS:
 ${analysis.keywords.map((item) => `- ${item}`).join('\n') || '- None'}
 OPEN QUESTIONS:
 ${analysis.openQuestions.map((item) => `- ${item}`).join('\n') || '- None'}
+PEOPLE & DEMOGRAPHICS:
+- Number of people visible: ${analysis.sceneInsights.peopleAndDemographics.numberOfPeopleVisible ?? 'Unknown'}
+- Estimated age ranges: ${analysis.sceneInsights.peopleAndDemographics.estimatedAgeRanges.join(', ') || 'Unknown'}
+- Gender identification: ${analysis.sceneInsights.peopleAndDemographics.genderPresentation || 'Unknown'}
+- Clothing and style descriptions: ${analysis.sceneInsights.peopleAndDemographics.clothingAndStyle || 'Unknown'}
+- Body language and expressions: ${analysis.sceneInsights.peopleAndDemographics.bodyLanguageAndExpressions || 'Unknown'}
+- Relationship inference: ${analysis.sceneInsights.peopleAndDemographics.relationshipInference || 'Unknown'}
+SETTING & ENVIRONMENT:
+- Location type: ${analysis.sceneInsights.settingAndEnvironment.locationType || 'Unknown'}
+- Time of day / lighting: ${analysis.sceneInsights.settingAndEnvironment.timeOfDayAndLighting || 'Unknown'}
+- Weather conditions: ${analysis.sceneInsights.settingAndEnvironment.weatherConditions || 'Unknown'}
+- Background details: ${analysis.sceneInsights.settingAndEnvironment.backgroundDetails || 'Unknown'}
+- Architectural or landscape features: ${analysis.sceneInsights.settingAndEnvironment.architectureOrLandscape || 'Unknown'}
+ACTIVITIES & CONTEXT:
+- What appears to be happening: ${analysis.sceneInsights.activitiesAndContext.whatAppearsToBeHappening || 'Unknown'}
+- Social dynamics: ${analysis.sceneInsights.activitiesAndContext.socialDynamics || 'Unknown'}
+- Event type: ${analysis.sceneInsights.activitiesAndContext.eventType || 'Unknown'}
+- Activities: ${analysis.sceneInsights.activitiesAndContext.visibleActivities.join(', ') || 'Unknown'}
+TECHNICAL DETAILS:
+- Photo quality and composition: ${analysis.sceneInsights.technicalDetails.photoQualityAndComposition || 'Unknown'}
+- Lighting analysis: ${analysis.sceneInsights.technicalDetails.lightingAnalysis || 'Unknown'}
+- Notable photographic elements: ${analysis.sceneInsights.technicalDetails.notablePhotographicElements || 'Unknown'}
+- Objects of interest: ${analysis.sceneInsights.technicalDetails.objectsOfInterest.join(', ') || 'Unknown'}
+EMOTIONAL CONTEXT:
+- Overall mood and atmosphere: ${analysis.sceneInsights.emotionalContext.overallMoodAndAtmosphere || 'Unknown'}
+- Emotional expressions visible: ${analysis.sceneInsights.emotionalContext.emotionalExpressions || 'Unknown'}
+- Social dynamics and energy: ${analysis.sceneInsights.emotionalContext.socialEnergy || 'Unknown'}
+STORY ELEMENTS:
+- What story does this image tell: ${analysis.sceneInsights.storyElements.storyThisImageTells || 'Unknown'}
+- What might have happened before: ${analysis.sceneInsights.storyElements.whatMightHaveHappenedBefore || 'Unknown'}
+- What might happen next: ${analysis.sceneInsights.storyElements.whatMightHappenNext || 'Unknown'}
 ANALYSIS ERROR: ${analysis.errorMessage || 'None'}`
     : 'No automatic image analysis available.';
 
@@ -117,6 +187,7 @@ The wiki should include:
 - Timeline: When this happened or likely happened
 - Location: Where it took place or what the setting appears to be
 - Story: What was happening and the backstory
+- Scene Insights: Use the richer image-review notes when they add value, especially for demographics, environment, activity, technical composition, emotional tone, and likely story context
 - Photo Metadata: Relevant camera/date/location metadata if present
 - Significance: Why this memory matters, if contributor memories provide that
 - Quotes: Notable quotes from contributors (attributed), if available

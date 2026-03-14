@@ -41,6 +41,7 @@ model ImageAnalysis {
   visibleTextJson   String?
   keywordsJson      String?
   openQuestionsJson String?
+  sceneInsightsJson String?
   metadataJson      String?
   capturedAt        DateTime?
   latitude          Float?
