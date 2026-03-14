@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "prisma migrate deploy && next start",
     "lint": "eslint",
+    "retell:sync-memory-agent": "node scripts/sync-retell-memory-agent.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "@prisma/client": "^7.3.0",
     "dotenv": "^17.2.3",
     "next": "16.1.6",
+    "openai": "^6.29.0",
     "prisma": "^7.3.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

@@ -24,3 +24,34 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.kids-flip-page {
+  animation: kids-page-pop 420ms ease-out;
+  transform-origin: left center;
+}
+
+.kids-mode-loader {
+  animation: kids-mode-spin 1.1s linear infinite;
+}
+
+@keyframes kids-page-pop {
+  0% {
+    opacity: 0;
+    transform: perspective(1400px) rotateY(10deg) scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: perspective(1400px) rotateY(0deg) scale(1);
+  }
+}
+
+@keyframes kids-mode-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}

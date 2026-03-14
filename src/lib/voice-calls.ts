@@ -2,6 +2,7 @@ import type Retell from 'retell-sdk';
 import { chat } from '@/lib/claude';
 import { prisma } from '@/lib/db';
 import { createRetellPhoneCall, retrieveRetellCall } from '@/lib/retell';
+import { generateWikiForImage } from '@/lib/wiki-generator';
 
 const QUESTION_PROMPTS = {
   context: 'Can you describe what you see or what memory this image captures for you?',
@@ -352,6 +353,14 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
       memorySyncedAt: new Date(),
     },
   });
+
+  if (extracted.isComplete && extracted.responses.length > 0) {
+    try {
+      await generateWikiForImage(voiceCall.contributor.imageId);
+    } catch (error) {
+      console.error('Failed to auto-generate wiki after voice sync:', error);
+    }
+  }
 }
 
 export async function startVoiceCallForContributor({

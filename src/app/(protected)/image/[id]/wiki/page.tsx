@@ -96,6 +96,12 @@ export default function WikiPage() {
               {generating ? 'Generating...' : wiki ? 'Regenerate Wiki' : 'Generate Wiki'}
             </button>
             <Link
+              href={`/image/${params.id}/kids`}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
+            >
+              Kids Mode
+            </Link>
+            <Link
               href={`/image/${params.id}/chat`}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
@@ -141,6 +147,10 @@ export default function WikiPage() {
             <p className="text-gray-600 dark:text-gray-400 mb-6">
               Once contributors complete their interviews, you can generate a wiki
               that synthesizes all their memories.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
+              Kids Mode unlocks after the wiki exists, because it turns the wiki
+              storyline into an illustrated flipbook.
             </p>
             <button
               onClick={handleGenerate}
