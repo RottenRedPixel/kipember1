@@ -10,6 +10,7 @@ interface Wiki {
   content: string;
   version: number;
   updatedAt: string;
+  canManage: boolean;
   image: {
     originalName: string;
     description: string | null;
@@ -90,10 +91,16 @@ export default function WikiPage() {
           <div className="flex gap-3">
             <button
               onClick={handleGenerate}
-              disabled={generating}
+              disabled={generating || (wiki ? !wiki.canManage : false)}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg font-medium transition-colors"
             >
-              {generating ? 'Generating...' : wiki ? 'Regenerate Wiki' : 'Generate Wiki'}
+              {generating
+                ? 'Generating...'
+                : wiki
+                  ? wiki.canManage
+                    ? 'Regenerate Wiki'
+                    : 'Wiki Locked'
+                  : 'Generate Wiki'}
             </button>
             <Link
               href={`/image/${params.id}/kids`}

@@ -34,6 +34,7 @@ type KidsPageData = {
     originalName: string;
     description: string | null;
   };
+  canManage: boolean;
   wiki: {
     id: string;
     version: number;
@@ -198,10 +199,12 @@ export default function KidsModePage() {
             </div>
             <button
               onClick={handleGenerate}
-              disabled={!wiki || generating || storyIsGenerating}
+              disabled={!wiki || !data.canManage || generating || storyIsGenerating}
               className="mt-4 w-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {story
+              {!data.canManage
+                ? 'Owner Only'
+                : story
                 ? storyIsGenerating || generating
                   ? 'Generating Storybook...'
                   : 'Regenerate Kids Story'

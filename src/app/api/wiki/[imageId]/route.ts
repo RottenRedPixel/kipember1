@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateWikiForImage } from '@/lib/wiki-generator';
-import { requireAccess } from '@/lib/access-server';
+import { requireApiUser } from '@/lib/auth-server';
+import { ensureImageOwnerAccess, getImageAccessType } from '@/lib/ember-access';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ imageId: string }> }
 ) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    void request;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { imageId } = await params;
+    const accessType = await getImageAccessType(auth.user.id, imageId);
+
+    if (!accessType) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
 
     const wiki = await prisma.wiki.findUnique({
       where: { imageId },
@@ -30,7 +39,10 @@ export async function GET(
       return NextResponse.json({ error: 'Wiki not found' }, { status: 404 });
     }
 
-    return NextResponse.json(wiki);
+    return NextResponse.json({
+      ...wiki,
+      canManage: accessType === 'owner',
+    });
   } catch (error) {
     console.error('Error fetching wiki:', error);
     return NextResponse.json(
@@ -45,10 +57,18 @@ export async function POST(
   { params }: { params: Promise<{ imageId: string }> }
 ) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    void request;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { imageId } = await params;
+    const image = await ensureImageOwnerAccess(auth.user.id, imageId);
+
+    if (!image) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
 
     const content = await generateWikiForImage(imageId);
 

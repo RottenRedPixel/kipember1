@@ -1,16 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 interface Contributor {
   id: string;
-  phoneNumber: string;
+  phoneNumber: string | null;
+  email: string | null;
   name: string | null;
+  userId: string | null;
   token: string;
   inviteSent: boolean;
   conversation: {
     status: string;
     currentStep: string;
+  } | null;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    phoneNumber: string | null;
   } | null;
   voiceCalls: {
     id: string;
@@ -23,24 +31,40 @@ interface Contributor {
   }[];
 }
 
+interface FriendSuggestion {
+  id: string;
+  name: string | null;
+  email: string;
+  phoneNumber: string | null;
+}
+
 interface ContributorListProps {
   imageId: string;
   contributors: Contributor[];
+  friends: FriendSuggestion[];
   onUpdate: () => void;
 }
 
 export default function ContributorList({
   imageId,
   contributors,
+  friends,
   onUpdate,
 }: ContributorListProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [sendingContributorId, setSendingContributorId] = useState<string | null>(null);
   const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
   const [error, setError] = useState('');
+
+  const existingFriendIds = useMemo(
+    () => new Set(contributors.map((contributor) => contributor.userId).filter(Boolean)),
+    [contributors]
+  );
+
+  const suggestedFriends = friends.filter((friend) => !existingFriendIds.has(friend.id));
 
   const formatPhoneNumber = (value: string) => {
     const digits = value.replace(/\D/g, '');
@@ -49,9 +73,7 @@ export default function ContributorList({
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
   };
 
-  const handleAddContributor = async () => {
-    if (!phoneNumber.trim()) return;
-
+  const handleAddContributor = async (body: Record<string, string | null>) => {
     setIsAdding(true);
     setError('');
 
@@ -61,17 +83,18 @@ export default function ContributorList({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageId,
-          phoneNumber: phoneNumber.replace(/\D/g, ''),
-          name: name.trim() || null,
+          ...body,
         }),
       });
 
+      const payload = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to add contributor');
+        throw new Error(payload.error || 'Failed to add contributor');
       }
 
       setPhoneNumber('');
+      setEmail('');
       setName('');
       onUpdate();
     } catch (err) {
@@ -83,36 +106,14 @@ export default function ContributorList({
 
   const handleRemoveContributor = async (id: string) => {
     try {
-      await fetch(`/api/contributors?id=${id}`, { method: 'DELETE' });
-      onUpdate();
-    } catch (err) {
-      console.error('Failed to remove contributor:', err);
-    }
-  };
-
-  const handleSendInvites = async () => {
-    if (contributors.length === 0) return;
-
-    setIsSending(true);
-    setError('');
-
-    try {
-      const response = await fetch('/api/twilio/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageId }),
-      });
-
+      const response = await fetch(`/api/contributors?id=${id}`, { method: 'DELETE' });
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to send invites');
+        const payload = await response.json();
+        throw new Error(payload.error || 'Failed to remove contributor');
       }
-
       onUpdate();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send invites');
-    } finally {
-      setIsSending(false);
+      setError(err instanceof Error ? err.message : 'Failed to remove contributor');
     }
   };
 
@@ -127,9 +128,10 @@ export default function ContributorList({
         body: JSON.stringify({ contributorId }),
       });
 
+      const payload = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to send invite');
+        throw new Error(payload.error || 'Failed to send invite');
       }
 
       onUpdate();
@@ -151,9 +153,10 @@ export default function ContributorList({
         body: JSON.stringify({ contributorId }),
       });
 
+      const payload = await response.json();
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to start voice call');
+        throw new Error(payload.error || 'Failed to start voice call');
       }
 
       onUpdate();
@@ -167,7 +170,7 @@ export default function ContributorList({
   const getStatusBadge = (contributor: Contributor) => {
     if (contributor.conversation?.status === 'completed') {
       return (
-        <span className="px-2 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
           Completed
         </span>
       );
@@ -175,7 +178,7 @@ export default function ContributorList({
 
     if (contributor.conversation?.status === 'active') {
       return (
-        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
+        <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
           In progress
         </span>
       );
@@ -183,15 +186,15 @@ export default function ContributorList({
 
     if (contributor.inviteSent) {
       return (
-        <span className="px-2 py-1 text-xs rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300">
+        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
           Invited
         </span>
       );
     }
 
     return (
-      <span className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-        Not invited
+      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+        Added
       </span>
     );
   };
@@ -218,81 +221,128 @@ export default function ContributorList({
   const copyLink = (token: string) => {
     const url = `${window.location.origin}/contribute/${token}`;
     navigator.clipboard.writeText(url);
-    alert('Link copied!');
+    alert('Link copied');
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-800">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-        Contributors
-      </h2>
+    <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <h2 className="text-xl font-semibold text-slate-950">Contributors</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        Add people manually or pull them straight from your Ember network.
+      </p>
 
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      {suggestedFriends.length > 0 && (
+        <div className="mt-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            Quick add from friends
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {suggestedFriends.slice(0, 8).map((friend) => (
+              <button
+                key={friend.id}
+                type="button"
+                disabled={isAdding}
+                onClick={() => handleAddContributor({ userId: friend.id })}
+                className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-950 disabled:opacity-60"
+              >
+                {friend.name || friend.email}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Name (optional)"
-          className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Name"
+          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-sky-400 focus:bg-white"
         />
         <input
           type="tel"
           value={phoneNumber}
-          onChange={(e) => setPhoneNumber(formatPhoneNumber(e.target.value))}
+          onChange={(event) => setPhoneNumber(formatPhoneNumber(event.target.value))}
           placeholder="Phone number"
-          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-sky-400 focus:bg-white"
         />
-        <button
-          onClick={handleAddContributor}
-          disabled={isAdding || !phoneNumber.trim()}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
-        >
-          {isAdding ? 'Adding...' : 'Add'}
-        </button>
+        <input
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          placeholder="Email"
+          className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-sky-400 focus:bg-white"
+        />
       </div>
+      <button
+        onClick={() =>
+          handleAddContributor({
+            phoneNumber: phoneNumber.replace(/\D/g, '') || null,
+            email: email.trim() || null,
+            name: name.trim() || null,
+          })
+        }
+        disabled={isAdding || (!phoneNumber.trim() && !email.trim())}
+        className="mt-3 rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+      >
+        {isAdding ? 'Adding...' : 'Add contributor'}
+      </button>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-sm">
+        <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
           {error}
         </div>
       )}
 
       {contributors.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-          No contributors yet. Add phone numbers above.
+        <p className="py-8 text-center text-slate-500">
+          No contributors yet. Add people above.
         </p>
       ) : (
-        <div className="space-y-3 mb-6">
+        <div className="mt-6 space-y-3">
           {contributors.map((contributor) => {
             const latestVoiceCall = getLatestVoiceCall(contributor);
+            const hasPhone = Boolean(contributor.phoneNumber);
 
             return (
               <div
                 key={contributor.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 lg:flex-row lg:items-center lg:justify-between"
               >
-                <div className="flex items-center gap-3">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {contributor.name || 'Anonymous'}
+                <div>
+                  <div className="flex items-center gap-3">
+                    <p className="font-medium text-slate-950">
+                      {contributor.name || contributor.email || contributor.phoneNumber || 'Contributor'}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {getStatusBadge(contributor)}
+                  </div>
+                  {contributor.user && (
+                    <p className="mt-1 text-sm text-sky-700">
+                      Linked account: {contributor.user.name || contributor.user.email}
+                    </p>
+                  )}
+                  {contributor.phoneNumber && (
+                    <p className="mt-1 text-sm text-slate-500">
                       {formatPhoneNumber(contributor.phoneNumber)}
                     </p>
-                    {latestVoiceCall && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {getVoiceCallLabel(latestVoiceCall.status)}
-                      </p>
-                    )}
-                  </div>
-                  {getStatusBadge(contributor)}
+                  )}
+                  {contributor.email && (
+                    <p className="mt-1 text-sm text-slate-500">{contributor.email}</p>
+                  )}
+                  {latestVoiceCall && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {getVoiceCallLabel(latestVoiceCall.status)}
+                    </p>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex flex-wrap items-center gap-3">
                   <button
                     onClick={() => handleSendInvite(contributor.id)}
-                    disabled={isSending || sendingContributorId === contributor.id}
-                    className="text-indigo-600 hover:text-indigo-700 disabled:text-indigo-300 p-2 text-sm"
-                    title="Send text invite"
+                    disabled={!hasPhone || sendingContributorId === contributor.id}
+                    className="text-sm font-medium text-indigo-600 transition hover:text-indigo-700 disabled:text-indigo-300"
+                    title={hasPhone ? 'Send text invite' : 'Phone number required for SMS'}
                   >
                     {sendingContributorId === contributor.id
                       ? 'Sending...'
@@ -303,61 +353,33 @@ export default function ContributorList({
                   <button
                     onClick={() => handleStartVoiceCall(contributor.id)}
                     disabled={
-                      isSending ||
-                      sendingContributorId === contributor.id ||
+                      !hasPhone ||
                       callingContributorId === contributor.id ||
                       latestVoiceCall?.status === 'registered' ||
                       latestVoiceCall?.status === 'ongoing'
                     }
-                    className="text-emerald-600 hover:text-emerald-700 disabled:text-emerald-300 p-2 text-sm"
-                    title="Start voice interview"
+                    className="text-sm font-medium text-emerald-600 transition hover:text-emerald-700 disabled:text-emerald-300"
+                    title={hasPhone ? 'Start voice interview' : 'Phone number required for voice calls'}
                   >
                     {callingContributorId === contributor.id ? 'Calling...' : 'Call Now'}
                   </button>
                   <button
                     onClick={() => copyLink(contributor.token)}
-                    className="text-blue-500 hover:text-blue-700 p-2 text-sm"
-                    title="Copy invite link"
+                    className="text-sm font-medium text-sky-600 transition hover:text-sky-700"
                   >
                     Copy Link
                   </button>
                   <button
                     onClick={() => handleRemoveContributor(contributor.id)}
-                    className="text-red-500 hover:text-red-700 p-2"
-                    title="Remove contributor"
+                    className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
                   >
-                    X
+                    Remove
                   </button>
                 </div>
               </div>
             );
           })}
         </div>
-      )}
-
-      {contributors.length > 0 && (
-        <>
-          {contributors.filter((c) => !c.inviteSent).length > 0 ? (
-            <button
-              onClick={handleSendInvites}
-              disabled={isSending || sendingContributorId !== null}
-              className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg transition-colors"
-            >
-              {isSending
-                ? 'Sending...'
-                : `Send SMS Invites (${contributors.filter((c) => !c.inviteSent).length})`}
-            </button>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                All invites sent! Use &quot;Copy Link&quot; to manually share.
-              </p>
-              <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-                Retell voice calls can also be started per contributor above.
-              </p>
-            </div>
-          )}
-        </>
       )}
     </div>
   );

@@ -1,30 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendSMS } from '@/lib/twilio';
-import { requireAccess } from '@/lib/access-server';
+import { requireApiUser } from '@/lib/auth-server';
+import { ensureImageOwnerAccess, ensureOwnedContributorAccess } from '@/lib/ember-access';
 import { getAppBaseUrl } from '@/lib/app-url';
 
 const BASE_URL = getAppBaseUrl();
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { imageId, contributorId } = await request.json();
 
     if (contributorId) {
       // Send to single contributor
+      const contributor = await ensureOwnedContributorAccess(auth.user.id, contributorId);
+      if (!contributor) {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
+
       const result = await sendInvite(contributorId);
       return NextResponse.json({ success: result.success, sent: result.success ? 1 : 0 });
     }
 
     if (imageId) {
+      const image = await ensureImageOwnerAccess(auth.user.id, imageId);
+      if (!image) {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
+
       // Send to all contributors for an image who haven't been invited yet
       const contributors = await prisma.contributor.findMany({
         where: {
           imageId,
           inviteSent: false,
+          phoneNumber: {
+            not: null,
+          },
         },
       });
 
@@ -70,6 +86,10 @@ async function sendInvite(contributorId: string): Promise<{ success: boolean }> 
   const combinedMessage = `${intro} ${linkMessage}`;
 
   // Format phone number
+  if (!contributor.phoneNumber) {
+    throw new Error('Contributor does not have a phone number for SMS invites');
+  }
+
   const phone = contributor.phoneNumber.startsWith('+')
     ? contributor.phoneNumber
     : contributor.phoneNumber.length === 10

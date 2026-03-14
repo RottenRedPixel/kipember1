@@ -1,40 +1,40 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function ImageUploader() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [description, setDescription] = useState('');
-  const [visibility, setVisibility] = useState<'PUBLIC' | 'PRIVATE' | 'SHARED'>('PRIVATE');
+  const [shareToNetwork, setShareToNetwork] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDrop = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
     setIsDragging(false);
 
-    const file = e.dataTransfer.files[0];
+    const file = event.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
       setSelectedFile(file);
       setPreview(URL.createObjectURL(file));
     }
   }, []);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file && file.type.startsWith('image/')) {
       setSelectedFile(file);
       setPreview(URL.createObjectURL(file));
@@ -42,7 +42,9 @@ export default function ImageUploader() {
   }, []);
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      return;
+    }
 
     setIsUploading(true);
 
@@ -50,7 +52,7 @@ export default function ImageUploader() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('description', description);
-      formData.append('visibility', visibility);
+      formData.append('shareToNetwork', shareToNetwork ? 'true' : 'false');
 
       const response = await fetch('/api/images', {
         method: 'POST',
@@ -80,20 +82,20 @@ export default function ImageUploader() {
     setSelectedFile(null);
     setPreview(null);
     setDescription('');
-    setVisibility('PRIVATE');
+    setShareToNetwork(false);
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="w-full">
       {!selectedFile ? (
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer ${
+          className={`cursor-pointer rounded-[2rem] border-2 border-dashed p-10 text-center transition-colors ${
             isDragging
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-              : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600'
+              ? 'border-sky-500 bg-sky-50'
+              : 'border-slate-300 bg-slate-50/80 hover:border-slate-400'
           }`}
         >
           <input
@@ -104,73 +106,62 @@ export default function ImageUploader() {
             id="file-input"
           />
           <label htmlFor="file-input" className="cursor-pointer">
-            <div className="text-6xl mb-4">📷</div>
-            <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-              Drop an image here or click to upload
+            <div className="mb-4 text-6xl">📷</div>
+            <p className="text-lg font-medium text-slate-800">
+              Drop a photo here or click to start a new Ember
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-              PNG, JPG, GIF up to 10MB
-            </p>
+            <p className="mt-2 text-sm text-slate-500">PNG, JPG, GIF up to 10MB</p>
           </label>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="relative rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900">
-            <img
-              src={preview!}
-              alt="Preview"
-              className="w-full h-64 object-contain"
-            />
+          <div className="relative overflow-hidden rounded-[2rem] bg-slate-100">
+            <img src={preview!} alt="Preview" className="h-64 w-full object-contain" />
             <button
               onClick={clearSelection}
-              className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+              className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
             >
               ✕
             </button>
           </div>
 
           <div>
-            <label
-              htmlFor="description"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              Description (optional)
+            <label htmlFor="description" className="mb-2 block text-sm font-medium text-slate-700">
+              Description
             </label>
             <textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What's this image about? Add context for contributors..."
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="What makes this Ember meaningful? Add context Ember should know."
+              className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 placeholder-slate-400 focus:border-sky-400 focus:bg-white focus:outline-none"
               rows={3}
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="visibility"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-            >
-              Visibility
-            </label>
-            <select
-              id="visibility"
-              value={visibility}
-              onChange={(e) => setVisibility(e.target.value as 'PUBLIC' | 'PRIVATE' | 'SHARED')}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="PRIVATE">Private (only you)</option>
-              <option value="SHARED">Shared (invite-only)</option>
-              <option value="PUBLIC">Public (searchable)</option>
-            </select>
-          </div>
+          <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+            <input
+              type="checkbox"
+              checked={shareToNetwork}
+              onChange={(event) => setShareToNetwork(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-800">
+                Share this Ember to your network feed
+              </span>
+              <span className="mt-1 block text-sm text-slate-500">
+                Accepted friends will see it in their feed. Contributors can still be invited individually.
+              </span>
+            </span>
+          </label>
 
           <button
             onClick={handleUpload}
             disabled={isUploading}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+            className="w-full rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isUploading ? 'Uploading & Building Wiki...' : 'Upload & Build Wiki'}
+            {isUploading ? 'Uploading and building wiki...' : 'Upload and build wiki'}
           </button>
         </div>
       )}

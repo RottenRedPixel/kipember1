@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { retriever } from '@/lib/context-retrieval';
 import { chat } from '@/lib/claude';
-import { requireAccess } from '@/lib/access-server';
+import { requireApiUser } from '@/lib/auth-server';
 import { prisma } from '@/lib/db';
 import { randomUUID } from 'crypto';
+import { getImageAccessType } from '@/lib/ember-access';
 
 const COOKIE_NAME = 'mw_chat';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -83,8 +84,10 @@ function parsePersona(text: string): Persona | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { imageId, message } = await request.json();
 
@@ -93,6 +96,11 @@ export async function POST(request: NextRequest) {
         { error: 'imageId and message are required' },
         { status: 400 }
       );
+    }
+
+    const accessType = await getImageAccessType(auth.user.id, imageId);
+    if (!accessType) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
     // Get context using the retriever abstraction
@@ -242,8 +250,10 @@ Guidelines:
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { searchParams } = new URL(request.url);
     const imageId = searchParams.get('imageId');
@@ -253,6 +263,11 @@ export async function GET(request: NextRequest) {
         { error: 'imageId is required' },
         { status: 400 }
       );
+    }
+
+    const accessType = await getImageAccessType(auth.user.id, imageId);
+    if (!accessType) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
     const browserId = request.cookies.get(COOKIE_NAME)?.value;

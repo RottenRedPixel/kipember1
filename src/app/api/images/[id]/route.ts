@@ -1,22 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiUser } from '@/lib/auth-server';
+import { ensureImageOwnerAccess, getAcceptedFriends, getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
-import { requireAccess } from '@/lib/access-server';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    void request;
+    const auth = await requireApiUser();
+
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { id } = await params;
+    const accessType = await getImageAccessType(auth.user.id, id);
+
+    if (!accessType) {
+      return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+    }
 
     const image = await prisma.image.findUnique({
       where: { id },
       include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
         contributors: {
+          orderBy: { createdAt: 'asc' },
           include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+              },
+            },
             conversation: {
               select: {
                 status: true,
@@ -38,7 +64,28 @@ export async function GET(
             },
           },
         },
-        wiki: true,
+        tags: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            contributor: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        wiki: {
+          select: { id: true },
+        },
       },
     });
 
@@ -46,11 +93,27 @@ export async function GET(
       return NextResponse.json({ error: 'Image not found' }, { status: 404 });
     }
 
-    return NextResponse.json(image);
+    const friends = accessType === 'owner' ? await getAcceptedFriends(auth.user.id) : [];
+
+    return NextResponse.json({
+      id: image.id,
+      filename: image.filename,
+      originalName: image.originalName,
+      description: image.description,
+      createdAt: image.createdAt,
+      shareToNetwork: image.shareToNetwork,
+      owner: image.owner,
+      accessType,
+      canManage: accessType === 'owner',
+      contributors: image.contributors,
+      tags: image.tags,
+      friends,
+      wiki: image.wiki,
+    });
   } catch (error) {
     console.error('Error fetching image:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch image' },
+      { error: 'Failed to load image' },
       { status: 500 }
     );
   }
@@ -61,13 +124,22 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    void request;
+    const auth = await requireApiUser();
+
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { id } = await params;
+    const ownedImage = await ensureImageOwnerAccess(auth.user.id, id);
+
+    if (!ownedImage) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
 
     await prisma.image.delete({
-      where: { id },
+      where: { id: ownedImage.id },
     });
 
     return NextResponse.json({ success: true });
@@ -85,32 +157,40 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
 
-    const { id } = await params;
-    const body = await request.json();
-    const visibilityInput = body?.visibility as string | undefined;
-
-    if (!visibilityInput) {
-      return NextResponse.json({ error: 'visibility is required' }, { status: 400 });
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const visibility =
-      visibilityInput === 'PUBLIC' || visibilityInput === 'SHARED' || visibilityInput === 'PRIVATE'
-        ? visibilityInput
-        : null;
+    const { id } = await params;
+    const ownedImage = await ensureImageOwnerAccess(auth.user.id, id);
 
-    if (!visibility) {
-      return NextResponse.json({ error: 'Invalid visibility value' }, { status: 400 });
+    if (!ownedImage) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
+
+    const body = await request.json();
+
+    if (typeof body?.shareToNetwork !== 'boolean') {
+      return NextResponse.json(
+        { error: 'shareToNetwork must be a boolean' },
+        { status: 400 }
+      );
     }
 
     const image = await prisma.image.update({
       where: { id },
-      data: { visibility },
+      data: {
+        shareToNetwork: body.shareToNetwork,
+      },
+      select: {
+        id: true,
+        shareToNetwork: true,
+      },
     });
 
-    return NextResponse.json({ id: image.id, visibility: image.visibility });
+    return NextResponse.json(image);
   } catch (error) {
     console.error('Error updating image:', error);
     return NextResponse.json(

@@ -7,6 +7,7 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
+    void request;
     const { token } = await params;
 
     const contributor = await prisma.contributor.findUnique({
@@ -16,7 +17,7 @@ export async function POST(
       },
     });
 
-    if (!contributor || contributor.image.visibility === 'PRIVATE') {
+    if (!contributor) {
       return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
 

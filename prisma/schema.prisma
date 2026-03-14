@@ -16,12 +16,19 @@ model Image {
   originalName String
   description  String?
   visibility   Visibility    @default(PRIVATE)
+  ownerId      String
+  shareToNetwork Boolean     @default(false)
   createdAt    DateTime      @default(now())
+  owner        User          @relation("OwnedImages", fields: [ownerId], references: [id], onDelete: Cascade)
   analysis     ImageAnalysis?
   contributors Contributor[]
   wiki         Wiki?
   kidsStory    KidsStory?
   chatSessions ChatSession[]
+  tags         ImageTag[]
+
+  @@index([ownerId, createdAt])
+  @@index([shareToNetwork, createdAt])
 }
 
 model ImageAnalysis {
@@ -55,15 +62,23 @@ model ImageAnalysis {
 
 model Contributor {
   id           String        @id @default(cuid())
-  phoneNumber  String
+  phoneNumber  String?
+  email        String?
   name         String?
   token        String        @unique @default(cuid()) // Secure token for web access
   inviteSent   Boolean       @default(false)
   imageId      String
+  userId       String?
   image        Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   conversation Conversation?
   voiceCalls   VoiceCall[]
+  tags         ImageTag[]
   createdAt    DateTime      @default(now())
+
+  @@index([imageId, createdAt])
+  @@index([userId, createdAt])
+  @@unique([imageId, userId])
 }
 
 model Conversation {
@@ -166,6 +181,67 @@ model AccessSession {
   active    Boolean    @default(true)
   createdAt DateTime   @default(now())
   revokedAt DateTime?
+}
+
+model User {
+  id                   String       @id @default(cuid())
+  name                 String?
+  email                String       @unique
+  phoneNumber          String?
+  passwordHash         String
+  sessions             UserSession[]
+  ownedImages          Image[]      @relation("OwnedImages")
+  contributorRecords   Contributor[]
+  sentFriendships      Friendship[] @relation("FriendshipRequester")
+  receivedFriendships  Friendship[] @relation("FriendshipAddressee")
+  createdTags          ImageTag[]   @relation("CreatedImageTags")
+  taggedImages         ImageTag[]   @relation("TaggedUserImages")
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId, createdAt])
+}
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      String   @default("pending") // pending, accepted, declined
+  createdAt   DateTime @default(now())
+  respondedAt DateTime?
+  requester   User     @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User     @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
+}
+
+model ImageTag {
+  id              String       @id @default(cuid())
+  imageId         String
+  userId          String?
+  contributorId   String?
+  createdByUserId String
+  label           String
+  createdAt       DateTime     @default(now())
+  image           Image        @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  user            User?        @relation("TaggedUserImages", fields: [userId], references: [id], onDelete: SetNull)
+  contributor     Contributor? @relation(fields: [contributorId], references: [id], onDelete: SetNull)
+  createdByUser   User         @relation("CreatedImageTags", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([imageId, createdAt])
+  @@index([userId, createdAt])
+  @@index([contributorId, createdAt])
 }
 
 model ChatSession {

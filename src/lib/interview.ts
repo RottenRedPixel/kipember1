@@ -51,6 +51,10 @@ export async function startConversation(contributorId: string): Promise<string> 
     throw new Error('Contributor not found');
   }
 
+  if (!contributor.phoneNumber) {
+    throw new Error('Contributor does not have a phone number');
+  }
+
   // Create or get conversation
   let conversation = await prisma.conversation.findUnique({
     where: { contributorId },

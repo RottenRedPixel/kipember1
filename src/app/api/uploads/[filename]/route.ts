@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createReadStream, promises as fs } from 'fs';
 import { join, extname } from 'path';
-import { requireAccess } from '@/lib/access-server';
 
 const CONTENT_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -17,9 +16,6 @@ export async function GET(
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
-
     const { filename } = await params;
     const uploadsDir =
       process.env.UPLOADS_DIR || join(process.cwd(), 'public', 'uploads');
@@ -37,7 +33,7 @@ export async function GET(
         'Cache-Control': 'public, max-age=31536000, immutable',
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 }

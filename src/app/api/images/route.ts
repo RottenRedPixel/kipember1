@@ -2,23 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { randomUUID } from 'crypto';
-import { requireAccess } from '@/lib/access-server';
+import { requireApiUser } from '@/lib/auth-server';
+import { getAcceptedFriendIds } from '@/lib/ember-access';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { getUploadPath, getUploadsDir } from '@/lib/uploads';
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const description = formData.get('description') as string;
-    const visibilityInput = (formData.get('visibility') as string | null) || 'PRIVATE';
-    const visibility =
-      visibilityInput === 'PUBLIC' || visibilityInput === 'SHARED' || visibilityInput === 'PRIVATE'
-        ? visibilityInput
-        : 'PRIVATE';
+    const shareToNetwork = (formData.get('shareToNetwork') as string | null) === 'true';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -40,10 +39,11 @@ export async function POST(request: NextRequest) {
     // Create database record
     const image = await prisma.image.create({
       data: {
+        ownerId: auth.user.id,
         filename,
         originalName: file.name,
         description: description || null,
-        visibility,
+        shareToNetwork,
       },
     });
 
@@ -73,14 +73,39 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const friendIds = await getAcceptedFriendIds(auth.user.id);
 
     const images = await prisma.image.findMany({
+      where: {
+        OR: [
+          { ownerId: auth.user.id },
+          { contributors: { some: { userId: auth.user.id } } },
+          ...(friendIds.length > 0
+            ? [{ shareToNetwork: true, ownerId: { in: friendIds } }]
+            : []),
+        ],
+      },
       orderBy: { createdAt: 'desc' },
       include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        contributors: {
+          where: { userId: auth.user.id },
+          select: { id: true },
+          take: 1,
+        },
         _count: {
-          select: { contributors: true },
+          select: { contributors: true, tags: true },
         },
         wiki: {
           select: { id: true },
@@ -88,7 +113,25 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json(images);
+    return NextResponse.json(
+      images.map((image) => ({
+        id: image.id,
+        filename: image.filename,
+        originalName: image.originalName,
+        description: image.description,
+        createdAt: image.createdAt,
+        shareToNetwork: image.shareToNetwork,
+        owner: image.owner,
+        accessType:
+          image.ownerId === auth.user.id
+            ? 'owner'
+            : image.contributors.length > 0
+              ? 'contributor'
+              : 'network',
+        _count: image._count,
+        wiki: image.wiki,
+      }))
+    );
   } catch (error) {
     console.error('Error fetching images:', error);
     return NextResponse.json(

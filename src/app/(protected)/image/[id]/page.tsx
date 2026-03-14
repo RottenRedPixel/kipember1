@@ -1,23 +1,39 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import ContributorList from '@/components/ContributorList';
+import TagManager from '@/components/TagManager';
 
-interface Image {
+interface ImageRecord {
   id: string;
   filename: string;
   originalName: string;
   description: string | null;
-  visibility: 'PUBLIC' | 'PRIVATE' | 'SHARED';
   createdAt: string;
+  shareToNetwork: boolean;
+  accessType: 'owner' | 'contributor' | 'network';
+  canManage: boolean;
+  owner: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
   contributors: {
     id: string;
-    phoneNumber: string;
+    phoneNumber: string | null;
+    email: string | null;
     name: string | null;
+    userId: string | null;
     token: string;
     inviteSent: boolean;
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+      phoneNumber: string | null;
+    } | null;
     conversation: {
       status: string;
       currentStep: string;
@@ -32,6 +48,28 @@ interface Image {
       initiatedBy: string;
     }[];
   }[];
+  tags: {
+    id: string;
+    label: string;
+    userId: string | null;
+    contributorId: string | null;
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+    } | null;
+    contributor: {
+      id: string;
+      name: string | null;
+      email: string | null;
+    } | null;
+  }[];
+  friends: {
+    id: string;
+    name: string | null;
+    email: string;
+    phoneNumber: string | null;
+  }[];
   wiki: {
     id: string;
   } | null;
@@ -39,22 +77,24 @@ interface Image {
 
 export default function ImagePage() {
   const params = useParams();
-  const [image, setImage] = useState<Image | null>(null);
+  const [image, setImage] = useState<ImageRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [visibility, setVisibility] = useState<Image['visibility']>('PRIVATE');
-  const [isSavingVisibility, setIsSavingVisibility] = useState(false);
-  const [visibilityError, setVisibilityError] = useState('');
+  const [shareToNetwork, setShareToNetwork] = useState(false);
+  const [savingShareState, setSavingShareState] = useState(false);
+  const [shareError, setShareError] = useState('');
 
   const fetchImage = useCallback(async () => {
     try {
       const response = await fetch(`/api/images/${params.id}`);
+      const payload = await response.json();
+
       if (!response.ok) {
-        throw new Error('Image not found');
+        throw new Error(payload.error || 'Image not found');
       }
-      const data = await response.json();
-      setImage(data);
-      setVisibility(data.visibility);
+
+      setImage(payload);
+      setShareToNetwork(payload.shareToNetwork);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load image');
     } finally {
@@ -66,24 +106,50 @@ export default function ImagePage() {
     fetchImage();
   }, [fetchImage]);
 
+  const handleShareSave = async () => {
+    if (!image) {
+      return;
+    }
+
+    setSavingShareState(true);
+    setShareError('');
+
+    try {
+      const response = await fetch(`/api/images/${image.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shareToNetwork }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Failed to update sharing');
+      }
+
+      setImage((prev) => (prev ? { ...prev, shareToNetwork: payload.shareToNetwork } : prev));
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : 'Failed to update sharing');
+    } finally {
+      setSavingShareState(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="text-gray-500">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-slate-500">Loading Ember...</div>
       </div>
     );
   }
 
   if (error || !image) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-4">{error || 'Image not found'}</p>
-          <Link
-            href="/"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Go back home
+          <p className="mb-4 text-rose-500">{error || 'Image not found'}</p>
+          <Link href="/feed" className="font-medium text-sky-600 hover:text-sky-700">
+            Back to feed
           </Link>
         </div>
       </div>
@@ -91,124 +157,167 @@ export default function ImagePage() {
   }
 
   const completedCount = image.contributors.filter(
-    (c) => c.conversation?.status === 'completed'
+    (contributor) => contributor.conversation?.status === 'completed'
   ).length;
 
-  const handleVisibilitySave = async () => {
-    setIsSavingVisibility(true);
-    setVisibilityError('');
-    try {
-      const response = await fetch(`/api/images/${image.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ visibility }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to update visibility');
-      }
-      const updated = await response.json();
-      setImage((prev) => (prev ? { ...prev, visibility: updated.visibility } : prev));
-    } catch (err) {
-      setVisibilityError(err instanceof Error ? err.message : 'Failed to update visibility');
-    } finally {
-      setIsSavingVisibility(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Link
-            href="/"
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-          >
-            &larr; Back
-          </Link>
-          <div className="flex gap-3">
-            {image.wiki && (
-              <Link
-                href={`/image/${image.id}/wiki`}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-              >
-                View Wiki
-              </Link>
-            )}
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <Link href="/feed" className="text-sm font-medium text-slate-600 hover:text-slate-950">
+          &larr; Back to Feed
+        </Link>
+        <div className="flex flex-wrap gap-3">
+          {image.wiki && (
             <Link
-              href={`/image/${image.id}/chat`}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              href={`/image/${image.id}/wiki`}
+              className="rounded-full bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600"
             >
-              Chat with Image
+              View Wiki
             </Link>
-          </div>
+          )}
+          <Link
+            href={`/image/${image.id}/chat`}
+            className="rounded-full bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700"
+          >
+            Chat with Ember
+          </Link>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Image Section */}
-          <div>
-            <div className="bg-white dark:bg-gray-900 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800">
-              <img
-                src={`/api/uploads/${image.filename}`}
-                alt={image.originalName}
-                className="w-full h-80 object-contain bg-gray-100 dark:bg-gray-800"
-              />
-              <div className="p-4">
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                  {image.originalName}
-                </h1>
-                {image.description && (
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {image.description}
+      <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="space-y-8">
+          <div className="overflow-hidden rounded-[2.5rem] border border-white/85 bg-white shadow-sm">
+            <img
+              src={`/api/uploads/${image.filename}`}
+              alt={image.originalName}
+              className="h-[28rem] w-full object-contain bg-slate-100"
+            />
+            <div className="p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+                    {image.accessType === 'owner'
+                      ? 'Your Ember'
+                      : image.accessType === 'contributor'
+                        ? 'You are a contributor'
+                        : 'Shared from your network'}
                   </p>
-                )}
-                <div className="mt-4 flex gap-4 text-sm text-gray-500 dark:text-gray-400">
-                  <span>{image.contributors.length} contributors</span>
-                  <span>{completedCount} completed</span>
+                  <h1 className="mt-3 text-3xl font-semibold text-slate-950">
+                    {image.originalName}
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
+                    {image.description || 'No description added yet.'}
+                  </p>
                 </div>
-                <div className="mt-5 border-t border-gray-200 dark:border-gray-800 pt-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Visibility
-                  </label>
-                  <div className="flex flex-col gap-3">
-                    <select
-                      value={visibility}
-                      onChange={(e) =>
-                        setVisibility(e.target.value as Image['visibility'])
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                    >
-                      <option value="PRIVATE">Private (only you)</option>
-                      <option value="SHARED">Shared (invite-only)</option>
-                      <option value="PUBLIC">Public (searchable)</option>
-                    </select>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={handleVisibilitySave}
-                        disabled={isSavingVisibility || visibility === image.visibility}
-                        className="px-4 py-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-lg text-sm font-medium transition-colors"
-                      >
-                        {isSavingVisibility ? 'Saving...' : 'Save'}
-                      </button>
-                      {visibilityError && (
-                        <span className="text-sm text-red-500">{visibilityError}</span>
-                      )}
-                    </div>
+                <div className="rounded-[1.6rem] bg-slate-950 px-5 py-4 text-white">
+                  <div className="text-sm text-slate-300">Owner</div>
+                  <div className="mt-1 font-medium">
+                    {image.owner.name || image.owner.email}
                   </div>
                 </div>
               </div>
+
+              <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-500">
+                <span>{image.contributors.length} contributors</span>
+                <span>{completedCount} completed</span>
+                <span>{image.tags.length} tagged</span>
+                {image.shareToNetwork && <span>Shared to network</span>}
+              </div>
+
+              {image.canManage && (
+                <div className="mt-6 rounded-[1.8rem] border border-slate-200 bg-slate-50 px-5 py-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-950">
+                        Network sharing
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Let accepted friends see this Ember in their feed.
+                      </p>
+                    </div>
+                    <label className="inline-flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={shareToNetwork}
+                        onChange={(event) => setShareToNetwork(event.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      />
+                      <span className="text-sm font-medium text-slate-700">
+                        Share to network
+                      </span>
+                    </label>
+                  </div>
+                  <div className="mt-4 flex items-center gap-3">
+                    <button
+                      onClick={handleShareSave}
+                      disabled={savingShareState || shareToNetwork === image.shareToNetwork}
+                      className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                    >
+                      {savingShareState ? 'Saving...' : 'Save'}
+                    </button>
+                    {shareError && <span className="text-sm text-rose-600">{shareError}</span>}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Contributor Management */}
-          <div>
+          <TagManager
+            imageId={image.id}
+            tags={image.tags}
+            contributors={image.contributors.map((contributor) => ({
+              id: contributor.id,
+              name: contributor.name,
+              email: contributor.email,
+              userId: contributor.userId,
+            }))}
+            friends={image.friends}
+            canManage={image.canManage}
+            onUpdate={fetchImage}
+          />
+        </div>
+
+        <div>
+          {image.canManage ? (
             <ContributorList
               imageId={image.id}
               contributors={image.contributors}
+              friends={image.friends}
               onUpdate={fetchImage}
             />
-          </div>
+          ) : (
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-950">Contributors</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                These are the people connected to this Ember.
+              </p>
+              <div className="mt-6 space-y-3">
+                {image.contributors.length === 0 ? (
+                  <p className="text-sm text-slate-500">No contributors have been added yet.</p>
+                ) : (
+                  image.contributors.map((contributor) => (
+                    <div
+                      key={contributor.id}
+                      className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                    >
+                      <div className="font-medium text-slate-950">
+                        {contributor.name ||
+                          contributor.user?.name ||
+                          contributor.email ||
+                          contributor.phoneNumber ||
+                          'Contributor'}
+                      </div>
+                      {(contributor.email || contributor.phoneNumber) && (
+                        <div className="mt-1 text-sm text-slate-500">
+                          {contributor.email || contributor.phoneNumber}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

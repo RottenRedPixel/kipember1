@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { requireAccess } from '@/lib/access-server';
+import { requireApiUser } from '@/lib/auth-server';
+import { ensureImageOwnerAccess, getImageAccessType } from '@/lib/ember-access';
 import { generateKidsStoryForImage, getKidsStory } from '@/lib/kids-story';
 
 export async function GET(
@@ -9,10 +10,17 @@ export async function GET(
 ) {
   try {
     void request;
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { imageId } = await params;
+    const accessType = await getImageAccessType(auth.user.id, imageId);
+
+    if (!accessType) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
 
     const image = await prisma.image.findUnique({
       where: { id: imageId },
@@ -40,6 +48,7 @@ export async function GET(
         originalName: image.originalName,
         description: image.description,
       },
+      canManage: accessType === 'owner',
       wiki: image.wiki,
       story,
     });
@@ -58,10 +67,18 @@ export async function POST(
 ) {
   try {
     void request;
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { imageId } = await params;
+    const image = await ensureImageOwnerAccess(auth.user.id, imageId);
+
+    if (!image) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
+
     const story = await generateKidsStoryForImage(imageId);
 
     return NextResponse.json({ success: true, story });

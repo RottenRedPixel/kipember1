@@ -51,10 +51,10 @@ export default function ChatPage() {
         <div className="text-center">
           <p className="text-red-500 mb-4">{error || 'Image not found'}</p>
           <Link
-            href="/"
+            href="/feed"
             className="text-blue-600 hover:text-blue-700 font-medium"
           >
-            Go back home
+            Back to feed
           </Link>
         </div>
       </div>

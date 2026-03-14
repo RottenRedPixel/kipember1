@@ -523,6 +523,10 @@ export async function startVoiceCallForContributor({
     throw new Error('Contributor not found');
   }
 
+  if (!contributor.phoneNumber) {
+    throw new Error('Contributor does not have a phone number for voice calls');
+  }
+
   const latestCall = contributor.voiceCalls[0];
   if (
     latestCall &&

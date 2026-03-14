@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { chat } from '@/lib/claude';
-import { requireAccess } from '@/lib/access-server';
 
 // GET - Fetch contributor info and conversation
 export async function GET(
@@ -9,8 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    void request;
 
     const { token } = await params;
 
@@ -43,9 +41,6 @@ export async function GET(
     if (!contributor) {
       return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 });
     }
-    if (contributor.image.visibility === 'PRIVATE') {
-      return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 });
-    }
 
     return NextResponse.json({
       contributor: {
@@ -73,9 +68,6 @@ export async function POST(
   { params }: { params: Promise<{ token: string }> }
 ) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
-
     const { token } = await params;
     const { message } = await request.json();
 
@@ -99,9 +91,6 @@ export async function POST(
     });
 
     if (!contributor) {
-      return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
-    }
-    if (contributor.image.visibility === 'PRIVATE') {
       return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
 

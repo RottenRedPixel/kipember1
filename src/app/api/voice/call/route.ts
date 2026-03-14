@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAccess } from '@/lib/access-server';
+import { requireApiUser } from '@/lib/auth-server';
+import { ensureOwnedContributorAccess } from '@/lib/ember-access';
 import { startVoiceCallForContributor } from '@/lib/voice-calls';
 
 export async function POST(request: NextRequest) {
   try {
-    const access = await requireAccess();
-    if (access) return access;
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const { contributorId } = await request.json();
 
@@ -14,6 +17,11 @@ export async function POST(request: NextRequest) {
         { error: 'contributorId is required' },
         { status: 400 }
       );
+    }
+
+    const contributor = await ensureOwnedContributorAccess(auth.user.id, contributorId);
+    if (!contributor) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
     const result = await startVoiceCallForContributor({

@@ -2,6 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import StoryCircleThread from '@/components/StoryCircleThread';
+import { requirePageUser } from '@/lib/auth-server';
+import { getImageAccessType } from '@/lib/ember-access';
 import { getStoryCircleForImage } from '@/lib/story-circle';
 
 export default async function StoryCirclePage({
@@ -10,6 +12,13 @@ export default async function StoryCirclePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requirePageUser();
+  const accessType = await getImageAccessType(user.id, id);
+
+  if (!accessType) {
+    notFound();
+  }
+
   const storyCircle = await getStoryCircleForImage(id);
 
   if (!storyCircle) {
