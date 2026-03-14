@@ -115,7 +115,7 @@ function buildFlowPayload() {
         edges: [
           {
             id: 'interview_complete',
-            destination_node_id: 'memory_end',
+            destination_node_id: 'memory_closing_message',
             transition_condition: {
               type: 'prompt',
               prompt:
@@ -125,9 +125,9 @@ function buildFlowPayload() {
         ],
       },
       {
-        id: 'memory_end',
-        name: 'Memory Closing',
-        type: 'end',
+        id: 'memory_closing_message',
+        name: 'Memory Closing Message',
+        type: 'conversation',
         display_position: {
           x: 760,
           y: 120,
@@ -135,7 +135,27 @@ function buildFlowPayload() {
         instruction: {
           type: 'prompt',
           text:
-            'End the call with a short final closing. If the caller shared memories, thank them for sharing and say their memories will help preserve this moment. If they declined, it was a wrong number, or little was collected, thank them for their time instead. In every case, explicitly say goodbye as the final phrase of the call.',
+            'Say exactly one short closing message and do not ask any more questions. If the caller shared memories, thank them for sharing and say their memories will help preserve this moment. If they declined, it was a wrong number, or little was collected, thank them for their time instead. End the spoken message with goodbye as the final word.',
+        },
+        edges: [
+          {
+            id: 'closing_spoken',
+            destination_node_id: 'memory_end',
+            transition_condition: {
+              type: 'prompt',
+              prompt:
+                'Transition only after you have already spoken the full closing message and said goodbye.',
+            },
+          },
+        ],
+      },
+      {
+        id: 'memory_end',
+        name: 'Memory End',
+        type: 'end',
+        display_position: {
+          x: 1120,
+          y: 120,
         },
       },
     ],
