@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { isAccessLockEnabled } from '@/lib/access-server';
 
 const COOKIE_NAME = 'mw_access';
 
@@ -9,6 +10,10 @@ export default async function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
+  if (!isAccessLockEnabled()) {
+    return <>{children}</>;
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
 

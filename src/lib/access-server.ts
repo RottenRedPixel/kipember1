@@ -4,7 +4,15 @@ import { prisma } from '@/lib/db';
 
 const COOKIE_NAME = 'mw_access';
 
+export function isAccessLockEnabled(): boolean {
+  return process.env.ACCESS_LOCK_ENABLED === 'true';
+}
+
 export async function requireAccess(): Promise<NextResponse | null> {
+  if (!isAccessLockEnabled()) {
+    return null;
+  }
+
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) {

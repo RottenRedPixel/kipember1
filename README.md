@@ -56,6 +56,11 @@ Voice flow summary:
 - Retell webhook events are verified and stored in `VoiceCall` / `VoiceCallEvent`.
 - Final transcripts are extracted into the existing `Conversation.responses` table with `source="voice"` so wiki generation and image chat can use the same memory data.
 
+## Access control
+
+Set `ACCESS_LOCK_ENABLED=true` if you want the app behind the passcode wall.
+If `ACCESS_LOCK_ENABLED` is omitted or set to anything else, the app stays open and the password gate is bypassed.
+
 ## Render notes
 
 This app currently stores data in SQLite and image files on local disk, so a Render deploy needs persistent storage or external services.

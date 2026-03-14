@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateSalt, generateSessionToken, hashPasscode } from '@/lib/access';
+import { isAccessLockEnabled } from '@/lib/access-server';
 
 const COOKIE_NAME = 'mw_access';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export async function POST(request: NextRequest) {
   try {
-    const { passcode, label } = await request.json();
+    if (!isAccessLockEnabled()) {
+      return NextResponse.json({ success: true, unlocked: true });
+    }
+
+    const { passcode } = await request.json();
 
     if (!passcode || typeof passcode !== 'string') {
       return NextResponse.json({ error: 'Passcode is required' }, { status: 400 });
