@@ -179,7 +179,7 @@ export default function ImagePage() {
             href={`/image/${image.id}/chat`}
             className="rounded-full bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700"
           >
-            Chat with Ember
+            Ask About This Photo
           </Link>
         </div>
       </div>

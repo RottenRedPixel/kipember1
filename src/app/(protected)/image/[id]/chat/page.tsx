@@ -105,8 +105,12 @@ export default function ChatPage() {
           {/* Chat Section */}
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Chat with this Memory
+              Photo Q&amp;A
             </h2>
+            <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+              Ask about what is visible here, what contributors shared, and what the
+              current wiki says. If something is not known yet, the chat should say so.
+            </p>
             <ChatInterface imageId={image.id} />
           </div>
         </div>
