@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { sendSMS } from '@/lib/twilio';
 import { requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess, ensureOwnedContributorAccess } from '@/lib/ember-access';
-import { getAppBaseUrl } from '@/lib/app-url';
-
-const BASE_URL = getAppBaseUrl();
+import { sendContributorSmsInvite } from '@/lib/contributor-invites';
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,51 +65,6 @@ export async function POST(request: NextRequest) {
 }
 
 async function sendInvite(contributorId: string): Promise<{ success: boolean }> {
-  const contributor = await prisma.contributor.findUnique({
-    where: { id: contributorId },
-    include: { image: true },
-  });
-
-  if (!contributor) {
-    throw new Error('Contributor not found');
-  }
-
-  // Build the invite link
-  const inviteUrl = `${BASE_URL}/contribute/${contributor.token}`;
-
-  const greeting = contributor.name ? `Hi ${contributor.name}!` : 'Hi!';
-  const intro = `${greeting} You're invited to share your memories about a special photo with Ember.`;
-  const linkMessage = `Tap here to text with Ember or speak with Ember: ${inviteUrl}`;
-  const combinedMessage = `${intro} ${linkMessage}`;
-
-  // Format phone number
-  if (!contributor.phoneNumber) {
-    throw new Error('Contributor does not have a phone number for SMS invites');
-  }
-
-  const phone = contributor.phoneNumber.startsWith('+')
-    ? contributor.phoneNumber
-    : contributor.phoneNumber.length === 10
-      ? `+1${contributor.phoneNumber}`
-      : `+${contributor.phoneNumber}`;
-
-  try {
-    if (combinedMessage.length <= 160) {
-      await sendSMS(phone, combinedMessage);
-    } else {
-      await sendSMS(phone, intro);
-      await sendSMS(phone, linkMessage);
-    }
-
-    // Mark as sent
-    await prisma.contributor.update({
-      where: { id: contributorId },
-      data: { inviteSent: true },
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error(`Failed to send SMS to ${phone}:`, error);
-    return { success: false };
-  }
+  const result = await sendContributorSmsInvite(contributorId);
+  return { success: result.success };
 }

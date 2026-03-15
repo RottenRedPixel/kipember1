@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApiUser } from '@/lib/auth-server';
+import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
+
+function parseOptionalPercentage(value: unknown): number | null {
+  if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.max(0, Math.min(100, value));
+}
 
 export async function POST(
   request: NextRequest,
@@ -21,11 +29,23 @@ export async function POST(
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    const { userId, contributorId, label } = await request.json();
+    const {
+      userId,
+      contributorId,
+      label,
+      email,
+      phoneNumber,
+      leftPct,
+      topPct,
+      widthPct,
+      heightPct,
+    } = await request.json();
 
     let tagLabel: string | null = typeof label === 'string' && label.trim() ? label.trim() : null;
     let linkedUserId: string | null = null;
     let linkedContributorId: string | null = null;
+    let tagEmail = typeof email === 'string' && email.trim() ? normalizeEmail(email) : null;
+    let tagPhoneNumber = normalizePhone(phoneNumber);
 
     if (typeof userId === 'string' && userId) {
       const user = await prisma.user.findUnique({
@@ -34,6 +54,7 @@ export async function POST(
           id: true,
           name: true,
           email: true,
+          phoneNumber: true,
         },
       });
 
@@ -43,6 +64,8 @@ export async function POST(
 
       linkedUserId = user.id;
       tagLabel = user.name || user.email;
+      tagEmail = user.email;
+      tagPhoneNumber = normalizePhone(user.phoneNumber);
     }
 
     if (typeof contributorId === 'string' && contributorId) {
@@ -55,6 +78,7 @@ export async function POST(
           id: true,
           name: true,
           email: true,
+          phoneNumber: true,
           userId: true,
         },
       });
@@ -66,6 +90,8 @@ export async function POST(
       linkedContributorId = contributor.id;
       linkedUserId = linkedUserId || contributor.userId || null;
       tagLabel = contributor.name || contributor.email || tagLabel;
+      tagEmail = contributor.email || tagEmail;
+      tagPhoneNumber = normalizePhone(contributor.phoneNumber) || tagPhoneNumber;
     }
 
     if (!tagLabel) {
@@ -79,6 +105,12 @@ export async function POST(
         contributorId: linkedContributorId,
         createdByUserId: auth.user.id,
         label: tagLabel,
+        email: tagEmail,
+        phoneNumber: tagPhoneNumber,
+        leftPct: parseOptionalPercentage(leftPct),
+        topPct: parseOptionalPercentage(topPct),
+        widthPct: parseOptionalPercentage(widthPct),
+        heightPct: parseOptionalPercentage(heightPct),
       },
       include: {
         user: {
@@ -86,6 +118,7 @@ export async function POST(
             id: true,
             name: true,
             email: true,
+            phoneNumber: true,
           },
         },
         contributor: {
@@ -93,6 +126,8 @@ export async function POST(
             id: true,
             name: true,
             email: true,
+            phoneNumber: true,
+            inviteSent: true,
           },
         },
       },

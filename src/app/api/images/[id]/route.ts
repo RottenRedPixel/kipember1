@@ -72,6 +72,7 @@ export async function GET(
                 id: true,
                 name: true,
                 email: true,
+                phoneNumber: true,
               },
             },
             contributor: {
@@ -79,6 +80,8 @@ export async function GET(
                 id: true,
                 name: true,
                 email: true,
+                phoneNumber: true,
+                inviteSent: true,
               },
             },
           },

@@ -233,6 +233,12 @@ model ImageTag {
   contributorId   String?
   createdByUserId String
   label           String
+  email           String?
+  phoneNumber     String?
+  leftPct         Float?
+  topPct          Float?
+  widthPct        Float?
+  heightPct       Float?
   createdAt       DateTime     @default(now())
   image           Image        @relation(fields: [imageId], references: [id], onDelete: Cascade)
   user            User?        @relation("TaggedUserImages", fields: [userId], references: [id], onDelete: SetNull)

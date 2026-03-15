@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import ContributorList from '@/components/ContributorList';
 import TagManager from '@/components/TagManager';
+import InteractiveImageTagger from '@/components/InteractiveImageTagger';
 
 interface ImageRecord {
   id: string;
@@ -51,17 +52,26 @@ interface ImageRecord {
   tags: {
     id: string;
     label: string;
+    email: string | null;
+    phoneNumber: string | null;
+    leftPct: number | null;
+    topPct: number | null;
+    widthPct: number | null;
+    heightPct: number | null;
     userId: string | null;
     contributorId: string | null;
     user: {
       id: string;
       name: string | null;
       email: string;
+      phoneNumber: string | null;
     } | null;
     contributor: {
       id: string;
       name: string | null;
       email: string | null;
+      phoneNumber: string | null;
+      inviteSent: boolean;
     } | null;
   }[];
   friends: {
@@ -187,13 +197,25 @@ export default function ImagePage() {
       <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
         <div className="space-y-8">
           <div className="overflow-hidden rounded-[2.5rem] border border-white/85 bg-white shadow-sm">
-            <img
-              src={`/api/uploads/${image.filename}`}
-              alt={image.originalName}
-              className="h-[28rem] w-full object-contain bg-slate-100"
-            />
             <div className="p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
+              <InteractiveImageTagger
+                imageId={image.id}
+                imageUrl={`/api/uploads/${image.filename}`}
+                imageName={image.originalName}
+                tags={image.tags}
+                contributors={image.contributors.map((contributor) => ({
+                  id: contributor.id,
+                  name: contributor.name,
+                  email: contributor.email,
+                  phoneNumber: contributor.phoneNumber,
+                  userId: contributor.userId,
+                }))}
+                friends={image.friends}
+                canManage={image.canManage}
+                onUpdate={fetchImage}
+              />
+
+              <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                     {image.accessType === 'owner'
@@ -269,6 +291,7 @@ export default function ImagePage() {
               id: contributor.id,
               name: contributor.name,
               email: contributor.email,
+              phoneNumber: contributor.phoneNumber,
               userId: contributor.userId,
             }))}
             friends={image.friends}
