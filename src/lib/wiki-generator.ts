@@ -1,6 +1,7 @@
 import { prisma } from './db';
 import { ensureImageAnalysisForImage } from './image-analysis';
 import { generateWiki } from './claude';
+import { parseSportsHighlightsJson, parseSportsModeJson } from './sports-mode';
 
 type ParsedEntity = {
   label: string;
@@ -153,6 +154,7 @@ async function fetchImageForWiki(imageId: string) {
     where: { id: imageId },
     include: {
       analysis: true,
+      sportsMode: true,
       contributors: {
         include: {
           conversation: {
@@ -199,7 +201,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     }
   }
 
-  if (!image.analysis && allResponses.length === 0 && !image.description?.trim()) {
+  if (!image.analysis && !image.sportsMode && allResponses.length === 0 && !image.description?.trim()) {
     throw new Error('No image analysis or completed interviews available to generate a wiki');
   }
 
@@ -228,6 +230,22 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
           keywords: parseJsonArray<string>(image.analysis.keywordsJson),
           openQuestions: parseJsonArray<string>(image.analysis.openQuestionsJson),
           sceneInsights: parseSceneInsights(image.analysis.sceneInsightsJson),
+        }
+      : null,
+    sportsMode: image.sportsMode
+      ? {
+          sportType: image.sportsMode.sportType,
+          subjectName: image.sportsMode.subjectName,
+          teamName: image.sportsMode.teamName,
+          opponentName: image.sportsMode.opponentName,
+          eventName: image.sportsMode.eventName,
+          season: image.sportsMode.season,
+          outcome: image.sportsMode.outcome,
+          finalScore: image.sportsMode.finalScore,
+          rawDetails: image.sportsMode.rawDetails,
+          summary: image.sportsMode.summary,
+          statLines: parseSportsModeJson(image.sportsMode.statLinesJson),
+          highlights: parseSportsHighlightsJson(image.sportsMode.highlightsJson),
         }
       : null,
     responses: allResponses,

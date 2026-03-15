@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import WikiView from '@/components/WikiView';
+import MediaPreview from '@/components/MediaPreview';
 
 interface Wiki {
   id: string;
@@ -15,6 +16,9 @@ interface Wiki {
     originalName: string;
     description: string | null;
     filename: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    posterFilename: string | null;
+    durationSeconds: number | null;
   };
 }
 
@@ -115,10 +119,16 @@ export default function WikiPage() {
               Story Circle
             </Link>
             <Link
+              href={`/image/${params.id}/sports`}
+              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors"
+            >
+              Sports Mode
+            </Link>
+            <Link
               href={`/image/${params.id}/chat`}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
             >
-              Chat with Image
+              Ask About This Ember
             </Link>
           </div>
         </div>
@@ -133,11 +143,16 @@ export default function WikiPage() {
           <div className="bg-white dark:bg-gray-900 rounded-xl p-8 shadow-sm border border-gray-200 dark:border-gray-800">
             {wiki.image && (
               <div className="mb-8 flex items-center gap-4">
-                <img
-                  src={`/api/uploads/${wiki.image.filename}`}
-                  alt={wiki.image.originalName}
-                  className="w-24 h-24 object-cover rounded-lg"
-                />
+                <div className="h-24 w-24 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+                  <MediaPreview
+                    mediaType={wiki.image.mediaType}
+                    filename={wiki.image.filename}
+                    posterFilename={wiki.image.posterFilename}
+                    originalName={wiki.image.originalName}
+                    usePosterForVideo
+                    className="h-24 w-24 object-cover"
+                  />
+                </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                     {wiki.image.originalName}

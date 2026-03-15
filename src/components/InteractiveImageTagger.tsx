@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { formatDuration } from '@/lib/media';
 
 type Tag = {
   id: string;
@@ -140,7 +141,10 @@ function selectNearestFace(xPct: number, yPct: number, faces: FaceRect[]): Draft
 
 export default function InteractiveImageTagger({
   imageId,
+  mediaType,
   imageUrl,
+  videoUrl,
+  durationSeconds,
   imageName,
   tags,
   contributors,
@@ -149,7 +153,10 @@ export default function InteractiveImageTagger({
   onUpdate,
 }: {
   imageId: string;
+  mediaType: 'IMAGE' | 'VIDEO';
   imageUrl: string;
+  videoUrl?: string | null;
+  durationSeconds?: number | null;
   imageName: string;
   tags: Tag[];
   contributors: ContributorOption[];
@@ -424,6 +431,27 @@ export default function InteractiveImageTagger({
       </div>
 
       <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-100 p-4">
+        {mediaType === 'VIDEO' && videoUrl && (
+          <div className="mb-4 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-950">
+            <video
+              src={videoUrl}
+              controls
+              playsInline
+              preload="metadata"
+              poster={imageUrl}
+              className="max-h-[28rem] w-full object-contain"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-white px-4 py-3 text-sm text-slate-600">
+              <span>Face tags on videos are pinned to the poster frame.</span>
+              {formatDuration(durationSeconds) && (
+                <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+                  {formatDuration(durationSeconds)}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-center">
           <button
             type="button"
@@ -503,8 +531,8 @@ export default function InteractiveImageTagger({
 
         {isPickingTag && canManage && (
           <p className="mt-4 text-center text-sm text-slate-600">
-            Click the person&apos;s face on the photo. Ember will snap to a detected face when
-            possible.
+            Click the person&apos;s face on the {mediaType === 'VIDEO' ? 'poster frame' : 'photo'}.
+            Ember will snap to a detected face when possible.
           </p>
         )}
       </div>

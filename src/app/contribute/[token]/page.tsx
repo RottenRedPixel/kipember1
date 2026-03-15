@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import MediaPreview from '@/components/MediaPreview';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -16,6 +17,9 @@ interface ContributorData {
   image: {
     id: string;
     filename: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    posterFilename: string | null;
+    durationSeconds: number | null;
     originalName: string;
     description: string | null;
   };
@@ -217,10 +221,13 @@ export default function ContributePage() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-black">
       <div className="container mx-auto px-4 py-6 max-w-2xl">
         <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-4">
-          <img
-            src={`/api/uploads/${data.image.filename}`}
-            alt={data.image.originalName}
-            className="w-full h-auto object-contain"
+          <MediaPreview
+            mediaType={data.image.mediaType}
+            filename={data.image.filename}
+            posterFilename={data.image.posterFilename}
+            originalName={data.image.originalName}
+            controls={data.image.mediaType === 'VIDEO'}
+            className="w-full h-auto max-h-[28rem] object-contain bg-black"
           />
           <div className="p-4">
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white">

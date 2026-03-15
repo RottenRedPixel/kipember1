@@ -752,9 +752,11 @@ export async function ensureImageAnalysisForImage(imageId: string) {
     return image.analysis;
   }
 
-  const filePath = getUploadPath(image.filename);
+  const analysisFilename =
+    image.mediaType === 'VIDEO' ? image.posterFilename || image.filename : image.filename;
+  const filePath = getUploadPath(analysisFilename);
   const buffer = await readFile(filePath);
-  const mimeType = inferImageMimeType(image.originalName) || inferImageMimeType(image.filename);
+  const mimeType = inferImageMimeType(analysisFilename) || inferImageMimeType(image.originalName);
 
   const existing = image.analysis
     ? await prisma.imageAnalysis.update({
@@ -772,8 +774,39 @@ export async function ensureImageAnalysisForImage(imageId: string) {
       });
 
   try {
-    const metadata = await extractPhotoMetadata(buffer);
-    const metadataSummary = buildMetadataSummary(metadata);
+    const metadata =
+      image.mediaType === 'VIDEO'
+        ? {
+            capturedAt: null,
+            latitude: null,
+            longitude: null,
+            cameraMake: null,
+            cameraModel: null,
+            lensModel: null,
+            software: null,
+            width: null,
+            height: null,
+            orientation: null,
+            exposureTime: null,
+            fNumber: null,
+            iso: null,
+            focalLength: null,
+            keywords: [],
+          }
+        : await extractPhotoMetadata(buffer);
+    const baseMetadataSummary = buildMetadataSummary(metadata);
+    const metadataSummary =
+      image.mediaType === 'VIDEO'
+        ? [
+            image.durationSeconds
+              ? `Video duration: ${Math.max(1, Math.round(image.durationSeconds))} seconds.`
+              : null,
+            'Visual analysis is based on a poster frame extracted from the uploaded video.',
+            baseMetadataSummary,
+          ]
+            .filter(Boolean)
+            .join(' ')
+        : baseMetadataSummary;
 
     let vision: ParsedVisionAnalysis | null = null;
     let status: 'ready' | 'partial' = 'ready';
@@ -806,7 +839,10 @@ export async function ensureImageAnalysisForImage(imageId: string) {
         summary:
           vision?.summary ||
           buildFallbackSummary({
-            originalName: image.originalName,
+            originalName:
+              image.mediaType === 'VIDEO'
+                ? `${image.originalName} (video, analyzed from poster frame)`
+                : image.originalName,
             userDescription: image.description,
             metadataSummary,
           }),

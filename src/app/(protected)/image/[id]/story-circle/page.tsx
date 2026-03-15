@@ -5,6 +5,7 @@ import StoryCircleThread from '@/components/StoryCircleThread';
 import { requirePageUser } from '@/lib/auth-server';
 import { getImageAccessType } from '@/lib/ember-access';
 import { getStoryCircleForImage } from '@/lib/story-circle';
+import { getPreviewMediaUrl } from '@/lib/media';
 
 export default async function StoryCirclePage({
   params,
@@ -58,7 +59,11 @@ export default async function StoryCirclePage({
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-100">
               <Image
-                src={`/api/uploads/${storyCircle.image.filename}`}
+                src={getPreviewMediaUrl({
+                  mediaType: storyCircle.image.mediaType,
+                  filename: storyCircle.image.filename,
+                  posterFilename: storyCircle.image.posterFilename,
+                })}
                 alt={storyCircle.image.originalName}
                 fill
                 unoptimized

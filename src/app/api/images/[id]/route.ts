@@ -89,6 +89,16 @@ export async function GET(
         wiki: {
           select: { id: true },
         },
+        sportsMode: {
+          select: {
+            id: true,
+            sportType: true,
+            subjectName: true,
+            finalScore: true,
+            outcome: true,
+            updatedAt: true,
+          },
+        },
       },
     });
 
@@ -101,6 +111,9 @@ export async function GET(
     return NextResponse.json({
       id: image.id,
       filename: image.filename,
+      mediaType: image.mediaType,
+      posterFilename: image.posterFilename,
+      durationSeconds: image.durationSeconds,
       originalName: image.originalName,
       description: image.description,
       createdAt: image.createdAt,
@@ -112,6 +125,7 @@ export async function GET(
       tags: image.tags,
       friends,
       wiki: image.wiki,
+      sportsMode: image.sportsMode,
     });
   } catch (error) {
     console.error('Error fetching image:', error);

@@ -50,6 +50,9 @@ export async function GET(
       image: {
         id: contributor.image.id,
         filename: contributor.image.filename,
+        mediaType: contributor.image.mediaType,
+        posterFilename: contributor.image.posterFilename,
+        durationSeconds: contributor.image.durationSeconds,
         originalName: contributor.image.originalName,
         description: contributor.image.description,
       },

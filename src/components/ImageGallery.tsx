@@ -2,10 +2,15 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import MediaPreview from '@/components/MediaPreview';
+import { formatDuration } from '@/lib/media';
 
 type FeedImage = {
   id: string;
   filename: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  posterFilename: string | null;
+  durationSeconds: number | null;
   originalName: string;
   description: string | null;
   createdAt: string;
@@ -50,11 +55,28 @@ function Section({
             href={`/image/${image.id}`}
             className="overflow-hidden rounded-[2rem] border border-white/90 bg-white/92 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
-            <img
-              src={`/api/uploads/${image.filename}`}
-              alt={image.originalName}
-              className="h-48 w-full object-cover"
-            />
+            <div className="relative">
+              <MediaPreview
+                mediaType={image.mediaType}
+                filename={image.filename}
+                posterFilename={image.posterFilename}
+                originalName={image.originalName}
+                usePosterForVideo
+                className="h-48 w-full object-cover"
+              />
+              {image.mediaType === 'VIDEO' && (
+                <div className="absolute inset-x-0 top-3 flex items-center justify-between px-3">
+                  <span className="rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
+                    Video
+                  </span>
+                  {formatDuration(image.durationSeconds) && (
+                    <span className="rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white">
+                      {formatDuration(image.durationSeconds)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="p-5">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="truncate text-lg font-semibold text-slate-950">

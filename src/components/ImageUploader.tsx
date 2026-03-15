@@ -1,7 +1,23 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+
+function detectSelectedMediaType(file: File | null): 'image' | 'video' | null {
+  if (!file) {
+    return null;
+  }
+
+  if (file.type.startsWith('video/')) {
+    return 'video';
+  }
+
+  if (file.type.startsWith('image/')) {
+    return 'image';
+  }
+
+  return null;
+}
 
 export default function ImageUploader() {
   const [isDragging, setIsDragging] = useState(false);
@@ -10,7 +26,36 @@ export default function ImageUploader() {
   const [shareToNetwork, setShareToNetwork] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    return () => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+    };
+  }, [preview]);
+
+  const updateSelection = useCallback(
+    (file: File | null) => {
+      const nextMediaType = detectSelectedMediaType(file);
+
+      if (!file || !nextMediaType) {
+        setSelectionError('Only photos and MP4, MOV, WEBM, or M4V videos are supported.');
+        return;
+      }
+
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+
+      setSelectionError('');
+      setSelectedFile(file);
+      setPreview(URL.createObjectURL(file));
+    },
+    [preview]
+  );
 
   const handleDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -22,24 +67,21 @@ export default function ImageUploader() {
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(false);
+  const handleDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      setIsDragging(false);
+      updateSelection(event.dataTransfer.files[0] || null);
+    },
+    [updateSelection]
+  );
 
-    const file = event.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file);
-      setPreview(URL.createObjectURL(file));
-    }
-  }, []);
-
-  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-      setSelectedFile(file);
-      setPreview(URL.createObjectURL(file));
-    }
-  }, []);
+  const handleFileSelect = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      updateSelection(event.target.files?.[0] || null);
+    },
+    [updateSelection]
+  );
 
   const handleUpload = async () => {
     if (!selectedFile) {
@@ -63,65 +105,97 @@ export default function ImageUploader() {
         throw new Error('Upload failed');
       }
 
-      const { id, wikiGenerated, warning } = await response.json();
+      const { id, mediaType, wikiGenerated, warning } = await response.json();
 
       if (warning) {
-        alert(`Image uploaded, but the automatic wiki did not finish: ${warning}`);
+        alert(
+          `${mediaType === 'VIDEO' ? 'Video' : 'Image'} uploaded, but the automatic wiki did not finish: ${warning}`
+        );
       }
 
       router.push(wikiGenerated ? `/image/${id}/wiki` : `/image/${id}`);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload image. Please try again.');
+      alert('Failed to upload media. Please try again.');
     } finally {
       setIsUploading(false);
     }
   };
 
   const clearSelection = () => {
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+
     setSelectedFile(null);
     setPreview(null);
     setDescription('');
     setShareToNetwork(false);
+    setSelectionError('');
   };
+
+  const selectedMediaType = detectSelectedMediaType(selectedFile);
 
   return (
     <div className="w-full">
       {!selectedFile ? (
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`cursor-pointer rounded-[2rem] border-2 border-dashed p-10 text-center transition-colors ${
-            isDragging
-              ? 'border-sky-500 bg-sky-50'
-              : 'border-slate-300 bg-slate-50/80 hover:border-slate-400'
-          }`}
-        >
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="file-input"
-          />
-          <label htmlFor="file-input" className="cursor-pointer">
-            <div className="mb-4 text-6xl">📷</div>
-            <p className="text-lg font-medium text-slate-800">
-              Drop a photo here or click to start a new Ember
-            </p>
-            <p className="mt-2 text-sm text-slate-500">PNG, JPG, GIF up to 10MB</p>
-          </label>
-        </div>
+        <>
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`cursor-pointer rounded-[2rem] border-2 border-dashed p-10 text-center transition-colors ${
+              isDragging
+                ? 'border-sky-500 bg-sky-50'
+                : 'border-slate-300 bg-slate-50/80 hover:border-slate-400'
+            }`}
+          >
+            <input
+              type="file"
+              accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
+              onChange={handleFileSelect}
+              className="hidden"
+              id="file-input"
+            />
+            <label htmlFor="file-input" className="cursor-pointer">
+              <div className="mb-4 text-6xl">🎞️</div>
+              <p className="text-lg font-medium text-slate-800">
+                Drop a photo or video here or click to start a new Ember
+              </p>
+              <p className="mt-2 text-sm text-slate-500">
+                Photos plus MP4, MOV, WEBM, and M4V videos
+              </p>
+              <p className="mt-2 text-xs text-slate-400">
+                Videos automatically get a poster frame so Ember can build the first wiki.
+              </p>
+            </label>
+          </div>
+
+          {selectionError && (
+            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {selectionError}
+            </div>
+          )}
+        </>
       ) : (
         <div className="space-y-4">
           <div className="relative overflow-hidden rounded-[2rem] bg-slate-100">
-            <img src={preview!} alt="Preview" className="h-64 w-full object-contain" />
+            {selectedMediaType === 'video' ? (
+              <video
+                src={preview || undefined}
+                controls
+                playsInline
+                preload="metadata"
+                className="h-64 w-full object-contain bg-slate-950"
+              />
+            ) : (
+              <img src={preview || undefined} alt="Preview" className="h-64 w-full object-contain" />
+            )}
             <button
               onClick={clearSelection}
               className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
             >
-              ✕
+              x
             </button>
           </div>
 
@@ -161,7 +235,9 @@ export default function ImageUploader() {
             disabled={isUploading}
             className="w-full rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isUploading ? 'Uploading and building wiki...' : 'Upload and build wiki'}
+            {isUploading
+              ? `Uploading ${selectedMediaType || 'media'} and building wiki...`
+              : `Upload ${selectedMediaType || 'media'} and build wiki`}
           </button>
         </div>
       )}

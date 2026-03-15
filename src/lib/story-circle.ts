@@ -28,6 +28,8 @@ export type StoryCircleData = {
   image: {
     id: string;
     filename: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    posterFilename: string | null;
     originalName: string;
     description: string | null;
   };
@@ -171,6 +173,8 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
     image: {
       id: image.id,
       filename: image.filename,
+      mediaType: image.mediaType,
+      posterFilename: image.posterFilename,
       originalName: image.originalName,
       description: image.description,
     },

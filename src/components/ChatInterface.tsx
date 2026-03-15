@@ -9,9 +9,10 @@ interface Message {
 
 interface ChatInterfaceProps {
   imageId: string;
+  subjectNoun?: 'photo' | 'video';
 }
 
-export default function ChatInterface({ imageId }: ChatInterfaceProps) {
+export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -87,8 +88,8 @@ export default function ChatInterface({ imageId }: ChatInterfaceProps) {
   };
 
   const suggestedQuestions = [
-    'What do we know about this photo?',
-    'Who has been identified in this photo?',
+    `What do we know about this ${subjectNoun}?`,
+    `Who has been identified in this ${subjectNoun}?`,
     'What details did contributors share?',
     'What does the metadata tell us?',
   ];
@@ -100,10 +101,10 @@ export default function ChatInterface({ imageId }: ChatInterfaceProps) {
         {messages.length === 0 ? (
           <div className="text-center py-8">
             <div className="mb-4 inline-flex rounded-full bg-sky-100 px-4 py-2 text-sm font-semibold text-sky-700 dark:bg-sky-950 dark:text-sky-200">
-              Photo Q&amp;A
+              {subjectNoun === 'video' ? 'Video Q&A' : 'Photo Q&A'}
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Ask factual questions about this photo and what contributors have shared
+              Ask factual questions about this {subjectNoun} and what contributors have shared
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               {suggestedQuestions.map((question) => (
@@ -164,7 +165,7 @@ export default function ChatInterface({ imageId }: ChatInterfaceProps) {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about this photo..."
+            placeholder={`Ask about this ${subjectNoun}...`}
             className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={isLoading}
           />

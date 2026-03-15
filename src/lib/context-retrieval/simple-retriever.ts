@@ -1,5 +1,6 @@
 import { prisma } from '../db';
 import type { ContextRetriever, ContextContent } from './index';
+import { formatSportsModeContext } from '@/lib/sports-mode';
 
 /**
  * Simple context retriever that concatenates all content
@@ -28,6 +29,7 @@ export class SimpleRetriever implements ContextRetriever {
     const image = await prisma.image.findUnique({
       where: { id: imageId },
       include: {
+        sportsMode: true,
         contributors: {
           include: {
             conversation: {
@@ -69,6 +71,10 @@ export class SimpleRetriever implements ContextRetriever {
 
     if (responses.length > 0) {
       sections.push('=== CONTRIBUTOR RESPONSES ===\n' + responses.join('\n\n'));
+    }
+
+    if (image.sportsMode) {
+      sections.push('=== SPORTS MODE ===\n' + formatSportsModeContext(image.sportsMode));
     }
 
     return sections.join('\n\n');

@@ -78,6 +78,24 @@ type WikiImageAnalysis = {
   };
 };
 
+type WikiSportsMode = {
+  sportType: string | null;
+  subjectName: string | null;
+  teamName: string | null;
+  opponentName: string | null;
+  eventName: string | null;
+  season: string | null;
+  outcome: string | null;
+  finalScore: string | null;
+  rawDetails: string;
+  summary: string | null;
+  statLines: {
+    label: string;
+    value: string;
+  }[];
+  highlights: string[];
+};
+
 export async function chat(
   systemPrompt: string,
   messages: { role: 'user' | 'assistant'; content: string }[]
@@ -98,11 +116,13 @@ export async function generateWiki({
   imageDescription,
   analysis,
   responses,
+  sportsMode,
 }: {
   imageTitle: string;
   imageDescription: string | null;
   analysis: WikiImageAnalysis | null;
   responses: WikiContributorResponse[];
+  sportsMode: WikiSportsMode | null;
 }): Promise<string> {
   const responsesText = responses
     .map(
@@ -173,6 +193,23 @@ STORY ELEMENTS:
 ANALYSIS ERROR: ${analysis.errorMessage || 'None'}`
     : 'No automatic image analysis available.';
 
+  const sportsText = sportsMode
+    ? `SPORT: ${sportsMode.sportType || 'Unknown'}
+SUBJECT: ${sportsMode.subjectName || 'Unknown'}
+TEAM: ${sportsMode.teamName || 'Unknown'}
+OPPONENT: ${sportsMode.opponentName || 'Unknown'}
+EVENT: ${sportsMode.eventName || 'Unknown'}
+SEASON: ${sportsMode.season || 'Unknown'}
+OUTCOME: ${sportsMode.outcome || 'Unknown'}
+FINAL SCORE: ${sportsMode.finalScore || 'Unknown'}
+SUMMARY: ${sportsMode.summary || 'None'}
+STAT LINES:
+${sportsMode.statLines.map((item) => `- ${item.label}: ${item.value}`).join('\n') || '- None'}
+HIGHLIGHTS:
+${sportsMode.highlights.map((item) => `- ${item}`).join('\n') || '- None'}
+RAW SPORTS DETAILS: ${sportsMode.rawDetails}`
+    : 'No sports-mode details available.';
+
   const systemPrompt = `You are a wiki editor. Your task is to synthesize automatic photo analysis, file metadata, and contributor memories into a well-structured wiki entry.
 
 Evidence rules:
@@ -187,6 +224,7 @@ The wiki should include:
 - Timeline: When this happened or likely happened
 - Location: Where it took place or what the setting appears to be
 - Story: What was happening and the backstory
+- Sports Snapshot: If sports-mode details exist, include the sport, player/team, opponent, result, score, and key stats in a clear section
 - Scene Insights: Use the richer image-review notes when they add value, especially for demographics, environment, activity, technical composition, emotional tone, and likely story context
 - Photo Metadata: Relevant camera/date/location metadata if present
 - Significance: Why this memory matters, if contributor memories provide that
@@ -200,6 +238,9 @@ Image description: ${imageDescription || 'No description provided'}
 
 Automatic image analysis:
 ${analysisText}
+
+Sports mode:
+${sportsText}
 
 Contributor responses:
 ${responsesText || 'No contributor memories yet.'}

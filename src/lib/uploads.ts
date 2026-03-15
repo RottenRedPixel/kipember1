@@ -1,11 +1,60 @@
 import { join } from 'path';
 
+type MediaType = 'IMAGE' | 'VIDEO';
+
 export function getUploadsDir(): string {
   return process.env.UPLOADS_DIR || join(process.cwd(), 'public', 'uploads');
 }
 
 export function getUploadPath(filename: string): string {
   return join(getUploadsDir(), filename);
+}
+
+export function getUploadUrl(filename: string): string {
+  return `/api/uploads/${filename}`;
+}
+
+export function getPreviewUploadUrl({
+  mediaType,
+  filename,
+  posterFilename,
+}: {
+  mediaType: MediaType;
+  filename: string;
+  posterFilename?: string | null;
+}): string {
+  return getUploadUrl(mediaType === 'VIDEO' && posterFilename ? posterFilename : filename);
+}
+
+export function inferMediaType(filename: string, mimeType?: string | null): MediaType | null {
+  const normalizedMimeType = mimeType?.toLowerCase() || '';
+  if (normalizedMimeType.startsWith('image/')) {
+    return 'IMAGE';
+  }
+
+  if (normalizedMimeType.startsWith('video/')) {
+    return 'VIDEO';
+  }
+
+  const ext = filename.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+    case 'webp':
+    case 'heic':
+    case 'heif':
+    case 'avif':
+      return 'IMAGE';
+    case 'mp4':
+    case 'mov':
+    case 'webm':
+    case 'm4v':
+      return 'VIDEO';
+    default:
+      return null;
+  }
 }
 
 export function inferImageMimeType(filename: string): string | null {
@@ -27,6 +76,28 @@ export function inferImageMimeType(filename: string): string | null {
       return 'image/heif';
     case 'avif':
       return 'image/avif';
+    default:
+      return null;
+  }
+}
+
+export function inferUploadMimeType(filename: string): string | null {
+  const imageMimeType = inferImageMimeType(filename);
+  if (imageMimeType) {
+    return imageMimeType;
+  }
+
+  const ext = filename.split('.').pop()?.toLowerCase();
+
+  switch (ext) {
+    case 'mp4':
+      return 'video/mp4';
+    case 'mov':
+      return 'video/quicktime';
+    case 'webm':
+      return 'video/webm';
+    case 'm4v':
+      return 'video/x-m4v';
     default:
       return null;
   }

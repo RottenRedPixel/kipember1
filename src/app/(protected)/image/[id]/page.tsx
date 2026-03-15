@@ -10,6 +10,9 @@ import InteractiveImageTagger from '@/components/InteractiveImageTagger';
 interface ImageRecord {
   id: string;
   filename: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  posterFilename: string | null;
+  durationSeconds: number | null;
   originalName: string;
   description: string | null;
   createdAt: string;
@@ -82,6 +85,14 @@ interface ImageRecord {
   }[];
   wiki: {
     id: string;
+  } | null;
+  sportsMode: {
+    id: string;
+    sportType: string | null;
+    subjectName: string | null;
+    finalScore: string | null;
+    outcome: string | null;
+    updatedAt: string;
   } | null;
 }
 
@@ -189,7 +200,13 @@ export default function ImagePage() {
             href={`/image/${image.id}/chat`}
             className="rounded-full bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700"
           >
-            Ask About This Photo
+            {image.mediaType === 'VIDEO' ? 'Ask About This Video' : 'Ask About This Photo'}
+          </Link>
+          <Link
+            href={`/image/${image.id}/sports`}
+            className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
+          >
+            {image.sportsMode ? 'Update Sports Mode' : 'Sports Mode'}
           </Link>
         </div>
       </div>
@@ -200,7 +217,10 @@ export default function ImagePage() {
             <div className="p-6">
               <InteractiveImageTagger
                 imageId={image.id}
-                imageUrl={`/api/uploads/${image.filename}`}
+                mediaType={image.mediaType}
+                imageUrl={`/api/uploads/${image.mediaType === 'VIDEO' && image.posterFilename ? image.posterFilename : image.filename}`}
+                videoUrl={image.mediaType === 'VIDEO' ? `/api/uploads/${image.filename}` : null}
+                durationSeconds={image.durationSeconds}
                 imageName={image.originalName}
                 tags={image.tags}
                 contributors={image.contributors.map((contributor) => ({
@@ -240,9 +260,16 @@ export default function ImagePage() {
               </div>
 
               <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-500">
+                <span>{image.mediaType === 'VIDEO' ? 'Video Ember' : 'Photo Ember'}</span>
                 <span>{image.contributors.length} contributors</span>
                 <span>{completedCount} completed</span>
                 <span>{image.tags.length} tagged</span>
+                {image.sportsMode && (
+                  <span>
+                    Sports mode: {image.sportsMode.sportType || 'Game stats'}{' '}
+                    {image.sportsMode.finalScore ? `(${image.sportsMode.finalScore})` : ''}
+                  </span>
+                )}
                 {image.shareToNetwork && <span>Shared to network</span>}
               </div>
 

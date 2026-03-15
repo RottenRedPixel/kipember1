@@ -45,6 +45,8 @@ export async function GET(
       image: {
         id: image.id,
         filename: image.filename,
+        mediaType: image.mediaType,
+        posterFilename: image.posterFilename,
         originalName: image.originalName,
         description: image.description,
       },

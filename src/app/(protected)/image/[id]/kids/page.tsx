@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import KidsFlipbook from '@/components/KidsFlipbook';
+import { getPreviewMediaUrl } from '@/lib/media';
 
 type KidsStoryPanel = {
   id: string;
@@ -31,6 +32,8 @@ type KidsPageData = {
   image: {
     id: string;
     filename: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    posterFilename: string | null;
     originalName: string;
     description: string | null;
   };
@@ -180,7 +183,11 @@ export default function KidsModePage() {
           <div className="rounded-[2rem] border border-white/60 bg-white/70 p-4 shadow-[0_20px_60px_rgba(251,146,60,0.18)] backdrop-blur sm:p-5">
             <div className="flex items-center gap-4">
               <Image
-                src={`/api/uploads/${image.filename}`}
+                src={getPreviewMediaUrl({
+                  mediaType: image.mediaType,
+                  filename: image.filename,
+                  posterFilename: image.posterFilename,
+                })}
                 alt={image.originalName}
                 width={80}
                 height={80}

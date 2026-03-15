@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, unlink } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { requireApiUser } from '@/lib/auth-server';
 import { getAcceptedFriendIds } from '@/lib/ember-access';
 import { generateWikiForImage } from '@/lib/wiki-generator';
-import { getUploadPath, getUploadsDir } from '@/lib/uploads';
+import { getUploadPath, getUploadsDir, inferMediaType } from '@/lib/uploads';
+import { generatePosterFrame, probeVideo } from '@/lib/video-processing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,9 +24,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    const mediaType = inferMediaType(file.name, file.type);
+    if (!mediaType) {
+      return NextResponse.json(
+        { error: 'Only images and MP4, MOV, WEBM, or M4V videos are supported' },
+        { status: 400 }
+      );
+    }
+
     // Generate unique filename
-    const ext = file.name.split('.').pop();
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext) {
+      return NextResponse.json({ error: 'File extension is required' }, { status: 400 });
+    }
     const filename = `${randomUUID()}.${ext}`;
+    const filePath = getUploadPath(filename);
+    let posterFilename: string | null = null;
+    let durationSeconds: number | null = null;
 
     // Ensure uploads directory exists
     const uploadsDir = getUploadsDir();
@@ -34,13 +49,41 @@ export async function POST(request: NextRequest) {
     // Save file
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(getUploadPath(filename), buffer);
+    await writeFile(filePath, buffer);
+
+    try {
+      if (mediaType === 'VIDEO') {
+        const posterBase = `${randomUUID()}.jpg`;
+        const posterPath = getUploadPath(posterBase);
+        const videoMetadata = await probeVideo(filePath);
+        await generatePosterFrame({
+          inputPath: filePath,
+          outputPath: posterPath,
+          durationSeconds: videoMetadata.durationSeconds,
+        });
+        posterFilename = posterBase;
+        durationSeconds = videoMetadata.durationSeconds;
+      }
+    } catch (processingError) {
+      await unlink(filePath).catch(() => undefined);
+      if (posterFilename) {
+        await unlink(getUploadPath(posterFilename)).catch(() => undefined);
+      }
+      console.error('Video processing error:', processingError);
+      return NextResponse.json(
+        { error: 'Failed to process the uploaded video' },
+        { status: 500 }
+      );
+    }
 
     // Create database record
     const image = await prisma.image.create({
       data: {
         ownerId: auth.user.id,
         filename,
+        mediaType,
+        posterFilename,
+        durationSeconds,
         originalName: file.name,
         description: description || null,
         shareToNetwork,
@@ -58,14 +101,14 @@ export async function POST(request: NextRequest) {
       warning =
         error instanceof Error
           ? error.message
-          : 'Image uploaded, but the automatic wiki could not be generated';
+          : `${mediaType === 'VIDEO' ? 'Video' : 'Image'} uploaded, but the automatic wiki could not be generated`;
     }
 
-    return NextResponse.json({ id: image.id, wikiGenerated, warning });
+    return NextResponse.json({ id: image.id, mediaType, wikiGenerated, warning });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload image' },
+      { error: 'Failed to upload media' },
       { status: 500 }
     );
   }
@@ -117,6 +160,9 @@ export async function GET() {
       images.map((image) => ({
         id: image.id,
         filename: image.filename,
+        mediaType: image.mediaType,
+        posterFilename: image.posterFilename,
+        durationSeconds: image.durationSeconds,
         originalName: image.originalName,
         description: image.description,
         createdAt: image.createdAt,

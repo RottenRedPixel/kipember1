@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import ChatInterface from '@/components/ChatInterface';
+import MediaPreview from '@/components/MediaPreview';
 
 interface Image {
   id: string;
   filename: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  posterFilename: string | null;
   originalName: string;
   description: string | null;
 }
@@ -84,9 +87,12 @@ export default function ChatPage() {
           {/* Image Section */}
           <div className="space-y-4">
             <div className="bg-white dark:bg-gray-900 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800">
-              <img
-                src={`/api/uploads/${image.filename}`}
-                alt={image.originalName}
+              <MediaPreview
+                mediaType={image.mediaType}
+                filename={image.filename}
+                posterFilename={image.posterFilename}
+                originalName={image.originalName}
+                controls={image.mediaType === 'VIDEO'}
                 className="w-full h-80 object-contain bg-gray-100 dark:bg-gray-800"
               />
               <div className="p-4">
@@ -105,13 +111,16 @@ export default function ChatPage() {
           {/* Chat Section */}
           <div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Photo Q&amp;A
+              {image.mediaType === 'VIDEO' ? 'Video Q&amp;A' : 'Photo Q&amp;A'}
             </h2>
             <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-              Ask about what is visible here, what contributors shared, and what the
-              current wiki says. If something is not known yet, the chat should say so.
+              Ask about what is visible here, what contributors shared, and what the current
+              wiki says. If something is not known yet, the chat should say so.
             </p>
-            <ChatInterface imageId={image.id} />
+            <ChatInterface
+              imageId={image.id}
+              subjectNoun={image.mediaType === 'VIDEO' ? 'video' : 'photo'}
+            />
           </div>
         </div>
       </div>

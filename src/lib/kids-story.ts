@@ -211,6 +211,8 @@ export async function getKidsStory(imageId: string) {
         select: {
           id: true,
           filename: true,
+          mediaType: true,
+          posterFilename: true,
           originalName: true,
           description: true,
         },
