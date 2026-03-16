@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import EmberBrand from '@/components/EmberBrand';
 
 type AuthMode = 'login' | 'signup';
 
@@ -50,15 +51,13 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
   const isSignup = mode === 'signup';
 
   return (
-    <div className="w-full max-w-md rounded-[2rem] border border-white/80 bg-white/92 p-8 shadow-[0_30px_80px_rgba(15,23,42,0.12)] backdrop-blur">
+    <div className="ember-panel-strong w-full max-w-md rounded-[2rem] p-8">
       <div className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
-          Ember Archive
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-950">
+        <EmberBrand subtitle={isSignup ? 'new account' : 'welcome back'} compact />
+        <h1 className="ember-heading mt-6 text-4xl text-[var(--ember-text)]">
           {isSignup ? 'Create your account' : 'Log in to your archive'}
         </h1>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
+        <p className="ember-copy mt-3 text-sm">
           {isSignup
             ? 'Start your Ember network, upload photos, and invite the people who help tell the story.'
             : 'Return to your Embers, your network, and the stories already building around them.'}
@@ -68,7 +67,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
       <form onSubmit={handleSubmit} className="space-y-4">
         {isSignup && (
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
               Name
             </label>
             <input
@@ -76,13 +75,13 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="How should Ember know you?"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+              className="ember-input"
             />
           </div>
         )}
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
             Email
           </label>
           <input
@@ -91,13 +90,13 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
             required
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+            className="ember-input"
           />
         </div>
 
         {isSignup && (
           <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
+            <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
               Phone
             </label>
             <input
@@ -105,13 +104,13 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
               value={phoneNumber}
               onChange={(event) => setPhoneNumber(event.target.value)}
               placeholder="Optional, but useful for contributor invites"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+              className="ember-input"
             />
           </div>
         )}
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">
+          <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
             Password
           </label>
           <input
@@ -121,12 +120,12 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
             placeholder="At least 8 characters"
             required
             minLength={8}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+            className="ember-input"
           />
         </div>
 
         {error && (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          <div className="ember-status ember-status-error">
             {error}
           </div>
         )}
@@ -134,7 +133,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSubmitting
             ? isSignup
@@ -146,11 +145,11 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
         </button>
       </form>
 
-      <p className="mt-6 text-sm text-slate-600">
+      <p className="mt-6 text-sm text-[var(--ember-muted)]">
         {isSignup ? 'Already have an account?' : 'Need an account?'}{' '}
         <Link
           href={isSignup ? '/login' : '/signup'}
-          className="font-semibold text-amber-700 transition-colors hover:text-amber-800"
+          className="font-semibold text-[var(--ember-orange-deep)] transition-colors hover:text-[var(--ember-orange)]"
         >
           {isSignup ? 'Log in' : 'Create one'}
         </Link>

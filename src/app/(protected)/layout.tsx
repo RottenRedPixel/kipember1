@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import EmberBrand from '@/components/EmberBrand';
 import LogoutButton from '@/components/LogoutButton';
 import { requirePageUser } from '@/lib/auth-server';
 
@@ -10,36 +11,34 @@ export default async function ProtectedLayout({
   const user = await requirePageUser();
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f7f9fc_0%,#eef4ff_42%,#fff8ee_100%)] text-slate-950">
-      <header className="border-b border-white/80 bg-white/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+    <div className="ember-page">
+      <header className="relative z-10 px-4 pt-4 sm:px-6">
+        <div className="ember-panel mx-auto flex max-w-6xl items-center justify-between rounded-full px-4 py-3">
           <div className="flex items-center gap-4">
-            <Link href="/feed" className="text-lg font-semibold tracking-tight text-slate-950">
-              Ember Archive
-            </Link>
-            <nav className="hidden items-center gap-3 text-sm text-slate-600 sm:flex">
-              <Link href="/feed" className="transition-colors hover:text-slate-950">
+            <EmberBrand href="/feed" subtitle="owner and contributor workspace" compact />
+            <nav className="hidden items-center gap-2 rounded-full bg-[rgba(247,247,247,0.9)] p-1 text-sm text-[var(--ember-muted)] sm:flex">
+              <Link href="/feed" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-[var(--ember-text)]">
                 Feed
               </Link>
-              <Link href="/profile" className="transition-colors hover:text-slate-950">
+              <Link href="/profile" className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-[var(--ember-text)]">
                 Profile
               </Link>
             </nav>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <div className="text-sm font-medium text-slate-900">
+            <div className="hidden rounded-full bg-white/80 px-4 py-2 text-right sm:block">
+              <div className="text-sm font-medium text-[var(--ember-text)]">
                 {user.name || user.email}
               </div>
-              <div className="text-xs text-slate-500">{user.email}</div>
+              <div className="text-xs text-[var(--ember-muted)]">{user.email}</div>
             </div>
             <LogoutButton />
           </div>
         </div>
       </header>
 
-      <main>{children}</main>
+      <main className="relative z-10">{children}</main>
     </div>
   );
 }

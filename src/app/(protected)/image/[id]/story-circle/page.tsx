@@ -4,8 +4,8 @@ import { notFound } from 'next/navigation';
 import StoryCircleThread from '@/components/StoryCircleThread';
 import { requirePageUser } from '@/lib/auth-server';
 import { getImageAccessType } from '@/lib/ember-access';
-import { getStoryCircleForImage } from '@/lib/story-circle';
 import { getPreviewMediaUrl } from '@/lib/media';
+import { getStoryCircleForImage } from '@/lib/story-circle';
 
 export default async function StoryCirclePage({
   params,
@@ -27,37 +27,18 @@ export default async function StoryCirclePage({
   }
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_45%,#fff7ed_100%)]">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-2">
-            <Link
-              href={`/image/${id}/wiki`}
-              className="inline-flex items-center text-sm font-medium text-slate-600 transition-colors hover:text-slate-900"
-            >
-              &larr; Back to Wiki
-            </Link>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-                Story Circle
-              </p>
-              <h1 className="text-3xl font-semibold text-slate-950">
-                Running memory thread
-              </h1>
-            </div>
-          </div>
-
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <section className="mb-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="ember-panel-strong rounded-[2.5rem] p-6 sm:p-8">
           <Link
-            href={`/image/${id}`}
-            className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:text-slate-950"
+            href={`/image/${id}/wiki`}
+            className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
           >
-            Open Image
+            {'<- Back to wiki'}
           </Link>
-        </div>
 
-        <div className="mb-8 rounded-[2rem] border border-white/70 bg-white/75 p-5 shadow-sm backdrop-blur sm:p-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-100">
+          <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+            <div className="relative h-44 w-full overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white lg:h-48 lg:w-48">
               <Image
                 src={getPreviewMediaUrl({
                   mediaType: storyCircle.image.mediaType,
@@ -72,34 +53,51 @@ export default async function StoryCirclePage({
             </div>
 
             <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-semibold text-slate-950">
-                {storyCircle.image.originalName}
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              <p className="ember-eyebrow">Story circle</p>
+              <h1 className="ember-heading mt-4 text-4xl text-[var(--ember-text)]">
+                Running memory thread
+              </h1>
+              <p className="ember-copy mt-4 max-w-3xl text-sm">
                 {storyCircle.image.description ||
-                  'A full running feed of how contributors interacted with this photo across web, text, and voice.'}
+                  'A full timeline of how contributors interacted with this Ember across web, SMS, and voice.'}
               </p>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:min-w-[220px]">
-              <div className="rounded-2xl bg-slate-950 px-4 py-3 text-white">
-                <div className="text-2xl font-semibold">{storyCircle.entryCount}</div>
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-300">
-                  Thread Entries
-                </div>
-              </div>
-              <div className="rounded-2xl bg-emerald-500 px-4 py-3 text-white">
-                <div className="text-2xl font-semibold">{storyCircle.contributorCount}</div>
-                <div className="text-xs uppercase tracking-[0.18em] text-emerald-100">
-                  Contributors
-                </div>
+              <div className="mt-6 flex flex-wrap gap-2">
+                <span className="ember-chip">{storyCircle.entryCount} thread entries</span>
+                <span className="ember-chip">{storyCircle.contributorCount} contributors</span>
+                <span className="ember-chip">
+                  {storyCircle.image.mediaType === 'VIDEO' ? 'Video Ember' : 'Photo Ember'}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        <StoryCircleThread entries={storyCircle.entries} />
-      </div>
+        <div className="ember-panel rounded-[2.25rem] p-6">
+          <p className="ember-eyebrow">Use this view</p>
+          <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">
+            See how the record evolved
+          </h2>
+          <p className="ember-copy mt-3 text-sm">
+            Story Circle shows the raw conversational trail behind the wiki, including
+            what Ember asked, how people answered, and where voice or text was used.
+          </p>
+
+          <div className="mt-6 grid gap-3">
+            <Link href={`/image/${id}`} className="ember-button-secondary">
+              Open Ember workspace
+            </Link>
+            <Link href={`/image/${id}/chat`} className="ember-button-secondary">
+              Ask Ember
+            </Link>
+            <Link href={`/image/${id}/wiki`} className="ember-button-secondary">
+              Back to wiki
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <StoryCircleThread entries={storyCircle.entries} />
     </div>
   );
 }

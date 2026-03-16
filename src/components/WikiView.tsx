@@ -8,51 +8,66 @@ interface WikiViewProps {
 
 export default function WikiView({ content }: WikiViewProps) {
   return (
-    <div className="prose prose-gray dark:prose-invert max-w-none">
+    <div className="max-w-none">
       <ReactMarkdown
         components={{
           h1: ({ children }) => (
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+            <h1 className="ember-heading mb-6 text-4xl text-[var(--ember-text)]">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mt-8 mb-4">
+            <h2 className="ember-heading mt-12 border-t ember-divider pt-8 text-3xl text-[var(--ember-text)]">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mt-6 mb-3">
+            <h3 className="ember-heading mt-8 text-2xl text-[var(--ember-text)]">
               {children}
             </h3>
           ),
           p: ({ children }) => (
-            <p className="text-gray-700 dark:text-gray-300 mb-4 leading-relaxed">
+            <p className="mb-5 text-base leading-8 text-[var(--ember-muted)]">
               {children}
             </p>
           ),
           ul: ({ children }) => (
-            <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 mb-4 space-y-2">
+            <ul className="mb-6 ml-5 list-disc space-y-3 text-base leading-8 text-[var(--ember-muted)] marker:text-[var(--ember-orange)]">
               {children}
             </ul>
           ),
           ol: ({ children }) => (
-            <ol className="list-decimal list-inside text-gray-700 dark:text-gray-300 mb-4 space-y-2">
+            <ol className="mb-6 ml-5 list-decimal space-y-3 text-base leading-8 text-[var(--ember-muted)] marker:font-semibold marker:text-[var(--ember-orange-deep)]">
               {children}
             </ol>
           ),
+          li: ({ children }) => <li className="pl-2">{children}</li>,
           blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-400 my-4">
+            <blockquote className="my-8 rounded-[1.5rem] border-l-4 border-[var(--ember-orange)] bg-[rgba(255,102,33,0.06)] px-5 py-4 text-base italic leading-8 text-[var(--ember-text)]">
               {children}
             </blockquote>
           ),
           strong: ({ children }) => (
-            <strong className="font-semibold text-gray-900 dark:text-white">
+            <strong className="font-semibold text-[var(--ember-text)]">
               {children}
             </strong>
           ),
           em: ({ children }) => (
-            <em className="italic text-gray-700 dark:text-gray-300">{children}</em>
+            <em className="italic text-[var(--ember-text)]">{children}</em>
+          ),
+          a: ({ children, href }) => (
+            <a
+              href={href}
+              className="font-semibold text-[var(--ember-orange-deep)] underline decoration-[rgba(255,102,33,0.35)] underline-offset-4"
+            >
+              {children}
+            </a>
+          ),
+          hr: () => <hr className="my-10 border-0 border-t ember-divider" />,
+          code: ({ children }) => (
+            <code className="rounded-md bg-[rgba(20,20,20,0.05)] px-1.5 py-1 text-[0.92em] text-[var(--ember-text)]">
+              {children}
+            </code>
           ),
         }}
       >

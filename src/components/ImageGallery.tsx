@@ -44,8 +44,8 @@ function Section({
   return (
     <section className="mt-10">
       <div className="mb-5">
-        <h2 className="text-2xl font-semibold text-slate-950">{title}</h2>
-        <p className="mt-2 text-sm text-slate-600">{description}</p>
+        <h2 className="ember-heading text-3xl text-[var(--ember-text)]">{title}</h2>
+        <p className="ember-copy mt-2 text-sm">{description}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -53,7 +53,7 @@ function Section({
           <Link
             key={image.id}
             href={`/image/${image.id}`}
-            className="overflow-hidden rounded-[2rem] border border-white/90 bg-white/92 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="ember-panel overflow-hidden rounded-[2rem] transition hover:-translate-y-0.5 hover:shadow-[0_22px_46px_rgba(17,17,17,0.08)]"
           >
             <div className="relative">
               <MediaPreview
@@ -62,43 +62,46 @@ function Section({
                 posterFilename={image.posterFilename}
                 originalName={image.originalName}
                 usePosterForVideo
-                className="h-48 w-full object-cover"
+                className="h-56 w-full object-cover"
               />
-              {image.mediaType === 'VIDEO' && (
-                <div className="absolute inset-x-0 top-3 flex items-center justify-between px-3">
-                  <span className="rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
-                    Video
-                  </span>
-                  {formatDuration(image.durationSeconds) && (
-                    <span className="rounded-full bg-black/65 px-3 py-1 text-[11px] font-semibold text-white">
-                      {formatDuration(image.durationSeconds)}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="p-5">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="truncate text-lg font-semibold text-slate-950">
-                  {image.originalName}
-                </h3>
-                {image.wiki && (
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                    Wiki ready
+              <div className="absolute inset-x-0 top-3 flex items-center justify-between px-3">
+                <span className="ember-chip border-0 bg-black/60 text-white">
+                  {image.mediaType === 'VIDEO' ? 'Video' : 'Photo'}
+                </span>
+                {image.mediaType === 'VIDEO' && formatDuration(image.durationSeconds) && (
+                  <span className="ember-chip border-0 bg-black/60 text-white">
+                    {formatDuration(image.durationSeconds)}
                   </span>
                 )}
               </div>
-              {image.description && (
-                <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
-                  {image.description}
-                </p>
-              )}
-              <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                <span>{image._count.contributors} contributors</span>
-                <span>{image._count.tags} tags</span>
-                {image.shareToNetwork && <span>Network shared</span>}
+            </div>
+            <div className="p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="ember-eyebrow">
+                    {image.accessType === 'owner'
+                      ? 'Owner Ember'
+                      : image.accessType === 'contributor'
+                        ? 'Contributor Ember'
+                        : 'Network Ember'}
+                  </p>
+                  <h3 className="ember-heading mt-2 text-2xl text-[var(--ember-text)]">
+                    {image.originalName}
+                  </h3>
+                </div>
+                {image.wiki && (
+                  <span className="ember-chip text-[var(--ember-orange-deep)]">Wiki ready</span>
+                )}
               </div>
-              <p className="mt-4 text-sm text-slate-500">
+              {image.description && (
+                <p className="ember-copy mt-3 line-clamp-3 text-sm">{image.description}</p>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="ember-chip">{image._count.contributors} contributors</span>
+                <span className="ember-chip">{image._count.tags} tags</span>
+                {image.shareToNetwork && <span className="ember-chip">Shared</span>}
+              </div>
+              <p className="mt-4 text-sm text-[var(--ember-muted)]">
                 {image.accessType === 'owner'
                   ? 'Owned by you'
                   : image.accessType === 'contributor'
@@ -141,20 +144,16 @@ export default function ImageGallery() {
   );
 
   if (loading) {
-    return <div className="py-16 text-center text-slate-500">Loading your Ember feed...</div>;
+    return <div className="py-16 text-center text-[var(--ember-muted)]">Loading your Ember feed...</div>;
   }
 
   if (error) {
-    return (
-      <div className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-        {error}
-      </div>
-    );
+    return <div className="ember-status ember-status-error mt-8">{error}</div>;
   }
 
   if (images.length === 0) {
     return (
-      <div className="mt-12 rounded-[2rem] border border-dashed border-slate-300 bg-white/80 px-8 py-16 text-center text-slate-500">
+      <div className="ember-panel mt-12 rounded-[2rem] px-8 py-16 text-center text-[var(--ember-muted)]">
         Your feed is empty. Upload your first Ember above, then start inviting contributors and friends.
       </div>
     );
@@ -164,17 +163,17 @@ export default function ImageGallery() {
     <div className="pb-12">
       <Section
         title="Your Embers"
-        description="The photos you own and manage directly."
+        description="The memories you own and manage directly."
         images={grouped.owned}
       />
       <Section
         title="Embers you contribute to"
-        description="Photos where someone has named you as a contributor."
+        description="Photos and videos where someone invited you into the memory."
         images={grouped.contributing}
       />
       <Section
         title="From your network"
-        description="Friend-shared Embers that were posted to the network feed."
+        description="Shared Embers that were published into your trusted network."
         images={grouped.network}
       />
     </div>

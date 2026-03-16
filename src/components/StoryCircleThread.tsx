@@ -37,14 +37,14 @@ export default function StoryCircleThread({
 }) {
   if (entries.length === 0) {
     return (
-      <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white/85 px-8 py-16 text-center text-slate-500 shadow-sm">
+      <div className="ember-panel rounded-[2rem] border-dashed px-8 py-16 text-center text-[var(--ember-muted)]">
         No conversation history yet. Once people text or speak with Ember, their story thread will appear here.
       </div>
     );
   }
 
   return (
-    <div className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_50%,#f8fafc_100%)] p-4 shadow-sm sm:p-6">
+    <div className="ember-panel-strong rounded-[2.25rem] p-4 sm:p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {entries.map((entry, index) => {
           const previousEntry = index > 0 ? entries[index - 1] : null;
@@ -59,7 +59,7 @@ export default function StoryCircleThread({
             <div key={entry.id}>
               {showDateDivider && (
                 <div className="mb-4 mt-2 flex justify-center">
-                  <span className="rounded-full border border-slate-200 bg-white px-4 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 shadow-sm">
+                  <span className="ember-chip px-4 py-1 text-[11px] uppercase tracking-[0.18em] text-[var(--ember-muted)]">
                     {formatThreadDate(entry.timestamp)}
                   </span>
                 </div>
@@ -73,37 +73,53 @@ export default function StoryCircleThread({
                 <div
                   className={`max-w-[85%] ${
                     isSystem
-                      ? 'rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-amber-900'
+                      ? 'rounded-[1.7rem] border border-[rgba(255,102,33,0.14)] bg-[rgba(255,102,33,0.08)] px-4 py-3 text-center text-[var(--ember-text)]'
                       : isContributor
-                        ? 'rounded-[1.6rem] rounded-br-md bg-emerald-500 px-4 py-3 text-white shadow-sm'
-                        : 'rounded-[1.6rem] rounded-bl-md bg-white px-4 py-3 text-slate-900 shadow-sm ring-1 ring-slate-200'
+                        ? 'rounded-[1.7rem] rounded-br-md bg-[var(--ember-charcoal)] px-4 py-3 text-white shadow-[0_18px_34px_rgba(17,17,17,0.16)]'
+                        : 'rounded-[1.7rem] rounded-bl-md border border-[rgba(20,20,20,0.08)] bg-white px-4 py-3 text-[var(--ember-text)] shadow-[0_12px_28px_rgba(17,17,17,0.06)]'
                   }`}
                 >
                   <div
-                    className={`mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                      isSystem ? 'justify-center text-amber-700' : isContributor ? 'text-emerald-50' : 'text-slate-500'
+                    className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                      isSystem
+                        ? 'justify-center text-[var(--ember-orange-deep)]'
+                        : isContributor
+                          ? 'text-white/60'
+                          : 'text-[var(--ember-orange-deep)]'
                     }`}
                   >
                     <span>{entry.participantLabel}</span>
-                    <span className={isSystem ? 'text-amber-400' : isContributor ? 'text-emerald-200' : 'text-slate-300'}>
-                      •
+                    <span
+                      className={
+                        isSystem
+                          ? 'text-[var(--ember-orange)]'
+                          : isContributor
+                            ? 'text-white/40'
+                            : 'text-[rgba(255,102,33,0.5)]'
+                      }
+                    >
+                      /
                     </span>
                     <span>{sourceLabel(entry.source)}</span>
                     {entry.actor !== 'system' && entry.contributorName?.trim() && entry.actor === 'ember' && (
                       <>
-                        <span className="text-slate-300">•</span>
+                        <span className="text-[rgba(255,102,33,0.5)]">/</span>
                         <span>with {entry.contributorName.trim()}</span>
                       </>
                     )}
                   </div>
 
-                  <p className={`whitespace-pre-wrap text-sm leading-6 ${isSystem ? 'text-sm' : ''}`}>
+                  <p className="whitespace-pre-wrap text-sm leading-7">
                     {entry.content}
                   </p>
 
                   <div
                     className={`mt-2 text-[11px] ${
-                      isSystem ? 'text-amber-700/80' : isContributor ? 'text-emerald-50/85' : 'text-slate-400'
+                      isSystem
+                        ? 'text-[var(--ember-orange-deep)]/75'
+                        : isContributor
+                          ? 'text-white/65'
+                          : 'text-[var(--ember-muted)]'
                     }`}
                   >
                     {formatThreadTime(entry.timestamp)}

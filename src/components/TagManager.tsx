@@ -231,16 +231,17 @@ export default function TagManager({
   };
 
   return (
-    <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="ember-panel rounded-[2rem] p-6">
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-slate-950">Tagged people</h2>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="ember-eyebrow">Tag people</p>
+        <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">Tagged people</h2>
+        <p className="ember-copy mt-2 text-sm">
           Review tagged faces, add contact info, and turn tags into contributor invites.
         </p>
       </div>
 
       {tags.length === 0 ? (
-        <p className="text-sm text-slate-500">No one has been tagged yet.</p>
+        <p className="text-sm text-[var(--ember-muted)]">No one has been tagged yet.</p>
       ) : (
         <div className="grid gap-3">
           {tags.map((tag) => {
@@ -257,29 +258,29 @@ export default function TagManager({
             return (
               <div
                 key={tag.id}
-                className="rounded-[1.6rem] border border-slate-200 bg-slate-50 px-5 py-4"
+                className="ember-card rounded-[1.6rem] px-5 py-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-semibold text-slate-950">{tag.label}</h3>
+                      <h3 className="text-base font-semibold text-[var(--ember-text)]">{tag.label}</h3>
                       {tag.leftPct !== null && tag.topPct !== null && (
-                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                        <span className="ember-chip text-[var(--ember-orange-deep)]">
                           Pinned on photo
                         </span>
                       )}
                       {tag.userId && (
-                        <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
+                        <span className="ember-chip">
                           Linked account
                         </span>
                       )}
                       {tag.contributorId && (
-                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
+                        <span className="ember-chip text-emerald-700">
                           Contributor
                         </span>
                       )}
                     </div>
-                    <div className="mt-2 space-y-1 text-sm text-slate-600">
+                    <div className="mt-2 space-y-1 text-sm text-[var(--ember-muted)]">
                       {(tag.email || tag.user?.email) && <div>Email: {tag.email || tag.user?.email}</div>}
                       {(tag.phoneNumber || tag.user?.phoneNumber || tag.contributor?.phoneNumber) && (
                         <div>
@@ -300,7 +301,7 @@ export default function TagManager({
                           type="button"
                           disabled={busyTagId === tag.id}
                           onClick={() => void inviteTag(tag)}
-                          className="rounded-full bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
+                          className="ember-button-secondary min-h-0 px-4 py-2 text-[var(--ember-orange-deep)] disabled:opacity-60"
                         >
                           {busyTagId === tag.id ? 'Working...' : inviteLabel}
                         </button>
@@ -316,7 +317,7 @@ export default function TagManager({
                               tag.phoneNumber || tag.user?.phoneNumber || tag.contributor?.phoneNumber || '',
                           })
                         }
-                        className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+                        className="ember-button-secondary min-h-0 px-4 py-2"
                       >
                         Edit
                       </button>
@@ -324,7 +325,7 @@ export default function TagManager({
                         type="button"
                         disabled={busyTagId === tag.id}
                         onClick={() => void removeTag(tag.id)}
-                        className="rounded-full border border-rose-200 px-4 py-2 text-sm font-medium text-rose-700 transition hover:border-rose-300 hover:text-rose-800 disabled:opacity-60"
+                        className="ember-button-secondary min-h-0 px-4 py-2 text-rose-700 disabled:opacity-60"
                       >
                         Remove
                       </button>
@@ -333,8 +334,8 @@ export default function TagManager({
                 </div>
 
                 {editing && (
-                  <div className="mt-4 grid gap-3 rounded-[1.4rem] border border-slate-200 bg-white p-4 sm:grid-cols-3">
-                    <label className="text-sm text-slate-700">
+                  <div className="mt-4 grid gap-3 rounded-[1.4rem] border border-[var(--ember-line)] bg-white p-4 sm:grid-cols-3">
+                    <label className="text-sm text-[var(--ember-text)]">
                       <div className="mb-2 font-medium">Name</div>
                       <input
                         type="text"
@@ -344,10 +345,10 @@ export default function TagManager({
                             current ? { ...current, label: event.target.value } : current
                           )
                         }
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+                        className="ember-input"
                       />
                     </label>
-                    <label className="text-sm text-slate-700">
+                    <label className="text-sm text-[var(--ember-text)]">
                       <div className="mb-2 font-medium">Email</div>
                       <input
                         type="email"
@@ -357,10 +358,10 @@ export default function TagManager({
                             current ? { ...current, email: event.target.value } : current
                           )
                         }
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+                        className="ember-input"
                       />
                     </label>
-                    <label className="text-sm text-slate-700">
+                    <label className="text-sm text-[var(--ember-text)]">
                       <div className="mb-2 font-medium">Phone</div>
                       <input
                         type="tel"
@@ -370,7 +371,7 @@ export default function TagManager({
                             current ? { ...current, phoneNumber: event.target.value } : current
                           )
                         }
-                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+                        className="ember-input"
                       />
                     </label>
                     <div className="sm:col-span-3 flex flex-wrap gap-2">
@@ -378,14 +379,14 @@ export default function TagManager({
                         type="button"
                         disabled={busyTagId === tag.id || !editor.label.trim()}
                         onClick={() => void saveTag()}
-                        className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+                        className="ember-button-primary min-h-0 px-4 py-2 disabled:opacity-60"
                       >
                         {busyTagId === tag.id ? 'Saving...' : 'Save changes'}
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditor(null)}
-                        className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-950"
+                        className="ember-button-secondary min-h-0 px-4 py-2"
                       >
                         Cancel
                       </button>
@@ -401,12 +402,12 @@ export default function TagManager({
       {canManage && (
         <>
           <div className="mt-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <p className="ember-eyebrow">
               Quick tag without pinning
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {quickOptions.length === 0 ? (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-[var(--ember-muted)]">
                   Add contributors or friends to unlock quick-tag suggestions.
                 </p>
               ) : (
@@ -432,7 +433,7 @@ export default function TagManager({
                             }
                       )
                     }
-                    className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:text-slate-950 disabled:opacity-60"
+                    className="ember-button-secondary min-h-0 px-4 py-2 disabled:opacity-60"
                   >
                     {option.label}
                   </button>
@@ -461,26 +462,26 @@ export default function TagManager({
               value={manualLabel}
               onChange={(event) => setManualLabel(event.target.value)}
               placeholder="Add a name"
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+              className="ember-input"
             />
             <input
               type="email"
               value={manualEmail}
               onChange={(event) => setManualEmail(event.target.value)}
               placeholder="Email (optional)"
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+              className="ember-input"
             />
             <input
               type="tel"
               value={manualPhoneNumber}
               onChange={(event) => setManualPhoneNumber(event.target.value)}
               placeholder="Phone (optional)"
-              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+              className="ember-input"
             />
             <button
               type="submit"
               disabled={submitting || !manualLabel.trim()}
-              className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
+              className="ember-button-primary disabled:opacity-60"
             >
               {submitting ? 'Adding...' : 'Add tag'}
             </button>
@@ -490,11 +491,7 @@ export default function TagManager({
 
       {(error || notice) && (
         <div
-          className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
-            error
-              ? 'border border-rose-200 bg-rose-50 text-rose-700'
-              : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-          }`}
+          className={`mt-4 ember-status ${error ? 'ember-status-error' : 'ember-status-success'}`}
         >
           {error || notice}
         </div>

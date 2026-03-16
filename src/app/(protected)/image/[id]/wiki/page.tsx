@@ -1,12 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import WikiView from '@/components/WikiView';
+import { useParams } from 'next/navigation';
 import MediaPreview from '@/components/MediaPreview';
+import WikiView from '@/components/WikiView';
 
-interface Wiki {
+interface WikiRecord {
   id: string;
   content: string;
   version: number;
@@ -24,7 +24,7 @@ interface Wiki {
 
 export default function WikiPage() {
   const params = useParams();
-  const [wiki, setWiki] = useState<Wiki | null>(null);
+  const [wiki, setWiki] = useState<WikiRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -48,7 +48,7 @@ export default function WikiPage() {
   }, [params.id]);
 
   useEffect(() => {
-    fetchWiki();
+    void fetchWiki();
   }, [fetchWiki]);
 
   const handleGenerate = async () => {
@@ -75,120 +75,135 @@ export default function WikiPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="text-gray-500">Loading...</div>
+      <div className="mx-auto flex min-h-[70vh] max-w-6xl items-center justify-center px-4 py-8 sm:px-6">
+        <div className="ember-panel rounded-full px-6 py-3 text-sm text-[var(--ember-muted)]">
+          Loading wiki...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="ember-panel-strong rounded-[2.5rem] p-6 sm:p-8">
           <Link
             href={`/image/${params.id}`}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
           >
-            &larr; Back to Image
+            {'<- Back to Ember'}
           </Link>
-          <div className="flex gap-3">
-            <button
-              onClick={handleGenerate}
-              disabled={generating || (wiki ? !wiki.canManage : false)}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg font-medium transition-colors"
-            >
-              {generating
-                ? 'Generating...'
-                : wiki
-                  ? wiki.canManage
-                    ? 'Regenerate Wiki'
-                    : 'Wiki Locked'
-                  : 'Generate Wiki'}
-            </button>
-            <Link
-              href={`/image/${params.id}/kids`}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
-            >
-              Kids Mode
-            </Link>
-            <Link
-              href={`/image/${params.id}/story-circle`}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Story Circle
-            </Link>
-            <Link
-              href={`/image/${params.id}/sports`}
-              className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Sports Mode
-            </Link>
-            <Link
-              href={`/image/${params.id}/chat`}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Ask About This Ember
-            </Link>
-          </div>
-        </div>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="mt-6 ember-status ember-status-error">
+              {error}
+            </div>
+          )}
 
-        {wiki ? (
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-8 shadow-sm border border-gray-200 dark:border-gray-800">
-            {wiki.image && (
-              <div className="mb-8 flex items-center gap-4">
-                <div className="h-24 w-24 overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+          {wiki ? (
+            <>
+              <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+                <div className="overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white lg:w-56">
                   <MediaPreview
                     mediaType={wiki.image.mediaType}
                     filename={wiki.image.filename}
                     posterFilename={wiki.image.posterFilename}
                     originalName={wiki.image.originalName}
                     usePosterForVideo
-                    className="h-24 w-24 object-cover"
+                    className="h-56 w-full object-cover"
                   />
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+
+                <div className="min-w-0 flex-1">
+                  <p className="ember-eyebrow">Wiki</p>
+                  <h1 className="ember-heading mt-4 text-4xl text-[var(--ember-text)]">
                     {wiki.image.originalName}
                   </h1>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Version {wiki.version} &bull; Updated{' '}
-                    {new Date(wiki.updatedAt).toLocaleDateString()}
+                  <p className="ember-copy mt-4 max-w-3xl text-sm">
+                    {wiki.image.description ||
+                      'This synthesized memory view combines contributor responses, tags, and extracted context into a single narrative record.'}
                   </p>
+
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    <span className="ember-chip">Version {wiki.version}</span>
+                    <span className="ember-chip">
+                      Updated {new Date(wiki.updatedAt).toLocaleDateString()}
+                    </span>
+                    <span className="ember-chip">
+                      {wiki.canManage ? 'Owner controls enabled' : 'Read only'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            )}
-            <WikiView content={wiki.content} />
-          </div>
-        ) : (
-          <div className="bg-white dark:bg-gray-900 rounded-xl p-12 shadow-sm border border-gray-200 dark:border-gray-800 text-center">
-            <div className="text-6xl mb-4">📚</div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              No Wiki Yet
+
+              <div className="mt-8 border-t ember-divider pt-8">
+                <WikiView content={wiki.content} />
+              </div>
+            </>
+          ) : (
+            <div className="mt-6 rounded-[2rem] border border-dashed border-[rgba(20,20,20,0.12)] bg-white/70 px-6 py-12 text-center">
+              <div className="ember-card mx-auto inline-flex rounded-full px-4 py-2 text-sm font-semibold text-[var(--ember-orange-deep)]">
+                Memory synthesis
+              </div>
+              <h1 className="ember-heading mt-5 text-4xl text-[var(--ember-text)]">
+                No wiki yet
+              </h1>
+              <p className="ember-copy mx-auto mt-4 max-w-2xl text-sm">
+                Once contributors complete enough of the memory interview, Ember can
+                synthesize the current record into a clean wiki. Kids Mode builds from
+                that wiki, so this is the main unlock step.
+              </p>
+            </div>
+          )}
+        </section>
+
+        <aside className="space-y-6">
+          <section className="ember-panel rounded-[2.25rem] p-6">
+            <p className="ember-eyebrow">Actions</p>
+            <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">
+              Keep the memory current
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Once contributors complete their interviews, you can generate a wiki
-              that synthesizes all their memories.
+            <p className="ember-copy mt-3 text-sm">
+              Regenerate after new contributors, new tags, or sports details have been added.
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
-              Kids Mode unlocks after the wiki exists, because it turns the wiki
-              storyline into an illustrated flipbook.
-            </p>
+
             <button
               onClick={handleGenerate}
-              disabled={generating}
-              className="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white rounded-lg font-medium transition-colors"
+              disabled={generating || (wiki ? !wiki.canManage : false)}
+              className="ember-button-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {generating ? 'Generating...' : 'Generate Wiki'}
+              {generating
+                ? 'Generating...'
+                : wiki
+                  ? wiki.canManage
+                    ? 'Regenerate wiki'
+                    : 'Wiki locked'
+                  : 'Generate wiki'}
             </button>
-          </div>
-        )}
+          </section>
+
+          <section className="ember-panel rounded-[2.25rem] p-6">
+            <p className="ember-eyebrow">Modes</p>
+            <div className="mt-4 grid gap-3">
+              <Link href={`/image/${params.id}/kids`} className="ember-button-secondary w-full justify-between">
+                <span>Kids mode</span>
+                <span>Storybook</span>
+              </Link>
+              <Link href={`/image/${params.id}/story-circle`} className="ember-button-secondary w-full justify-between">
+                <span>Story circle</span>
+                <span>Thread</span>
+              </Link>
+              <Link href={`/image/${params.id}/sports`} className="ember-button-secondary w-full justify-between">
+                <span>Sports mode</span>
+                <span>Stats</span>
+              </Link>
+              <Link href={`/image/${params.id}/chat`} className="ember-button-secondary w-full justify-between">
+                <span>Ask Ember</span>
+                <span>Q&amp;A</span>
+              </Link>
+            </div>
+          </section>
+        </aside>
       </div>
     </div>
   );

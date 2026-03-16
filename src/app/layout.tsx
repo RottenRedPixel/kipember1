@@ -1,20 +1,29 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { Bricolage_Grotesque, Geist_Mono, Manrope } from 'next/font/google';
+import './globals.css';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+const emberSans = Manrope({
+  variable: '--font-ember-sans',
+  subsets: ['latin'],
+});
+
+const emberDisplay = Bricolage_Grotesque({
+  variable: '--font-ember-display',
+  subsets: ['latin'],
 });
 
 const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  title: "Memory Wiki - Interactive Image Memories",
-  description: "Transform your photos into living memories. Upload an image, invite contributors to share their stories via SMS, and create an interactive wiki you can talk to.",
+  title: 'Ember',
+  description:
+    'Transform photos into living memory spaces. Upload an Ember, invite contributors, and build a shared archive that grows through conversation.',
+  icons: {
+    icon: '/emberfav.svg',
+  },
 };
 
 export default function RootLayout({
@@ -24,9 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${emberSans.variable} ${emberDisplay.variable} ${geistMono.variable} antialiased`}>
         {children}
       </body>
     </html>

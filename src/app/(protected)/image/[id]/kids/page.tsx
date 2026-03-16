@@ -90,7 +90,7 @@ export default function KidsModePage() {
   );
 
   useEffect(() => {
-    fetchKidsStory(true);
+    void fetchKidsStory(true);
   }, [fetchKidsStory]);
 
   useEffect(() => {
@@ -99,7 +99,7 @@ export default function KidsModePage() {
     }
 
     const timer = window.setInterval(() => {
-      fetchKidsStory(false);
+      void fetchKidsStory(false);
     }, 5000);
 
     return () => window.clearInterval(timer);
@@ -143,11 +143,9 @@ export default function KidsModePage() {
 
   if (loading || !data) {
     return (
-      <div className="min-h-screen bg-[linear-gradient(180deg,_#fef3c7_0%,_#fff7ed_45%,_#eff6ff_100%)]">
-        <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4">
-          <div className="rounded-full bg-white/80 px-6 py-3 text-sm font-semibold tracking-[0.18em] text-slate-500 shadow-sm backdrop-blur">
-            Loading Kids Mode...
-          </div>
+      <div className="mx-auto flex min-h-[70vh] max-w-6xl items-center justify-center px-4 py-8 sm:px-6">
+        <div className="ember-panel rounded-full px-6 py-3 text-sm text-[var(--ember-muted)]">
+          Loading Kids Mode...
         </div>
       </div>
     );
@@ -158,30 +156,18 @@ export default function KidsModePage() {
   const storyHasError = story?.status === 'error';
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,_#fef3c7_0%,_#fff7ed_32%,_#eff6ff_100%)] text-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <Link
-              href={`/image/${imageId}/wiki`}
-              className="inline-flex items-center text-sm font-medium text-slate-600 transition hover:text-slate-900"
-            >
-              &larr; Back to Wiki
-            </Link>
-            <div className="mt-4 inline-flex items-center rounded-full bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-rose-600 shadow-sm backdrop-blur">
-              Kids Mode
-            </div>
-            <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">
-              Flip this memory into a storybook adventure
-            </h1>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
-              Turn the wiki into five illustrated story pages with a playful 3D
-              animated look, then flip through the memory like a picture book.
-            </p>
-          </div>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <section className="mb-6 grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
+        <div className="ember-panel-strong rounded-[2.5rem] p-6 sm:p-8">
+          <Link
+            href={`/image/${imageId}/wiki`}
+            className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
+          >
+            {'<- Back to wiki'}
+          </Link>
 
-          <div className="rounded-[2rem] border border-white/60 bg-white/70 p-4 shadow-[0_20px_60px_rgba(251,146,60,0.18)] backdrop-blur sm:p-5">
-            <div className="flex items-center gap-4">
+          <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+            <div className="overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white lg:w-56">
               <Image
                 src={getPreviewMediaUrl({
                   mediaType: image.mediaType,
@@ -189,150 +175,157 @@ export default function KidsModePage() {
                   posterFilename: image.posterFilename,
                 })}
                 alt={image.originalName}
-                width={80}
-                height={80}
+                width={320}
+                height={320}
                 unoptimized
-                className="h-20 w-20 rounded-2xl object-cover shadow-sm"
+                className="h-56 w-full object-cover"
               />
-              <div>
-                <div className="text-sm font-semibold text-slate-900">
-                  {image.originalName}
-                </div>
-                <div className="mt-1 text-xs uppercase tracking-[0.22em] text-slate-400">
-                  Wiki v{wiki?.version ?? '0'}
-                  {story ? `  •  Story v${story.version}` : ''}
-                </div>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="ember-eyebrow">Kids mode</p>
+              <h1 className="ember-heading mt-4 text-4xl text-[var(--ember-text)]">
+                Turn this memory into a storybook
+              </h1>
+              <p className="ember-copy mt-4 max-w-3xl text-sm">
+                Create a five-scene illustrated retelling based on the wiki so younger
+                viewers can experience the same memory in a more guided and visual way.
+              </p>
+
+              <div className="mt-6 flex flex-wrap gap-2">
+                <span className="ember-chip">Wiki v{wiki?.version ?? '0'}</span>
+                {story && <span className="ember-chip">Story v{story.version}</span>}
+                <span className="ember-chip">
+                  {story?.status === 'ready' ? 'Ready to read' : 'Awaiting story'}
+                </span>
               </div>
             </div>
-            <button
-              onClick={handleGenerate}
-              disabled={!wiki || !data.canManage || generating || storyIsGenerating}
-              className="mt-4 w-full rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {!data.canManage
-                ? 'Owner Only'
-                : story
-                ? storyIsGenerating || generating
-                  ? 'Generating Storybook...'
-                  : 'Regenerate Kids Story'
-                : generating
-                  ? 'Generating Storybook...'
-                  : 'Create Kids Story'}
-            </button>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700 shadow-sm">
-            {error}
-          </div>
-        )}
+        <div className="ember-panel rounded-[2.25rem] p-6">
+          <p className="ember-eyebrow">Generate</p>
+          <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">
+            Build the illustrated version
+          </h2>
+          <p className="ember-copy mt-3 text-sm">
+            Kids Mode depends on the wiki first, then renders a lightweight story arc
+            with scene imagery and simplified narration.
+          </p>
 
-        {!wiki && (
-          <div className="rounded-[2rem] border border-amber-200/80 bg-white/85 p-8 shadow-[0_20px_60px_rgba(251,191,36,0.14)] backdrop-blur">
-            <h2 className="text-2xl font-black tracking-tight text-slate-900">
-              Generate the wiki first
-            </h2>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-              Kids Mode builds a story arc from the wiki, so it needs the memory
-              synthesis step first.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href={`/image/${imageId}/wiki`}
-                className="rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700"
-              >
-                Go Generate Wiki
-              </Link>
-              <Link
-                href={`/image/${imageId}`}
-                className="rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
-              >
-                Back to Image
-              </Link>
+          <button
+            onClick={handleGenerate}
+            disabled={!wiki || !data.canManage || generating || storyIsGenerating}
+            className="ember-button-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {!data.canManage
+              ? 'Owner only'
+              : story
+                ? storyIsGenerating || generating
+                  ? 'Generating storybook...'
+                  : 'Regenerate kids story'
+                : generating
+                  ? 'Generating storybook...'
+                  : 'Create kids story'}
+          </button>
+
+          <div className="mt-6 grid gap-3">
+            <Link href={`/image/${imageId}/wiki`} className="ember-button-secondary">
+              Open wiki
+            </Link>
+            <Link href={`/image/${imageId}`} className="ember-button-secondary">
+              Back to workspace
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {error && (
+        <div className="mb-6 ember-status ember-status-error">
+          {error}
+        </div>
+      )}
+
+      {!wiki && (
+        <div className="ember-panel rounded-[2.25rem] p-8">
+          <h2 className="ember-heading text-3xl text-[var(--ember-text)]">
+            Generate the wiki first
+          </h2>
+          <p className="ember-copy mt-3 max-w-2xl text-sm">
+            Kids Mode builds its story arc from the synthesized wiki, so the memory
+            needs that base layer before a storybook can be rendered.
+          </p>
+        </div>
+      )}
+
+      {wiki && storyIsGenerating && (
+        <div className="ember-panel rounded-[2.25rem] p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="ember-eyebrow">In progress</p>
+              <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">
+                Story pages are rendering now
+              </h2>
+              <p className="ember-copy mt-3 max-w-2xl text-sm">
+                Ember is turning the wiki into a child-friendly five-scene flipbook.
+                This page refreshes automatically while the story is being generated.
+              </p>
             </div>
+            <div className="kids-mode-loader h-16 w-16 rounded-full border-4 border-[rgba(255,102,33,0.14)] border-t-[var(--ember-orange)]" />
           </div>
-        )}
+        </div>
+      )}
 
-        {wiki && storyIsGenerating && (
-          <div className="mb-8 overflow-hidden rounded-[2rem] border border-amber-200/80 bg-white/80 p-8 shadow-[0_20px_60px_rgba(14,165,233,0.16)] backdrop-blur">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      {wiki && storyHasError && (
+        <div className="mb-6 ember-status ember-status-error">
+          {story?.errorMessage || 'Try generating the kids story again.'}
+        </div>
+      )}
+
+      {wiki && story?.status === 'ready' && story.panels.length > 0 && (
+        <>
+          <KidsFlipbook
+            title={story.title}
+            subtitle={story.subtitle}
+            summary={story.summary}
+            panels={story.panels}
+          />
+
+          <div className="mt-6 ember-panel rounded-[2.25rem] p-6">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div>
-                <div className="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
-                  In Progress
-                </div>
-                <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-900">
-                  Story pages are rendering now
-                </h2>
-                <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-                  The app is turning the wiki into a child-friendly five-scene
-                  flipbook and generating each illustration. This page refreshes
-                  automatically while it runs.
+                <p className="ember-eyebrow">Story direction</p>
+                <p className="ember-copy mt-4 text-sm">
+                  {story.visualStyle ||
+                    'A bright illustrated storybook world with consistent characters and a clear narrative throughline.'}
                 </p>
               </div>
-              <div className="kids-mode-loader h-20 w-20 self-center rounded-full border-8 border-amber-200 border-t-rose-500" />
-            </div>
-          </div>
-        )}
-
-        {wiki && storyHasError && (
-          <div className="mb-8 rounded-[2rem] border border-red-200 bg-white/85 p-8 shadow-[0_20px_60px_rgba(248,113,113,0.16)] backdrop-blur">
-            <h2 className="text-2xl font-black tracking-tight text-slate-900">
-              The storybook hit an error
-            </h2>
-            <p className="mt-3 text-base leading-7 text-slate-600">
-              {story?.errorMessage || 'Try generating the kids story again.'}
-            </p>
-          </div>
-        )}
-
-        {wiki && story?.status === 'ready' && story.panels.length > 0 && (
-          <>
-            <KidsFlipbook
-              title={story.title}
-              subtitle={story.subtitle}
-              summary={story.summary}
-              panels={story.panels}
-            />
-
-            <div className="mt-8 rounded-[2rem] border border-white/60 bg-white/70 p-6 shadow-[0_20px_60px_rgba(148,163,184,0.14)] backdrop-blur">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    Story Direction
-                  </div>
-                  <p className="mt-3 text-base leading-7 text-slate-600">
-                    {story.visualStyle ||
-                      'A bright 3D animated storybook world with consistent characters and playful cinematic motion.'}
-                  </p>
+              <div className="ember-card rounded-[1.6rem] px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                  Best use
                 </div>
-                <div className="rounded-[1.5rem] border border-amber-200/80 bg-[linear-gradient(180deg,_rgba(255,251,235,0.95),_rgba(255,255,255,0.92))] p-5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
-                    Best Use
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
-                    Share this mode with kids, grandkids, or classrooms when you
-                    want the same memory to feel more like a guided visual
-                    adventure than a standard wiki article.
-                  </p>
-                </div>
+                <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
+                  Share this mode with kids, grandkids, or classrooms when you want
+                  the same memory to feel more like a guided visual adventure than a
+                  standard wiki article.
+                </p>
               </div>
             </div>
-          </>
-        )}
-
-        {wiki && !story && !generating && (
-          <div className="rounded-[2rem] border border-amber-200/80 bg-white/85 p-8 shadow-[0_20px_60px_rgba(251,191,36,0.14)] backdrop-blur">
-            <h2 className="text-2xl font-black tracking-tight text-slate-900">
-              No kids story yet
-            </h2>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-              The wiki is ready. Generate Kids Mode to build a five-page flipbook
-              with new scene images based on the story arc.
-            </p>
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {wiki && !story && !generating && (
+        <div className="ember-panel rounded-[2.25rem] p-8">
+          <h2 className="ember-heading text-3xl text-[var(--ember-text)]">
+            No kids story yet
+          </h2>
+          <p className="ember-copy mt-3 max-w-2xl text-sm">
+            The wiki is ready. Generate Kids Mode to build a five-page flipbook with
+            new scene images based on the story arc.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

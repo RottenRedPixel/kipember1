@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import ChatInterface from '@/components/ChatInterface';
 import MediaPreview from '@/components/MediaPreview';
 
-interface Image {
+interface ImageRecord {
   id: string;
   filename: string;
   mediaType: 'IMAGE' | 'VIDEO';
@@ -17,7 +17,7 @@ interface Image {
 
 export default function ChatPage() {
   const params = useParams();
-  const [image, setImage] = useState<Image | null>(null);
+  const [image, setImage] = useState<ImageRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -28,6 +28,7 @@ export default function ChatPage() {
         if (!response.ok) {
           throw new Error('Image not found');
         }
+
         const data = await response.json();
         setImage(data);
       } catch (err) {
@@ -37,26 +38,25 @@ export default function ChatPage() {
       }
     };
 
-    fetchImage();
+    void fetchImage();
   }, [params.id]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="text-gray-500">Loading...</div>
+      <div className="mx-auto flex min-h-[70vh] max-w-6xl items-center justify-center px-4 py-8 sm:px-6">
+        <div className="ember-panel rounded-full px-6 py-3 text-sm text-[var(--ember-muted)]">
+          Loading chat...
+        </div>
       </div>
     );
   }
 
   if (error || !image) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error || 'Image not found'}</p>
-          <Link
-            href="/feed"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
+      <div className="mx-auto flex min-h-[70vh] max-w-6xl items-center justify-center px-4 py-8 sm:px-6">
+        <div className="ember-panel rounded-[2rem] p-8 text-center">
+          <p className="mb-4 text-rose-600">{error || 'Image not found'}</p>
+          <Link href="/feed" className="font-semibold text-[var(--ember-orange-deep)]">
             Back to feed
           </Link>
         </div>
@@ -65,65 +65,88 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <section className="mb-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="ember-panel rounded-[2.25rem] p-6">
           <Link
             href={`/image/${params.id}`}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
           >
-            &larr; Back to Image
+            {'<- Back to Ember'}
           </Link>
-          <Link
-            href={`/image/${params.id}/wiki`}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-          >
-            View Wiki
-          </Link>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Image Section */}
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-gray-900 rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-800">
-              <MediaPreview
-                mediaType={image.mediaType}
-                filename={image.filename}
-                posterFilename={image.posterFilename}
-                originalName={image.originalName}
-                controls={image.mediaType === 'VIDEO'}
-                className="w-full h-80 object-contain bg-gray-100 dark:bg-gray-800"
-              />
-              <div className="p-4">
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  {image.originalName}
-                </h1>
-                {image.description && (
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    {image.description}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Chat Section */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              {image.mediaType === 'VIDEO' ? 'Video Q&amp;A' : 'Photo Q&amp;A'}
-            </h2>
-            <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-              Ask about what is visible here, what contributors shared, and what the current
-              wiki says. If something is not known yet, the chat should say so.
-            </p>
-            <ChatInterface
-              imageId={image.id}
-              subjectNoun={image.mediaType === 'VIDEO' ? 'video' : 'photo'}
+          <div className="mt-5 overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white">
+            <MediaPreview
+              mediaType={image.mediaType}
+              filename={image.filename}
+              posterFilename={image.posterFilename}
+              originalName={image.originalName}
+              controls={image.mediaType === 'VIDEO'}
+              className="h-72 w-full object-contain bg-[var(--ember-bg)]"
             />
           </div>
+
+          <div className="mt-5">
+            <p className="ember-eyebrow">
+              {image.mediaType === 'VIDEO' ? 'Video Q&A' : 'Photo Q&A'}
+            </p>
+            <h1 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
+              {image.originalName}
+            </h1>
+            <p className="ember-copy mt-3 text-sm">
+              {image.description ||
+                'Ask about what is visible here, what contributors shared, and how this memory is currently documented.'}
+            </p>
+          </div>
         </div>
-      </div>
+
+        <div className="ember-panel rounded-[2.25rem] p-6">
+          <p className="ember-eyebrow">Shortcuts</p>
+          <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">
+            Move between synthesis views
+          </h2>
+          <p className="ember-copy mt-3 text-sm">
+            Chat works best when the underlying memory is already tagged, contributed
+            to, and optionally synthesized into a wiki.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href={`/image/${params.id}/wiki`} className="ember-button-secondary">
+              Open wiki
+            </Link>
+            <Link href={`/image/${params.id}/story-circle`} className="ember-button-secondary">
+              Story circle
+            </Link>
+            <Link href={`/image/${params.id}/sports`} className="ember-button-secondary">
+              Sports mode
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="ember-card rounded-[1.6rem] px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                Best prompts
+              </div>
+              <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
+                Ask who is visible, what moment this captures, or where details are still uncertain.
+              </p>
+            </div>
+            <div className="ember-card rounded-[1.6rem] px-4 py-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                Expected behavior
+              </div>
+              <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
+                Ember should cite what is known from contributors and avoid inventing missing facts.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <ChatInterface
+        imageId={image.id}
+        subjectNoun={image.mediaType === 'VIDEO' ? 'video' : 'photo'}
+      />
     </div>
   );
 }

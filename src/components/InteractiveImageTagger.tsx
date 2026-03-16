@@ -154,7 +154,7 @@ export default function InteractiveImageTagger({
 }: {
   imageId: string;
   mediaType: 'IMAGE' | 'VIDEO';
-  imageUrl: string;
+  imageUrl: string | null;
   videoUrl?: string | null;
   durationSeconds?: number | null;
   imageName: string;
@@ -217,7 +217,7 @@ export default function InteractiveImageTagger({
   }, [contributors, friends, tags]);
 
   useEffect(() => {
-    if (!canManage || !imageLoaded || !imageRef.current) {
+    if (!canManage || !imageUrl || !imageLoaded || !imageRef.current) {
       return;
     }
 
@@ -290,7 +290,7 @@ export default function InteractiveImageTagger({
   };
 
   const handleSurfaceClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    if (!canManage || !isPickingTag || !imageRef.current) {
+    if (!canManage || !imageUrl || !isPickingTag || !imageRef.current) {
       return;
     }
 
@@ -394,16 +394,16 @@ export default function InteractiveImageTagger({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+          <p className="ember-eyebrow">
             Face tags
           </p>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="ember-copy mt-1 text-sm">
             Pin people directly on the photo and optionally turn the tag into an invite.
           </p>
         </div>
         {canManage && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            <span className="ember-chip text-[var(--ember-muted)]">
               {detectorState === 'ready'
                 ? `${detectedFaces.length} faces detected`
                 : detectorState === 'unsupported'
@@ -418,11 +418,12 @@ export default function InteractiveImageTagger({
                 setIsPickingTag((current) => !current);
                 setError('');
               }}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+              disabled={!imageUrl}
+              className={`min-h-0 px-4 py-2 ${isPickingTag ? 'ember-button-secondary text-[var(--ember-orange-deep)]' : 'ember-button-primary'} ${
                 isPickingTag
-                  ? 'bg-amber-500 text-white hover:bg-amber-600'
-                  : 'bg-slate-950 text-white hover:bg-slate-800'
-              }`}
+                  ? ''
+                  : ''
+              } disabled:cursor-not-allowed disabled:opacity-50`}
             >
               {isPickingTag ? 'Cancel tagging' : 'Tag a face'}
             </button>
@@ -430,21 +431,21 @@ export default function InteractiveImageTagger({
         )}
       </div>
 
-      <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-100 p-4">
+      <div className="ember-card overflow-hidden rounded-[2rem] p-4">
         {mediaType === 'VIDEO' && videoUrl && (
-          <div className="mb-4 overflow-hidden rounded-[1.6rem] border border-slate-200 bg-slate-950">
+          <div className="mb-4 overflow-hidden rounded-[1.6rem] border border-[var(--ember-line)] bg-[var(--ember-charcoal)]">
             <video
               src={videoUrl}
               controls
               playsInline
               preload="metadata"
-              poster={imageUrl}
+              poster={imageUrl || undefined}
               className="max-h-[28rem] w-full object-contain"
             />
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-white px-4 py-3 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-white px-4 py-3 text-sm text-[var(--ember-muted)]">
               <span>Face tags on videos are pinned to the poster frame.</span>
               {formatDuration(durationSeconds) && (
-                <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+                <span className="ember-chip">
                   {formatDuration(durationSeconds)}
                 </span>
               )}
@@ -453,84 +454,95 @@ export default function InteractiveImageTagger({
         )}
 
         <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={handleSurfaceClick}
-            disabled={!canManage || !isPickingTag}
-            className={`relative inline-block max-w-full overflow-hidden rounded-[1.6rem] ${
-              isPickingTag ? 'cursor-crosshair' : 'cursor-default'
-            }`}
-          >
-            <img
-              ref={imageRef}
-              src={imageUrl}
-              alt={imageName}
-              onLoad={() => setImageLoaded(true)}
-              className="block max-h-[28rem] w-auto max-w-full rounded-[1.6rem] object-contain"
-            />
+          {imageUrl ? (
+            <button
+              type="button"
+              onClick={handleSurfaceClick}
+              disabled={!canManage || !isPickingTag}
+              className={`relative inline-block max-w-full overflow-hidden rounded-[1.6rem] ${
+                isPickingTag ? 'cursor-crosshair' : 'cursor-default'
+              }`}
+            >
+              <img
+                ref={imageRef}
+                src={imageUrl}
+                alt={imageName}
+                onLoad={() => setImageLoaded(true)}
+                className="block max-h-[28rem] w-auto max-w-full rounded-[1.6rem] object-contain"
+              />
 
-            <div className="pointer-events-none absolute inset-0">
-              {detectedFaces.map((face, index) => (
-                <div
-                  key={`face-${index}`}
-                  className={`absolute rounded-[1rem] border ${
-                    isPickingTag ? 'border-sky-400/70 bg-sky-300/10' : 'border-transparent'
-                  }`}
-                  style={{
-                    left: `${face.leftPct}%`,
-                    top: `${face.topPct}%`,
-                    width: `${face.widthPct}%`,
-                    height: `${face.heightPct}%`,
-                  }}
-                />
-              ))}
-
-              {tags
-                .filter(
-                  (tag) =>
-                    tag.leftPct !== null &&
-                    tag.topPct !== null &&
-                    tag.widthPct !== null &&
-                    tag.heightPct !== null
-                )
-                .map((tag) => (
+              <div className="pointer-events-none absolute inset-0">
+                {detectedFaces.map((face, index) => (
                   <div
-                    key={tag.id}
-                    className="absolute rounded-[1rem] border-2 border-amber-400 bg-amber-200/10"
+                    key={`face-${index}`}
+                    className={`absolute rounded-[1rem] border ${
+                      isPickingTag
+                        ? 'border-[rgba(255,102,33,0.5)] bg-[rgba(255,102,33,0.08)]'
+                        : 'border-transparent'
+                    }`}
                     style={{
-                      left: `${tag.leftPct}%`,
-                      top: `${tag.topPct}%`,
-                      width: `${tag.widthPct}%`,
-                      height: `${tag.heightPct}%`,
+                      left: `${face.leftPct}%`,
+                      top: `${face.topPct}%`,
+                      width: `${face.widthPct}%`,
+                      height: `${face.heightPct}%`,
                     }}
-                  >
-                    <div className="absolute left-2 top-2 inline-flex rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white shadow-sm">
-                      {tag.label}
-                    </div>
-                  </div>
+                  />
                 ))}
 
-              {draftBox && (
-                <div
-                  className="absolute rounded-[1rem] border-2 border-sky-500 bg-sky-300/10"
-                  style={{
-                    left: `${draftBox.leftPct}%`,
-                    top: `${draftBox.topPct}%`,
-                    width: `${draftBox.widthPct}%`,
-                    height: `${draftBox.heightPct}%`,
-                  }}
-                >
-                  <div className="absolute left-2 top-2 inline-flex rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
-                    New tag
+                {tags
+                  .filter(
+                    (tag) =>
+                      tag.leftPct !== null &&
+                      tag.topPct !== null &&
+                      tag.widthPct !== null &&
+                      tag.heightPct !== null
+                  )
+                  .map((tag) => (
+                    <div
+                      key={tag.id}
+                      className="absolute rounded-[1rem] border-2 border-[var(--ember-orange)] bg-[rgba(255,102,33,0.08)]"
+                      style={{
+                        left: `${tag.leftPct}%`,
+                        top: `${tag.topPct}%`,
+                        width: `${tag.widthPct}%`,
+                        height: `${tag.heightPct}%`,
+                      }}
+                    >
+                      <div className="absolute left-2 top-2 inline-flex rounded-full bg-[var(--ember-orange)] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                        {tag.label}
+                      </div>
+                    </div>
+                  ))}
+
+                {draftBox && (
+                  <div
+                    className="absolute rounded-[1rem] border-2 border-[var(--ember-orange)] bg-[rgba(255,102,33,0.08)]"
+                    style={{
+                      left: `${draftBox.leftPct}%`,
+                      top: `${draftBox.topPct}%`,
+                      width: `${draftBox.widthPct}%`,
+                      height: `${draftBox.heightPct}%`,
+                    }}
+                  >
+                    <div className="absolute left-2 top-2 inline-flex rounded-full bg-[var(--ember-charcoal)] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                      New tag
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            </button>
+          ) : (
+            <div className="flex max-w-xl flex-col items-center justify-center rounded-[1.6rem] border border-dashed border-[var(--ember-line-strong)] bg-white px-8 py-10 text-center text-sm text-[var(--ember-muted)]">
+              <div className="font-semibold text-[var(--ember-text)]">Poster frame unavailable</div>
+              <p className="mt-2">
+                This video uploaded successfully, but Ember could not generate a still frame for face tagging on the server.
+              </p>
             </div>
-          </button>
+          )}
         </div>
 
-        {isPickingTag && canManage && (
-          <p className="mt-4 text-center text-sm text-slate-600">
+        {isPickingTag && canManage && imageUrl && (
+          <p className="mt-4 text-center text-sm text-[var(--ember-muted)]">
             Click the person&apos;s face on the {mediaType === 'VIDEO' ? 'poster frame' : 'photo'}.
             Ember will snap to a detected face when possible.
           </p>
@@ -538,18 +550,18 @@ export default function InteractiveImageTagger({
       </div>
 
       {draftBox && (
-        <div className="rounded-[2rem] border border-sky-200 bg-sky-50 p-5">
+        <div className="ember-panel rounded-[2rem] p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-slate-950">Create face tag</h3>
-              <p className="mt-1 text-sm text-slate-600">
+              <h3 className="ember-heading text-2xl text-[var(--ember-text)]">Create face tag</h3>
+              <p className="ember-copy mt-1 text-sm">
                 Save the tag, or turn it into a contributor invite right away.
               </p>
             </div>
             <button
               type="button"
               onClick={resetDraft}
-              className="text-sm font-medium text-slate-500 transition hover:text-slate-900"
+              className="text-sm font-medium text-[var(--ember-muted)] transition hover:text-[var(--ember-text)]"
             >
               Cancel
             </button>
@@ -557,7 +569,7 @@ export default function InteractiveImageTagger({
 
           {untaggedSuggestions.length > 0 && (
             <div className="mt-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <p className="ember-eyebrow">
                 Quick picks
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -566,7 +578,7 @@ export default function InteractiveImageTagger({
                     key={`${suggestion.type}-${suggestion.id}`}
                     type="button"
                     onClick={() => applySuggestion(suggestion)}
-                    className="rounded-full border border-sky-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-sky-300 hover:text-slate-950"
+                    className="ember-button-secondary min-h-0 px-4 py-2"
                   >
                     {suggestion.label}
                   </button>
@@ -576,7 +588,7 @@ export default function InteractiveImageTagger({
           )}
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <label className="text-sm text-slate-700">
+            <label className="text-sm text-[var(--ember-text)]">
               <div className="mb-2 font-medium">Name</div>
               <input
                 type="text"
@@ -588,10 +600,10 @@ export default function InteractiveImageTagger({
                   }))
                 }
                 placeholder="Who is this?"
-                className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-400"
+                className="ember-input"
               />
             </label>
-            <label className="text-sm text-slate-700">
+            <label className="text-sm text-[var(--ember-text)]">
               <div className="mb-2 font-medium">Email</div>
               <input
                 type="email"
@@ -603,10 +615,10 @@ export default function InteractiveImageTagger({
                   }))
                 }
                 placeholder="name@example.com"
-                className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-400"
+                className="ember-input"
               />
             </label>
-            <label className="text-sm text-slate-700">
+            <label className="text-sm text-[var(--ember-text)]">
               <div className="mb-2 font-medium">Phone</div>
               <input
                 type="tel"
@@ -618,11 +630,11 @@ export default function InteractiveImageTagger({
                   }))
                 }
                 placeholder="5551234567"
-                className="w-full rounded-2xl border border-sky-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-sky-400"
+                className="ember-input"
               />
             </label>
-            <div className="rounded-[1.4rem] border border-sky-200 bg-white px-4 py-4">
-              <label className="flex items-center gap-3 text-sm text-slate-700">
+            <div className="rounded-[1.4rem] border border-[var(--ember-line)] bg-white px-4 py-4">
+              <label className="flex items-center gap-3 text-sm text-[var(--ember-text)]">
                 <input
                   type="checkbox"
                   checked={draftSelection.createContributorNow}
@@ -633,11 +645,11 @@ export default function InteractiveImageTagger({
                       sendTextNow: event.target.checked ? current.sendTextNow : false,
                     }))
                   }
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  className="h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
                 />
                 Add this tagged person as a contributor now
               </label>
-              <label className="mt-3 flex items-center gap-3 text-sm text-slate-700">
+              <label className="mt-3 flex items-center gap-3 text-sm text-[var(--ember-text)]">
                 <input
                   type="checkbox"
                   checked={draftSelection.sendTextNow}
@@ -648,7 +660,7 @@ export default function InteractiveImageTagger({
                       createContributorNow: event.target.checked ? true : current.createContributorNow,
                     }))
                   }
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  className="h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
                 />
                 Send a text invite right away
               </label>
@@ -656,7 +668,7 @@ export default function InteractiveImageTagger({
           </div>
 
           {error && (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <div className="ember-status ember-status-error mt-4">
               {error}
             </div>
           )}
@@ -666,11 +678,11 @@ export default function InteractiveImageTagger({
               type="button"
               onClick={() => void createTag()}
               disabled={saving}
-              className="rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60"
+              className="ember-button-primary disabled:opacity-60"
             >
               {saving ? 'Saving...' : 'Save tag'}
             </button>
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-[var(--ember-muted)]">
               If a phone number is present, the invite can text them immediately.
             </span>
           </div>

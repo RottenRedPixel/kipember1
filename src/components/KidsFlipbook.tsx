@@ -42,30 +42,30 @@ export default function KidsFlipbook({
   const currentPanel = panels[currentIndex];
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] gap-8">
-      <aside className="rounded-[2rem] border border-amber-200/70 bg-white/75 backdrop-blur p-6 shadow-[0_24px_60px_rgba(168,85,247,0.12)]">
-        <div className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
-          Kids Mode
-        </div>
-        <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-900">
+    <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <aside className="ember-panel rounded-[2.25rem] p-6">
+        <p className="ember-eyebrow">Kids mode</p>
+        <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">
           {title}
         </h2>
         {subtitle && (
-          <p className="mt-2 text-base font-medium text-rose-700">{subtitle}</p>
+          <p className="mt-3 text-sm font-semibold uppercase tracking-[0.16em] text-[var(--ember-orange-deep)]">
+            {subtitle}
+          </p>
         )}
         {summary && (
-          <p className="mt-4 text-sm leading-6 text-slate-600">{summary}</p>
+          <p className="ember-copy mt-4 text-sm">{summary}</p>
         )}
 
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
             onClick={() => setAutoplay((prev) => !prev)}
-            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+            className="ember-button-primary min-h-0 px-4 py-2.5"
           >
-            {autoplay ? 'Pause Flipbook' : 'Auto Flip'}
+            {autoplay ? 'Pause auto flip' : 'Auto flip'}
           </button>
-          <span className="text-xs uppercase tracking-[0.22em] text-slate-400">
-            {currentIndex + 1} / {panels.length}
+          <span className="ember-chip">
+            {currentIndex + 1} of {panels.length}
           </span>
         </div>
 
@@ -74,19 +74,19 @@ export default function KidsFlipbook({
             <button
               key={panel.id}
               onClick={() => setCurrentIndex(index)}
-              className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+              className={`w-full rounded-[1.5rem] border px-4 py-4 text-left transition ${
                 index === currentIndex
-                  ? 'border-rose-300 bg-rose-50 shadow-sm'
-                  : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50'
+                  ? 'border-[rgba(255,102,33,0.16)] bg-[rgba(255,102,33,0.08)] shadow-[0_12px_24px_rgba(255,102,33,0.08)]'
+                  : 'border-[rgba(20,20,20,0.06)] bg-white hover:border-[rgba(255,102,33,0.12)] hover:bg-[rgba(255,102,33,0.04)]'
               }`}
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
                   Scene {panel.position}
                 </span>
-                <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-br from-amber-400 to-rose-500" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[var(--ember-orange)]" />
               </div>
-              <div className="mt-2 text-sm font-semibold text-slate-900">
+              <div className="mt-3 font-semibold text-[var(--ember-text)]">
                 {panel.title}
               </div>
             </button>
@@ -94,13 +94,15 @@ export default function KidsFlipbook({
         </div>
       </aside>
 
-      <section className="relative overflow-hidden rounded-[2.5rem] border border-amber-200/70 bg-[radial-gradient(circle_at_top_left,_rgba(254,240,138,0.55),_rgba(255,255,255,0.9)_42%,_rgba(251,207,232,0.72)_100%)] p-4 sm:p-6 shadow-[0_28px_80px_rgba(217,70,239,0.16)]">
-        <div className="pointer-events-none absolute -left-12 top-12 h-36 w-36 rounded-full bg-amber-300/35 blur-3xl" />
-        <div className="pointer-events-none absolute -right-8 bottom-12 h-40 w-40 rounded-full bg-sky-300/30 blur-3xl" />
+      <section className="ember-panel-strong relative overflow-hidden rounded-[2.5rem] p-4 sm:p-6">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-48 rounded-full bg-[rgba(255,102,33,0.08)] blur-3xl" />
 
-        <div className="relative rounded-[2rem] bg-white/85 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_18px_40px_rgba(148,163,184,0.22)] backdrop-blur">
-          <div key={currentPanel.id} className="kids-flip-page grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-5">
-            <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-100">
+        <div className="relative rounded-[2rem] border border-white/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,247,244,0.92))] p-4 shadow-[0_28px_60px_rgba(17,17,17,0.06)] sm:p-6">
+          <div
+            key={currentPanel.id}
+            className="kids-flip-page grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"
+          >
+            <div className="overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-[var(--ember-bg)]">
               <Image
                 src={`/api/uploads/${currentPanel.filename}`}
                 alt={currentPanel.title}
@@ -111,15 +113,13 @@ export default function KidsFlipbook({
               />
             </div>
 
-            <div className="flex flex-col justify-between rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,_rgba(255,255,255,0.92),_rgba(255,251,235,0.96))] p-5">
+            <div className="flex flex-col justify-between rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white p-5">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-rose-500">
-                  Story Page {currentPanel.position}
-                </div>
-                <h3 className="mt-3 text-2xl font-black leading-tight text-slate-900">
+                <div className="ember-eyebrow">Story page {currentPanel.position}</div>
+                <h3 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
                   {currentPanel.title}
                 </h3>
-                <p className="mt-4 text-base leading-7 text-slate-600">
+                <p className="ember-copy mt-4 text-sm">
                   {currentPanel.caption}
                 </p>
               </div>
@@ -129,15 +129,15 @@ export default function KidsFlipbook({
                   onClick={() =>
                     setCurrentIndex((prev) => (prev - 1 + panels.length) % panels.length)
                   }
-                  className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
+                  className="ember-button-secondary min-h-0 px-4 py-2.5"
                 >
                   Previous
                 </button>
                 <button
                   onClick={() => setCurrentIndex((prev) => (prev + 1) % panels.length)}
-                  className="rounded-full bg-gradient-to-r from-amber-400 via-orange-400 to-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-105"
+                  className="ember-button-primary min-h-0 px-4 py-2.5"
                 >
-                  Next Page
+                  Next page
                 </button>
               </div>
             </div>
@@ -149,10 +149,10 @@ export default function KidsFlipbook({
             <button
               key={panel.id}
               onClick={() => setCurrentIndex(index)}
-              className={`h-3 rounded-full transition-all ${
+              className={`rounded-full transition-all ${
                 index === currentIndex
-                  ? 'w-10 bg-gradient-to-r from-amber-400 to-rose-500'
-                  : 'w-3 bg-slate-300 hover:bg-slate-400'
+                  ? 'h-3 w-10 bg-[var(--ember-charcoal)]'
+                  : 'h-3 w-3 bg-[rgba(20,20,20,0.16)] hover:bg-[rgba(255,102,33,0.4)]'
               }`}
               title={`Go to page ${panel.position}`}
             />

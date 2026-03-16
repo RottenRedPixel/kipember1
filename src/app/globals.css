@@ -1,28 +1,254 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ember-bg: #f7f7f4;
+  --ember-bg-deep: #ecebe7;
+  --ember-surface: rgba(255, 255, 255, 0.84);
+  --ember-surface-strong: rgba(255, 255, 255, 0.96);
+  --ember-line: rgba(20, 20, 20, 0.08);
+  --ember-line-strong: rgba(20, 20, 20, 0.14);
+  --ember-text: #141414;
+  --ember-muted: #666666;
+  --ember-orange: #ff6621;
+  --ember-orange-deep: #e25514;
+  --ember-charcoal: #171717;
+  --ember-shadow: 0 28px 80px rgba(17, 17, 17, 0.08);
+  --ember-shadow-soft: 0 14px 40px rgba(17, 17, 17, 0.06);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-background: var(--ember-bg);
+  --color-foreground: var(--ember-text);
+  --font-sans: var(--font-ember-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(255, 102, 33, 0.1), transparent 22%),
+    radial-gradient(circle at 84% 12%, rgba(102, 102, 102, 0.08), transparent 20%),
+    radial-gradient(circle at 55% 100%, rgba(255, 102, 33, 0.06), transparent 26%),
+    linear-gradient(180deg, var(--ember-bg) 0%, var(--ember-bg-deep) 100%);
+  color: var(--ember-text);
+  font-family: var(--font-ember-sans), sans-serif;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22) 1px, transparent 1px);
+  background-size: 46px 46px;
+  opacity: 0.26;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 92%);
+}
+
+a,
+button,
+input,
+textarea {
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.ember-page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.ember-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.38), transparent 22%),
+    radial-gradient(circle at 82% 28%, rgba(255, 102, 33, 0.08), transparent 18%);
+}
+
+.ember-panel {
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  background: var(--ember-surface);
+  box-shadow: var(--ember-shadow-soft);
+  backdrop-filter: blur(18px);
+}
+
+.ember-panel-strong {
+  border: 1px solid rgba(255, 255, 255, 0.96);
+  background: var(--ember-surface-strong);
+  box-shadow: var(--ember-shadow);
+  backdrop-filter: blur(22px);
+}
+
+.ember-card {
+  border: 1px solid rgba(20, 20, 20, 0.05);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 28px rgba(17, 17, 17, 0.04);
+}
+
+.ember-brand {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ember-brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 18px;
+  background: rgba(255, 102, 33, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 102, 33, 0.08);
+}
+
+.ember-brand-mark-compact {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+.ember-brand-title {
+  font-family: var(--font-ember-display), sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.ember-brand-subtitle {
+  overflow: hidden;
+  color: var(--ember-muted);
+  font-size: 0.73rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ember-eyebrow {
+  color: var(--ember-orange-deep);
+  font-family: var(--font-ember-display), sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ember-heading {
+  font-family: var(--font-ember-display), sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+}
+
+.ember-copy {
+  color: var(--ember-muted);
+  line-height: 1.75;
+}
+
+.ember-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(20, 20, 20, 0.06);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.58rem 0.82rem;
+  font-family: var(--font-ember-display), sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.ember-button-primary,
+.ember-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  border-radius: 999px;
+  padding: 0.8rem 1.15rem;
+  font-family: var(--font-ember-display), sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.ember-button-primary {
+  background: var(--ember-charcoal);
+  color: #fff;
+  box-shadow: 0 16px 28px rgba(17, 17, 17, 0.14);
+}
+
+.ember-button-primary:hover {
+  transform: translateY(-1px);
+}
+
+.ember-button-secondary {
+  border: 1px solid rgba(20, 20, 20, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--ember-text);
+}
+
+.ember-button-secondary:hover {
+  transform: translateY(-1px);
+}
+
+.ember-input,
+.ember-textarea {
+  width: 100%;
+  border: 1px solid rgba(20, 20, 20, 0.08);
+  border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ember-text);
+  outline: none;
+}
+
+.ember-input {
+  padding: 0.9rem 1rem;
+}
+
+.ember-textarea {
+  min-height: 7rem;
+  padding: 1rem;
+  resize: vertical;
+}
+
+.ember-input:focus,
+.ember-textarea:focus {
+  border-color: rgba(255, 102, 33, 0.36);
+  box-shadow: 0 0 0 4px rgba(255, 102, 33, 0.1);
+}
+
+.ember-status {
+  border-radius: 1rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.92rem;
+}
+
+.ember-status-error {
+  border: 1px solid rgba(225, 29, 72, 0.16);
+  background: rgba(255, 241, 242, 0.92);
+  color: #be123c;
+}
+
+.ember-status-success {
+  border: 1px solid rgba(22, 163, 74, 0.14);
+  background: rgba(240, 253, 244, 0.92);
+  color: #15803d;
+}
+
+.ember-divider {
+  border-color: rgba(20, 20, 20, 0.06);
 }
 
 .kids-flip-page {
@@ -53,5 +279,19 @@ body {
 
   100% {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -5,20 +5,26 @@ export default function FeedPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-        <div className="rounded-[2.4rem] border border-white/85 bg-white/85 p-8 shadow-sm backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
-            Your Ember Feed
-          </p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">
-            Build living memory spaces around the photos that matter.
+        <div className="ember-panel rounded-[2rem] p-8">
+          <p className="ember-eyebrow">Owner home</p>
+          <h1 className="ember-heading mt-4 text-4xl text-[var(--ember-text)]">
+            Build living memory spaces around the moments that matter.
           </h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-600">
-            Upload a new Ember, invite contributors from your network, share it to
-            friends when you want, and let the wiki keep growing as more stories come in.
+          <p className="ember-copy mt-4 max-w-2xl text-sm">
+            Start a new Ember, invite contributors, and let the memory grow through
+            scene context, story fragments, and shared access that stays elegant instead
+            of chaotic.
           </p>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            <span className="ember-chip">Upload media</span>
+            <span className="ember-chip">Invite contributors</span>
+            <span className="ember-chip">Generate wiki</span>
+            <span className="ember-chip">Share when ready</span>
+          </div>
         </div>
 
-        <div className="rounded-[2.4rem] border border-white/85 bg-white/85 p-6 shadow-sm backdrop-blur">
+        <div className="ember-panel rounded-[2rem] p-6">
           <ImageUploader />
         </div>
       </section>

@@ -98,8 +98,8 @@ export default function ContributePage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!input.trim() || isSending || isComplete) return;
 
     const userMessage = input.trim();
@@ -195,81 +195,99 @@ export default function ContributePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-black">
-        <div className="text-gray-500">Loading...</div>
-      </div>
+      <main className="ember-page flex items-center justify-center px-4">
+        <div className="text-[var(--ember-muted)]">Loading...</div>
+      </main>
     );
   }
 
   if (loadError || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-black">
-        <div className="text-center p-8">
-          <div className="text-6xl mb-4">:(</div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Link Not Found
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+      <main className="ember-page flex items-center justify-center px-4">
+        <div className="ember-panel rounded-[2rem] p-8 text-center">
+          <h1 className="ember-heading text-3xl text-[var(--ember-text)]">Link not found</h1>
+          <p className="ember-copy mt-3 text-sm">
             {loadError || 'This link may have expired or is invalid.'}
           </p>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-950 dark:to-black">
-      <div className="container mx-auto px-4 py-6 max-w-2xl">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden mb-4">
-          <MediaPreview
-            mediaType={data.image.mediaType}
-            filename={data.image.filename}
-            posterFilename={data.image.posterFilename}
-            originalName={data.image.originalName}
-            controls={data.image.mediaType === 'VIDEO'}
-            className="w-full h-auto max-h-[28rem] object-contain bg-black"
-          />
-          <div className="p-4">
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Share Your Memories
+    <main className="ember-page">
+      <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
+          <section className="ember-panel rounded-[2rem] p-5">
+            <p className="ember-eyebrow">Contributor invite</p>
+            <h1 className="ember-heading mt-3 text-4xl text-[var(--ember-text)]">
+              Help tell the story behind this Ember.
             </h1>
-            {data.image.description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {data.image.description}
-              </p>
-            )}
-          </div>
-        </div>
+            <p className="ember-copy mt-3 text-sm">
+              Add what happened before, during, or after this moment. Ember will fold your
+              memories into the same living archive.
+            </p>
 
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
-          {actionError && (
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-red-50 dark:bg-red-900/20">
-              <p className="text-sm text-red-700 dark:text-red-300">{actionError}</p>
+            <div className="ember-card mt-5 overflow-hidden rounded-[1.75rem]">
+              <MediaPreview
+                mediaType={data.image.mediaType}
+                filename={data.image.filename}
+                posterFilename={data.image.posterFilename}
+                originalName={data.image.originalName}
+                controls={data.image.mediaType === 'VIDEO'}
+                className="max-h-[28rem] w-full object-contain bg-[var(--ember-charcoal)]"
+              />
             </div>
-          )}
 
-          {data.latestVoiceCall && (
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-emerald-50 dark:bg-emerald-900/20">
-              <p className="text-sm text-emerald-700 dark:text-emerald-300">
+            <div className="mt-5">
+              <h2 className="ember-heading text-2xl text-[var(--ember-text)]">
+                {data.image.originalName}
+              </h2>
+              {data.image.description && (
+                <p className="ember-copy mt-2 text-sm">{data.image.description}</p>
+              )}
+            </div>
+          </section>
+
+          <section className="ember-panel rounded-[2rem] overflow-hidden">
+            {actionError && <div className="ember-status ember-status-error m-4">{actionError}</div>}
+
+            {data.latestVoiceCall && (
+              <div className="ember-status ember-status-success m-4 mb-0">
                 {voiceStatusLabel(data.latestVoiceCall.status)}
+              </div>
+            )}
+
+            <div className="border-b ember-divider px-5 py-5">
+              <p className="ember-eyebrow">Conversation</p>
+              <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
+                {messages.length === 0 ? 'Choose how you want to respond' : 'Talk with Ember'}
+              </h2>
+              <p className="ember-copy mt-2 text-sm">
+                {messages.length === 0
+                  ? 'Start by text or request a phone call from Ember.'
+                  : 'Share what you remember. Ember will guide you with follow-up questions.'}
               </p>
             </div>
-          )}
 
-          <div className="h-80 overflow-y-auto p-4 space-y-3">
-            {messages.length === 0 && !isComplete ? (
-              <div className="text-center py-8">
-                <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Choose how you want to share your memories with Ember.
-                </p>
-                <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <div className="px-5 py-5">
+              {messages.length === 0 && !isComplete ? (
+                <div className="grid gap-4 sm:grid-cols-2">
                   <button
                     onClick={startConversation}
                     disabled={isSending || isCalling}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-full transition-colors"
+                    className="ember-card rounded-[1.5rem] p-5 text-left disabled:opacity-60"
                   >
-                    {isSending ? 'Starting...' : 'Text with Ember'}
+                    <div className="ember-eyebrow">Text chat</div>
+                    <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">Type with Ember</h3>
+                    <p className="ember-copy mt-2 text-sm">
+                      Best if you want to add details slowly or send multiple short memories.
+                    </p>
+                    <span className="ember-button-primary mt-4 inline-flex px-4">
+                      {isSending ? 'Starting...' : 'Start texting'}
+                    </span>
                   </button>
+
                   <button
                     onClick={startVoiceCall}
                     disabled={
@@ -278,83 +296,102 @@ export default function ContributePage() {
                       data.latestVoiceCall?.status === 'registered' ||
                       data.latestVoiceCall?.status === 'ongoing'
                     }
-                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-full transition-colors"
+                    className="ember-card rounded-[1.5rem] p-5 text-left disabled:opacity-60"
                   >
-                    {isCalling ? 'Calling...' : 'Speak with Ember'}
+                    <div className="ember-eyebrow">Phone interview</div>
+                    <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">Speak with Ember</h3>
+                    <p className="ember-copy mt-2 text-sm">
+                      Best if it is easier to tell the story aloud and let Ember pull out the details.
+                    </p>
+                    <span className="ember-button-secondary mt-4 inline-flex px-4">
+                      {isCalling ? 'Calling...' : 'Request call'}
+                    </span>
                   </button>
                 </div>
-              </div>
-            ) : (
-              messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-2 ${
-                      message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
-                    }`}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              ) : (
+                <>
+                  <div className="space-y-3 rounded-[1.75rem] bg-white/40 p-1">
+                    {messages.map((message, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[88%] rounded-[1.4rem] px-4 py-3 text-sm leading-7 ${
+                            message.role === 'user'
+                              ? 'bg-[var(--ember-orange)] text-white'
+                              : 'ember-card text-[var(--ember-text)]'
+                          }`}
+                        >
+                          <p className="font-semibold">
+                            {message.role === 'user' ? (data.contributor.name || 'You') : 'Ember'}
+                          </p>
+                          <p className={message.role === 'user' ? 'mt-1 text-white/90' : 'mt-1 text-[var(--ember-muted)]'}>
+                            {message.content}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {isSending && (
+                      <div className="flex justify-start">
+                        <div className="ember-card rounded-[1.4rem] px-4 py-3">
+                          <div className="flex gap-1">
+                            <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--ember-muted)]" />
+                            <span
+                              className="h-2 w-2 animate-bounce rounded-full bg-[var(--ember-muted)]"
+                              style={{ animationDelay: '0.1s' }}
+                            />
+                            <span
+                              className="h-2 w-2 animate-bounce rounded-full bg-[var(--ember-muted)]"
+                              style={{ animationDelay: '0.2s' }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+
+                  {!isComplete && (
+                    <form onSubmit={handleSubmit} className="mt-4 flex gap-2 border-t ember-divider pt-4">
+                      <input
+                        type="text"
+                        value={input}
+                        onChange={(event) => setInput(event.target.value)}
+                        placeholder="Type your response..."
+                        className="ember-input flex-1"
+                        disabled={isSending}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isSending || !input.trim()}
+                        className="ember-button-primary disabled:opacity-60"
+                      >
+                        Send
+                      </button>
+                    </form>
+                  )}
+                </>
+              )}
+
+              {isComplete && (
+                <div className="ember-card mt-5 rounded-[1.75rem] px-5 py-6">
+                  <p className="ember-eyebrow">Contribution saved</p>
+                  <h3 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">Thank you.</h3>
+                  <p className="ember-copy mt-2 text-sm">
+                    Your memory is now part of this Ember. You can close this page whenever you are ready.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="ember-chip">Owner notified</span>
+                    <span className="ember-chip">Story updated</span>
+                    <span className="ember-chip">Memory saved</span>
                   </div>
                 </div>
-              ))
-            )}
-            {isSending && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-2">
-                  <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                    <span
-                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: '0.1s' }}
-                    />
-                    <span
-                      className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
-                      style={{ animationDelay: '0.2s' }}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {!isComplete && messages.length > 0 && (
-            <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-gray-800">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type your response..."
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  disabled={isSending}
-                />
-                <button
-                  type="submit"
-                  disabled={isSending || !input.trim()}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-full transition-colors text-sm"
-                >
-                  Send
-                </button>
-              </div>
-            </form>
-          )}
-
-          {isComplete && (
-            <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-green-50 dark:bg-green-900/20">
-              <p className="text-center text-green-700 dark:text-green-400 text-sm">
-                Thank you for sharing your memories! You can close this page now.
-              </p>
+              )}
             </div>
-          )}
+          </section>
         </div>
-
-        <p className="text-center text-xs text-gray-400 mt-4">Memory Wiki</p>
       </div>
-    </div>
+    </main>
   );
 }

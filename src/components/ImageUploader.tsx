@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -102,7 +103,8 @@ export default function ImageUploader() {
       });
 
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Upload failed');
       }
 
       const { id, mediaType, wikiGenerated, warning } = await response.json();
@@ -116,7 +118,7 @@ export default function ImageUploader() {
       router.push(wikiGenerated ? `/image/${id}/wiki` : `/image/${id}`);
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Failed to upload media. Please try again.');
+      alert(error instanceof Error ? error.message : 'Failed to upload media. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -144,10 +146,10 @@ export default function ImageUploader() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`cursor-pointer rounded-[2rem] border-2 border-dashed p-10 text-center transition-colors ${
+            className={`rounded-[1.75rem] border border-dashed px-8 py-10 text-center ${
               isDragging
-                ? 'border-sky-500 bg-sky-50'
-                : 'border-slate-300 bg-slate-50/80 hover:border-slate-400'
+                ? 'border-[rgba(255,102,33,0.35)] bg-[rgba(255,102,33,0.06)]'
+                : 'border-[rgba(20,20,20,0.12)] bg-white/70'
             }`}
           >
             <input
@@ -158,49 +160,52 @@ export default function ImageUploader() {
               id="file-input"
             />
             <label htmlFor="file-input" className="cursor-pointer">
-              <div className="mb-4 text-6xl">🎞️</div>
-              <p className="text-lg font-medium text-slate-800">
-                Drop a photo or video here or click to start a new Ember
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-[rgba(255,102,33,0.08)]">
+                <Image src="/emberfav.svg" alt="" width={26} height={26} />
+              </div>
+              <h2 className="ember-heading mt-5 text-3xl text-[var(--ember-text)]">
+                Drop a photo or video here
+              </h2>
+              <p className="ember-copy mt-3 text-sm">
+                Click to start a new Ember. Photos and MP4, MOV, WEBM, or M4V videos
+                are supported.
               </p>
-              <p className="mt-2 text-sm text-slate-500">
-                Photos plus MP4, MOV, WEBM, and M4V videos
-              </p>
-              <p className="mt-2 text-xs text-slate-400">
-                Videos automatically get a poster frame so Ember can build the first wiki.
-              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                <span className="ember-chip">Photos</span>
+                <span className="ember-chip">Video posters</span>
+                <span className="ember-chip">Auto wiki</span>
+              </div>
             </label>
           </div>
 
           {selectionError && (
-            <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {selectionError}
-            </div>
+            <div className="ember-status ember-status-error mt-4">{selectionError}</div>
           )}
         </>
       ) : (
         <div className="space-y-4">
-          <div className="relative overflow-hidden rounded-[2rem] bg-slate-100">
+          <div className="ember-card relative overflow-hidden rounded-[1.75rem]">
             {selectedMediaType === 'video' ? (
               <video
                 src={preview || undefined}
                 controls
                 playsInline
                 preload="metadata"
-                className="h-64 w-full object-contain bg-slate-950"
+                className="h-72 w-full object-contain bg-[var(--ember-charcoal)]"
               />
             ) : (
-              <img src={preview || undefined} alt="Preview" className="h-64 w-full object-contain" />
+              <img src={preview || undefined} alt="Preview" className="h-72 w-full object-contain" />
             )}
             <button
               onClick={clearSelection}
-              className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-sm font-medium text-white"
             >
               x
             </button>
           </div>
 
           <div>
-            <label htmlFor="description" className="mb-2 block text-sm font-medium text-slate-700">
+            <label htmlFor="description" className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
               Description
             </label>
             <textarea
@@ -208,23 +213,23 @@ export default function ImageUploader() {
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               placeholder="What makes this Ember meaningful? Add context Ember should know."
-              className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 placeholder-slate-400 focus:border-sky-400 focus:bg-white focus:outline-none"
-              rows={3}
+              className="ember-textarea"
+              rows={4}
             />
           </div>
 
-          <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+          <label className="ember-card flex items-start gap-3 rounded-[1.5rem] px-4 py-4">
             <input
               type="checkbox"
               checked={shareToNetwork}
               onChange={(event) => setShareToNetwork(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+              className="mt-1 h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
             />
             <span>
-              <span className="block text-sm font-medium text-slate-800">
+              <span className="block text-sm font-medium text-[var(--ember-text)]">
                 Share this Ember to your network feed
               </span>
-              <span className="mt-1 block text-sm text-slate-500">
+              <span className="mt-1 block text-sm text-[var(--ember-muted)]">
                 Accepted friends will see it in their feed. Contributors can still be invited individually.
               </span>
             </span>
@@ -233,7 +238,7 @@ export default function ImageUploader() {
           <button
             onClick={handleUpload}
             disabled={isUploading}
-            className="w-full rounded-full bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isUploading
               ? `Uploading ${selectedMediaType || 'media'} and building wiki...`

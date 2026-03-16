@@ -159,17 +159,17 @@ export default function ImagePage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-slate-500">Loading Ember...</div>
+        <div className="text-[var(--ember-muted)]">Loading Ember...</div>
       </div>
     );
   }
 
   if (error || !image) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <p className="mb-4 text-rose-500">{error || 'Image not found'}</p>
-          <Link href="/feed" className="font-medium text-sky-600 hover:text-sky-700">
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="ember-panel rounded-[2rem] p-8 text-center">
+          <p className="mb-4 text-rose-600">{error || 'Image not found'}</p>
+          <Link href="/feed" className="font-medium text-[var(--ember-orange-deep)] hover:text-[var(--ember-orange)]">
             Back to feed
           </Link>
         </div>
@@ -181,135 +181,124 @@ export default function ImagePage() {
     (contributor) => contributor.conversation?.status === 'completed'
   ).length;
 
+  const accessLabel =
+    image.accessType === 'owner'
+      ? 'Owner workspace'
+      : image.accessType === 'contributor'
+        ? 'Contributor access'
+        : 'Network view';
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/feed" className="text-sm font-medium text-slate-600 hover:text-slate-950">
-          &larr; Back to Feed
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link href="/feed" className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]">
+          {'<- Back to feed'}
         </Link>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           {image.wiki && (
-            <Link
-              href={`/image/${image.id}/wiki`}
-              className="rounded-full bg-amber-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-600"
-            >
-              View Wiki
+            <Link href={`/image/${image.id}/wiki`} className="ember-button-secondary min-h-0 px-4 py-2">
+              View wiki
             </Link>
           )}
-          <Link
-            href={`/image/${image.id}/chat`}
-            className="rounded-full bg-sky-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-700"
-          >
-            {image.mediaType === 'VIDEO' ? 'Ask About This Video' : 'Ask About This Photo'}
+          <Link href={`/image/${image.id}/chat`} className="ember-button-secondary min-h-0 px-4 py-2">
+            Ask Ember
           </Link>
-          <Link
-            href={`/image/${image.id}/sports`}
-            className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700"
-          >
-            {image.sportsMode ? 'Update Sports Mode' : 'Sports Mode'}
+          <Link href={`/image/${image.id}/story-circle`} className="ember-button-secondary min-h-0 px-4 py-2">
+            Story circle
+          </Link>
+          <Link href={`/image/${image.id}/sports`} className="ember-button-secondary min-h-0 px-4 py-2">
+            {image.sportsMode ? 'Update sports mode' : 'Sports mode'}
           </Link>
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr]">
+      <div className="grid gap-8 lg:grid-cols-[1.06fr_0.94fr]">
         <div className="space-y-8">
-          <div className="overflow-hidden rounded-[2.5rem] border border-white/85 bg-white shadow-sm">
-            <div className="p-6">
-              <InteractiveImageTagger
-                imageId={image.id}
-                mediaType={image.mediaType}
-                imageUrl={`/api/uploads/${image.mediaType === 'VIDEO' && image.posterFilename ? image.posterFilename : image.filename}`}
-                videoUrl={image.mediaType === 'VIDEO' ? `/api/uploads/${image.filename}` : null}
-                durationSeconds={image.durationSeconds}
-                imageName={image.originalName}
-                tags={image.tags}
-                contributors={image.contributors.map((contributor) => ({
-                  id: contributor.id,
-                  name: contributor.name,
-                  email: contributor.email,
-                  phoneNumber: contributor.phoneNumber,
-                  userId: contributor.userId,
-                }))}
-                friends={image.friends}
-                canManage={image.canManage}
-                onUpdate={fetchImage}
-              />
-
-              <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
-                    {image.accessType === 'owner'
-                      ? 'Your Ember'
-                      : image.accessType === 'contributor'
-                        ? 'You are a contributor'
-                        : 'Shared from your network'}
-                  </p>
-                  <h1 className="mt-3 text-3xl font-semibold text-slate-950">
-                    {image.originalName}
-                  </h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-                    {image.description || 'No description added yet.'}
-                  </p>
-                </div>
-                <div className="rounded-[1.6rem] bg-slate-950 px-5 py-4 text-white">
-                  <div className="text-sm text-slate-300">Owner</div>
-                  <div className="mt-1 font-medium">
-                    {image.owner.name || image.owner.email}
-                  </div>
+          <section className="ember-panel rounded-[2.25rem] p-6">
+            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <p className="ember-eyebrow">{accessLabel}</p>
+                <h1 className="ember-heading mt-3 text-4xl text-[var(--ember-text)]">
+                  {image.originalName}
+                </h1>
+                <p className="ember-copy mt-3 max-w-2xl text-sm">
+                  {image.description || 'No description has been added to this Ember yet.'}
+                </p>
+              </div>
+              <div className="ember-card rounded-[1.5rem] px-4 py-4">
+                <div className="text-xs uppercase tracking-[0.14em] text-[var(--ember-muted)]">Owner</div>
+                <div className="mt-2 font-semibold text-[var(--ember-text)]">
+                  {image.owner.name || image.owner.email}
                 </div>
               </div>
-
-              <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-500">
-                <span>{image.mediaType === 'VIDEO' ? 'Video Ember' : 'Photo Ember'}</span>
-                <span>{image.contributors.length} contributors</span>
-                <span>{completedCount} completed</span>
-                <span>{image.tags.length} tagged</span>
-                {image.sportsMode && (
-                  <span>
-                    Sports mode: {image.sportsMode.sportType || 'Game stats'}{' '}
-                    {image.sportsMode.finalScore ? `(${image.sportsMode.finalScore})` : ''}
-                  </span>
-                )}
-                {image.shareToNetwork && <span>Shared to network</span>}
-              </div>
-
-              {image.canManage && (
-                <div className="mt-6 rounded-[1.8rem] border border-slate-200 bg-slate-50 px-5 py-4">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-950">
-                        Network sharing
-                      </h2>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Let accepted friends see this Ember in their feed.
-                      </p>
-                    </div>
-                    <label className="inline-flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={shareToNetwork}
-                        onChange={(event) => setShareToNetwork(event.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                      />
-                      <span className="text-sm font-medium text-slate-700">
-                        Share to network
-                      </span>
-                    </label>
-                  </div>
-                  <div className="mt-4 flex items-center gap-3">
-                    <button
-                      onClick={handleShareSave}
-                      disabled={savingShareState || shareToNetwork === image.shareToNetwork}
-                      className="rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
-                    >
-                      {savingShareState ? 'Saving...' : 'Save'}
-                    </button>
-                    {shareError && <span className="text-sm text-rose-600">{shareError}</span>}
-                  </div>
-                </div>
-              )}
             </div>
-          </div>
+
+            <div className="mb-5 flex flex-wrap gap-2">
+              <span className="ember-chip">{image.mediaType === 'VIDEO' ? 'Video Ember' : 'Photo Ember'}</span>
+              <span className="ember-chip">{image.contributors.length} contributors</span>
+              <span className="ember-chip">{completedCount} completed</span>
+              <span className="ember-chip">{image.tags.length} tagged</span>
+              {image.shareToNetwork && <span className="ember-chip">Shared to network</span>}
+            </div>
+
+            <InteractiveImageTagger
+              imageId={image.id}
+              mediaType={image.mediaType}
+              imageUrl={
+                image.mediaType === 'VIDEO'
+                  ? image.posterFilename
+                    ? `/api/uploads/${image.posterFilename}`
+                    : null
+                  : `/api/uploads/${image.filename}`
+              }
+              videoUrl={image.mediaType === 'VIDEO' ? `/api/uploads/${image.filename}` : null}
+              durationSeconds={image.durationSeconds}
+              imageName={image.originalName}
+              tags={image.tags}
+              contributors={image.contributors.map((contributor) => ({
+                id: contributor.id,
+                name: contributor.name,
+                email: contributor.email,
+                phoneNumber: contributor.phoneNumber,
+                userId: contributor.userId,
+              }))}
+              friends={image.friends}
+              canManage={image.canManage}
+              onUpdate={fetchImage}
+            />
+
+            {image.canManage && (
+              <div className="ember-card mt-6 rounded-[1.75rem] px-5 py-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="ember-heading text-2xl text-[var(--ember-text)]">Network sharing</h2>
+                    <p className="ember-copy mt-2 text-sm">
+                      Let accepted friends see this Ember in their feed.
+                    </p>
+                  </div>
+                  <label className="inline-flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={shareToNetwork}
+                      onChange={(event) => setShareToNetwork(event.target.checked)}
+                      className="h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
+                    />
+                    <span className="text-sm font-medium text-[var(--ember-text)]">Share to network</span>
+                  </label>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    onClick={handleShareSave}
+                    disabled={savingShareState || shareToNetwork === image.shareToNetwork}
+                    className="ember-button-primary disabled:opacity-60"
+                  >
+                    {savingShareState ? 'Saving...' : 'Save sharing'}
+                  </button>
+                  {shareError && <span className="text-sm text-rose-600">{shareError}</span>}
+                </div>
+              </div>
+            )}
+          </section>
 
           <TagManager
             imageId={image.id}
@@ -336,21 +325,16 @@ export default function ImagePage() {
               onUpdate={fetchImage}
             />
           ) : (
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-slate-950">Contributors</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                These are the people connected to this Ember.
-              </p>
+            <div className="ember-panel rounded-[2rem] p-6">
+              <p className="ember-eyebrow">Contributors</p>
+              <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">People connected to this Ember</h2>
               <div className="mt-6 space-y-3">
                 {image.contributors.length === 0 ? (
-                  <p className="text-sm text-slate-500">No contributors have been added yet.</p>
+                  <p className="text-sm text-[var(--ember-muted)]">No contributors have been added yet.</p>
                 ) : (
                   image.contributors.map((contributor) => (
-                    <div
-                      key={contributor.id}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                    >
-                      <div className="font-medium text-slate-950">
+                    <div key={contributor.id} className="ember-card rounded-[1.5rem] px-4 py-4">
+                      <div className="font-semibold text-[var(--ember-text)]">
                         {contributor.name ||
                           contributor.user?.name ||
                           contributor.email ||
@@ -358,7 +342,7 @@ export default function ImagePage() {
                           'Contributor'}
                       </div>
                       {(contributor.email || contributor.phoneNumber) && (
-                        <div className="mt-1 text-sm text-slate-500">
+                        <div className="mt-1 text-sm text-[var(--ember-muted)]">
                           {contributor.email || contributor.phoneNumber}
                         </div>
                       )}

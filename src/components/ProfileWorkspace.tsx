@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 type FriendUser = {
   id: string;
@@ -20,6 +20,10 @@ type PendingRequest = {
   createdAt: string;
 };
 
+function formatPersonLabel(user: FriendUser) {
+  return user.name || user.email;
+}
+
 export default function ProfileWorkspace() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -34,9 +38,10 @@ export default function ProfileWorkspace() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setError('');
+
       const [profileResponse, friendsResponse] = await Promise.all([
         fetch('/api/profile'),
         fetch('/api/friends'),
@@ -60,11 +65,11 @@ export default function ProfileWorkspace() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   const handleProfileSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -129,7 +134,10 @@ export default function ProfileWorkspace() {
     }
   };
 
-  const handleFriendAction = async (id: string, action: 'accept' | 'decline' | 'cancel' | 'remove') => {
+  const handleFriendAction = async (
+    id: string,
+    action: 'accept' | 'decline' | 'cancel' | 'remove'
+  ) => {
     setError('');
     setSuccess('');
 
@@ -154,73 +162,126 @@ export default function ProfileWorkspace() {
   };
 
   if (loading) {
-    return <div className="py-16 text-center text-slate-500">Loading profile...</div>;
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-12 text-center text-[var(--ember-muted)] sm:px-6">
+        Loading profile...
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-[2rem] border border-white/85 bg-white/88 p-6 shadow-sm backdrop-blur">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
-            Profile
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold text-slate-950">
-            Your Ember identity
+      <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="ember-panel rounded-[2.25rem] p-8">
+          <p className="ember-eyebrow">Profile</p>
+          <h1 className="ember-heading mt-4 text-4xl text-[var(--ember-text)]">
+            Keep your Ember identity current.
           </h1>
-          <p className="mt-3 text-sm leading-7 text-slate-600">
-            Keep your email and phone current so friends can find you, invite you,
-            and quickly add you to Embers as a contributor.
+          <p className="ember-copy mt-4 max-w-2xl text-sm">
+            Your network, contributor invites, and shared access all depend on this
+            identity layer staying accurate and easy to recognize.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <span className="ember-chip">{friends.length} friends</span>
+            <span className="ember-chip">{incomingRequests.length} incoming</span>
+            <span className="ember-chip">{outgoingRequests.length} pending</span>
+          </div>
+
+          {(error || success) && (
+            <div
+              className={`mt-6 ember-status ${
+                error ? 'ember-status-error' : 'ember-status-success'
+              }`}
+            >
+              {error || success}
+            </div>
+          )}
+        </div>
+
+        <div className="ember-panel rounded-[2.25rem] p-6">
+          <p className="ember-eyebrow">Ember network</p>
+          <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">
+            Add friends by email
+          </h2>
+          <p className="ember-copy mt-3 text-sm">
+            Once someone is in your network, you can share network Embers with them
+            and add them as contributors in one step.
+          </p>
+
+          <form onSubmit={handleAddFriend} className="mt-6 flex flex-col gap-3">
+            <input
+              type="email"
+              value={friendEmail}
+              onChange={(event) => setFriendEmail(event.target.value)}
+              placeholder="friend@example.com"
+              className="ember-input"
+            />
+            <button
+              type="submit"
+              disabled={sendingRequest}
+              className="ember-button-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {sendingRequest ? 'Sending...' : 'Add to network'}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className="mt-6 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="ember-panel-strong rounded-[2.25rem] p-6">
+          <p className="ember-eyebrow">Personal details</p>
+          <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">
+            Update your profile
+          </h2>
+          <p className="ember-copy mt-3 text-sm">
+            Email is used for account access, while phone helps with voice and SMS
+            invite flows.
           </p>
 
           <form onSubmit={handleProfileSave} className="mt-8 space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Name</label>
+              <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
+                Name
+              </label>
               <input
                 type="text"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+                className="ember-input"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+              <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
+                Email
+              </label>
               <input
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+                className="ember-input"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Phone</label>
+              <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
+                Phone
+              </label>
               <input
                 type="tel"
                 value={phoneNumber}
                 onChange={(event) => setPhoneNumber(event.target.value)}
                 placeholder="Recommended for SMS and voice invites"
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-amber-400 focus:bg-white"
+                className="ember-input"
               />
             </div>
-
-            {(error || success) && (
-              <div
-                className={`rounded-2xl px-4 py-3 text-sm ${
-                  error
-                    ? 'border border-rose-200 bg-rose-50 text-rose-700'
-                    : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                }`}
-              >
-                {error || success}
-              </div>
-            )}
 
             <button
               type="submit"
               disabled={savingProfile}
-              className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="ember-button-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {savingProfile ? 'Saving...' : 'Save profile'}
             </button>
@@ -228,59 +289,34 @@ export default function ProfileWorkspace() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-[2rem] border border-white/85 bg-white/88 p-6 shadow-sm backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
-              Ember Network
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold text-slate-950">
-              Add friends by email
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600">
-              Once someone is in your network, you can share network Embers with them
-              and add them as contributors in one click.
-            </p>
-
-            <form onSubmit={handleAddFriend} className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <input
-                type="email"
-                value={friendEmail}
-                onChange={(event) => setFriendEmail(event.target.value)}
-                placeholder="friend@example.com"
-                className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-sky-400 focus:bg-white"
-              />
-              <button
-                type="submit"
-                disabled={sendingRequest}
-                className="rounded-full bg-sky-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {sendingRequest ? 'Sending...' : 'Add to network'}
-              </button>
-            </form>
-          </div>
-
           <div className="grid gap-6 xl:grid-cols-2">
-            <div className="rounded-[2rem] border border-white/85 bg-white/88 p-6 shadow-sm backdrop-blur">
-              <h3 className="text-lg font-semibold text-slate-950">Friends</h3>
-              <div className="mt-4 space-y-3">
+            <section className="ember-panel rounded-[2.25rem] p-6">
+              <h3 className="ember-heading text-2xl text-[var(--ember-text)]">Friends</h3>
+              <p className="ember-copy mt-2 text-sm">
+                People who can be added quickly to shared Embers.
+              </p>
+
+              <div className="mt-5 space-y-3">
                 {friends.length === 0 ? (
-                  <p className="text-sm text-slate-500">No accepted friends yet.</p>
+                  <p className="text-sm text-[var(--ember-muted)]">No accepted friends yet.</p>
                 ) : (
                   friends.map((friend) => (
-                    <div
-                      key={friend.id}
-                      className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                    >
-                      <div className="font-medium text-slate-900">
-                        {friend.user.name || friend.user.email}
+                    <div key={friend.id} className="ember-card rounded-[1.6rem] px-4 py-4">
+                      <div className="font-semibold text-[var(--ember-text)]">
+                        {formatPersonLabel(friend.user)}
                       </div>
-                      <div className="text-sm text-slate-500">{friend.user.email}</div>
+                      <div className="mt-1 text-sm text-[var(--ember-muted)]">
+                        {friend.user.email}
+                      </div>
                       {friend.user.phoneNumber && (
-                        <div className="text-xs text-slate-400">{friend.user.phoneNumber}</div>
+                        <div className="mt-1 text-xs text-[var(--ember-muted)]">
+                          {friend.user.phoneNumber}
+                        </div>
                       )}
                       <button
                         type="button"
                         onClick={() => handleFriendAction(friend.id, 'remove')}
-                        className="mt-3 text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                        className="mt-4 text-sm font-semibold text-[var(--ember-orange-deep)]"
                       >
                         Remove
                       </button>
@@ -288,77 +324,85 @@ export default function ProfileWorkspace() {
                   ))
                 )}
               </div>
-            </div>
+            </section>
 
-            <div className="space-y-6">
-              <div className="rounded-[2rem] border border-white/85 bg-white/88 p-6 shadow-sm backdrop-blur">
-                <h3 className="text-lg font-semibold text-slate-950">Incoming requests</h3>
-                <div className="mt-4 space-y-3">
-                  {incomingRequests.length === 0 ? (
-                    <p className="text-sm text-slate-500">No incoming requests.</p>
-                  ) : (
-                    incomingRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                      >
-                        <div className="font-medium text-slate-900">
-                          {request.user.name || request.user.email}
-                        </div>
-                        <div className="text-sm text-slate-500">{request.user.email}</div>
-                        <div className="mt-3 flex gap-3">
-                          <button
-                            type="button"
-                            onClick={() => handleFriendAction(request.id, 'accept')}
-                            className="text-sm font-medium text-emerald-600 transition hover:text-emerald-700"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleFriendAction(request.id, 'decline')}
-                            className="text-sm font-medium text-rose-600 transition hover:text-rose-700"
-                          >
-                            Decline
-                          </button>
-                        </div>
+            <section className="ember-panel rounded-[2.25rem] p-6">
+              <h3 className="ember-heading text-2xl text-[var(--ember-text)]">
+                Incoming requests
+              </h3>
+              <p className="ember-copy mt-2 text-sm">
+                Approve requests to connect your network.
+              </p>
+
+              <div className="mt-5 space-y-3">
+                {incomingRequests.length === 0 ? (
+                  <p className="text-sm text-[var(--ember-muted)]">No incoming requests.</p>
+                ) : (
+                  incomingRequests.map((request) => (
+                    <div key={request.id} className="ember-card rounded-[1.6rem] px-4 py-4">
+                      <div className="font-semibold text-[var(--ember-text)]">
+                        {formatPersonLabel(request.user)}
                       </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-[2rem] border border-white/85 bg-white/88 p-6 shadow-sm backdrop-blur">
-                <h3 className="text-lg font-semibold text-slate-950">Pending requests</h3>
-                <div className="mt-4 space-y-3">
-                  {outgoingRequests.length === 0 ? (
-                    <p className="text-sm text-slate-500">No pending requests.</p>
-                  ) : (
-                    outgoingRequests.map((request) => (
-                      <div
-                        key={request.id}
-                        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                      >
-                        <div className="font-medium text-slate-900">
-                          {request.user.name || request.user.email}
-                        </div>
-                        <div className="text-sm text-slate-500">{request.user.email}</div>
+                      <div className="mt-1 text-sm text-[var(--ember-muted)]">
+                        {request.user.email}
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-3">
                         <button
                           type="button"
-                          onClick={() => handleFriendAction(request.id, 'cancel')}
-                          className="mt-3 text-sm font-medium text-slate-600 transition hover:text-slate-900"
+                          onClick={() => handleFriendAction(request.id, 'accept')}
+                          className="ember-button-primary min-h-0 px-4 py-2.5"
                         >
-                          Cancel request
+                          Accept
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleFriendAction(request.id, 'decline')}
+                          className="ember-button-secondary min-h-0 px-4 py-2.5"
+                        >
+                          Decline
                         </button>
                       </div>
-                    ))
-                  )}
-                </div>
+                    </div>
+                  ))
+                )}
               </div>
-            </div>
+            </section>
           </div>
+
+          <section className="ember-panel rounded-[2.25rem] p-6">
+            <h3 className="ember-heading text-2xl text-[var(--ember-text)]">
+              Pending requests
+            </h3>
+            <p className="ember-copy mt-2 text-sm">
+              Invitations you have sent but that are not confirmed yet.
+            </p>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {outgoingRequests.length === 0 ? (
+                <p className="text-sm text-[var(--ember-muted)]">No pending requests.</p>
+              ) : (
+                outgoingRequests.map((request) => (
+                  <div key={request.id} className="ember-card rounded-[1.6rem] px-4 py-4">
+                    <div className="font-semibold text-[var(--ember-text)]">
+                      {formatPersonLabel(request.user)}
+                    </div>
+                    <div className="mt-1 text-sm text-[var(--ember-muted)]">
+                      {request.user.email}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleFriendAction(request.id, 'cancel')}
+                      className="mt-4 text-sm font-semibold text-[var(--ember-orange-deep)]"
+                    >
+                      Cancel request
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
