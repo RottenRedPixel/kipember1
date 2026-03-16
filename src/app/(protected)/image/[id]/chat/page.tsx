@@ -90,7 +90,7 @@ export default function ChatPage() {
             <p className="ember-eyebrow">
               {image.mediaType === 'VIDEO' ? 'Video Q&A' : 'Photo Q&A'}
             </p>
-            <h1 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
+            <h1 className="ember-heading mt-3 break-words text-3xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
               {image.originalName}
             </h1>
             <p className="ember-copy mt-3 text-sm">

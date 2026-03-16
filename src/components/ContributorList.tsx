@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface Contributor {
   id: string;
@@ -38,11 +38,73 @@ interface FriendSuggestion {
   phoneNumber: string | null;
 }
 
+type ContributorDetail = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  inviteSent: boolean;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    phoneNumber: string | null;
+  } | null;
+  conversation: {
+    status: string;
+    currentStep: string;
+    responses: {
+      id: string;
+      questionType: string;
+      question: string;
+      answer: string;
+      source: string;
+      createdAt: string;
+    }[];
+  } | null;
+  voiceCalls: {
+    id: string;
+    status: string;
+    startedAt: string | null;
+    endedAt: string | null;
+    createdAt: string;
+    callSummary: string | null;
+    initiatedBy: string;
+  }[];
+};
+
 interface ContributorListProps {
   imageId: string;
   contributors: Contributor[];
   friends: FriendSuggestion[];
   onUpdate: () => void;
+}
+
+function formatQuestionLabel(question: string, questionType: string) {
+  if (question.trim()) {
+    return question.trim();
+  }
+
+  switch (questionType) {
+    case 'context':
+      return 'Context';
+    case 'who':
+      return 'Who is in the memory';
+    case 'what':
+      return 'What happened';
+    case 'when':
+      return 'When it happened';
+    case 'where':
+      return 'Where it happened';
+    case 'why':
+      return 'Why it matters';
+    case 'how':
+      return 'How it unfolded';
+    case 'followup':
+      return 'Follow-up';
+    default:
+      return questionType;
+  }
 }
 
 export default function ContributorList({
@@ -54,9 +116,16 @@ export default function ContributorList({
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [showAddPanel, setShowAddPanel] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [sendingContributorId, setSendingContributorId] = useState<string | null>(null);
   const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
+  const [selectedContributorId, setSelectedContributorId] = useState<string | null>(null);
+  const [selectedContributorDetail, setSelectedContributorDetail] = useState<ContributorDetail | null>(
+    null
+  );
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -66,6 +135,59 @@ export default function ContributorList({
   );
 
   const suggestedFriends = friends.filter((friend) => !existingFriendIds.has(friend.id));
+
+  const selectedContributor =
+    contributors.find((contributor) => contributor.id === selectedContributorId) || null;
+  const selectedContributorPhone =
+    selectedContributor?.phoneNumber || selectedContributor?.user?.phoneNumber || null;
+
+  useEffect(() => {
+    if (!selectedContributorId) {
+      setSelectedContributorDetail(null);
+      setDetailError('');
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadContributorDetail() {
+      setDetailLoading(true);
+      setDetailError('');
+
+      try {
+        const response = await fetch(`/api/contributors/${selectedContributorId}/details`, {
+          cache: 'no-store',
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Failed to load contributor details');
+        }
+
+        if (!cancelled) {
+          setSelectedContributorDetail(payload);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setDetailError(
+            loadError instanceof Error
+              ? loadError.message
+              : 'Failed to load contributor details'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setDetailLoading(false);
+        }
+      }
+    }
+
+    void loadContributorDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedContributorId, contributors]);
 
   const formatPhoneNumber = (value: string) => {
     const digits = value.replace(/\D/g, '');
@@ -98,6 +220,7 @@ export default function ContributorList({
       setPhoneNumber('');
       setEmail('');
       setName('');
+      setShowAddPanel(false);
       setNotice('Contributor added.');
       onUpdate();
     } catch (err) {
@@ -117,6 +240,12 @@ export default function ContributorList({
         const payload = await response.json();
         throw new Error(payload.error || 'Failed to remove contributor');
       }
+
+      if (selectedContributorId === id) {
+        setSelectedContributorId(null);
+        setSelectedContributorDetail(null);
+      }
+
       setNotice('Contributor removed.');
       onUpdate();
     } catch (err) {
@@ -221,111 +350,67 @@ export default function ContributorList({
   };
 
   return (
-    <div className="ember-panel rounded-[2rem] p-6">
-      <div className="mb-4">
-        <p className="ember-eyebrow">Contributors</p>
-        <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">Manage the memory circle</h2>
-        <p className="ember-copy mt-2 text-sm">
-          Add people manually or pull them in from your Ember network, then invite them by text or start a call.
-        </p>
-      </div>
+    <>
+      <div className="ember-panel rounded-[2rem] p-5">
+        <div className="mb-4">
+          <p className="ember-eyebrow">Contributors</p>
+          <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
+            Manage the memory circle
+          </h2>
+          <p className="ember-copy mt-2 text-sm">
+            Keep the list compact here, then open each contributor for actions and
+            their submitted memories.
+          </p>
+        </div>
 
-      {suggestedFriends.length > 0 && (
-        <div className="mb-5">
-          <p className="ember-eyebrow">Quick add from friends</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {suggestedFriends.slice(0, 8).map((friend) => (
-              <button
-                key={friend.id}
-                type="button"
-                disabled={isAdding}
-                onClick={() => handleAddContributor({ userId: friend.id })}
-                className="ember-button-secondary min-h-0 px-4 py-2 disabled:opacity-60"
-              >
-                {friend.name || friend.email}
-              </button>
-            ))}
+        {(error || notice) && (
+          <div
+            className={`mb-4 ember-status ${
+              error ? 'ember-status-error' : 'ember-status-success'
+            }`}
+          >
+            {error || notice}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <input
-          type="text"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Name"
-          className="ember-input"
-        />
-        <input
-          type="tel"
-          value={phoneNumber}
-          onChange={(event) => setPhoneNumber(formatPhoneNumber(event.target.value))}
-          placeholder="Phone number"
-          className="ember-input"
-        />
-        <input
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="Email"
-          className="ember-input"
-        />
-      </div>
-      <button
-        onClick={() =>
-          handleAddContributor({
-            phoneNumber: phoneNumber.replace(/\D/g, '') || null,
-            email: email.trim() || null,
-            name: name.trim() || null,
-          })
-        }
-        disabled={isAdding || (!phoneNumber.trim() && !email.trim())}
-        className="ember-button-primary mt-3 disabled:opacity-60"
-      >
-        {isAdding ? 'Adding...' : 'Add contributor'}
-      </button>
+        {contributors.length === 0 ? (
+          <div className="rounded-[1.6rem] border border-dashed border-[var(--ember-line-strong)] bg-white/70 px-5 py-8 text-center text-sm text-[var(--ember-muted)]">
+            No contributors yet.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {contributors.map((contributor) => {
+              const latestVoiceCall = getLatestVoiceCall(contributor);
+              const contributorLabel =
+                contributor.name ||
+                contributor.user?.name ||
+                contributor.email ||
+                contributor.phoneNumber ||
+                'Contributor';
 
-      {(error || notice) && (
-        <div className={`mt-4 ember-status ${error ? 'ember-status-error' : 'ember-status-success'}`}>
-          {error || notice}
-        </div>
-      )}
-
-      {contributors.length === 0 ? (
-        <p className="py-8 text-center text-[var(--ember-muted)]">No contributors yet. Add people above.</p>
-      ) : (
-        <div className="mt-6 space-y-3">
-          {contributors.map((contributor) => {
-            const latestVoiceCall = getLatestVoiceCall(contributor);
-            const hasPhone = Boolean(contributor.phoneNumber);
-
-            return (
-              <div
-                key={contributor.id}
-                className="ember-card flex flex-col gap-4 rounded-[1.5rem] px-4 py-4"
-              >
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
+              return (
+                <button
+                  key={contributor.id}
+                  type="button"
+                  onClick={() => setSelectedContributorId(contributor.id)}
+                  className="ember-card flex w-full items-center justify-between gap-3 rounded-[1.5rem] px-4 py-4 text-left hover:border-[rgba(255,102,33,0.18)] hover:bg-[rgba(255,102,33,0.03)]"
+                  aria-label={`Open ${contributorLabel}`}
+                >
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-[var(--ember-text)]">
-                        {contributor.name || contributor.email || contributor.phoneNumber || 'Contributor'}
+                      <p className="truncate font-semibold text-[var(--ember-text)]">
+                        {contributorLabel}
                       </p>
                       {getStatusBadge(contributor)}
                     </div>
-                    {contributor.user && (
-                      <p className="mt-1 text-sm text-[var(--ember-orange-deep)]">
-                        Linked account: {contributor.user.name || contributor.user.email}
+
+                    {(contributor.email || contributor.phoneNumber) && (
+                      <p className="mt-1 truncate text-sm text-[var(--ember-muted)]">
+                        {contributor.email ||
+                          formatPhoneNumber(contributor.phoneNumber || '')}
                       </p>
                     )}
-                    {contributor.phoneNumber && (
-                      <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                        {formatPhoneNumber(contributor.phoneNumber)}
-                      </p>
-                    )}
-                    {contributor.email && (
-                      <p className="mt-1 text-sm text-[var(--ember-muted)]">{contributor.email}</p>
-                    )}
+
                     {latestVoiceCall && (
                       <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--ember-muted)]">
                         {getVoiceCallLabel(latestVoiceCall.status)}
@@ -333,51 +418,280 @@ export default function ContributorList({
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--ember-line-strong)] bg-white text-xl font-semibold text-[var(--ember-text)]">
+                    +
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-5">
+          <button
+            type="button"
+            onClick={() => setShowAddPanel((current) => !current)}
+            className="ember-button-secondary w-full justify-center gap-3"
+          >
+            <span className="text-lg leading-none">+</span>
+            <span>{showAddPanel ? 'Close add contributor' : 'Add contributor'}</span>
+          </button>
+        </div>
+
+        {showAddPanel && (
+          <div className="mt-5 rounded-[1.75rem] border border-[var(--ember-line)] bg-white px-4 py-4">
+            {suggestedFriends.length > 0 && (
+              <div className="mb-4">
+                <p className="ember-eyebrow">Quick add from friends</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {suggestedFriends.slice(0, 8).map((friend) => (
                     <button
-                      onClick={() => handleSendInvite(contributor.id)}
-                      disabled={!hasPhone || sendingContributorId === contributor.id}
-                      className="ember-button-secondary min-h-0 px-4 py-2 text-[var(--ember-orange-deep)] disabled:opacity-40"
-                      title={hasPhone ? 'Send text invite' : 'Phone number required for SMS'}
+                      key={friend.id}
+                      type="button"
+                      disabled={isAdding}
+                      onClick={() => void handleAddContributor({ userId: friend.id })}
+                      className="ember-button-secondary min-h-0 px-4 py-2 disabled:opacity-60"
                     >
-                      {sendingContributorId === contributor.id
-                        ? 'Sending...'
-                        : contributor.inviteSent
-                          ? 'Resend text'
-                          : 'Send text'}
+                      {friend.name || friend.email}
                     </button>
-                    <button
-                      onClick={() => handleStartVoiceCall(contributor.id)}
-                      disabled={
-                        !hasPhone ||
-                        callingContributorId === contributor.id ||
-                        latestVoiceCall?.status === 'registered' ||
-                        latestVoiceCall?.status === 'ongoing'
-                      }
-                      className="ember-button-secondary min-h-0 px-4 py-2 disabled:opacity-40"
-                      title={hasPhone ? 'Start voice interview' : 'Phone number required for voice calls'}
-                    >
-                      {callingContributorId === contributor.id ? 'Calling...' : 'Call now'}
-                    </button>
-                    <button
-                      onClick={() => void copyLink(contributor.token)}
-                      className="ember-button-secondary min-h-0 px-4 py-2"
-                    >
-                      Copy link
-                    </button>
-                    <button
-                      onClick={() => handleRemoveContributor(contributor.id)}
-                      className="ember-button-secondary min-h-0 px-4 py-2 text-rose-700"
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  ))}
                 </div>
               </div>
-            );
-          })}
+            )}
+
+            <div className="space-y-4">
+              <label className="block text-sm text-[var(--ember-text)]">
+                <div className="mb-2 font-medium">Name</div>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Contributor name"
+                  className="ember-input"
+                />
+              </label>
+
+              <label className="block text-sm text-[var(--ember-text)]">
+                <div className="mb-2 font-medium">Email</div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="name@example.com"
+                  className="ember-input"
+                />
+              </label>
+
+              <label className="block text-sm text-[var(--ember-text)]">
+                <div className="mb-2 font-medium">Phone</div>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(event) =>
+                    setPhoneNumber(formatPhoneNumber(event.target.value))
+                  }
+                  placeholder="(555) 123-4567"
+                  className="ember-input"
+                />
+              </label>
+            </div>
+
+            <button
+              onClick={() =>
+                void handleAddContributor({
+                  phoneNumber: phoneNumber.replace(/\D/g, '') || null,
+                  email: email.trim() || null,
+                  name: name.trim() || null,
+                })
+              }
+              disabled={isAdding || (!phoneNumber.trim() && !email.trim())}
+              className="ember-button-primary mt-4 w-full disabled:opacity-60"
+            >
+              {isAdding ? 'Adding...' : 'Save contributor'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {selectedContributor && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(17,17,17,0.44)] px-4 py-6"
+          onClick={() => setSelectedContributorId(null)}
+        >
+          <div
+            className="ember-panel-strong max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-[2rem]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b ember-divider px-5 py-5 sm:px-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="ember-eyebrow">Contributor</p>
+                  <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
+                    Details and outreach
+                  </h3>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedContributorId(null)}
+                  className="rounded-full border border-[var(--ember-line-strong)] px-3 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[calc(88vh-7rem)] overflow-y-auto px-5 py-5 sm:px-6">
+              <div className="space-y-5">
+                <div className="ember-card rounded-[1.6rem] px-4 py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                        Contact
+                      </div>
+                      <div className="mt-3 text-xl font-semibold text-[var(--ember-text)]">
+                        {selectedContributor.name ||
+                          selectedContributor.user?.name ||
+                          selectedContributor.email ||
+                          selectedContributor.phoneNumber ||
+                          'Contributor'}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {getStatusBadge(selectedContributor)}
+                      {selectedContributor.inviteSent && <span className="ember-chip">Invite sent</span>}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                        Email
+                      </div>
+                      <div className="mt-2 text-sm text-[var(--ember-text)] break-all">
+                        {selectedContributor.email || selectedContributor.user?.email || 'None'}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                        Phone
+                      </div>
+                      <div className="mt-2 text-sm text-[var(--ember-text)]">
+                        {selectedContributor.phoneNumber
+                          ? formatPhoneNumber(selectedContributor.phoneNumber)
+                          : selectedContributor.user?.phoneNumber
+                            ? formatPhoneNumber(selectedContributor.user.phoneNumber)
+                            : 'None'}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                        Linked account
+                      </div>
+                      <div className="mt-2 text-sm text-[var(--ember-text)] break-all">
+                        {selectedContributor.user
+                          ? selectedContributor.user.name || selectedContributor.user.email
+                          : 'None'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedContributorDetail?.voiceCalls[0]?.callSummary && (
+                    <div className="mt-4 rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.7)] px-4 py-4">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                        Latest call summary
+                      </div>
+                      <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
+                        {selectedContributorDetail.voiceCalls[0].callSummary}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => void handleSendInvite(selectedContributor.id)}
+                    disabled={
+                      !selectedContributorPhone ||
+                      sendingContributorId === selectedContributor.id
+                    }
+                    className="ember-button-secondary justify-center disabled:opacity-40"
+                  >
+                    {sendingContributorId === selectedContributor.id
+                      ? 'Sending...'
+                      : 'Send SMS'}
+                  </button>
+                  <button
+                    onClick={() => void handleStartVoiceCall(selectedContributor.id)}
+                    disabled={
+                      !selectedContributorPhone ||
+                      callingContributorId === selectedContributor.id ||
+                      getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
+                      getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
+                    }
+                    className="ember-button-secondary justify-center disabled:opacity-40"
+                  >
+                    {callingContributorId === selectedContributor.id
+                      ? 'Calling...'
+                      : 'Call'}
+                  </button>
+                  <button
+                    onClick={() => void copyLink(selectedContributor.token)}
+                    className="ember-button-secondary justify-center"
+                  >
+                    Copy link
+                  </button>
+                  <button
+                    onClick={() => void handleRemoveContributor(selectedContributor.id)}
+                    className="ember-button-secondary justify-center text-rose-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+
+                <div>
+                  <p className="ember-eyebrow">Contributions</p>
+                  <h4 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
+                    Saved answers and memory detail
+                  </h4>
+                </div>
+
+                {detailError && (
+                  <div className="ember-status ember-status-error">{detailError}</div>
+                )}
+
+                {detailLoading ? (
+                  <div className="rounded-[1.6rem] border border-[var(--ember-line)] bg-white px-4 py-8 text-center text-sm text-[var(--ember-muted)]">
+                    Loading contributions...
+                  </div>
+                ) : selectedContributorDetail?.conversation?.responses.length ? (
+                  <div className="space-y-3">
+                    {selectedContributorDetail.conversation.responses.map((response) => (
+                      <div
+                        key={response.id}
+                        className="ember-card rounded-[1.6rem] px-4 py-4"
+                      >
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                          {formatQuestionLabel(response.question, response.questionType)}
+                        </div>
+                        <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
+                          {response.answer}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-[1.6rem] border border-dashed border-[var(--ember-line-strong)] bg-white/70 px-4 py-8 text-center text-sm text-[var(--ember-muted)]">
+                    No saved contributions yet for this person.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

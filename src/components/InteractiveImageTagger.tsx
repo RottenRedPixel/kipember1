@@ -440,7 +440,7 @@ export default function InteractiveImageTagger({
               playsInline
               preload="metadata"
               poster={imageUrl || undefined}
-              className="max-h-[28rem] w-full object-contain"
+              className="max-h-[40rem] w-full object-contain"
             />
             <div className="flex flex-wrap items-center justify-between gap-2 bg-white px-4 py-3 text-sm text-[var(--ember-muted)]">
               <span>Face tags on videos are pinned to the poster frame.</span>
@@ -468,7 +468,7 @@ export default function InteractiveImageTagger({
                 src={imageUrl}
                 alt={imageName}
                 onLoad={() => setImageLoaded(true)}
-                className="block max-h-[28rem] w-auto max-w-full rounded-[1.6rem] object-contain"
+                className="block max-h-[42rem] w-auto max-w-full rounded-[1.6rem] object-contain"
               />
 
               <div className="pointer-events-none absolute inset-0">
@@ -508,7 +508,7 @@ export default function InteractiveImageTagger({
                         height: `${tag.heightPct}%`,
                       }}
                     >
-                      <div className="absolute left-2 top-2 inline-flex rounded-full bg-[var(--ember-orange)] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                      <div className="absolute left-2 top-2 inline-flex rounded-full bg-white/96 px-3 py-1 text-xs font-semibold text-[var(--ember-text)] shadow-sm">
                         {tag.label}
                       </div>
                     </div>
@@ -524,7 +524,7 @@ export default function InteractiveImageTagger({
                       height: `${draftBox.heightPct}%`,
                     }}
                   >
-                    <div className="absolute left-2 top-2 inline-flex rounded-full bg-[var(--ember-charcoal)] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                    <div className="absolute left-2 top-2 inline-flex rounded-full bg-white/96 px-3 py-1 text-xs font-semibold text-[var(--ember-text)] shadow-sm">
                       New tag
                     </div>
                   </div>

@@ -189,7 +189,7 @@ export default function ImagePage() {
         : 'Network view';
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-[84rem] px-4 py-8 sm:px-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/feed" className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]">
           {'<- Back to feed'}
@@ -212,13 +212,13 @@ export default function ImagePage() {
         </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1.06fr_0.94fr]">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_360px]">
         <div className="space-y-8">
           <section className="ember-panel rounded-[2.25rem] p-6">
             <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
+              <div className="min-w-0">
                 <p className="ember-eyebrow">{accessLabel}</p>
-                <h1 className="ember-heading mt-3 text-4xl text-[var(--ember-text)]">
+                <h1 className="ember-heading mt-3 break-words text-4xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
                   {image.originalName}
                 </h1>
                 <p className="ember-copy mt-3 max-w-2xl text-sm">
@@ -316,7 +316,7 @@ export default function ImagePage() {
           />
         </div>
 
-        <div>
+        <div className="xl:sticky xl:top-24 xl:self-start">
           {image.canManage ? (
             <ContributorList
               imageId={image.id}

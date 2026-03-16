@@ -163,6 +163,7 @@ textarea {
   border: 1px solid rgba(20, 20, 20, 0.06);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.95);
+  color: var(--ember-text);
   padding: 0.58rem 0.82rem;
   font-family: var(--font-ember-display), sans-serif;
   font-size: 0.82rem;

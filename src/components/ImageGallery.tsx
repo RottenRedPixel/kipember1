@@ -77,7 +77,7 @@ function Section({
             </div>
             <div className="p-5">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="ember-eyebrow">
                     {image.accessType === 'owner'
                       ? 'Owner Ember'
@@ -85,7 +85,7 @@ function Section({
                         ? 'Contributor Ember'
                         : 'Network Ember'}
                   </p>
-                  <h3 className="ember-heading mt-2 text-2xl text-[var(--ember-text)]">
+                  <h3 className="ember-heading mt-2 break-words text-2xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
                     {image.originalName}
                   </h3>
                 </div>

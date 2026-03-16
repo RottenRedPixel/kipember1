@@ -218,9 +218,9 @@ export default function ContributePage() {
     <main className="ember-page">
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
-          <section className="ember-panel rounded-[2rem] p-5">
+          <section className="ember-panel min-w-0 rounded-[2rem] p-5">
             <p className="ember-eyebrow">Contributor invite</p>
-            <h1 className="ember-heading mt-3 text-4xl text-[var(--ember-text)]">
+            <h1 className="ember-heading mt-3 break-words text-4xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
               Help tell the story behind this Ember.
             </h1>
             <p className="ember-copy mt-3 text-sm">
@@ -239,8 +239,8 @@ export default function ContributePage() {
               />
             </div>
 
-            <div className="mt-5">
-              <h2 className="ember-heading text-2xl text-[var(--ember-text)]">
+            <div className="mt-5 min-w-0">
+              <h2 className="ember-heading break-all text-xl leading-tight text-[var(--ember-text)] sm:text-2xl">
                 {data.image.originalName}
               </h2>
               {data.image.description && (
@@ -249,7 +249,7 @@ export default function ContributePage() {
             </div>
           </section>
 
-          <section className="ember-panel rounded-[2rem] overflow-hidden">
+          <section className="ember-panel min-w-0 overflow-hidden rounded-[2rem]">
             {actionError && <div className="ember-status ember-status-error m-4">{actionError}</div>}
 
             {data.latestVoiceCall && (

@@ -116,7 +116,7 @@ export default function WikiPage() {
 
                 <div className="min-w-0 flex-1">
                   <p className="ember-eyebrow">Wiki</p>
-                  <h1 className="ember-heading mt-4 text-4xl text-[var(--ember-text)]">
+                  <h1 className="ember-heading mt-4 break-words text-4xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
                     {wiki.image.originalName}
                   </h1>
                   <p className="ember-copy mt-4 max-w-3xl text-sm">
