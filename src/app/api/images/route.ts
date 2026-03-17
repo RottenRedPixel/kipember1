@@ -8,6 +8,23 @@ import { generateWikiForImage } from '@/lib/wiki-generator';
 import { getUploadPath, getUploadsDir, inferMediaType } from '@/lib/uploads';
 import { generatePosterFrame, probeVideo } from '@/lib/video-processing';
 
+function describeVideoProcessingError(error: unknown): string {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    if (
+      message.includes('ffmpeg') ||
+      message.includes('ffprobe') ||
+      message.includes('enoent')
+    ) {
+      return 'Video uploaded, but poster-frame processing failed because ffmpeg/ffprobe is not available on the server';
+    }
+
+    return `Video uploaded, but poster-frame processing failed: ${error.message}`;
+  }
+
+  return 'Video uploaded, but poster-frame processing failed';
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireApiUser();
@@ -41,6 +58,7 @@ export async function POST(request: NextRequest) {
     const filePath = getUploadPath(filename);
     let posterFilename: string | null = null;
     let durationSeconds: number | null = null;
+    let videoProcessingWarning: string | null = null;
 
     // Ensure uploads directory exists
     const uploadsDir = getUploadsDir();
@@ -65,15 +83,13 @@ export async function POST(request: NextRequest) {
         durationSeconds = videoMetadata.durationSeconds;
       }
     } catch (processingError) {
-      await unlink(filePath).catch(() => undefined);
+      console.error('Video processing error:', processingError);
       if (posterFilename) {
         await unlink(getUploadPath(posterFilename)).catch(() => undefined);
+        posterFilename = null;
       }
-      console.error('Video processing error:', processingError);
-      return NextResponse.json(
-        { error: 'Failed to process the uploaded video' },
-        { status: 500 }
-      );
+      durationSeconds = null;
+      videoProcessingWarning = describeVideoProcessingError(processingError);
     }
 
     // Create database record
@@ -102,6 +118,10 @@ export async function POST(request: NextRequest) {
         error instanceof Error
           ? error.message
           : `${mediaType === 'VIDEO' ? 'Video' : 'Image'} uploaded, but the automatic wiki could not be generated`;
+    }
+
+    if (videoProcessingWarning) {
+      warning = warning ? `${videoProcessingWarning}. ${warning}` : videoProcessingWarning;
     }
 
     return NextResponse.json({ id: image.id, mediaType, wikiGenerated, warning });

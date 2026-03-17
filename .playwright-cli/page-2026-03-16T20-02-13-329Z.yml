@@ -1,0 +1,167 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - link "Ember owner and contributor workspace" [ref=e6] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e8]:
+              - generic [ref=e9]: Ember
+              - generic [ref=e10]: owner and contributor workspace
+          - navigation [ref=e11]:
+            - link "Feed" [ref=e12] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e13] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - generic [ref=e16]: Legacy Owner
+            - generic [ref=e17]: legacy-owner@ember.local
+          - button "Logout" [ref=e18]
+    - main [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - link "<- Back to feed" [ref=e32] [cursor=pointer]:
+            - /url: /feed
+          - generic [ref=e33]:
+            - link "View wiki" [ref=e34] [cursor=pointer]:
+              - /url: /image/cml6tkacq000p0omh6qfu9mlj/wiki
+            - link "Ask Ember" [ref=e35] [cursor=pointer]:
+              - /url: /image/cml6tkacq000p0omh6qfu9mlj/chat
+            - link "Story circle" [ref=e36] [cursor=pointer]:
+              - /url: /image/cml6tkacq000p0omh6qfu9mlj/story-circle
+            - link "Sports mode" [ref=e37] [cursor=pointer]:
+              - /url: /image/cml6tkacq000p0omh6qfu9mlj/sports
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]:
+              - generic [ref=e41]:
+                - generic [ref=e42]:
+                  - paragraph [ref=e43]: Owner workspace
+                  - heading "IMG_1338.jpeg" [level=1] [ref=e44]
+                  - paragraph [ref=e45]: Mets losing Pete Alonso
+                - generic [ref=e46]:
+                  - generic [ref=e47]: Owner
+                  - generic [ref=e48]: Legacy Owner
+              - generic [ref=e49]:
+                - generic [ref=e50]: Photo Ember
+                - generic [ref=e51]: 3 contributors
+                - generic [ref=e52]: 2 completed
+                - generic [ref=e53]: 0 tagged
+              - generic [ref=e54]:
+                - generic [ref=e55]:
+                  - generic [ref=e56]:
+                    - paragraph [ref=e57]: Face tags
+                    - paragraph [ref=e58]: Pin people directly on the photo and optionally turn the tag into an invite.
+                  - generic [ref=e59]:
+                    - generic [ref=e60]: Face snapping unavailable
+                    - button "Tag a face" [ref=e61]
+                - button "IMG_1338.jpeg" [disabled] [ref=e64]:
+                  - img "IMG_1338.jpeg" [ref=e65]
+              - generic [ref=e66]:
+                - generic [ref=e67]:
+                  - generic [ref=e68]:
+                    - heading "Network sharing" [level=2] [ref=e69]
+                    - paragraph [ref=e70]: Let accepted friends see this Ember in their feed.
+                  - generic [ref=e71]:
+                    - checkbox "Share to network" [ref=e72]
+                    - generic [ref=e73]: Share to network
+                - button "Save sharing" [disabled] [ref=e75]
+            - generic [ref=e76]:
+              - generic [ref=e77]:
+                - paragraph [ref=e78]: Tag people
+                - heading "Tagged people" [level=2] [ref=e79]
+                - paragraph [ref=e80]: Review tagged faces, add contact info, and turn tags into contributor invites.
+              - paragraph [ref=e81]: No one has been tagged yet.
+              - generic [ref=e82]:
+                - paragraph [ref=e83]: Quick tag without pinning
+                - generic [ref=e84]:
+                  - button "Kip Barrett" [ref=e85]
+                  - button "Seth Tropper" [ref=e86]
+                  - button "Amado Batour" [ref=e87]
+              - generic [ref=e88]:
+                - textbox "Add a name" [ref=e89]
+                - textbox "Email (optional)" [ref=e90]
+                - textbox "Phone (optional)" [ref=e91]
+                - button "Add tag" [disabled] [ref=e92]
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - paragraph [ref=e96]: Contributors
+                - heading "Manage the memory circle" [level=2] [ref=e97]
+                - paragraph [ref=e98]: Keep the list compact here, then open each contributor for actions and their submitted memories.
+              - generic [ref=e99]:
+                - generic [ref=e100]:
+                  - generic [ref=e101]:
+                    - generic [ref=e102]:
+                      - paragraph [ref=e103]: Kip Barrett
+                      - generic [ref=e104]: Completed
+                    - paragraph [ref=e105]: (908) 463-0350
+                  - button "Open Kip Barrett" [active] [ref=e106]: +
+                - generic [ref=e107]:
+                  - generic [ref=e108]:
+                    - generic [ref=e109]:
+                      - paragraph [ref=e110]: Seth Tropper
+                      - generic [ref=e111]: Completed
+                    - paragraph [ref=e112]: (201) 406-2057
+                  - button "Open Seth Tropper" [ref=e113]: +
+                - generic [ref=e114]:
+                  - generic [ref=e115]:
+                    - generic [ref=e116]:
+                      - paragraph [ref=e117]: Amado Batour
+                      - generic [ref=e118]: Invited
+                    - paragraph [ref=e119]: (848) 468-4648
+                  - button "Open Amado Batour" [ref=e120]: +
+              - button "+ Add contributor" [ref=e122]:
+                - generic [ref=e123]: +
+                - generic [ref=e124]: Add contributor
+            - generic [ref=e155]:
+              - generic [ref=e157]:
+                - generic [ref=e158]:
+                  - paragraph [ref=e159]: Contributor
+                  - heading "Kip Barrett" [level=3] [ref=e160]
+                  - generic [ref=e161]:
+                    - generic [ref=e162]: Completed
+                    - generic [ref=e163]: Invite sent
+                - button "Close" [ref=e164]
+              - generic [ref=e166]:
+                - generic [ref=e167]:
+                  - generic [ref=e168]:
+                    - generic [ref=e169]: Contact
+                    - generic [ref=e170]:
+                      - generic [ref=e171]: "Email: None"
+                      - generic [ref=e172]: "Phone: (908) 463-0350"
+                  - generic [ref=e173]:
+                    - button "Send SMS" [ref=e174]
+                    - button "Call" [ref=e175]
+                    - button "Copy link" [ref=e176]
+                    - button "Remove" [ref=e177]
+                - generic [ref=e178]:
+                  - generic [ref=e179]:
+                    - paragraph [ref=e180]: Contributions
+                    - heading "Saved answers and memory detail" [level=4] [ref=e181]
+                  - generic [ref=e182]:
+                    - generic [ref=e183]:
+                      - generic [ref=e184]: Can you describe what you see or what memory this image captures for you?
+                      - paragraph [ref=e185]: __START__
+                    - generic [ref=e186]:
+                      - generic [ref=e187]: Who are the people in this image? What's your relationship to them?
+                      - paragraph [ref=e188]: I see an upset Mr met and Mrs met. I am fans of them
+                    - generic [ref=e189]:
+                      - generic [ref=e190]: When was this taken? Do you remember the date, year, or occasion?
+                      - paragraph [ref=e191]: It was this winter after the Mets lost Pete Alonso
+                    - generic [ref=e192]:
+                      - generic [ref=e193]: Where was this? What do you remember about the location?
+                      - paragraph [ref=e194]: It was at a bar near citi Field
+                    - generic [ref=e195]:
+                      - generic [ref=e196]: What was happening at this moment? Any specific events or activities?
+                      - paragraph [ref=e197]: They came in to drown their sorrows
+                    - generic [ref=e198]:
+                      - generic [ref=e199]: Why is this image or memory significant to you?
+                      - paragraph [ref=e200]: It made me angry
+                    - generic [ref=e201]:
+                      - generic [ref=e202]: How did this moment come about? Any backstory?
+                      - paragraph [ref=e203]: I just happened to walk in
+  - button "Open Next.js Dev Tools" [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+  - alert [ref=e31]

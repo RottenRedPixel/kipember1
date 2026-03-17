@@ -1,0 +1,99 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - group [ref=e5]:
+        - generic "Ember personal archive Open navigation" [ref=e6]:
+          - generic [ref=e9]:
+            - generic [ref=e10]: Ember
+            - generic [ref=e11]: personal archive
+          - generic [ref=e13]: Open navigation
+    - main [ref=e18]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - link "<- Back to Ember" [ref=e22] [cursor=pointer]:
+            - /url: /image/cml6tkacq000p0omh6qfu9mlj
+          - generic [ref=e23]:
+            - img "IMG_1338.jpeg" [ref=e25]
+            - generic [ref=e26]:
+              - paragraph [ref=e27]: Wiki
+              - heading "IMG_1338.jpeg" [level=1] [ref=e28]
+              - paragraph [ref=e29]: Mets losing Pete Alonso
+              - generic [ref=e30]:
+                - generic [ref=e31]: Version 1
+                - generic [ref=e32]: Updated 2/3/2026
+                - generic [ref=e33]: Owner controls enabled
+          - generic [ref=e35]:
+            - 'heading "The Pete Alonso Departure: A Mets Fan''s Lament" [level=1] [ref=e36]'
+            - heading "Overview" [level=2] [ref=e37]
+            - paragraph [ref=e38]: This memory captures the emotional aftermath of the New York Mets losing star first baseman Pete Alonso, as witnessed through the eyes of dejected fans and the team's beloved mascots, Mr. and Mrs. Met, seeking solace at a local establishment.
+            - heading "People" [level=2] [ref=e39]
+            - list [ref=e40]:
+              - listitem [ref=e41]:
+                - strong [ref=e42]: Mr. and Mrs. Met
+                - text: ": The official mascots of the New York Mets baseball team"
+              - listitem [ref=e43]:
+                - strong [ref=e44]: Kip Barrett
+                - text: ": A Mets fan who witnessed the mascots' appearance at the bar"
+              - listitem [ref=e45]:
+                - strong [ref=e46]: Seth Tropper
+                - text: ": Another contributor with Mets memories, accompanied by someone named Donna"
+            - paragraph [ref=e47]:
+              - emphasis [ref=e48]: "Note: Barrett describes being \"fans of them\" in reference to the mascot duo."
+            - heading "Timeline" [level=2] [ref=e49]
+            - paragraph [ref=e50]:
+              - strong [ref=e51]: Winter (Recent)
+              - text: ": The sighting occurred during the winter following Pete Alonso's departure from the Mets organization."
+            - paragraph [ref=e52]:
+              - emphasis [ref=e53]: There appears to be some confusion in the timeline, as Seth Tropper references "game six of the World Series" at what was formerly Shea Stadium, now Citi Field, suggesting different time periods or overlapping memories.
+            - heading "Location" [level=2] [ref=e54]
+            - paragraph [ref=e55]:
+              - strong [ref=e56]: Primary Location
+              - text: ": A bar near Citi Field (the Mets' home stadium in Queens, New York)"
+            - paragraph [ref=e57]:
+              - emphasis [ref=e58]: Seth Tropper also references Shea Stadium/Citi Field as a significant location for Mets-related memories.
+            - heading "Story" [level=2] [ref=e59]
+            - paragraph [ref=e60]: The memory centers on an unexpected encounter at a local watering hole near the Mets' home stadium. Following the team's loss of slugger Pete Alonso, the team's mascots Mr. and Mrs. Met were spotted at a nearby bar, apparently seeking to "drown their sorrows" over the departure of the popular first baseman.
+            - paragraph [ref=e61]: Kip Barrett happened upon this scene by chance, simply walking into the establishment to find the anthropomorphic baseball heads in a state of dejection - a visual metaphor for the fanbase's collective disappointment over losing one of their star players.
+            - heading "Significance" [level=2] [ref=e62]
+            - paragraph [ref=e63]: For Barrett, this moment represented more than just a curious sighting - it embodied the frustration felt throughout Mets Nation. The image of the team's own mascots appearing downcast served as a powerful symbol of organizational disappointment and fan sentiment.
+            - blockquote [ref=e64]:
+              - paragraph [ref=e65]: "\"It made me angry\" - Kip Barrett"
+            - paragraph [ref=e66]: The significance extends beyond the immediate moment, representing the cyclical nature of hope and disappointment that defines much of the Mets fan experience.
+            - heading "Quotes" [level=2] [ref=e67]
+            - blockquote [ref=e68]:
+              - paragraph [ref=e69]: "\"They came in to drown their sorrows\" - Kip Barrett"
+            - blockquote [ref=e70]:
+              - paragraph [ref=e71]: "\"I just happened to walk in\" - Kip Barrett, on discovering the scene"
+            - blockquote [ref=e72]:
+              - paragraph [ref=e73]: "\"This is very cool, let's chat about this\" - Seth Tropper"
+            - separator [ref=e74]
+            - paragraph [ref=e75]:
+              - emphasis [ref=e76]: This entry reflects the complex emotions surrounding player departures in professional sports and how even fictional mascots can serve as vessels for genuine fan sentiment.
+        - complementary [ref=e77]:
+          - generic [ref=e78]:
+            - paragraph [ref=e79]: Actions
+            - heading "Keep the memory current" [level=2] [ref=e80]
+            - paragraph [ref=e81]: Regenerate after new contributors, new tags, or sports details have been added.
+            - button "Regenerate wiki" [ref=e82]
+          - generic [ref=e83]:
+            - paragraph [ref=e84]: Modes
+            - generic [ref=e85]:
+              - link "Kids mode Storybook" [ref=e86] [cursor=pointer]:
+                - /url: /image/cml6tkacq000p0omh6qfu9mlj/kids
+                - generic [ref=e87]: Kids mode
+                - generic [ref=e88]: Storybook
+              - link "Story circle Thread" [ref=e89] [cursor=pointer]:
+                - /url: /image/cml6tkacq000p0omh6qfu9mlj/story-circle
+                - generic [ref=e90]: Story circle
+                - generic [ref=e91]: Thread
+              - link "Sports mode Stats" [ref=e92] [cursor=pointer]:
+                - /url: /image/cml6tkacq000p0omh6qfu9mlj/sports
+                - generic [ref=e93]: Sports mode
+                - generic [ref=e94]: Stats
+              - link "Ask Ember Q&A" [ref=e95] [cursor=pointer]:
+                - /url: /image/cml6tkacq000p0omh6qfu9mlj/chat
+                - generic [ref=e96]: Ask Ember
+                - generic [ref=e97]: Q&A
+  - button "Open Next.js Dev Tools" [ref=e103] [cursor=pointer]:
+    - img [ref=e104]
+  - alert [ref=e107]

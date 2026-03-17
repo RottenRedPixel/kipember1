@@ -4,6 +4,18 @@ export function getUploadUrl(filename: string): string {
   return `/api/uploads/${filename}`;
 }
 
+function buildVideoPlaceholderDataUrl(): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320">
+    <rect width="480" height="320" fill="#0f172a"/>
+    <rect x="24" y="24" width="432" height="272" rx="28" fill="#1e293b"/>
+    <circle cx="240" cy="160" r="56" fill="#0ea5e9" opacity="0.9"/>
+    <polygon points="226,132 226,188 274,160" fill="#ffffff"/>
+    <text x="240" y="255" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#e2e8f0">Video Ember</text>
+  </svg>`;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 export function getPreviewMediaUrl({
   mediaType,
   filename,
@@ -13,7 +25,11 @@ export function getPreviewMediaUrl({
   filename: string;
   posterFilename?: string | null;
 }): string {
-  return getUploadUrl(mediaType === 'VIDEO' && posterFilename ? posterFilename : filename);
+  if (mediaType === 'VIDEO') {
+    return posterFilename ? getUploadUrl(posterFilename) : buildVideoPlaceholderDataUrl();
+  }
+
+  return getUploadUrl(filename);
 }
 
 export function formatDuration(seconds: number | null | undefined): string | null {

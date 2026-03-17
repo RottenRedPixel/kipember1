@@ -136,6 +136,14 @@ textarea {
   white-space: nowrap;
 }
 
+.ember-summary {
+  list-style: none;
+}
+
+.ember-summary::-webkit-details-marker {
+  display: none;
+}
+
 .ember-eyebrow {
   color: var(--ember-orange-deep);
   font-family: var(--font-ember-display), sans-serif;
@@ -280,6 +288,18 @@ textarea {
 
   100% {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes ember-sheet-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(2.5rem);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

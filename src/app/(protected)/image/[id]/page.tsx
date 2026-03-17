@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ChatInterface from '@/components/ChatInterface';
 import ContributorList from '@/components/ContributorList';
 import TagManager from '@/components/TagManager';
 import InteractiveImageTagger from '@/components/InteractiveImageTagger';
+import MediaPreview from '@/components/MediaPreview';
 
 interface ImageRecord {
   id: string;
@@ -96,14 +98,174 @@ interface ImageRecord {
   } | null;
 }
 
+type IconProps = {
+  className?: string;
+};
+
+type ActivePanel = 'ask' | 'contributors' | 'shape' | 'share' | null;
+type ShapeView = 'menu' | 'tag';
+
+function DiamondIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <path d="m12 3.5 7.5 8.5L12 20.5 4.5 12 12 3.5Z" />
+    </svg>
+  );
+}
+
+function PlayIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="m8 5.75 10 6.25L8 18.25V5.75Z" />
+    </svg>
+  );
+}
+
+function PersonIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <path d="M12 12.25a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
+      <path d="M5 19.25c1.35-2.8 3.78-4.25 7-4.25s5.65 1.45 7 4.25" />
+    </svg>
+  );
+}
+
+function CircleIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <circle cx="12" cy="12" r="7.25" />
+    </svg>
+  );
+}
+
+function ShareIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <path d="M12 4v10" />
+      <path d="m8 8 4-4 4 4" />
+      <path d="M5 13.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4.5" />
+    </svg>
+  );
+}
+
+function DetailBlock({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+        {label}
+      </div>
+      <div className="mt-2 break-words text-sm leading-6 text-[var(--ember-text)]">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  icon,
+  label,
+  onClick,
+  href,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick?: () => void;
+  href?: string;
+}) {
+  const className =
+    'flex min-h-[4.5rem] flex-col items-center justify-center gap-2 rounded-[1.5rem] border border-[var(--ember-line)] bg-white px-3 py-3 text-center text-[var(--ember-text)] transition hover:border-[rgba(255,102,33,0.24)] hover:bg-[rgba(255,102,33,0.06)]';
+
+  const content = (
+    <>
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(247,247,244,0.9)] text-[var(--ember-text)]">
+        {icon}
+      </span>
+      <span className="text-sm font-medium">{label}</span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {content}
+    </button>
+  );
+}
+
+function EmberSheet({
+  open,
+  title,
+  subtitle,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  subtitle: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[rgba(17,17,17,0.42)]" onClick={onClose}>
+      <div
+        className="absolute inset-x-0 bottom-0 mx-auto max-h-[88vh] w-full max-w-5xl overflow-hidden rounded-t-[2rem] border border-white/70 bg-[rgba(255,255,255,0.98)] shadow-[0_-18px_48px_rgba(17,17,17,0.18)] backdrop-blur-xl animate-[ember-sheet-rise_240ms_ease-out] sm:bottom-4 sm:rounded-[2rem]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="border-b ember-divider px-4 py-4 sm:px-6 sm:py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="ember-eyebrow">Ember</p>
+              <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">{title}</h2>
+              <p className="ember-copy mt-2 text-sm">{subtitle}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-[var(--ember-line-strong)] px-3 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+        <div className="max-h-[calc(88vh-8rem)] overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ImagePage() {
   const params = useParams();
+  const router = useRouter();
   const [image, setImage] = useState<ImageRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [shareToNetwork, setShareToNetwork] = useState(false);
   const [savingShareState, setSavingShareState] = useState(false);
   const [shareError, setShareError] = useState('');
+  const [actionNotice, setActionNotice] = useState('');
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null);
+  const [shapeView, setShapeView] = useState<ShapeView>('menu');
+  const [deletingEmber, setDeletingEmber] = useState(false);
 
   const fetchImage = useCallback(async () => {
     try {
@@ -127,6 +289,41 @@ export default function ImagePage() {
     fetchImage();
   }, [fetchImage]);
 
+  useEffect(() => {
+    if (!actionNotice && !shareError) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setActionNotice('');
+      setShareError('');
+    }, 2800);
+    return () => window.clearTimeout(timeoutId);
+  }, [actionNotice, shareError]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    if (!activePanel) {
+      document.body.style.removeProperty('overflow');
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activePanel]);
+
+  const closePanel = () => {
+    setActivePanel(null);
+    setShapeView('menu');
+  };
+
   const handleShareSave = async () => {
     if (!image) {
       return;
@@ -149,10 +346,111 @@ export default function ImagePage() {
       }
 
       setImage((prev) => (prev ? { ...prev, shareToNetwork: payload.shareToNetwork } : prev));
+      setActionNotice('Ember network sharing updated.');
     } catch (err) {
       setShareError(err instanceof Error ? err.message : 'Failed to update sharing');
     } finally {
       setSavingShareState(false);
+    }
+  };
+
+  const handleDeleteEmber = async () => {
+    if (!image?.canManage || deletingEmber) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete ${image.originalName}? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingEmber(true);
+
+    try {
+      const response = await fetch(`/api/images/${image.id}`, {
+        method: 'DELETE',
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to delete Ember');
+      }
+
+      router.push('/feed');
+      router.refresh();
+    } catch (deleteError) {
+      setShareError(
+        deleteError instanceof Error ? deleteError.message : 'Failed to delete Ember'
+      );
+    } finally {
+      setDeletingEmber(false);
+    }
+  };
+
+  const openShareWindow = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer,width=720,height=640');
+  };
+
+  const handleShareAction = async (
+    target: 'facebook' | 'x' | 'email' | 'instagram' | 'tiktok' | 'copy'
+  ) => {
+    if (!image) {
+      return;
+    }
+
+    const shareUrl = `${window.location.origin}/image/${image.id}`;
+    const shareText = `Take a look at ${image.originalName} on Ember`;
+
+    try {
+      if (target === 'facebook') {
+        openShareWindow(
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
+        );
+        setActionNotice('Opened Facebook sharing.');
+        return;
+      }
+
+      if (target === 'x') {
+        openShareWindow(
+          `https://twitter.com/intent/tweet?url=${encodeURIComponent(
+            shareUrl
+          )}&text=${encodeURIComponent(shareText)}`
+        );
+        setActionNotice('Opened X sharing.');
+        return;
+      }
+
+      if (target === 'email') {
+        window.location.href = `mailto:?subject=${encodeURIComponent(
+          image.originalName
+        )}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`;
+        return;
+      }
+
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Copy and social prep are not available on this device.');
+      }
+
+      await navigator.clipboard.writeText(shareUrl);
+
+      if (target === 'instagram') {
+        setActionNotice('Ember link copied for Instagram sharing.');
+        return;
+      }
+
+      if (target === 'tiktok') {
+        setActionNotice('Ember link copied for TikTok sharing.');
+        return;
+      }
+
+      setActionNotice('Ember link copied.');
+    } catch (shareActionError) {
+      setShareError(
+        shareActionError instanceof Error
+          ? shareActionError.message
+          : 'Failed to prepare share link.'
+      );
     }
   };
 
@@ -181,65 +479,257 @@ export default function ImagePage() {
     (contributor) => contributor.conversation?.status === 'completed'
   ).length;
 
-  const accessLabel =
-    image.accessType === 'owner'
-      ? 'Owner workspace'
-      : image.accessType === 'contributor'
-        ? 'Contributor access'
-        : 'Network view';
+  const ownerLabel = image.owner.name || image.owner.email;
+  const contributorNames = image.contributors.map(
+    (contributor) =>
+      contributor.name ||
+      contributor.user?.name ||
+      contributor.email ||
+      contributor.phoneNumber
+  );
+  const tagNames = image.tags.map((tag) => tag.label);
+  const detailSummary =
+    image.description ||
+    (completedCount > 0
+      ? `${completedCount} contributor memories have been captured for this Ember so far.`
+      : 'No detail has been captured for this Ember yet.');
+  const capturedLabel = new Date(image.createdAt).toLocaleDateString();
+  const subjectNoun = image.mediaType === 'VIDEO' ? 'video' : 'photo';
 
   return (
-    <div className="mx-auto max-w-[84rem] px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-5xl px-4 py-8 pb-28 sm:px-6 sm:pb-10">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/feed" className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]">
           {'<- Back to feed'}
         </Link>
-        <div className="flex flex-wrap gap-2">
-          {image.wiki && (
-            <Link href={`/image/${image.id}/wiki`} className="ember-button-secondary min-h-0 px-4 py-2">
-              View wiki
-            </Link>
-          )}
-          <Link href={`/image/${image.id}/chat`} className="ember-button-secondary min-h-0 px-4 py-2">
-            Ask Ember
-          </Link>
-          <Link href={`/image/${image.id}/story-circle`} className="ember-button-secondary min-h-0 px-4 py-2">
-            Story circle
-          </Link>
-          <Link href={`/image/${image.id}/sports`} className="ember-button-secondary min-h-0 px-4 py-2">
-            {image.sportsMode ? 'Update sports mode' : 'Sports mode'}
-          </Link>
-        </div>
+        {(actionNotice || shareError) && (
+          <div className={`text-sm ${shareError ? 'text-rose-600' : 'text-[var(--ember-muted)]'}`}>
+            {shareError || actionNotice}
+          </div>
+        )}
       </div>
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,1.45fr)_360px]">
-        <div className="space-y-8">
-          <section className="ember-panel rounded-[2.25rem] p-6">
-            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <p className="ember-eyebrow">{accessLabel}</p>
-                <h1 className="ember-heading mt-3 break-words text-4xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
-                  {image.originalName}
-                </h1>
-                <p className="ember-copy mt-3 max-w-2xl text-sm">
-                  {image.description || 'No description has been added to this Ember yet.'}
+      <section className="space-y-6">
+        <div className="overflow-hidden rounded-[2.3rem] border border-white/90 bg-white shadow-[0_18px_42px_rgba(17,17,17,0.08)]">
+          <MediaPreview
+            mediaType={image.mediaType}
+            filename={image.filename}
+            posterFilename={image.posterFilename}
+            originalName={image.originalName}
+            controls={image.mediaType === 'VIDEO'}
+            className="max-h-[44rem] w-full object-contain bg-[var(--ember-charcoal)]"
+          />
+        </div>
+
+        <div>
+          <h1 className="ember-heading break-all text-2xl leading-tight text-[var(--ember-text)] sm:break-words sm:text-4xl sm:[overflow-wrap:anywhere]">
+            {image.originalName}
+          </h1>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="ember-panel rounded-[2rem] p-5 sm:p-6">
+            <p className="ember-eyebrow">Memory detail</p>
+            <p className="mt-4 text-sm leading-7 text-[var(--ember-text)]">{detailSummary}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="ember-chip">{image.mediaType === 'VIDEO' ? 'Video Ember' : 'Photo Ember'}</span>
+              <span className="ember-chip">Captured {capturedLabel}</span>
+              <span className="ember-chip">{image.contributors.length} contributors</span>
+              <span className="ember-chip">{image.tags.length} tags</span>
+            </div>
+          </div>
+
+          <div className="ember-panel rounded-[2rem] p-5 sm:p-6">
+            <p className="ember-eyebrow">People connected</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              <DetailBlock label="Owner" value={ownerLabel} />
+              <DetailBlock
+                label="Contributors"
+                value={
+                  contributorNames.length
+                    ? contributorNames.join(', ')
+                    : 'No contributors have been added yet.'
+                }
+              />
+              <DetailBlock
+                label="Tags"
+                value={tagNames.length ? tagNames.join(', ') : 'No one has been tagged yet.'}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden grid-cols-5 gap-3 md:grid">
+          <ActionButton
+            icon={<DiamondIcon className="h-5 w-5" />}
+            label="Ask Ember"
+            onClick={() => setActivePanel('ask')}
+          />
+          <ActionButton
+            icon={<PlayIcon className="h-5 w-5" />}
+            label="Play Ember"
+            href={`/image/${image.id}/wiki`}
+          />
+          <ActionButton
+            icon={<PersonIcon className="h-5 w-5" />}
+            label="Contributors"
+            onClick={() => setActivePanel('contributors')}
+          />
+          <ActionButton
+            icon={<CircleIcon className="h-5 w-5" />}
+            label="Shape Ember"
+            onClick={() => {
+              setShapeView('menu');
+              setActivePanel('shape');
+            }}
+          />
+          <ActionButton
+            icon={<ShareIcon className="h-5 w-5" />}
+            label="Share Ember"
+            onClick={() => setActivePanel('share')}
+          />
+        </div>
+      </section>
+
+      <EmberSheet
+        open={activePanel === 'ask'}
+        title="Ask Ember"
+        subtitle="Chat with this Ember without leaving the memory."
+        onClose={closePanel}
+      >
+        <ChatInterface imageId={image.id} subjectNoun={subjectNoun} />
+      </EmberSheet>
+
+      <EmberSheet
+        open={activePanel === 'contributors'}
+        title="Contributors"
+        subtitle="Review, invite, and manage the people connected to this memory."
+        onClose={closePanel}
+      >
+        {image.canManage ? (
+          <ContributorList
+            imageId={image.id}
+            contributors={image.contributors}
+            friends={image.friends}
+            onUpdate={fetchImage}
+          />
+        ) : (
+          <div className="ember-panel rounded-[2rem] p-5">
+            <div className="space-y-3">
+              {contributorNames.length === 0 ? (
+                <p className="text-sm text-[var(--ember-muted)]">
+                  No contributors have been added yet.
                 </p>
-              </div>
-              <div className="ember-card rounded-[1.5rem] px-4 py-4">
-                <div className="text-xs uppercase tracking-[0.14em] text-[var(--ember-muted)]">Owner</div>
-                <div className="mt-2 font-semibold text-[var(--ember-text)]">
-                  {image.owner.name || image.owner.email}
-                </div>
+              ) : (
+                image.contributors.map((contributor) => {
+                  const contributorLabel =
+                    contributor.name ||
+                    contributor.user?.name ||
+                    contributor.email ||
+                    contributor.phoneNumber ||
+                    'Contributor';
+
+                  return (
+                    <div key={contributor.id} className="ember-card rounded-[1.5rem] px-4 py-4">
+                      <div className="font-semibold text-[var(--ember-text)]">{contributorLabel}</div>
+                      {(contributor.email || contributor.phoneNumber) && (
+                        <div className="mt-1 text-sm text-[var(--ember-muted)]">
+                          {contributor.email || contributor.phoneNumber}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
+      </EmberSheet>
+
+      <EmberSheet
+        open={activePanel === 'shape'}
+        title={shapeView === 'tag' ? 'Tag people' : 'Shape Ember'}
+        subtitle={
+          shapeView === 'tag'
+            ? 'Pin people to the image, review tags, and turn them into contributor invites.'
+            : 'Review added content and shape how this Ember is organized.'
+        }
+        onClose={closePanel}
+      >
+        {shapeView === 'menu' ? (
+          <div className="space-y-4">
+            <div className="ember-panel rounded-[2rem] p-5">
+              <p className="ember-eyebrow">Added content</p>
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <DetailBlock label="Memory detail" value={detailSummary} />
+                <DetailBlock
+                  label="Contributor notes"
+                  value={`${completedCount} completed memory threads`}
+                />
+                <DetailBlock label="Tagged people" value={`${image.tags.length} tagged records`} />
               </div>
             </div>
 
-            <div className="mb-5 flex flex-wrap gap-2">
-              <span className="ember-chip">{image.mediaType === 'VIDEO' ? 'Video Ember' : 'Photo Ember'}</span>
-              <span className="ember-chip">{image.contributors.length} contributors</span>
-              <span className="ember-chip">{completedCount} completed</span>
-              <span className="ember-chip">{image.tags.length} tagged</span>
-              {image.shareToNetwork && <span className="ember-chip">Shared to network</span>}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link
+                href={`/image/${image.id}/wiki`}
+                className="ember-card rounded-[1.6rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
+              >
+                <div className="text-lg font-semibold text-[var(--ember-text)]">View wiki</div>
+                <p className="mt-2 text-sm text-[var(--ember-muted)]">
+                  Open the full Ember wiki and all its modes.
+                </p>
+              </Link>
+
+              {image.canManage && (
+                <button
+                  type="button"
+                  onClick={() => setShapeView('tag')}
+                  className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                >
+                  <div className="text-lg font-semibold text-[var(--ember-text)]">Tag people</div>
+                  <p className="mt-2 text-sm text-[var(--ember-muted)]">
+                    Add or update tags without cluttering the main screen.
+                  </p>
+                </button>
+              )}
+
+              <Link
+                href="/feed"
+                className="ember-card rounded-[1.6rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
+              >
+                <div className="text-lg font-semibold text-[var(--ember-text)]">View feed</div>
+                <p className="mt-2 text-sm text-[var(--ember-muted)]">
+                  Return to your Ember feed.
+                </p>
+              </Link>
+
+              {image.canManage && (
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteEmber()}
+                  disabled={deletingEmber}
+                  className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(244,63,94,0.28)] disabled:opacity-60"
+                >
+                  <div className="text-lg font-semibold text-rose-700">
+                    {deletingEmber ? 'Deleting...' : 'Delete Ember'}
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--ember-muted)]">
+                    Permanently remove this Ember and its connected records.
+                  </p>
+                </button>
+              )}
             </div>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <button
+              type="button"
+              onClick={() => setShapeView('menu')}
+              className="rounded-full border border-[var(--ember-line-strong)] px-4 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+            >
+              Back to shape tools
+            </button>
 
             <InteractiveImageTagger
               imageId={image.id}
@@ -267,93 +757,146 @@ export default function ImagePage() {
               onUpdate={fetchImage}
             />
 
-            {image.canManage && (
-              <div className="ember-card mt-6 rounded-[1.75rem] px-5 py-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h2 className="ember-heading text-2xl text-[var(--ember-text)]">Network sharing</h2>
-                    <p className="ember-copy mt-2 text-sm">
-                      Let accepted friends see this Ember in their feed.
-                    </p>
-                  </div>
-                  <label className="inline-flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={shareToNetwork}
-                      onChange={(event) => setShareToNetwork(event.target.checked)}
-                      className="h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
-                    />
-                    <span className="text-sm font-medium text-[var(--ember-text)]">Share to network</span>
-                  </label>
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <button
-                    onClick={handleShareSave}
-                    disabled={savingShareState || shareToNetwork === image.shareToNetwork}
-                    className="ember-button-primary disabled:opacity-60"
-                  >
-                    {savingShareState ? 'Saving...' : 'Save sharing'}
-                  </button>
-                  {shareError && <span className="text-sm text-rose-600">{shareError}</span>}
-                </div>
-              </div>
-            )}
-          </section>
-
-          <TagManager
-            imageId={image.id}
-            tags={image.tags}
-            contributors={image.contributors.map((contributor) => ({
-              id: contributor.id,
-              name: contributor.name,
-              email: contributor.email,
-              phoneNumber: contributor.phoneNumber,
-              userId: contributor.userId,
-            }))}
-            friends={image.friends}
-            canManage={image.canManage}
-            onUpdate={fetchImage}
-          />
-        </div>
-
-        <div className="xl:sticky xl:top-24 xl:self-start">
-          {image.canManage ? (
-            <ContributorList
+            <TagManager
               imageId={image.id}
-              contributors={image.contributors}
+              tags={image.tags}
+              contributors={image.contributors.map((contributor) => ({
+                id: contributor.id,
+                name: contributor.name,
+                email: contributor.email,
+                phoneNumber: contributor.phoneNumber,
+                userId: contributor.userId,
+              }))}
               friends={image.friends}
+              canManage={image.canManage}
               onUpdate={fetchImage}
             />
-          ) : (
-            <div className="ember-panel rounded-[2rem] p-6">
-              <p className="ember-eyebrow">Contributors</p>
-              <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">People connected to this Ember</h2>
-              <div className="mt-6 space-y-3">
-                {image.contributors.length === 0 ? (
-                  <p className="text-sm text-[var(--ember-muted)]">No contributors have been added yet.</p>
-                ) : (
-                  image.contributors.map((contributor) => (
-                    <div key={contributor.id} className="ember-card rounded-[1.5rem] px-4 py-4">
-                      <div className="font-semibold text-[var(--ember-text)]">
-                        {contributor.name ||
-                          contributor.user?.name ||
-                          contributor.email ||
-                          contributor.phoneNumber ||
-                          'Contributor'}
-                      </div>
-                      {(contributor.email || contributor.phoneNumber) && (
-                        <div className="mt-1 text-sm text-[var(--ember-muted)]">
-                          {contributor.email || contributor.phoneNumber}
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
+          </div>
+        )}
+      </EmberSheet>
+
+      <EmberSheet
+        open={activePanel === 'share'}
+        title="Share Ember"
+        subtitle="Share this Ember outward or into your Ember network."
+        onClose={closePanel}
+      >
+        <div className="space-y-4">
+          {image.canManage && (
+            <div className="ember-panel rounded-[2rem] p-5">
+              <p className="ember-eyebrow">Ember network</p>
+              <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-lg font-semibold text-[var(--ember-text)]">Share to Ember feed</div>
+                  <p className="mt-2 text-sm text-[var(--ember-muted)]">
+                    Let accepted friends see this Ember in their feed.
+                  </p>
+                </div>
+
+                <label className="inline-flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={shareToNetwork}
+                    onChange={(event) => setShareToNetwork(event.target.checked)}
+                    className="h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
+                  />
+                  <span className="text-sm font-medium text-[var(--ember-text)]">Share to network</span>
+                </label>
+              </div>
+
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={handleShareSave}
+                  disabled={savingShareState || shareToNetwork === image.shareToNetwork}
+                  className="ember-button-primary disabled:opacity-60"
+                >
+                  {savingShareState ? 'Saving...' : 'Save network sharing'}
+                </button>
               </div>
             </div>
           )}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              ['facebook', 'Facebook', 'Open Facebook share composer for this Ember.'],
+              ['x', 'X', 'Open an X post draft with this Ember link.'],
+              ['instagram', 'Instagram', 'Copy the Ember link so you can paste it into Instagram.'],
+              ['tiktok', 'TikTok', 'Copy the Ember link so you can use it in TikTok.'],
+              ['email', 'Email', 'Open a new email draft with this Ember link.'],
+              ['copy', 'Copy link', 'Copy a direct link to this Ember.'],
+            ].map(([key, title, copy]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() =>
+                  void handleShareAction(
+                    key as 'facebook' | 'x' | 'email' | 'instagram' | 'tiktok' | 'copy'
+                  )
+                }
+                className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+              >
+                <div className="text-lg font-semibold text-[var(--ember-text)]">{title}</div>
+                <p className="mt-2 text-sm text-[var(--ember-muted)]">{copy}</p>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      </EmberSheet>
+
+      {!activePanel && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[var(--ember-charcoal)] px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 md:hidden">
+          <div className="grid grid-cols-5 gap-1">
+            <button
+              type="button"
+              onClick={() => setActivePanel('ask')}
+              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              aria-label="Ask Ember"
+            >
+              <DiamondIcon className="h-5 w-5" />
+              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Ask Ember</span>
+            </button>
+            <Link
+              href={`/image/${image.id}/wiki`}
+              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              aria-label="Play Ember"
+            >
+              <PlayIcon className="h-5 w-5" />
+              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Play Ember</span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => setActivePanel('contributors')}
+              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              aria-label="Contributors"
+            >
+              <PersonIcon className="h-5 w-5" />
+              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Contributors</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShapeView('menu');
+                setActivePanel('shape');
+              }}
+              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              aria-label="Shape Ember"
+            >
+              <CircleIcon className="h-5 w-5" />
+              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Shape Ember</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePanel('share')}
+              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              aria-label="Share Ember"
+            >
+              <ShareIcon className="h-5 w-5" />
+              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Share Ember</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

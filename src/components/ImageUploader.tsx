@@ -146,7 +146,7 @@ export default function ImageUploader() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`rounded-[1.75rem] border border-dashed px-8 py-10 text-center ${
+            className={`w-full rounded-[2rem] border border-dashed px-6 py-12 text-center sm:px-10 sm:py-14 ${
               isDragging
                 ? 'border-[rgba(255,102,33,0.35)] bg-[rgba(255,102,33,0.06)]'
                 : 'border-[rgba(20,20,20,0.12)] bg-white/70'
@@ -163,17 +163,15 @@ export default function ImageUploader() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-[rgba(255,102,33,0.08)]">
                 <Image src="/emberfav.svg" alt="" width={26} height={26} />
               </div>
-              <h2 className="ember-heading mt-5 text-3xl text-[var(--ember-text)]">
+              <p className="ember-eyebrow mt-6">New Ember</p>
+              <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)] sm:text-4xl">
                 Drop a photo or video here
               </h2>
-              <p className="ember-copy mt-3 text-sm">
-                Click to start a new Ember. Photos and MP4, MOV, WEBM, or M4V videos
-                are supported.
+              <p className="ember-copy mx-auto mt-3 max-w-3xl text-sm">
+                Click to start a new Ember. Photos and MP4, MOV, WEBM, or M4V videos are supported.
               </p>
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                <span className="ember-chip">Photos</span>
-                <span className="ember-chip">Video posters</span>
-                <span className="ember-chip">Auto wiki</span>
+              <div className="mt-6 inline-flex rounded-full bg-[var(--ember-charcoal)] px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(17,17,17,0.16)]">
+                Select media
               </div>
             </label>
           </div>
@@ -191,10 +189,14 @@ export default function ImageUploader() {
                 controls
                 playsInline
                 preload="metadata"
-                className="h-72 w-full object-contain bg-[var(--ember-charcoal)]"
+                className="h-72 w-full object-contain bg-[var(--ember-charcoal)] sm:h-[30rem]"
               />
             ) : (
-              <img src={preview || undefined} alt="Preview" className="h-72 w-full object-contain" />
+              <img
+                src={preview || undefined}
+                alt="Preview"
+                className="h-72 w-full object-contain sm:h-[30rem]"
+              />
             )}
             <button
               onClick={clearSelection}

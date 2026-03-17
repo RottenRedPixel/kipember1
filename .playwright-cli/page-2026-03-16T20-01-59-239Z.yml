@@ -1,0 +1,25 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - link "Ember owner and contributor workspace" [ref=e6] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e8]:
+              - generic [ref=e9]: Ember
+              - generic [ref=e10]: owner and contributor workspace
+          - navigation [ref=e11]:
+            - link "Feed" [ref=e12] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e13] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e14]:
+          - generic [ref=e15]:
+            - generic [ref=e16]: Legacy Owner
+            - generic [ref=e17]: legacy-owner@ember.local
+          - button "Logout" [ref=e18]
+    - main [ref=e19]:
+      - generic [ref=e21]: Loading Ember...
+  - button "Open Next.js Dev Tools" [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+  - alert [ref=e31]

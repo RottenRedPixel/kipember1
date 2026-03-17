@@ -5,12 +5,14 @@ type EmberBrandProps = {
   href?: string;
   subtitle?: string;
   compact?: boolean;
+  staticBrand?: boolean;
 };
 
 export default function EmberBrand({
   href = '/',
   subtitle = 'living memory system',
   compact = false,
+  staticBrand = false,
 }: EmberBrandProps) {
   const content = (
     <>
@@ -23,6 +25,10 @@ export default function EmberBrand({
       </span>
     </>
   );
+
+  if (staticBrand) {
+    return <div className={`ember-brand ${compact ? 'gap-3' : 'gap-3.5'}`}>{content}</div>;
+  }
 
   return (
     <Link

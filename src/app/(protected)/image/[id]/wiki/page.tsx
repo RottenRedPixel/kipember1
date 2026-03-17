@@ -86,7 +86,7 @@ export default function WikiPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="ember-panel-strong rounded-[2.5rem] p-6 sm:p-8">
+        <section className="min-w-0 ember-panel-strong rounded-[2.5rem] p-6 sm:p-8">
           <Link
             href={`/image/${params.id}`}
             className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
@@ -103,23 +103,23 @@ export default function WikiPage() {
           {wiki ? (
             <>
               <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
-                <div className="overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white lg:w-56">
+                <div className="w-full overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-[var(--ember-charcoal)] lg:w-56 lg:bg-white">
                   <MediaPreview
                     mediaType={wiki.image.mediaType}
                     filename={wiki.image.filename}
                     posterFilename={wiki.image.posterFilename}
                     originalName={wiki.image.originalName}
                     usePosterForVideo
-                    className="h-56 w-full object-cover"
+                    className="max-h-[22rem] w-full object-contain sm:max-h-[26rem] lg:h-56 lg:max-h-none"
                   />
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <p className="ember-eyebrow">Wiki</p>
-                  <h1 className="ember-heading mt-4 break-words text-4xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
+                  <h1 className="ember-heading mt-4 break-all text-3xl leading-tight text-[var(--ember-text)] sm:break-words sm:text-4xl sm:[overflow-wrap:anywhere]">
                     {wiki.image.originalName}
                   </h1>
-                  <p className="ember-copy mt-4 max-w-3xl text-sm">
+                  <p className="ember-copy mt-4 max-w-3xl break-words text-sm">
                     {wiki.image.description ||
                       'This synthesized memory view combines contributor responses, tags, and extracted context into a single narrative record.'}
                   </p>
@@ -136,7 +136,7 @@ export default function WikiPage() {
                 </div>
               </div>
 
-              <div className="mt-8 border-t ember-divider pt-8">
+              <div className="mt-8 min-w-0 border-t ember-divider pt-8">
                 <WikiView content={wiki.content} />
               </div>
             </>
@@ -157,7 +157,7 @@ export default function WikiPage() {
           )}
         </section>
 
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           <section className="ember-panel rounded-[2.25rem] p-6">
             <p className="ember-eyebrow">Actions</p>
             <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)]">

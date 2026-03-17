@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Contributor {
   id: string;
@@ -349,6 +350,190 @@ export default function ContributorList({
     setNotice('Contributor link copied.');
   };
 
+  const contributorDetailOverlay =
+    selectedContributor && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[70] flex items-end justify-center bg-[rgba(17,17,17,0.48)] sm:items-center sm:px-4 sm:py-6"
+            onClick={() => setSelectedContributorId(null)}
+          >
+            <div
+              className="ember-panel-strong max-h-[92dvh] w-full overflow-hidden rounded-t-[2rem] sm:max-h-[88vh] sm:max-w-3xl sm:rounded-[2rem]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="border-b ember-divider px-5 py-5 sm:px-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="ember-eyebrow">Contributor</p>
+                    <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
+                      Details and outreach
+                    </h3>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedContributorId(null)}
+                    className="rounded-full border border-[var(--ember-line-strong)] px-3 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-[calc(92dvh-6.5rem)] overflow-y-auto px-5 py-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:max-h-[calc(88vh-7rem)] sm:px-6">
+                <div className="space-y-5">
+                  <div className="ember-card rounded-[1.6rem] px-4 py-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                          Contact
+                        </div>
+                        <div className="mt-3 text-xl font-semibold text-[var(--ember-text)]">
+                          {selectedContributor.name ||
+                            selectedContributor.user?.name ||
+                            selectedContributor.email ||
+                            selectedContributor.phoneNumber ||
+                            'Contributor'}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {getStatusBadge(selectedContributor)}
+                        {selectedContributor.inviteSent && <span className="ember-chip">Invite sent</span>}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                          Email
+                        </div>
+                        <div className="mt-2 break-all text-sm text-[var(--ember-text)]">
+                          {selectedContributor.email || selectedContributor.user?.email || 'None'}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                          Phone
+                        </div>
+                        <div className="mt-2 text-sm text-[var(--ember-text)]">
+                          {selectedContributor.phoneNumber
+                            ? formatPhoneNumber(selectedContributor.phoneNumber)
+                            : selectedContributor.user?.phoneNumber
+                              ? formatPhoneNumber(selectedContributor.user.phoneNumber)
+                              : 'None'}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                          Linked account
+                        </div>
+                        <div className="mt-2 break-all text-sm text-[var(--ember-text)]">
+                          {selectedContributor.user
+                            ? selectedContributor.user.name || selectedContributor.user.email
+                            : 'None'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedContributorDetail?.voiceCalls[0]?.callSummary && (
+                      <div className="mt-4 rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.7)] px-4 py-4">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                          Latest call summary
+                        </div>
+                        <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
+                          {selectedContributorDetail.voiceCalls[0].callSummary}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => void handleSendInvite(selectedContributor.id)}
+                      disabled={
+                        !selectedContributorPhone ||
+                        sendingContributorId === selectedContributor.id
+                      }
+                      className="ember-button-secondary justify-center disabled:opacity-40"
+                    >
+                      {sendingContributorId === selectedContributor.id
+                        ? 'Sending...'
+                        : 'Send SMS'}
+                    </button>
+                    <button
+                      onClick={() => void handleStartVoiceCall(selectedContributor.id)}
+                      disabled={
+                        !selectedContributorPhone ||
+                        callingContributorId === selectedContributor.id ||
+                        getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
+                        getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
+                      }
+                      className="ember-button-secondary justify-center disabled:opacity-40"
+                    >
+                      {callingContributorId === selectedContributor.id
+                        ? 'Calling...'
+                        : 'Call'}
+                    </button>
+                    <button
+                      onClick={() => void copyLink(selectedContributor.token)}
+                      className="ember-button-secondary justify-center"
+                    >
+                      Copy link
+                    </button>
+                    <button
+                      onClick={() => void handleRemoveContributor(selectedContributor.id)}
+                      className="ember-button-secondary justify-center text-rose-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div>
+                    <p className="ember-eyebrow">Contributions</p>
+                    <h4 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
+                      Saved answers and memory detail
+                    </h4>
+                  </div>
+
+                  {detailError && (
+                    <div className="ember-status ember-status-error">{detailError}</div>
+                  )}
+
+                  {detailLoading ? (
+                    <div className="rounded-[1.6rem] border border-[var(--ember-line)] bg-white px-4 py-8 text-center text-sm text-[var(--ember-muted)]">
+                      Loading contributions...
+                    </div>
+                  ) : selectedContributorDetail?.conversation?.responses.length ? (
+                    <div className="space-y-3">
+                      {selectedContributorDetail.conversation.responses.map((response) => (
+                        <div
+                          key={response.id}
+                          className="ember-card rounded-[1.6rem] px-4 py-4"
+                        >
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                            {formatQuestionLabel(response.question, response.questionType)}
+                          </div>
+                          <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
+                            {response.answer}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[1.6rem] border border-dashed border-[var(--ember-line-strong)] bg-white/70 px-4 py-8 text-center text-sm text-[var(--ember-muted)]">
+                      No saved contributions yet for this person.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <>
       <div className="ember-panel rounded-[2rem] p-5">
@@ -513,185 +698,7 @@ export default function ContributorList({
         )}
       </div>
 
-      {selectedContributor && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(17,17,17,0.44)] px-4 py-6"
-          onClick={() => setSelectedContributorId(null)}
-        >
-          <div
-            className="ember-panel-strong max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-[2rem]"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="border-b ember-divider px-5 py-5 sm:px-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="ember-eyebrow">Contributor</p>
-                  <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
-                    Details and outreach
-                  </h3>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedContributorId(null)}
-                  className="rounded-full border border-[var(--ember-line-strong)] px-3 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-
-            <div className="max-h-[calc(88vh-7rem)] overflow-y-auto px-5 py-5 sm:px-6">
-              <div className="space-y-5">
-                <div className="ember-card rounded-[1.6rem] px-4 py-4">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                        Contact
-                      </div>
-                      <div className="mt-3 text-xl font-semibold text-[var(--ember-text)]">
-                        {selectedContributor.name ||
-                          selectedContributor.user?.name ||
-                          selectedContributor.email ||
-                          selectedContributor.phoneNumber ||
-                          'Contributor'}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {getStatusBadge(selectedContributor)}
-                      {selectedContributor.inviteSent && <span className="ember-chip">Invite sent</span>}
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-3">
-                    <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                        Email
-                      </div>
-                      <div className="mt-2 text-sm text-[var(--ember-text)] break-all">
-                        {selectedContributor.email || selectedContributor.user?.email || 'None'}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                        Phone
-                      </div>
-                      <div className="mt-2 text-sm text-[var(--ember-text)]">
-                        {selectedContributor.phoneNumber
-                          ? formatPhoneNumber(selectedContributor.phoneNumber)
-                          : selectedContributor.user?.phoneNumber
-                            ? formatPhoneNumber(selectedContributor.user.phoneNumber)
-                            : 'None'}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                        Linked account
-                      </div>
-                      <div className="mt-2 text-sm text-[var(--ember-text)] break-all">
-                        {selectedContributor.user
-                          ? selectedContributor.user.name || selectedContributor.user.email
-                          : 'None'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedContributorDetail?.voiceCalls[0]?.callSummary && (
-                    <div className="mt-4 rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.7)] px-4 py-4">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                        Latest call summary
-                      </div>
-                      <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
-                        {selectedContributorDetail.voiceCalls[0].callSummary}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={() => void handleSendInvite(selectedContributor.id)}
-                    disabled={
-                      !selectedContributorPhone ||
-                      sendingContributorId === selectedContributor.id
-                    }
-                    className="ember-button-secondary justify-center disabled:opacity-40"
-                  >
-                    {sendingContributorId === selectedContributor.id
-                      ? 'Sending...'
-                      : 'Send SMS'}
-                  </button>
-                  <button
-                    onClick={() => void handleStartVoiceCall(selectedContributor.id)}
-                    disabled={
-                      !selectedContributorPhone ||
-                      callingContributorId === selectedContributor.id ||
-                      getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
-                      getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
-                    }
-                    className="ember-button-secondary justify-center disabled:opacity-40"
-                  >
-                    {callingContributorId === selectedContributor.id
-                      ? 'Calling...'
-                      : 'Call'}
-                  </button>
-                  <button
-                    onClick={() => void copyLink(selectedContributor.token)}
-                    className="ember-button-secondary justify-center"
-                  >
-                    Copy link
-                  </button>
-                  <button
-                    onClick={() => void handleRemoveContributor(selectedContributor.id)}
-                    className="ember-button-secondary justify-center text-rose-700"
-                  >
-                    Remove
-                  </button>
-                </div>
-
-                <div>
-                  <p className="ember-eyebrow">Contributions</p>
-                  <h4 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
-                    Saved answers and memory detail
-                  </h4>
-                </div>
-
-                {detailError && (
-                  <div className="ember-status ember-status-error">{detailError}</div>
-                )}
-
-                {detailLoading ? (
-                  <div className="rounded-[1.6rem] border border-[var(--ember-line)] bg-white px-4 py-8 text-center text-sm text-[var(--ember-muted)]">
-                    Loading contributions...
-                  </div>
-                ) : selectedContributorDetail?.conversation?.responses.length ? (
-                  <div className="space-y-3">
-                    {selectedContributorDetail.conversation.responses.map((response) => (
-                      <div
-                        key={response.id}
-                        className="ember-card rounded-[1.6rem] px-4 py-4"
-                      >
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                          {formatQuestionLabel(response.question, response.questionType)}
-                        </div>
-                        <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
-                          {response.answer}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-[1.6rem] border border-dashed border-[var(--ember-line-strong)] bg-white/70 px-4 py-8 text-center text-sm text-[var(--ember-muted)]">
-                    No saved contributions yet for this person.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {contributorDetailOverlay}
     </>
   );
 }

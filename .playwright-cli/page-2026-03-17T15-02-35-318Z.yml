@@ -1,0 +1,70 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - group [ref=e5]:
+        - generic "Ember personal archive Open navigation" [ref=e6]:
+          - generic [ref=e9]:
+            - generic [ref=e10]: Ember
+            - generic [ref=e11]: personal archive
+          - generic [ref=e13]: Open navigation
+    - main [ref=e18]:
+      - generic [ref=e19]:
+        - link "<- Back to feed" [ref=e21] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e22]:
+          - img "IMG_1338.jpeg" [ref=e24]
+          - heading "IMG_1338.jpeg" [level=1] [ref=e26]
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - paragraph [ref=e29]: Memory detail
+              - paragraph [ref=e30]: Mets losing Pete Alonso
+              - generic [ref=e31]:
+                - generic [ref=e32]: Photo Ember
+                - generic [ref=e33]: Captured 2/3/2026
+                - generic [ref=e34]: 3 contributors
+                - generic [ref=e35]: 0 tags
+            - generic [ref=e36]:
+              - paragraph [ref=e37]: People connected
+              - generic [ref=e38]:
+                - generic [ref=e39]:
+                  - generic [ref=e40]: Owner
+                  - generic [ref=e41]: Legacy Owner
+                - generic [ref=e42]:
+                  - generic [ref=e43]: Contributors
+                  - generic [ref=e44]: Kip Barrett, Seth Tropper, Amado Batour
+                - generic [ref=e45]:
+                  - generic [ref=e46]: Tags
+                  - generic [ref=e47]: No one has been tagged yet.
+        - generic [ref=e83]:
+          - generic [ref=e85]:
+            - generic [ref=e86]:
+              - paragraph [ref=e87]: Ember
+              - heading "Ask Ember" [level=2] [ref=e88]
+              - paragraph [ref=e89]: Chat with this Ember without leaving the memory.
+            - button "Close" [ref=e90]
+          - generic [ref=e92]:
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - paragraph [ref=e96]: Ask Ember
+                - heading "Memory Q&A" [level=2] [ref=e97]
+                - paragraph [ref=e98]: Ask grounded questions about this photo, contributor memories, and the current wiki. Ember should answer directly and say when something is still unknown.
+              - generic [ref=e99]:
+                - generic [ref=e100]: Photo context
+                - generic [ref=e101]: No history yet
+            - generic [ref=e103]:
+              - generic [ref=e104]: Photo Q&A
+              - heading "Start with a precise question" [level=3] [ref=e105]
+              - paragraph [ref=e106]: Use the quick prompts below or write your own question about who is here, what happened, and how the memory is documented so far.
+              - generic [ref=e107]:
+                - button "What do we know about this photo?" [ref=e108] [cursor=pointer]
+                - button "Who has been identified in this photo?" [ref=e109] [cursor=pointer]
+                - button "What details did contributors share?" [ref=e110] [cursor=pointer]
+                - button "What does the metadata tell us?" [ref=e111] [cursor=pointer]
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - textbox "Ask about this photo..." [ref=e115]
+                - button "Send" [disabled] [ref=e116]
+              - generic [ref=e117]: Keep questions specific if you want grounded answers tied to the current memory record.
+  - button "Open Next.js Dev Tools" [ref=e77] [cursor=pointer]:
+    - img [ref=e78]
+  - alert [ref=e81]

@@ -1,0 +1,57 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - group [ref=e5]:
+        - generic "Ember personal archive Open navigation" [ref=e6]:
+          - generic [ref=e9]:
+            - generic [ref=e10]: Ember
+            - generic [ref=e11]: personal archive
+          - generic [ref=e13]: Open navigation
+    - main [ref=e18]:
+      - generic [ref=e19]:
+        - link "<- Back to feed" [ref=e21] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e22]:
+          - img "IMG_1338.jpeg" [ref=e24]
+          - heading "IMG_1338.jpeg" [level=1] [ref=e26]
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - paragraph [ref=e29]: Memory detail
+              - paragraph [ref=e30]: Mets losing Pete Alonso
+              - generic [ref=e31]:
+                - generic [ref=e32]: Photo Ember
+                - generic [ref=e33]: Captured 2/3/2026
+                - generic [ref=e34]: 3 contributors
+                - generic [ref=e35]: 0 tags
+            - generic [ref=e36]:
+              - paragraph [ref=e37]: People connected
+              - generic [ref=e38]:
+                - generic [ref=e39]:
+                  - generic [ref=e40]: Owner
+                  - generic [ref=e41]: Legacy Owner
+                - generic [ref=e42]:
+                  - generic [ref=e43]: Contributors
+                  - generic [ref=e44]: Kip Barrett, Seth Tropper, Amado Batour
+                - generic [ref=e45]:
+                  - generic [ref=e46]: Tags
+                  - generic [ref=e47]: No one has been tagged yet.
+        - generic [ref=e49]:
+          - button "Ask Ember" [ref=e50]:
+            - img [ref=e51]
+            - generic [ref=e53]: Ask Ember
+          - link "Play Ember" [ref=e54] [cursor=pointer]:
+            - /url: /image/cml6tkacq000p0omh6qfu9mlj/wiki
+            - img [ref=e55]
+            - generic [ref=e57]: Play Ember
+          - button "Contributors" [ref=e58]:
+            - img [ref=e59]
+            - generic [ref=e62]: Contributors
+          - button "Shape Ember" [ref=e63]:
+            - img [ref=e64]
+            - generic [ref=e66]: Shape Ember
+          - button "Share Ember" [ref=e67]:
+            - img [ref=e68]
+            - generic [ref=e71]: Share Ember
+  - button "Open Next.js Dev Tools" [ref=e77] [cursor=pointer]:
+    - img [ref=e78]
+  - alert [ref=e81]

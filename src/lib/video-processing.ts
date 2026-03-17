@@ -2,6 +2,8 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
+const FFMPEG_BINARY = process.env.FFMPEG_PATH || 'ffmpeg';
+const FFPROBE_BINARY = process.env.FFPROBE_PATH || 'ffprobe';
 
 type ProbeStream = {
   codec_type?: string;
@@ -39,7 +41,7 @@ function parseOptionalNumber(value: unknown): number | null {
 }
 
 export async function probeVideo(filePath: string): Promise<VideoMetadata> {
-  const { stdout } = await execFileAsync('ffprobe', [
+  const { stdout } = await execFileAsync(FFPROBE_BINARY, [
     '-v',
     'error',
     '-print_format',
@@ -72,7 +74,7 @@ export async function generatePosterFrame({
   const targetSecond =
     durationSeconds && durationSeconds > 1 ? Math.min(1, Math.max(durationSeconds * 0.15, 0.2)) : 0;
 
-  await execFileAsync('ffmpeg', [
+  await execFileAsync(FFMPEG_BINARY, [
     '-y',
     '-ss',
     targetSecond.toFixed(2),
