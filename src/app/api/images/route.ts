@@ -4,6 +4,10 @@ import { writeFile, mkdir, unlink } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { requireApiUser } from '@/lib/auth-server';
 import { getAcceptedFriendIds } from '@/lib/ember-access';
+import {
+  ensureOwnerContributorForImage,
+  ensureOwnerContributorsForOwnedImages,
+} from '@/lib/owner-contributor';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { getUploadPath, getUploadsDir, inferMediaType } from '@/lib/uploads';
 import { generatePosterFrame, probeVideo } from '@/lib/video-processing';
@@ -106,6 +110,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await ensureOwnerContributorForImage(image.id, auth.user.id);
+
     let wikiGenerated = false;
     let warning: string | null = null;
 
@@ -142,6 +148,7 @@ export async function GET() {
     }
 
     const friendIds = await getAcceptedFriendIds(auth.user.id);
+    await ensureOwnerContributorsForOwnedImages(auth.user.id);
 
     const images = await prisma.image.findMany({
       where: {

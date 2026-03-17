@@ -76,6 +76,7 @@ type ContributorDetail = {
 
 interface ContributorListProps {
   imageId: string;
+  ownerUserId: string;
   contributors: Contributor[];
   friends: FriendSuggestion[];
   onUpdate: () => void;
@@ -110,6 +111,7 @@ function formatQuestionLabel(question: string, questionType: string) {
 
 export default function ContributorList({
   imageId,
+  ownerUserId,
   contributors,
   friends,
   onUpdate,
@@ -139,6 +141,8 @@ export default function ContributorList({
 
   const selectedContributor =
     contributors.find((contributor) => contributor.id === selectedContributorId) || null;
+  const selectedContributorIsOwner =
+    selectedContributor?.userId === ownerUserId;
   const selectedContributorPhone =
     selectedContributor?.phoneNumber || selectedContributor?.user?.phoneNumber || null;
 
@@ -397,10 +401,11 @@ export default function ContributorList({
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {getStatusBadge(selectedContributor)}
-                        {selectedContributor.inviteSent && <span className="ember-chip">Invite sent</span>}
-                      </div>
+                      {getStatusBadge(selectedContributor)}
+                      {selectedContributorIsOwner && <span className="ember-chip">Creator</span>}
+                      {selectedContributor.inviteSent && <span className="ember-chip">Invite sent</span>}
                     </div>
+                  </div>
 
                     <div className="mt-4 space-y-3">
                       <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
@@ -449,46 +454,53 @@ export default function ContributorList({
                     )}
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() => void handleSendInvite(selectedContributor.id)}
-                      disabled={
-                        !selectedContributorPhone ||
-                        sendingContributorId === selectedContributor.id
-                      }
-                      className="ember-button-secondary justify-center disabled:opacity-40"
-                    >
-                      {sendingContributorId === selectedContributor.id
-                        ? 'Sending...'
-                        : 'Send SMS'}
-                    </button>
-                    <button
-                      onClick={() => void handleStartVoiceCall(selectedContributor.id)}
-                      disabled={
-                        !selectedContributorPhone ||
-                        callingContributorId === selectedContributor.id ||
-                        getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
-                        getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
-                      }
-                      className="ember-button-secondary justify-center disabled:opacity-40"
-                    >
-                      {callingContributorId === selectedContributor.id
-                        ? 'Calling...'
-                        : 'Call'}
-                    </button>
-                    <button
-                      onClick={() => void copyLink(selectedContributor.token)}
-                      className="ember-button-secondary justify-center"
-                    >
-                      Copy link
-                    </button>
-                    <button
-                      onClick={() => void handleRemoveContributor(selectedContributor.id)}
-                      className="ember-button-secondary justify-center text-rose-700"
-                    >
-                      Remove
-                    </button>
-                  </div>
+                  {selectedContributorIsOwner ? (
+                    <div className="rounded-[1.4rem] border border-[var(--ember-line)] bg-white/80 px-4 py-4 text-sm leading-7 text-[var(--ember-muted)]">
+                      This contributor record represents the Ember creator and stays
+                      attached automatically.
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={() => void handleSendInvite(selectedContributor.id)}
+                        disabled={
+                          !selectedContributorPhone ||
+                          sendingContributorId === selectedContributor.id
+                        }
+                        className="ember-button-secondary justify-center disabled:opacity-40"
+                      >
+                        {sendingContributorId === selectedContributor.id
+                          ? 'Sending...'
+                          : 'Send SMS'}
+                      </button>
+                      <button
+                        onClick={() => void handleStartVoiceCall(selectedContributor.id)}
+                        disabled={
+                          !selectedContributorPhone ||
+                          callingContributorId === selectedContributor.id ||
+                          getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
+                          getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
+                        }
+                        className="ember-button-secondary justify-center disabled:opacity-40"
+                      >
+                        {callingContributorId === selectedContributor.id
+                          ? 'Calling...'
+                          : 'Call'}
+                      </button>
+                      <button
+                        onClick={() => void copyLink(selectedContributor.token)}
+                        className="ember-button-secondary justify-center"
+                      >
+                        Copy link
+                      </button>
+                      <button
+                        onClick={() => void handleRemoveContributor(selectedContributor.id)}
+                        className="ember-button-secondary justify-center text-rose-700"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
 
                   <div>
                     <p className="ember-eyebrow">Contributions</p>

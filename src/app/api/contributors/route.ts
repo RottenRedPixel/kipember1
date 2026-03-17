@@ -133,6 +133,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
+    if (contributor.userId && contributor.userId === contributor.image.ownerId) {
+      return NextResponse.json(
+        { error: 'The Ember creator is automatically kept as a contributor' },
+        { status: 400 }
+      );
+    }
+
     await prisma.contributor.delete({
       where: { id: contributor.id },
     });

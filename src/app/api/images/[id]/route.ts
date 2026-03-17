@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess, getAcceptedFriends, getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
+import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 
 export async function GET(
   request: NextRequest,
@@ -20,6 +21,10 @@ export async function GET(
 
     if (!accessType) {
       return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+    }
+
+    if (accessType === 'owner') {
+      await ensureOwnerContributorForImage(id, auth.user.id);
     }
 
     const image = await prisma.image.findUnique({

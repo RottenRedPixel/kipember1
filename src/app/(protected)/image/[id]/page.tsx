@@ -609,6 +609,7 @@ export default function ImagePage() {
         {image.canManage ? (
           <ContributorList
             imageId={image.id}
+            ownerUserId={image.owner.id}
             contributors={image.contributors}
             friends={image.friends}
             onUpdate={fetchImage}
