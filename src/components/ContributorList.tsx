@@ -454,51 +454,53 @@ export default function ContributorList({
                     )}
                   </div>
 
-                  {selectedContributorIsOwner ? (
-                    <div className="rounded-[1.4rem] border border-[var(--ember-line)] bg-white/80 px-4 py-4 text-sm leading-7 text-[var(--ember-muted)]">
-                      This contributor record represents the Ember creator and stays
-                      attached automatically.
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        onClick={() => void handleSendInvite(selectedContributor.id)}
-                        disabled={
-                          !selectedContributorPhone ||
-                          sendingContributorId === selectedContributor.id
-                        }
-                        className="ember-button-secondary justify-center disabled:opacity-40"
-                      >
-                        {sendingContributorId === selectedContributor.id
-                          ? 'Sending...'
-                          : 'Send SMS'}
-                      </button>
-                      <button
-                        onClick={() => void handleStartVoiceCall(selectedContributor.id)}
-                        disabled={
-                          !selectedContributorPhone ||
-                          callingContributorId === selectedContributor.id ||
-                          getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
-                          getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
-                        }
-                        className="ember-button-secondary justify-center disabled:opacity-40"
-                      >
-                        {callingContributorId === selectedContributor.id
-                          ? 'Calling...'
-                          : 'Call'}
-                      </button>
-                      <button
-                        onClick={() => void copyLink(selectedContributor.token)}
-                        className="ember-button-secondary justify-center"
-                      >
-                        Copy link
-                      </button>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      onClick={() => void handleSendInvite(selectedContributor.id)}
+                      disabled={
+                        !selectedContributorPhone ||
+                        sendingContributorId === selectedContributor.id
+                      }
+                      className="ember-button-secondary justify-center disabled:opacity-40"
+                    >
+                      {sendingContributorId === selectedContributor.id
+                        ? 'Sending...'
+                        : 'Send SMS'}
+                    </button>
+                    <button
+                      onClick={() => void handleStartVoiceCall(selectedContributor.id)}
+                      disabled={
+                        !selectedContributorPhone ||
+                        callingContributorId === selectedContributor.id ||
+                        getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
+                        getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
+                      }
+                      className="ember-button-secondary justify-center disabled:opacity-40"
+                    >
+                      {callingContributorId === selectedContributor.id
+                        ? 'Calling...'
+                        : 'Call'}
+                    </button>
+                    <button
+                      onClick={() => void copyLink(selectedContributor.token)}
+                      className="ember-button-secondary justify-center"
+                    >
+                      Copy link
+                    </button>
+                    {!selectedContributorIsOwner && (
                       <button
                         onClick={() => void handleRemoveContributor(selectedContributor.id)}
                         className="ember-button-secondary justify-center text-rose-700"
                       >
                         Remove
                       </button>
+                    )}
+                  </div>
+
+                  {selectedContributorIsOwner && (
+                    <div className="rounded-[1.4rem] border border-[var(--ember-line)] bg-white/80 px-4 py-4 text-sm leading-7 text-[var(--ember-muted)]">
+                      This contributor record represents the Ember creator and stays
+                      attached automatically.
                     </div>
                   )}
 
