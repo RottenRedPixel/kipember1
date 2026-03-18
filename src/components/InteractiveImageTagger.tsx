@@ -2,6 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDuration } from '@/lib/media';
+import {
+  clampFaceBox,
+  deriveFallbackFaceBox,
+  selectFaceForPoint,
+  snapFaceBoxToDetectedFace,
+  tightenDetectedFaceBox,
+  type FaceBox,
+} from '@/lib/face-boxes';
 
 type Tag = {
   id: string;
@@ -44,6 +52,15 @@ type FriendOption = {
   phoneNumber: string | null;
 };
 
+type TagIdentityOption = {
+  id: string;
+  label: string;
+  email: string;
+  phoneNumber: string;
+  userId: string | null;
+  contributorId: string | null;
+};
+
 type DraftBox = {
   leftPct: number;
   topPct: number;
@@ -51,7 +68,18 @@ type DraftBox = {
   heightPct: number;
 };
 
-type FaceRect = DraftBox;
+type FaceRect = FaceBox;
+
+type MatchSuggestion = DraftBox & {
+  faceIndex: number;
+  label: string;
+  userId: string | null;
+  contributorId: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+};
 
 type DraftSelection = {
   label: string;
@@ -80,63 +108,31 @@ declare global {
   }
 }
 
-function clampPercentage(value: number): number {
-  return Math.max(0, Math.min(100, value));
-}
-
-function clampBox(box: DraftBox): DraftBox {
-  const widthPct = Math.max(8, Math.min(30, box.widthPct));
-  const heightPct = Math.max(8, Math.min(34, box.heightPct));
-
-  return {
-    leftPct: clampPercentage(Math.min(box.leftPct, 100 - widthPct)),
-    topPct: clampPercentage(Math.min(box.topPct, 100 - heightPct)),
-    widthPct,
-    heightPct,
-  };
-}
-
-function deriveFallbackBox(xPct: number, yPct: number): DraftBox {
-  return clampBox({
-    leftPct: xPct - 7,
-    topPct: yPct - 9,
-    widthPct: 14,
-    heightPct: 18,
-  });
-}
-
-function selectNearestFace(xPct: number, yPct: number, faces: FaceRect[]): DraftBox {
-  const containingFace = faces.find(
-    (face) =>
-      xPct >= face.leftPct &&
-      xPct <= face.leftPct + face.widthPct &&
-      yPct >= face.topPct &&
-      yPct <= face.topPct + face.heightPct
+function boxesOverlap(left: DraftBox, right: DraftBox) {
+  const xOverlap = Math.max(
+    0,
+    Math.min(left.leftPct + left.widthPct, right.leftPct + right.widthPct) -
+      Math.max(left.leftPct, right.leftPct)
   );
+  const yOverlap = Math.max(
+    0,
+    Math.min(left.topPct + left.heightPct, right.topPct + right.heightPct) -
+      Math.max(left.topPct, right.topPct)
+  );
+  const overlapArea = xOverlap * yOverlap;
+  const leftArea = left.widthPct * left.heightPct;
 
-  if (containingFace) {
-    return clampBox(containingFace);
-  }
+  return leftArea > 0 ? overlapArea / leftArea : 0;
+}
 
-  let nearest: FaceRect | null = null;
-  let nearestDistance = Number.POSITIVE_INFINITY;
+function getSuggestionCopy(suggestion: Pick<MatchSuggestion, 'label' | 'confidence'>) {
+  return suggestion.confidence === 'low'
+    ? `Maybe ${suggestion.label}`
+    : `Looks like ${suggestion.label}`;
+}
 
-  for (const face of faces) {
-    const centerX = face.leftPct + face.widthPct / 2;
-    const centerY = face.topPct + face.heightPct / 2;
-    const distance = Math.hypot(centerX - xPct, centerY - yPct);
-
-    if (distance < nearestDistance) {
-      nearest = face;
-      nearestDistance = distance;
-    }
-  }
-
-  if (nearest && nearestDistance <= 18) {
-    return clampBox(nearest);
-  }
-
-  return deriveFallbackBox(xPct, yPct);
+function normalizeLabelKey(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 export default function InteractiveImageTagger({
@@ -149,6 +145,7 @@ export default function InteractiveImageTagger({
   tags,
   contributors,
   friends,
+  tagIdentities,
   canManage,
   onUpdate,
 }: {
@@ -161,6 +158,7 @@ export default function InteractiveImageTagger({
   tags: Tag[];
   contributors: ContributorOption[];
   friends: FriendOption[];
+  tagIdentities: TagIdentityOption[];
   canManage: boolean;
   onUpdate: () => void;
 }) {
@@ -172,6 +170,11 @@ export default function InteractiveImageTagger({
   );
   const [detectedFaces, setDetectedFaces] = useState<FaceRect[]>([]);
   const [draftBox, setDraftBox] = useState<DraftBox | null>(null);
+  const [matchSuggestions, setMatchSuggestions] = useState<MatchSuggestion[]>([]);
+  const [matchState, setMatchState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+  const [draftMatchSuggestion, setDraftMatchSuggestion] = useState<MatchSuggestion | null>(null);
+  const [draftMatchState, setDraftMatchState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+  const [applyingSuggestionFaceIndex, setApplyingSuggestionFaceIndex] = useState<number | null>(null);
   const [draftSelection, setDraftSelection] = useState<DraftSelection>({
     label: '',
     email: '',
@@ -189,32 +192,109 @@ export default function InteractiveImageTagger({
       tags.flatMap((tag) => [
         tag.userId ? `user:${tag.userId}` : '',
         tag.contributorId ? `contributor:${tag.contributorId}` : '',
+        tag.label ? `label:${normalizeLabelKey(tag.label)}` : '',
       ])
     );
 
-    return [
-      ...contributors
-        .filter((contributor) => !linkedIds.has(`contributor:${contributor.id}`))
-        .map((contributor) => ({
-          id: contributor.id,
-          type: 'contributor' as const,
-          label: contributor.name || contributor.email || 'Unnamed contributor',
-          email: contributor.email || '',
-          phoneNumber: contributor.phoneNumber || '',
-          userId: contributor.userId,
-        })),
-      ...friends
-        .filter((friend) => !linkedIds.has(`user:${friend.id}`))
-        .map((friend) => ({
-          id: friend.id,
-          type: 'friend' as const,
-          label: friend.name || friend.email,
-          email: friend.email,
-          phoneNumber: friend.phoneNumber || '',
-          userId: friend.id,
-        })),
-    ].slice(0, 8);
-  }, [contributors, friends, tags]);
+    const seen = new Set<string>();
+    const suggestions: Array<{
+      id: string;
+      type: 'friend' | 'contributor' | 'tagIdentity';
+      label: string;
+      email: string;
+      phoneNumber: string;
+      userId: string | null;
+      contributorId: string | null;
+    }> = [];
+
+    for (const identity of tagIdentities) {
+      const identityKey =
+        (identity.userId ? `user:${identity.userId}` : null) ||
+        (identity.contributorId ? `contributor:${identity.contributorId}` : null) ||
+        `label:${normalizeLabelKey(identity.label)}`;
+
+      if (linkedIds.has(identityKey) || seen.has(identityKey)) {
+        continue;
+      }
+
+      seen.add(identityKey);
+      suggestions.push({
+        id: identity.id,
+        type: 'tagIdentity',
+        label: identity.label,
+        email: identity.email,
+        phoneNumber: identity.phoneNumber,
+        userId: identity.userId,
+        contributorId: identity.contributorId,
+      });
+    }
+
+    for (const contributor of contributors) {
+      const identityKey = `contributor:${contributor.id}`;
+      if (linkedIds.has(identityKey) || seen.has(identityKey)) {
+        continue;
+      }
+
+      seen.add(identityKey);
+      suggestions.push({
+        id: contributor.id,
+        type: 'contributor',
+        label: contributor.name || contributor.email || 'Unnamed contributor',
+        email: contributor.email || '',
+        phoneNumber: contributor.phoneNumber || '',
+        userId: contributor.userId,
+        contributorId: contributor.id,
+      });
+    }
+
+    for (const friend of friends) {
+      const identityKey = `user:${friend.id}`;
+      if (linkedIds.has(identityKey) || seen.has(identityKey)) {
+        continue;
+      }
+
+      seen.add(identityKey);
+      suggestions.push({
+        id: friend.id,
+        type: 'friend',
+        label: friend.name || friend.email,
+        email: friend.email,
+        phoneNumber: friend.phoneNumber || '',
+        userId: friend.id,
+        contributorId: null,
+      });
+    }
+
+    return suggestions.slice(0, 8);
+  }, [contributors, friends, tagIdentities, tags]);
+
+  const visibleMatchSuggestions = useMemo(
+    () =>
+      matchSuggestions.filter((suggestion) => {
+        const alreadyCovered = tags.some((tag) => {
+          if (
+            tag.leftPct === null ||
+            tag.topPct === null ||
+            tag.widthPct === null ||
+            tag.heightPct === null
+          ) {
+            return false;
+          }
+
+          return (
+            boxesOverlap(suggestion, {
+              leftPct: tag.leftPct,
+              topPct: tag.topPct,
+              widthPct: tag.widthPct,
+              heightPct: tag.heightPct,
+            }) > 0.35
+          );
+        });
+
+        return !alreadyCovered;
+      }),
+    [matchSuggestions, tags]
+  );
 
   useEffect(() => {
     if (!canManage || !imageUrl || !imageLoaded || !imageRef.current) {
@@ -250,7 +330,7 @@ export default function InteractiveImageTagger({
 
         setDetectedFaces(
           faces.map((face) =>
-            clampBox({
+            tightenDetectedFaceBox({
               leftPct: (face.boundingBox.x / image.naturalWidth) * 100,
               topPct: (face.boundingBox.y / image.naturalHeight) * 100,
               widthPct: (face.boundingBox.width / image.naturalWidth) * 100,
@@ -275,8 +355,132 @@ export default function InteractiveImageTagger({
     };
   }, [canManage, imageLoaded, imageUrl]);
 
+  useEffect(() => {
+    if (!canManage || !imageUrl || !imageLoaded || detectedFaces.length === 0) {
+      setMatchSuggestions([]);
+      setMatchState('idle');
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function loadSuggestions() {
+      setMatchState('loading');
+
+      try {
+        const response = await fetch(`/api/images/${imageId}/tag-suggestions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            faces: detectedFaces,
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load tag suggestions');
+        }
+
+        const payload = await response.json();
+        if (cancelled) {
+          return;
+        }
+
+        setMatchSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions : []);
+        setMatchState('ready');
+      } catch (suggestionError) {
+        if (cancelled || (suggestionError instanceof DOMException && suggestionError.name === 'AbortError')) {
+          return;
+        }
+
+        console.error('Tag suggestion lookup failed:', suggestionError);
+        setMatchSuggestions([]);
+        setMatchState('failed');
+      }
+    }
+
+    void loadSuggestions();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [canManage, detectedFaces, imageId, imageLoaded, imageUrl]);
+
+  useEffect(() => {
+    if (!canManage || !draftBox) {
+      setDraftMatchSuggestion(null);
+      setDraftMatchState('idle');
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function loadDraftSuggestion() {
+      setDraftMatchState('loading');
+
+      try {
+        const response = await fetch(`/api/images/${imageId}/tag-suggestions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            faces: [draftBox],
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load draft suggestion');
+        }
+
+        const payload = await response.json();
+        if (cancelled) {
+          return;
+        }
+
+        const suggestion =
+          Array.isArray(payload.suggestions) && payload.suggestions.length > 0
+            ? payload.suggestions[0]
+            : null;
+
+        setDraftMatchSuggestion(suggestion);
+        setDraftMatchState('ready');
+
+        if (suggestion) {
+          setDraftSelection((current) => ({
+            ...current,
+            label: current.label || suggestion.label,
+            email: current.email || suggestion.email || '',
+            phoneNumber: current.phoneNumber || suggestion.phoneNumber || '',
+            userId: current.userId || suggestion.userId,
+            contributorId: current.contributorId || suggestion.contributorId,
+          }));
+        }
+      } catch (suggestionError) {
+        if (cancelled || (suggestionError instanceof DOMException && suggestionError.name === 'AbortError')) {
+          return;
+        }
+
+        console.error('Draft tag suggestion lookup failed:', suggestionError);
+        setDraftMatchSuggestion(null);
+        setDraftMatchState('failed');
+      }
+    }
+
+    void loadDraftSuggestion();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [canManage, draftBox, imageId]);
+
   const resetDraft = () => {
     setDraftBox(null);
+    setDraftMatchSuggestion(null);
+    setDraftMatchState('idle');
     setDraftSelection({
       label: '',
       email: '',
@@ -289,7 +493,54 @@ export default function InteractiveImageTagger({
     setError('');
   };
 
-  const handleSurfaceClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const applyMatchSuggestion = async (suggestion: MatchSuggestion) => {
+    setApplyingSuggestionFaceIndex(suggestion.faceIndex);
+    setError('');
+
+    const snappedBox =
+      detectedFaces.length > 0
+        ? snapFaceBoxToDetectedFace(suggestion, detectedFaces)
+        : clampFaceBox(suggestion);
+
+    try {
+      const response = await fetch(`/api/images/${imageId}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: suggestion.label,
+          email: suggestion.email,
+          phoneNumber: suggestion.phoneNumber,
+          userId: suggestion.userId,
+          contributorId: suggestion.contributorId,
+          leftPct: snappedBox.leftPct,
+          topPct: snappedBox.topPct,
+          widthPct: snappedBox.widthPct,
+          heightPct: snappedBox.heightPct,
+        }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Failed to save suggested tag');
+      }
+
+      setMatchSuggestions((current) =>
+        current.filter((item) => item.faceIndex !== suggestion.faceIndex)
+      );
+      onUpdate();
+    } catch (suggestionError) {
+      setError(
+        suggestionError instanceof Error
+          ? suggestionError.message
+          : 'Failed to save suggested tag'
+      );
+    } finally {
+      setApplyingSuggestionFaceIndex(null);
+    }
+  };
+
+  const handleSurfaceClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!canManage || !imageUrl || !isPickingTag || !imageRef.current) {
       return;
     }
@@ -299,8 +550,8 @@ export default function InteractiveImageTagger({
     const yPct = ((event.clientY - rect.top) / rect.height) * 100;
     const box =
       detectedFaces.length > 0
-        ? selectNearestFace(xPct, yPct, detectedFaces)
-        : deriveFallbackBox(xPct, yPct);
+        ? selectFaceForPoint(xPct, yPct, detectedFaces)
+        : deriveFallbackFaceBox(xPct, yPct);
 
     setDraftBox(box);
     setIsPickingTag(false);
@@ -311,11 +562,12 @@ export default function InteractiveImageTagger({
     suggestion:
       | {
           id: string;
-          type: 'friend' | 'contributor';
+          type: 'friend' | 'contributor' | 'tagIdentity';
           label: string;
           email: string;
           phoneNumber: string;
           userId: string | null;
+          contributorId: string | null;
         }
       | null
   ) => {
@@ -328,8 +580,11 @@ export default function InteractiveImageTagger({
       label: suggestion.label,
       email: suggestion.email,
       phoneNumber: suggestion.phoneNumber,
-      userId: suggestion.type === 'friend' ? suggestion.userId : suggestion.userId,
-      contributorId: suggestion.type === 'contributor' ? suggestion.id : null,
+      userId: suggestion.userId,
+      contributorId:
+        suggestion.type === 'contributor'
+          ? suggestion.id
+          : suggestion.contributorId,
     }));
   };
 
@@ -412,6 +667,17 @@ export default function InteractiveImageTagger({
                     ? 'Face snapping failed'
                     : 'Face detection loading'}
             </span>
+            {matchState === 'loading' && (
+              <span className="ember-chip text-[var(--ember-muted)]">
+                Looking for known people...
+              </span>
+            )}
+            {matchState === 'ready' && visibleMatchSuggestions.length > 0 && (
+              <span className="ember-chip text-[var(--ember-orange-deep)]">
+                {visibleMatchSuggestions.length} likely match
+                {visibleMatchSuggestions.length === 1 ? '' : 'es'}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => {
@@ -455,10 +721,11 @@ export default function InteractiveImageTagger({
 
         <div className="flex justify-center">
           {imageUrl ? (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={canManage && isPickingTag ? 0 : -1}
               onClick={handleSurfaceClick}
-              disabled={!canManage || !isPickingTag}
+              aria-disabled={!canManage || !isPickingTag}
               className={`relative inline-block max-w-full overflow-hidden rounded-[1.6rem] ${
                 isPickingTag ? 'cursor-crosshair' : 'cursor-default'
               }`}
@@ -481,10 +748,10 @@ export default function InteractiveImageTagger({
                         : 'border-transparent'
                     }`}
                     style={{
-                      left: `${face.leftPct}%`,
-                      top: `${face.topPct}%`,
-                      width: `${face.widthPct}%`,
-                      height: `${face.heightPct}%`,
+                      left: `${clampFaceBox(face).leftPct}%`,
+                      top: `${clampFaceBox(face).topPct}%`,
+                      width: `${clampFaceBox(face).widthPct}%`,
+                      height: `${clampFaceBox(face).heightPct}%`,
                     }}
                   />
                 ))}
@@ -529,8 +796,37 @@ export default function InteractiveImageTagger({
                     </div>
                   </div>
                 )}
+
+                {visibleMatchSuggestions.map((suggestion) => (
+                  <div
+                    key={`suggestion-${suggestion.faceIndex}-${suggestion.label}`}
+                    className="absolute rounded-[1rem] border-2 border-[rgba(255,102,33,0.45)] bg-[rgba(255,102,33,0.08)]"
+                    style={{
+                      left: `${suggestion.leftPct}%`,
+                      top: `${suggestion.topPct}%`,
+                      width: `${suggestion.widthPct}%`,
+                      height: `${suggestion.heightPct}%`,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => void applyMatchSuggestion(suggestion)}
+                      title={suggestion.reason}
+                      className="pointer-events-auto absolute bottom-2 left-2 inline-flex max-w-[calc(100%-1rem)] items-center gap-2 rounded-full bg-white/96 px-3 py-1 text-left text-xs font-semibold text-[var(--ember-text)] shadow-sm transition hover:bg-white"
+                    >
+                      <span className="truncate">
+                        {applyingSuggestionFaceIndex === suggestion.faceIndex
+                          ? 'Saving...'
+                          : getSuggestionCopy(suggestion)}
+                      </span>
+                      <span className="rounded-full bg-[rgba(255,102,33,0.12)] px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-[var(--ember-orange-deep)]">
+                        {suggestion.confidence}
+                      </span>
+                    </button>
+                  </div>
+                ))}
               </div>
-            </button>
+            </div>
           ) : (
             <div className="flex max-w-xl flex-col items-center justify-center rounded-[1.6rem] border border-dashed border-[var(--ember-line-strong)] bg-white px-8 py-10 text-center text-sm text-[var(--ember-muted)]">
               <div className="font-semibold text-[var(--ember-text)]">Poster frame unavailable</div>
@@ -585,6 +881,41 @@ export default function InteractiveImageTagger({
                 ))}
               </div>
             </div>
+          )}
+
+          {draftMatchState === 'loading' && (
+            <div className="mt-4 ember-chip text-[var(--ember-muted)]">
+              Checking for a likely match...
+            </div>
+          )}
+
+          {draftMatchSuggestion && (
+            <button
+              type="button"
+              onClick={() =>
+                setDraftSelection((current) => ({
+                  ...current,
+                  label: draftMatchSuggestion.label,
+                  email: draftMatchSuggestion.email || '',
+                  phoneNumber: draftMatchSuggestion.phoneNumber || '',
+                  userId: draftMatchSuggestion.userId,
+                  contributorId: draftMatchSuggestion.contributorId,
+                }))
+              }
+              className="mt-4 ember-card flex w-full items-start justify-between gap-3 rounded-[1.5rem] px-4 py-4 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+            >
+              <div>
+                <div className="text-sm font-semibold text-[var(--ember-text)]">
+                  {getSuggestionCopy(draftMatchSuggestion)}
+                </div>
+                <p className="mt-1 text-sm text-[var(--ember-muted)]">
+                  {draftMatchSuggestion.reason}
+                </p>
+              </div>
+              <span className="rounded-full bg-[rgba(255,102,33,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--ember-orange-deep)]">
+                {draftMatchSuggestion.confidence}
+              </span>
+            </button>
           )}
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2">

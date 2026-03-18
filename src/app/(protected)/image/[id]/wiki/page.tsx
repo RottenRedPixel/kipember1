@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 import WikiView from '@/components/WikiView';
 
@@ -14,6 +15,7 @@ interface WikiRecord {
   canManage: boolean;
   image: {
     originalName: string;
+    title: string | null;
     description: string | null;
     filename: string;
     mediaType: 'IMAGE' | 'VIDEO';
@@ -83,6 +85,13 @@ export default function WikiPage() {
     );
   }
 
+  const emberTitle = wiki
+    ? getEmberTitle({
+        title: wiki.image.title,
+        originalName: wiki.image.originalName,
+      })
+    : '';
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -108,7 +117,7 @@ export default function WikiPage() {
                     mediaType={wiki.image.mediaType}
                     filename={wiki.image.filename}
                     posterFilename={wiki.image.posterFilename}
-                    originalName={wiki.image.originalName}
+                    originalName={emberTitle}
                     usePosterForVideo
                     className="max-h-[22rem] w-full object-contain sm:max-h-[26rem] lg:h-56 lg:max-h-none"
                   />
@@ -117,7 +126,7 @@ export default function WikiPage() {
                 <div className="min-w-0 flex-1">
                   <p className="ember-eyebrow">Wiki</p>
                   <h1 className="ember-heading mt-4 break-all text-3xl leading-tight text-[var(--ember-text)] sm:break-words sm:text-4xl sm:[overflow-wrap:anywhere]">
-                    {wiki.image.originalName}
+                    {emberTitle}
                   </h1>
                   <p className="ember-copy mt-4 max-w-3xl break-words text-sm">
                     {wiki.image.description ||

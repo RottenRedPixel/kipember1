@@ -1,0 +1,74 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e33] [cursor=pointer]:
+    - img [ref=e34]
+  - alert [ref=e37]
+  - generic [ref=e38]:
+    - banner [ref=e39]:
+      - generic [ref=e41]:
+        - link "Ember home" [ref=e42] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e43]:
+          - link "Your Embers" [ref=e44] [cursor=pointer]:
+            - /url: /feed
+            - img [ref=e45]
+          - link "Add Ember" [ref=e50] [cursor=pointer]:
+            - /url: /feed#add-ember
+            - img [ref=e51]
+          - link "Account" [ref=e52] [cursor=pointer]:
+            - /url: /profile
+            - img [ref=e53]
+    - main [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e59]:
+          - generic [ref=e96]:
+            - generic [ref=e97]:
+              - img "Uploading preview" [ref=e98]
+              - generic [ref=e100]:
+                - paragraph [ref=e101]: New Ember
+                - generic [ref=e102]: 6d866dbd-8241-45d2-bd3e-2b9d5bbdcd49.jpg
+            - generic [ref=e103]:
+              - generic [ref=e107]:
+                - paragraph [ref=e108]: Ember is working
+                - generic [ref=e109]: Looking for familiar faces
+              - paragraph [ref=e110]: Hang on while Ember uploads the media, reads the moment, and prepares the first version of the memory.
+              - generic [ref=e111]:
+                - generic [ref=e112]:
+                  - generic [ref=e113]: ✓
+                  - generic [ref=e114]: Uploading your media
+                - generic [ref=e115]:
+                  - generic [ref=e116]: ✓
+                  - generic [ref=e117]: Reading the scene
+                - generic [ref=e118]:
+                  - generic [ref=e119]: ✓
+                  - generic [ref=e120]: Naming your Ember
+                - generic [ref=e121]:
+                  - generic [ref=e122]: ✓
+                  - generic [ref=e123]: Building the memory page
+                - generic [ref=e124]:
+                  - generic [ref=e125]: "5"
+                  - generic [ref=e126]: Looking for familiar faces
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - img "Preview" [ref=e82]
+              - button "x" [ref=e83]
+            - generic [ref=e84]:
+              - generic [ref=e85]: Description
+              - textbox "Description" [ref=e86]:
+                - /placeholder: What makes this Ember meaningful? Add context Ember should know.
+            - generic [ref=e87]:
+              - checkbox "Share this Ember to your network feed Accepted friends will see it in their feed. Contributors can still be invited individually." [ref=e88]
+              - generic [ref=e89]:
+                - generic [ref=e90]: Share this Ember to your network feed
+                - generic [ref=e91]: Accepted friends will see it in their feed. Contributors can still be invited individually.
+            - button "Uploading image and opening Ember..." [disabled] [ref=e127]
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - paragraph [ref=e70]: Your Embers
+            - heading "Embers" [level=2] [ref=e71]
+          - generic [ref=e72]: Your feed is empty. Add a photo or video above to create your first Ember.
+        - generic [ref=e74]:
+          - paragraph [ref=e75]: What Ember does
+          - heading "Ember is a tool that lets you preserve memories through shared, thoughtful conversations." [level=2] [ref=e76]
+          - paragraph [ref=e77]: Start with a photo or video, invite the people who lived the moment with you, and let Ember turn scattered recollection into one living memory.
+          - link "Learn more" [ref=e79] [cursor=pointer]:
+            - /url: /#learn-more

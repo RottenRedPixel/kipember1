@@ -1,6 +1,9 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import EmberBrand from '@/components/EmberBrand';
+import EmberExplainerPanel from '@/components/EmberExplainerPanel';
+import EmberMobileTopBar from '@/components/EmberMobileTopBar';
 import { getCurrentAuth } from '@/lib/auth-server';
 
 const memoryPrinciples = [
@@ -76,46 +79,42 @@ export default async function LandingPage() {
             </div>
           </div>
 
-          <details className="sm:hidden">
-            <summary className="ember-summary ember-panel flex w-full items-center justify-between rounded-[1.6rem] px-4 py-4">
-              <EmberBrand subtitle="living memory companion" compact staticBrand />
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ember-charcoal)] text-white">
-                <span className="sr-only">Open navigation</span>
-                <span className="flex flex-col gap-1.5">
-                  <span className="h-0.5 w-5 rounded-full bg-white" />
-                  <span className="h-0.5 w-5 rounded-full bg-white" />
-                  <span className="h-0.5 w-5 rounded-full bg-white" />
-                </span>
-              </span>
-            </summary>
-
-            <div className="ember-panel-strong mt-3 rounded-[1.75rem] p-4">
-              <div className="rounded-[1.35rem] bg-white/90 px-4 py-3">
-                <div className="text-sm font-medium text-[var(--ember-text)]">Ember</div>
-                <div className="mt-1 text-xs text-[var(--ember-muted)]">
-                  AI-guided memory companion
-                </div>
-              </div>
-
-              <nav className="mt-4 grid gap-3">
-                <Link
-                  href="/login"
-                  className="rounded-[1.2rem] border border-[var(--ember-line)] bg-white px-4 py-3 text-center text-sm font-medium text-[var(--ember-text)]"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/signup"
-                  className="rounded-[1.2rem] bg-[var(--ember-charcoal)] px-4 py-3 text-center text-sm font-medium text-white"
-                >
-                  Create account
-                </Link>
-              </nav>
-            </div>
-          </details>
+          <EmberMobileTopBar
+            homeHref="/"
+            embersHref="/feed"
+            addHref="/signup"
+            accountHref="/access"
+          />
         </header>
 
-        <section className="grid gap-8 py-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:py-16">
+        <section className="grid gap-5 py-8 lg:grid-cols-[1.04fr_0.96fr] lg:items-stretch">
+          <Link
+            id="add-ember"
+            href="/signup"
+            className="group flex min-h-[20rem] flex-col items-center justify-center rounded-[2rem] border border-dashed border-[rgba(20,20,20,0.12)] bg-white/78 px-6 py-10 text-center shadow-[0_16px_34px_rgba(17,17,17,0.05)] sm:px-8"
+          >
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-[rgba(255,102,33,0.08)]">
+              <Image src="/emberfav.svg" alt="" width={28} height={28} priority />
+            </div>
+            <p className="ember-eyebrow mt-6">Start a memory</p>
+            <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)] sm:text-4xl">
+              Drop a photo or video
+            </h2>
+            <p className="ember-copy mx-auto mt-3 max-w-2xl text-sm">
+              Create an account, add the moment, and let Ember start shaping it into a shared memory.
+            </p>
+            <span className="mt-6 inline-flex rounded-full bg-[var(--ember-charcoal)] px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(17,17,17,0.16)] transition group-hover:-translate-y-0.5">
+              Create your first Ember
+            </span>
+          </Link>
+
+          <EmberExplainerPanel learnMoreHref="#learn-more" />
+        </section>
+
+        <section
+          id="learn-more"
+          className="grid gap-8 py-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:py-16"
+        >
           <div>
             <div className="inline-flex rounded-full border border-[rgba(255,102,33,0.14)] bg-white/88 px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)] shadow-[0_12px_30px_rgba(17,17,17,0.05)]">
               Hi, this is Ember

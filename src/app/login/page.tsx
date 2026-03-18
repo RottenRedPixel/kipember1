@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import AuthTopNav from '@/components/AuthTopNav';
 import AuthForm from '@/components/AuthForm';
 import { getCurrentAuth } from '@/lib/auth-server';
 
@@ -10,8 +11,11 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="ember-page flex items-center justify-center px-4 py-10">
-      <AuthForm mode="login" />
+    <main className="ember-page">
+      <AuthTopNav signedIn={false} />
+      <div className="flex min-h-[calc(100vh-6rem)] items-center justify-center px-4 py-10">
+        <AuthForm mode="login" />
+      </div>
     </main>
   );
 }

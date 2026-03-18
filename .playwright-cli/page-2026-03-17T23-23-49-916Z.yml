@@ -1,0 +1,103 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Ember owner and contributor workspace" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e9]:
+              - generic [ref=e10]: Ember
+              - generic [ref=e11]: owner and contributor workspace
+          - navigation [ref=e12]:
+            - link "Feed" [ref=e13] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e14] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Codex Face Check
+            - generic [ref=e18]: codex-face-check@example.com
+          - button "Logout" [ref=e19]
+    - main [ref=e20]:
+      - generic [ref=e21]:
+        - link "<- Back to feed" [ref=e32] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e33]:
+          - img "New portrait" [ref=e35]
+          - heading "New portrait" [level=1] [ref=e37]
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - paragraph [ref=e40]: Memory detail
+              - paragraph [ref=e41]: New photo that should get a face suggestion
+              - generic [ref=e42]:
+                - generic [ref=e43]: Photo Ember
+                - generic [ref=e44]: Captured 3/17/2026
+                - generic [ref=e45]: 1 contributors
+                - generic [ref=e46]: 0 tags
+            - generic [ref=e47]:
+              - paragraph [ref=e48]: People connected
+              - generic [ref=e49]:
+                - generic [ref=e50]:
+                  - generic [ref=e51]: Owner
+                  - generic [ref=e52]: Codex Face Check
+                - generic [ref=e53]:
+                  - generic [ref=e54]: Contributors
+                  - generic [ref=e55]: Codex Face Check
+                - generic [ref=e56]:
+                  - generic [ref=e57]: Tags
+                  - generic [ref=e58]: No one has been tagged yet.
+          - generic [ref=e59]:
+            - button "Ask Ember" [ref=e60]:
+              - img [ref=e62]
+              - generic [ref=e64]: Ask Ember
+            - link "Play Ember" [ref=e65] [cursor=pointer]:
+              - /url: /image/cmmv3wnds0002vcmhh59aie82/wiki
+              - img [ref=e67]
+              - generic [ref=e69]: Play Ember
+            - button "Contributors" [ref=e70]:
+              - img [ref=e72]
+              - generic [ref=e75]: Contributors
+            - button "Shape Ember" [active] [ref=e76]:
+              - img [ref=e78]
+              - generic [ref=e80]: Shape Ember
+            - button "Share Ember" [ref=e81]:
+              - img [ref=e83]
+              - generic [ref=e86]: Share Ember
+        - generic [ref=e89]:
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - paragraph [ref=e93]: Ember
+              - heading "Shape Ember" [level=2] [ref=e94]
+              - paragraph [ref=e95]: Review added content and shape how this Ember is organized.
+            - button "Close" [ref=e96]
+          - generic [ref=e98]:
+            - generic [ref=e99]:
+              - paragraph [ref=e100]: Added content
+              - generic [ref=e101]:
+                - generic [ref=e102]:
+                  - generic [ref=e103]: Memory detail
+                  - generic [ref=e104]: New photo that should get a face suggestion
+                - generic [ref=e105]:
+                  - generic [ref=e106]: Contributor notes
+                  - generic [ref=e107]: 0 completed memory threads
+                - generic [ref=e108]:
+                  - generic [ref=e109]: Tagged people
+                  - generic [ref=e110]: 0 tagged records
+            - generic [ref=e111]:
+              - link "View wiki Open the full Ember wiki and all its modes." [ref=e112] [cursor=pointer]:
+                - /url: /image/cmmv3wnds0002vcmhh59aie82/wiki
+                - generic [ref=e113]: View wiki
+                - paragraph [ref=e114]: Open the full Ember wiki and all its modes.
+              - button "Tag people Add or update tags without cluttering the main screen." [ref=e115]:
+                - generic [ref=e116]: Tag people
+                - paragraph [ref=e117]: Add or update tags without cluttering the main screen.
+              - link "View feed Return to your Ember feed." [ref=e118] [cursor=pointer]:
+                - /url: /feed
+                - generic [ref=e119]: View feed
+                - paragraph [ref=e120]: Return to your Ember feed.
+              - button "Delete Ember Permanently remove this Ember and its connected records." [ref=e121]:
+                - generic [ref=e122]: Delete Ember
+                - paragraph [ref=e123]: Permanently remove this Ember and its connected records.
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - img [ref=e29]
+  - alert [ref=e87]

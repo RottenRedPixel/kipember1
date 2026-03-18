@@ -17,6 +17,7 @@ model Image {
   posterFilename String?
   durationSeconds Float?
   originalName String
+  title        String?
   description  String?
   visibility   Visibility    @default(PRIVATE)
   ownerId      String

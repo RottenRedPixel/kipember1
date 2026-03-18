@@ -48,6 +48,7 @@ export async function GET(
         mediaType: image.mediaType,
         posterFilename: image.posterFilename,
         originalName: image.originalName,
+        title: image.title,
         description: image.description,
       },
       canManage: accessType === 'owner',

@@ -1,0 +1,142 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Ember owner and contributor workspace" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e9]:
+              - generic [ref=e10]: Ember
+              - generic [ref=e11]: owner and contributor workspace
+          - navigation [ref=e12]:
+            - link "Feed" [ref=e13] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e14] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Kip Barrett
+            - generic [ref=e18]: cbarrettjr@gmail.com
+          - button "Logout" [ref=e19]
+    - main [ref=e20]:
+      - generic [ref=e21]:
+        - link "<- Back to feed" [ref=e33] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e34]:
+          - img "Summer cousins gathering in the backyard" [ref=e36]
+          - heading "Summer cousins gathering in the backyard" [level=1] [ref=e38]
+          - generic [ref=e39]:
+            - generic [ref=e40]:
+              - paragraph [ref=e41]: Memory detail
+              - paragraph [ref=e42]: No detail has been captured for this Ember yet.
+              - generic [ref=e43]:
+                - generic [ref=e44]: Photo Ember
+                - generic [ref=e45]: Captured 3/17/2026
+                - generic [ref=e46]: 1 contributors
+                - generic [ref=e47]: 0 tags
+            - generic [ref=e48]:
+              - paragraph [ref=e49]: People connected
+              - generic [ref=e50]:
+                - generic [ref=e51]:
+                  - generic [ref=e52]: Owner
+                  - generic [ref=e53]: Kip Barrett
+                - generic [ref=e54]:
+                  - generic [ref=e55]: Contributors
+                  - generic [ref=e56]: Kip Barrett
+                - generic [ref=e57]:
+                  - generic [ref=e58]: Tags
+                  - generic [ref=e59]: No one has been tagged yet.
+          - generic [ref=e60]:
+            - button "Ask Ember" [ref=e61]:
+              - img [ref=e63]
+              - generic [ref=e65]: Ask Ember
+            - link "Play Ember" [ref=e66] [cursor=pointer]:
+              - /url: /image/cmmvc8apz001bx0mh0udmh65x/wiki
+              - img [ref=e68]
+              - generic [ref=e70]: Play Ember
+            - button "Contributors" [ref=e71]:
+              - img [ref=e73]
+              - generic [ref=e76]: Contributors
+            - button "Shape Ember" [ref=e77]:
+              - img [ref=e79]
+              - generic [ref=e81]: Shape Ember
+            - button "Share Ember" [ref=e82]:
+              - img [ref=e84]
+              - generic [ref=e87]: Share Ember
+        - generic [ref=e89]:
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - paragraph [ref=e93]: Ember
+              - heading "Tag people" [level=2] [ref=e124]
+              - paragraph [ref=e95]: Pin people to the image, review tags, and turn them into contributor invites.
+            - button "Close" [ref=e96]
+          - generic [ref=e98]:
+            - button "Back to shape tools" [ref=e125]
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - generic [ref=e128]:
+                  - paragraph [ref=e129]: Face tags
+                  - paragraph [ref=e130]: Pin people directly on the photo and optionally turn the tag into an invite.
+                - generic [ref=e131]:
+                  - generic [ref=e132]: Face snapping unavailable
+                  - button "Tag a face" [ref=e155]
+              - button "Summer cousins gathering in the backyard New tag" [disabled] [active] [ref=e156]:
+                - img "Summer cousins gathering in the backyard" [ref=e137]
+                - generic:
+                  - generic:
+                    - generic: New tag
+              - generic [ref=e157]:
+                - generic [ref=e158]:
+                  - generic [ref=e159]:
+                    - heading "Create face tag" [level=3] [ref=e160]
+                    - paragraph [ref=e161]: Save the tag, or turn it into a contributor invite right away.
+                  - button "Cancel" [ref=e162]
+                - generic [ref=e163]:
+                  - paragraph [ref=e164]: Quick picks
+                  - button "Kip Barrett" [ref=e166]
+                - button "Looks like CJ The facial features show strong consistency across all images. The boy has distinctive characteristics including similar eye shape, nose structure, ear positioning, and facial proportions. The eyebrows, jawline, and overall bone structure match well between the target and reference crops. While there are slight variations in expression and angle, the core facial features align consistently, indicating this is the same individual. high" [ref=e186]:
+                  - generic [ref=e187]:
+                    - generic [ref=e188]: Looks like CJ
+                    - paragraph [ref=e189]: The facial features show strong consistency across all images. The boy has distinctive characteristics including similar eye shape, nose structure, ear positioning, and facial proportions. The eyebrows, jawline, and overall bone structure match well between the target and reference crops. While there are slight variations in expression and angle, the core facial features align consistently, indicating this is the same individual.
+                  - generic [ref=e190]: high
+                - generic [ref=e168]:
+                  - generic [ref=e169]:
+                    - generic [ref=e170]: Name
+                    - textbox "Name" [ref=e171]:
+                      - /placeholder: Who is this?
+                      - text: CJ
+                  - generic [ref=e172]:
+                    - generic [ref=e173]: Email
+                    - textbox "Email" [ref=e174]:
+                      - /placeholder: name@example.com
+                  - generic [ref=e175]:
+                    - generic [ref=e176]: Phone
+                    - textbox "Phone" [ref=e177]:
+                      - /placeholder: "5551234567"
+                  - generic [ref=e178]:
+                    - generic [ref=e179]:
+                      - checkbox "Add this tagged person as a contributor now" [ref=e180]
+                      - text: Add this tagged person as a contributor now
+                    - generic [ref=e181]:
+                      - checkbox "Send a text invite right away" [ref=e182]
+                      - text: Send a text invite right away
+                - generic [ref=e183]:
+                  - button "Save tag" [ref=e184]
+                  - generic [ref=e185]: If a phone number is present, the invite can text them immediately.
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - paragraph [ref=e140]: Tag people
+                - heading "Tagged people" [level=2] [ref=e141]
+                - paragraph [ref=e142]: Review tagged faces, add contact info, and turn tags into contributor invites.
+              - paragraph [ref=e143]: No one has been tagged yet.
+              - generic [ref=e144]:
+                - paragraph [ref=e145]: Quick tag without pinning
+                - button "Kip Barrett" [ref=e147]
+              - generic [ref=e148]:
+                - textbox "Add a name" [ref=e149]
+                - textbox "Email (optional)" [ref=e150]
+                - textbox "Phone (optional)" [ref=e151]
+                - button "Add tag" [disabled] [ref=e152]
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - img [ref=e29]
+  - alert [ref=e32]

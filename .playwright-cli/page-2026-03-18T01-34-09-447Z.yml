@@ -1,0 +1,68 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Ember owner and contributor workspace" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e9]:
+              - generic [ref=e10]: Ember
+              - generic [ref=e11]: owner and contributor workspace
+          - navigation [ref=e12]:
+            - link "Feed" [ref=e13] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e14] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Kip Barrett
+            - generic [ref=e18]: cbarrettjr@gmail.com
+          - button "Logout" [ref=e19]
+    - main [ref=e20]:
+      - generic [ref=e21]:
+        - link "<- Back to feed" [ref=e36] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e37]:
+          - img "Summer cousins gathering in the backyard" [ref=e39]
+          - heading "Summer cousins gathering in the backyard" [level=1] [ref=e41]
+          - generic [ref=e42]:
+            - generic [ref=e43]:
+              - paragraph [ref=e44]: Memory detail
+              - paragraph [ref=e45]: No detail has been captured for this Ember yet.
+              - generic [ref=e46]:
+                - generic [ref=e47]: Photo Ember
+                - generic [ref=e48]: Captured 3/17/2026
+                - generic [ref=e49]: 1 contributors
+                - generic [ref=e50]: 1 tags
+            - generic [ref=e51]:
+              - paragraph [ref=e52]: People connected
+              - generic [ref=e53]:
+                - generic [ref=e54]:
+                  - generic [ref=e55]: Owner
+                  - generic [ref=e56]: Kip Barrett
+                - generic [ref=e57]:
+                  - generic [ref=e58]: Contributors
+                  - generic [ref=e59]: Kip Barrett
+                - generic [ref=e60]:
+                  - generic [ref=e61]: Tags
+                  - generic [ref=e62]: CJ
+          - generic [ref=e63]:
+            - button "Ask Ember" [ref=e64]:
+              - img [ref=e66]
+              - generic [ref=e68]: Ask Ember
+            - link "Play Ember" [ref=e69] [cursor=pointer]:
+              - /url: /image/cmmvc8apz001bx0mh0udmh65x/wiki
+              - img [ref=e71]
+              - generic [ref=e73]: Play Ember
+            - button "Contributors" [ref=e74]:
+              - img [ref=e76]
+              - generic [ref=e79]: Contributors
+            - button "Shape Ember" [ref=e80]:
+              - img [ref=e82]
+              - generic [ref=e84]: Shape Ember
+            - button "Share Ember" [ref=e85]:
+              - img [ref=e87]
+              - generic [ref=e90]: Share Ember
+  - button "Open Next.js Dev Tools" [ref=e31] [cursor=pointer]:
+    - img [ref=e32]
+  - alert [ref=e35]

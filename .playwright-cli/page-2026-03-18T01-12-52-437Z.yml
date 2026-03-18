@@ -1,0 +1,114 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e5]:
+        - link "Ember living memory companion" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e8]:
+            - generic [ref=e9]: Ember
+            - generic [ref=e10]: living memory companion
+        - generic [ref=e11]:
+          - link "Login" [ref=e12] [cursor=pointer]:
+            - /url: /login
+          - link "Create account" [ref=e13] [cursor=pointer]:
+            - /url: /signup
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]: Hi, this is Ember
+          - heading "Preserve the memory with the people who lived it." [level=1] [ref=e17]
+          - paragraph [ref=e18]: Ember is an AI-guided companion that helps you preserve memories through shared, thoughtful conversations with friends and family.
+          - paragraph [ref=e19]: It records the real voices of the people who gather to reflect on a moment, capturing what happened, how it felt, and what it meant to everyone.
+          - generic [ref=e20]:
+            - link "Start your first Ember" [ref=e21] [cursor=pointer]:
+              - /url: /signup
+            - link "I already have an account" [ref=e22] [cursor=pointer]:
+              - /url: /login
+          - generic [ref=e23]:
+            - generic [ref=e24]: Photos and videos become shared memory spaces.
+            - generic [ref=e25]: Contributors reply by text or by voice.
+            - generic [ref=e26]: Ember turns scattered recollection into one living record.
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]:
+              - generic [ref=e33]: The Story Circle
+              - generic [ref=e34]: Shared conversation
+            - generic [ref=e35]:
+              - generic [ref=e36]:
+                - generic [ref=e37]: Owner prompt
+                - paragraph [ref=e38]: Tell me what everybody remembers about that night by the lake.
+              - generic [ref=e39]:
+                - generic [ref=e40]: Family response
+                - paragraph [ref=e41]: Dad remembers the storm rolling in. Your sister remembers laughing through it. Ember keeps both.
+              - generic [ref=e42]:
+                - generic [ref=e43]: Ember thread
+                - paragraph [ref=e44]: What happened. How it felt. Why it still matters.
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - paragraph [ref=e47]: Keep It Alive
+              - heading "One memory, still growing" [level=2] [ref=e48]
+              - paragraph [ref=e49]: Ember connects every story into a living archive, evolving as new memories, voices, and perspectives are added over time.
+            - generic [ref=e50]:
+              - generic [ref=e51]: Archive view
+              - generic [ref=e52]:
+                - generic [ref=e53]:
+                  - generic [ref=e54]: Photo
+                  - generic [ref=e55]: The porch after dinner
+                - generic [ref=e56]:
+                  - generic [ref=e57]: Voices
+                  - generic [ref=e58]: Mom, Theo, Ava, Grandpa
+                - generic [ref=e59]:
+                  - generic [ref=e60]: Meaning
+                  - generic [ref=e61]: The last summer before everyone moved away
+      - generic [ref=e62]:
+        - article [ref=e63]:
+          - paragraph [ref=e64]: What happened
+          - heading "Shared reflection" [level=2] [ref=e65]
+          - paragraph [ref=e66]: Ember gathers multiple voices around one photo, one place, or one piece of family history so the record feels fuller than a caption.
+        - article [ref=e67]:
+          - paragraph [ref=e68]: How it felt
+          - heading "Real voices" [level=2] [ref=e69]
+          - paragraph [ref=e70]: Stories can come in by text or call, so the emotional tone of the memory stays intact instead of getting flattened into a note.
+        - article [ref=e71]:
+          - paragraph [ref=e72]: Why it mattered
+          - heading "Living archive" [level=2] [ref=e73]
+          - paragraph [ref=e74]: Every response stays connected to the same Ember, giving the memory more shape as new people and details are added over time.
+      - generic [ref=e75]:
+        - generic [ref=e76]:
+          - paragraph [ref=e77]: The Story Circle
+          - heading "Invite people into a memory without losing the thread." [level=2] [ref=e78]
+          - paragraph [ref=e79]: Invite others to join a group conversation about a time or place, preserving not just the stories, but the voices and reactions around them.
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]: Friends and family
+              - paragraph [ref=e83]: The people closest to the moment add context the camera cannot hold.
+            - generic [ref=e84]:
+              - generic [ref=e85]: Voice and text
+              - paragraph [ref=e86]: Contributors can respond in the way that feels most natural to them.
+        - generic [ref=e87]:
+          - article [ref=e88]:
+            - generic [ref=e89]: "01"
+            - generic [ref=e90]:
+              - heading "Start with a moment" [level=3] [ref=e91]
+              - paragraph [ref=e92]: A photo, a video, a place, or a story prompt becomes the Ember people gather around.
+          - article [ref=e93]:
+            - generic [ref=e94]: "02"
+            - generic [ref=e95]:
+              - heading "Open the Story Circle" [level=3] [ref=e96]
+              - paragraph [ref=e97]: Invite friends and family to reflect together so Ember can preserve not just facts, but reactions, voices, and perspective.
+          - article [ref=e98]:
+            - generic [ref=e99]: "03"
+            - generic [ref=e100]:
+              - heading "Keep it alive" [level=3] [ref=e101]
+              - paragraph [ref=e102]: The memory keeps evolving as more voices, follow-ups, and context are added back into the same archive.
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - paragraph [ref=e107]: Start preserving the memory now
+          - heading "Build an archive that feels more human every time someone adds to it." [level=2] [ref=e108]
+          - paragraph [ref=e109]: Create an Ember, invite the people who were there, and let the story keep unfolding in one place.
+        - generic [ref=e110]:
+          - link "Create account" [ref=e111] [cursor=pointer]:
+            - /url: /signup
+          - link "Login" [ref=e112] [cursor=pointer]:
+            - /url: /login
+  - button "Open Next.js Dev Tools" [ref=e118] [cursor=pointer]:
+    - img [ref=e119]

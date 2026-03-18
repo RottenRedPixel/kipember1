@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { getEmberTitle } from '@/lib/ember-title';
 import ChatInterface from '@/components/ChatInterface';
 import MediaPreview from '@/components/MediaPreview';
 
@@ -12,6 +13,7 @@ interface ImageRecord {
   mediaType: 'IMAGE' | 'VIDEO';
   posterFilename: string | null;
   originalName: string;
+  title: string | null;
   description: string | null;
 }
 
@@ -64,6 +66,8 @@ export default function ChatPage() {
     );
   }
 
+  const emberTitle = getEmberTitle(image);
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <section className="mb-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
@@ -80,7 +84,7 @@ export default function ChatPage() {
               mediaType={image.mediaType}
               filename={image.filename}
               posterFilename={image.posterFilename}
-              originalName={image.originalName}
+              originalName={emberTitle}
               controls={image.mediaType === 'VIDEO'}
               className="h-72 w-full object-contain bg-[var(--ember-bg)]"
             />
@@ -91,7 +95,7 @@ export default function ChatPage() {
               {image.mediaType === 'VIDEO' ? 'Video Q&A' : 'Photo Q&A'}
             </p>
             <h1 className="ember-heading mt-3 break-words text-3xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
-              {image.originalName}
+              {emberTitle}
             </h1>
             <p className="ember-copy mt-3 text-sm">
               {image.description ||

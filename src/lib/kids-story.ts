@@ -3,6 +3,7 @@ import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { chat } from '@/lib/claude';
 import { prisma } from '@/lib/db';
+import { getEmberTitle } from '@/lib/ember-title';
 import { getKidsImageModel, getOpenAIClient } from '@/lib/openai';
 
 const PANEL_COUNT = 5;
@@ -214,6 +215,7 @@ export async function getKidsStory(imageId: string) {
           mediaType: true,
           posterFilename: true,
           originalName: true,
+          title: true,
           description: true,
         },
       },
@@ -257,8 +259,9 @@ export async function generateKidsStoryForImage(imageId: string) {
       });
 
   try {
+    const imageTitle = getEmberTitle(image);
     const storyboard = await buildStoryboardFromWiki({
-      imageTitle: image.originalName,
+      imageTitle,
       imageDescription: image.description,
       wikiContent: image.wiki.content,
     });
@@ -266,7 +269,7 @@ export async function generateKidsStoryForImage(imageId: string) {
     const renderedPanels = await Promise.all(
       storyboard.panels.map(async (panel, index) => {
         const prompt = buildPanelPrompt({
-          imageTitle: image.originalName,
+          imageTitle,
           imageDescription: image.description,
           visualStyle: storyboard.visualStyle,
           panel,

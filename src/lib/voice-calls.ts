@@ -1,6 +1,7 @@
 import type Retell from 'retell-sdk';
 import { chat } from '@/lib/claude';
 import { prisma } from '@/lib/db';
+import { getEmberTitle } from '@/lib/ember-title';
 import { createRetellPhoneCall, retrieveRetellCall } from '@/lib/retell';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 
@@ -548,7 +549,7 @@ export async function startVoiceCallForContributor({
 
   const dynamicVariables = pickDynamicVariables({
     contributor_name: contributor.name,
-    image_title: contributor.image.originalName,
+    image_title: getEmberTitle(contributor.image),
     image_description: contributor.image.description,
     prior_interview_count:
       priorMemoryContext.priorInterviewCount > 0

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import LogoutButton from '@/components/LogoutButton';
 
 type FriendUser = {
   id: string;
@@ -186,6 +187,10 @@ export default function ProfileWorkspace() {
             <span className="ember-chip">{friends.length} friends</span>
             <span className="ember-chip">{incomingRequests.length} incoming</span>
             <span className="ember-chip">{outgoingRequests.length} pending</span>
+          </div>
+
+          <div className="mt-6">
+            <LogoutButton />
           </div>
 
           {(error || success) && (

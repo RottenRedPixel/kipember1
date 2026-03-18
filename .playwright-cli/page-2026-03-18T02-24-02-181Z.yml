@@ -1,0 +1,67 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+  - alert [ref=e31]
+  - generic [ref=e87]:
+    - banner [ref=e88]:
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - link "Ember home" [ref=e92] [cursor=pointer]:
+            - /url: /feed
+          - link "Your Embers" [ref=e93] [cursor=pointer]:
+            - /url: /feed
+            - img [ref=e94]
+          - button "Add Ember" [ref=e99]:
+            - img [ref=e100]
+        - link "Account" [ref=e101] [cursor=pointer]:
+          - /url: /access
+          - img [ref=e102]
+    - main [ref=e105]:
+      - generic [ref=e106]:
+        - generic [ref=e107]:
+          - generic [ref=e108]:
+            - paragraph [ref=e109]: Profile
+            - heading "Keep your Ember identity current." [level=1] [ref=e110]
+            - paragraph [ref=e111]: Your network, contributor invites, and shared access all depend on this identity layer staying accurate and easy to recognize.
+            - generic [ref=e112]:
+              - generic [ref=e113]: 0 friends
+              - generic [ref=e114]: 0 incoming
+              - generic [ref=e115]: 0 pending
+            - button "Logout" [ref=e117]
+          - generic [ref=e118]:
+            - paragraph [ref=e119]: Ember network
+            - heading "Add friends by email" [level=2] [ref=e120]
+            - paragraph [ref=e121]: Once someone is in your network, you can share network Embers with them and add them as contributors in one step.
+            - generic [ref=e122]:
+              - textbox "friend@example.com" [ref=e123]
+              - button "Add to network" [ref=e124]
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - paragraph [ref=e127]: Personal details
+            - heading "Update your profile" [level=2] [ref=e128]
+            - paragraph [ref=e129]: Email is used for account access, while phone helps with voice and SMS invite flows.
+            - generic [ref=e130]:
+              - generic [ref=e131]:
+                - generic [ref=e132]: Name
+                - textbox [ref=e133]: Codex Layout Check
+              - generic [ref=e134]:
+                - generic [ref=e135]: Email
+                - textbox [ref=e136]: codex.layout.check.20260317@example.com
+              - generic [ref=e137]:
+                - generic [ref=e138]: Phone
+                - textbox "Recommended for SMS and voice invites" [ref=e139]
+              - button "Save profile" [ref=e140]
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - generic [ref=e143]:
+                - heading "Friends" [level=3] [ref=e144]
+                - paragraph [ref=e145]: People who can be added quickly to shared Embers.
+                - paragraph [ref=e147]: No accepted friends yet.
+              - generic [ref=e148]:
+                - heading "Incoming requests" [level=3] [ref=e149]
+                - paragraph [ref=e150]: Approve requests to connect your network.
+                - paragraph [ref=e152]: No incoming requests.
+            - generic [ref=e153]:
+              - heading "Pending requests" [level=3] [ref=e154]
+              - paragraph [ref=e155]: Invitations you have sent but that are not confirmed yet.
+              - paragraph [ref=e157]: No pending requests.

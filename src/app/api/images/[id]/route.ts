@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApiUser } from '@/lib/auth-server';
+import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess, getAcceptedFriends, getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
+
+function normalizeLabelKey(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
 export async function GET(
   request: NextRequest,
@@ -112,6 +116,88 @@ export async function GET(
     }
 
     const friends = accessType === 'owner' ? await getAcceptedFriends(auth.user.id) : [];
+    const tagIdentityMap = new Map<
+      string,
+      {
+        id: string;
+        label: string;
+        email: string;
+        phoneNumber: string;
+        userId: string | null;
+        contributorId: string | null;
+      }
+    >();
+
+    if (accessType === 'owner') {
+      const priorTagIdentities = await prisma.imageTag.findMany({
+        where: {
+          imageId: { not: id },
+          image: {
+            ownerId: auth.user.id,
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phoneNumber: true,
+            },
+          },
+          contributor: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phoneNumber: true,
+            },
+          },
+        },
+      });
+
+      for (const tag of priorTagIdentities) {
+        const label =
+          tag.user?.name ||
+          tag.contributor?.name ||
+          tag.label.trim();
+
+        if (!label) {
+          continue;
+        }
+
+        const email =
+          tag.user?.email ||
+          tag.contributor?.email ||
+          tag.email ||
+          '';
+        const phoneNumber =
+          tag.user?.phoneNumber ||
+          tag.contributor?.phoneNumber ||
+          tag.phoneNumber ||
+          '';
+        const key =
+          (tag.userId ? `user:${tag.userId}` : null) ||
+          (tag.contributorId ? `contributor:${tag.contributorId}` : null) ||
+          (email ? `email:${normalizeEmail(email)}` : null) ||
+          (phoneNumber ? `phone:${normalizePhone(phoneNumber)}` : null) ||
+          `label:${normalizeLabelKey(label)}`;
+
+        if (tagIdentityMap.has(key)) {
+          continue;
+        }
+
+        tagIdentityMap.set(key, {
+          id: key,
+          label,
+          email,
+          phoneNumber,
+          userId: tag.userId,
+          contributorId: tag.contributorId,
+        });
+      }
+    }
 
     return NextResponse.json({
       id: image.id,
@@ -120,6 +206,7 @@ export async function GET(
       posterFilename: image.posterFilename,
       durationSeconds: image.durationSeconds,
       originalName: image.originalName,
+      title: image.title,
       description: image.description,
       createdAt: image.createdAt,
       shareToNetwork: image.shareToNetwork,
@@ -129,6 +216,7 @@ export async function GET(
       contributors: image.contributors,
       tags: image.tags,
       friends,
+      tagIdentities: Array.from(tagIdentityMap.values()).slice(0, 12),
       wiki: image.wiki,
       sportsMode: image.sportsMode,
     });

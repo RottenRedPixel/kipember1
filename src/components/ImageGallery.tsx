@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState, type JSX } from 'react';
+import { useRouter } from 'next/navigation';
+import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 
 type FeedImage = {
@@ -11,6 +13,7 @@ type FeedImage = {
   posterFilename: string | null;
   durationSeconds: number | null;
   originalName: string;
+  title: string | null;
   description: string | null;
   createdAt: string;
   shareToNetwork: boolean;
@@ -31,32 +34,7 @@ type IconProps = {
   className?: string;
 };
 
-type CardAction = {
-  key: 'ask' | 'play' | 'contributors' | 'shape';
-  label: string;
-  href: (image: FeedImage) => string;
-  icon: (props: IconProps) => JSX.Element;
-};
-
-function HomeIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M4.5 10.5 12 4l7.5 6.5" />
-      <path d="M6.5 9.5V20h11V9.5" />
-      <path d="M10 20v-5h4v5" />
-    </svg>
-  );
-}
-
-function ShareIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M12 4v10" />
-      <path d="m8 8 4-4 4 4" />
-      <path d="M5 13.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4.5" />
-    </svg>
-  );
-}
+const MOBILE_PAGE_SIZE = 5;
 
 function DiamondIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
@@ -74,15 +52,6 @@ function PlayIcon({ className = 'h-4 w-4' }: IconProps) {
   );
 }
 
-function PersonIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M12 12.25a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
-      <path d="M5 19.25c1.35-2.8 3.78-4.25 7-4.25s5.65 1.45 7 4.25" />
-    </svg>
-  );
-}
-
 function CircleIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
@@ -90,6 +59,22 @@ function CircleIcon({ className = 'h-4 w-4' }: IconProps) {
     </svg>
   );
 }
+
+function CloseIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <path d="M6 6 18 18" />
+      <path d="M18 6 6 18" />
+    </svg>
+  );
+}
+
+type CardAction = {
+  key: 'ask' | 'play';
+  label: string;
+  href: (image: FeedImage) => string;
+  icon: (props: IconProps) => JSX.Element;
+};
 
 const cardActions: CardAction[] = [
   {
@@ -101,35 +86,21 @@ const cardActions: CardAction[] = [
   {
     key: 'play',
     label: 'Play Ember',
-    href: (image) => `/image/${image.id}/story-circle`,
-    icon: PlayIcon,
-  },
-  {
-    key: 'contributors',
-    label: 'Contributors',
-    href: (image) => `/image/${image.id}`,
-    icon: PersonIcon,
-  },
-  {
-    key: 'shape',
-    label: 'Shape Ember',
     href: (image) => `/image/${image.id}/wiki`,
-    icon: CircleIcon,
+    icon: PlayIcon,
   },
 ];
 
-const surfaceButtonClass =
-  'flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)] shadow-[0_10px_24px_rgba(17,17,17,0.06)] transition hover:border-[rgba(255,102,33,0.24)] hover:bg-[rgba(255,102,33,0.06)]';
-
 const cardActionClass =
-  'flex h-12 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)] transition hover:border-[rgba(255,102,33,0.24)] hover:bg-[rgba(255,102,33,0.06)]';
+  'flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--ember-line)] bg-white px-4 text-[var(--ember-text)] transition hover:border-[rgba(255,102,33,0.24)] hover:bg-[rgba(255,102,33,0.06)]';
 
 async function shareEmberLink(image: FeedImage) {
   const url = `${window.location.origin}/image/${image.id}`;
+  const displayTitle = getEmberTitle(image);
 
   if (navigator.share) {
     await navigator.share({
-      title: image.originalName,
+      title: displayTitle,
       text: 'Open this Ember',
       url,
     });
@@ -145,14 +116,18 @@ async function shareEmberLink(image: FeedImage) {
 }
 
 export default function ImageGallery() {
+  const router = useRouter();
   const [images, setImages] = useState<FeedImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  const [shapeMenuImageId, setShapeMenuImageId] = useState<string | null>(null);
+  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [shareFeedback, setShareFeedback] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [mobilePage, setMobilePage] = useState(1);
 
   useEffect(() => {
     fetch('/api/images')
@@ -167,6 +142,20 @@ export default function ImageGallery() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    const syncViewport = () => setIsMobileViewport(mediaQuery.matches);
+
+    syncViewport();
+
+    mediaQuery.addEventListener('change', syncViewport);
+    return () => mediaQuery.removeEventListener('change', syncViewport);
+  }, []);
+
   const sortedImages = useMemo(
     () =>
       [...images].sort(
@@ -175,6 +164,17 @@ export default function ImageGallery() {
       ),
     [images]
   );
+
+  const totalMobilePages = Math.max(1, Math.ceil(sortedImages.length / MOBILE_PAGE_SIZE));
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setMobilePage(1);
+      return;
+    }
+
+    setMobilePage((current) => Math.min(current, totalMobilePages));
+  }, [isMobileViewport, totalMobilePages]);
 
   useEffect(() => {
     if (!shareFeedback) {
@@ -185,12 +185,19 @@ export default function ImageGallery() {
     return () => window.clearTimeout(timeoutId);
   }, [shareFeedback]);
 
-  const activeImage =
-    sortedImages.find((image) => image.id === activeImageId) || sortedImages[0] || null;
+  const visibleImages = useMemo(() => {
+    if (!isMobileViewport) {
+      return sortedImages;
+    }
+
+    const start = (mobilePage - 1) * MOBILE_PAGE_SIZE;
+    return sortedImages.slice(start, start + MOBILE_PAGE_SIZE);
+  }, [isMobileViewport, mobilePage, sortedImages]);
+
+  const shapeMenuImage =
+    sortedImages.find((image) => image.id === shapeMenuImageId) || null;
 
   const handleShare = async (image: FeedImage) => {
-    setActiveImageId(image.id);
-
     try {
       const text = await shareEmberLink(image);
       setShareFeedback({ type: 'success', text });
@@ -207,8 +214,51 @@ export default function ImageGallery() {
     }
   };
 
+  const openShapeRoute = (href: string) => {
+    setShapeMenuImageId(null);
+    router.push(href);
+  };
+
+  const handleDelete = async (image: FeedImage) => {
+    if (image.accessType !== 'owner' || deletingImageId) {
+      return;
+    }
+
+    const displayTitle = getEmberTitle(image);
+    const confirmed = window.confirm(`Delete ${displayTitle}? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingImageId(image.id);
+
+    try {
+      const response = await fetch(`/api/images/${image.id}`, {
+        method: 'DELETE',
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to delete Ember');
+      }
+
+      setImages((current) => current.filter((item) => item.id !== image.id));
+      setShapeMenuImageId(null);
+      setShareFeedback({ type: 'success', text: 'Ember deleted.' });
+    } catch (deleteError) {
+      setShareFeedback({
+        type: 'error',
+        text:
+          deleteError instanceof Error ? deleteError.message : 'Failed to delete Ember.',
+      });
+    } finally {
+      setDeletingImageId(null);
+    }
+  };
+
   if (loading) {
-    return <div className="py-16 text-center text-[var(--ember-muted)]">Loading your Ember feed...</div>;
+    return <div className="py-16 text-center text-[var(--ember-muted)]">Loading your Embers...</div>;
   }
 
   if (error) {
@@ -237,7 +287,7 @@ export default function ImageGallery() {
           <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">Embers</h2>
         </div>
         <p className="hidden text-sm text-[var(--ember-muted)] md:block">
-          Home, share, ask, play, contributors, and shape each Ember from the card.
+          Ask, play, or shape each Ember from the card.
         </p>
       </div>
 
@@ -252,78 +302,206 @@ export default function ImageGallery() {
       )}
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {sortedImages.map((image) => (
-          <article
-            key={image.id}
-            className={`ember-panel overflow-hidden rounded-[2rem] p-4 transition ${
-              activeImage?.id === image.id
-                ? 'border-[rgba(255,102,33,0.24)] shadow-[0_22px_50px_rgba(17,17,17,0.1)]'
-                : 'hover:-translate-y-0.5 hover:shadow-[0_22px_46px_rgba(17,17,17,0.08)]'
-            }`}
-            onMouseEnter={() => setActiveImageId(image.id)}
-            onFocus={() => setActiveImageId(image.id)}
-            onTouchStart={() => setActiveImageId(image.id)}
-          >
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <Link
-                href={`/image/${image.id}`}
-                className={surfaceButtonClass}
-                aria-label={`Open ${image.originalName}`}
-                onClick={() => setActiveImageId(image.id)}
-              >
-                <HomeIcon />
-              </Link>
-              <button
-                type="button"
-                onClick={() => void handleShare(image)}
-                className={surfaceButtonClass}
-                aria-label={`Share ${image.originalName}`}
-              >
-                <ShareIcon />
-              </button>
-            </div>
+        {visibleImages.map((image) => {
+          const displayTitle = getEmberTitle(image);
 
-            <Link
-              href={`/image/${image.id}`}
-              className="block overflow-hidden rounded-[1.6rem]"
-              onClick={() => setActiveImageId(image.id)}
+          return (
+            <article
+              key={image.id}
+              className="ember-panel overflow-hidden rounded-[2rem] p-4 transition hover:-translate-y-0.5 hover:shadow-[0_22px_46px_rgba(17,17,17,0.08)]"
             >
-              <MediaPreview
-                mediaType={image.mediaType}
-                filename={image.filename}
-                posterFilename={image.posterFilename}
-                originalName={image.originalName}
-                usePosterForVideo
-                className="h-64 w-full object-cover"
-              />
-            </Link>
+              <Link href={`/image/${image.id}`} className="block overflow-hidden rounded-[1.6rem]">
+                <MediaPreview
+                  mediaType={image.mediaType}
+                  filename={image.filename}
+                  posterFilename={image.posterFilename}
+                  originalName={displayTitle}
+                  usePosterForVideo
+                  className="h-64 w-full object-cover"
+                />
+              </Link>
 
-            <h3 className="ember-heading mt-4 break-all text-xl leading-tight text-[var(--ember-text)] sm:break-words sm:text-2xl sm:[overflow-wrap:anywhere]">
-              {image.originalName}
-            </h3>
+              <div className="mt-4">
+                <h3 className="ember-heading break-all text-xl leading-tight text-[var(--ember-text)] sm:break-words sm:text-2xl sm:[overflow-wrap:anywhere]">
+                  {displayTitle}
+                </h3>
+                <p className="mt-2 text-sm text-[var(--ember-muted)]">
+                  {image._count.contributors} contributors · {image._count.tags} tags
+                </p>
+              </div>
 
-            <div className="mt-4 grid grid-cols-4 gap-2">
-              {cardActions.map((action) => {
-                const Icon = action.icon;
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {cardActions.map((action) => {
+                  const Icon = action.icon;
 
-                return (
-                  <Link
-                    key={action.key}
-                    href={action.href(image)}
-                    className={cardActionClass}
-                    aria-label={action.label}
-                    onClick={() => setActiveImageId(image.id)}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="sr-only">{action.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </article>
-        ))}
+                  return (
+                    <Link
+                      key={action.key}
+                      href={action.href(image)}
+                      className={cardActionClass}
+                      aria-label={action.label}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span className="text-sm font-medium">{action.label}</span>
+                    </Link>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setShapeMenuImageId(image.id)}
+                  className={cardActionClass}
+                  aria-label="Shape Ember"
+                >
+                  <CircleIcon className="h-5 w-5" />
+                  <span className="text-sm font-medium">Shape</span>
+                </button>
+              </div>
+            </article>
+          );
+        })}
       </div>
 
+      {isMobileViewport && totalMobilePages > 1 && (
+        <div className="mt-6 flex items-center justify-between gap-3 rounded-[1.5rem] border border-[var(--ember-line)] bg-white/84 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setMobilePage((current) => Math.max(1, current - 1))}
+            disabled={mobilePage === 1}
+            className="rounded-full border border-[var(--ember-line)] px-4 py-2 text-sm font-medium text-[var(--ember-text)] disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-[var(--ember-muted)]">
+            Page {mobilePage} of {totalMobilePages}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setMobilePage((current) => Math.min(totalMobilePages, current + 1))
+            }
+            disabled={mobilePage === totalMobilePages}
+            className="rounded-full border border-[var(--ember-line)] px-4 py-2 text-sm font-medium text-[var(--ember-text)] disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {shapeMenuImage && (
+        <div
+          className="fixed inset-0 z-50 bg-[rgba(17,17,17,0.42)] px-4 py-6"
+          onClick={() => setShapeMenuImageId(null)}
+        >
+          <div className="mx-auto flex min-h-full max-w-xl items-end justify-center sm:items-center">
+            <div
+              className="w-full overflow-hidden rounded-[2rem] border border-white/70 bg-[rgba(255,255,255,0.98)] shadow-[0_24px_64px_rgba(17,17,17,0.18)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="border-b ember-divider px-5 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="ember-eyebrow">Shape Ember</p>
+                    <h3 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
+                      {getEmberTitle(shapeMenuImage)}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShapeMenuImageId(null)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)]"
+                    aria-label="Close shape menu"
+                  >
+                    <CloseIcon />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid gap-3 px-5 py-5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    openShapeRoute(`/image/${shapeMenuImage.id}?panel=contributors`)
+                  }
+                  className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
+                >
+                  <div className="text-base font-semibold text-[var(--ember-text)]">Contributors</div>
+                  <p className="mt-1 text-sm text-[var(--ember-muted)]">
+                    Review and manage the people connected to this Ember.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleShare(shapeMenuImage);
+                    setShapeMenuImageId(null);
+                  }}
+                  className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
+                >
+                  <div className="text-base font-semibold text-[var(--ember-text)]">Share Ember</div>
+                  <p className="mt-1 text-sm text-[var(--ember-muted)]">
+                    Open the share sheet or copy a direct Ember link.
+                  </p>
+                </button>
+
+                {shapeMenuImage.accessType === 'owner' && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openShapeRoute(`/image/${shapeMenuImage.id}?panel=shape&view=tag`)
+                    }
+                    className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
+                  >
+                    <div className="text-base font-semibold text-[var(--ember-text)]">Add content</div>
+                    <p className="mt-1 text-sm text-[var(--ember-muted)]">
+                      Jump into tags and shape tools for this Ember.
+                    </p>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => openShapeRoute(`/image/${shapeMenuImage.id}/wiki`)}
+                  className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
+                >
+                  <div className="text-base font-semibold text-[var(--ember-text)]">View wiki</div>
+                  <p className="mt-1 text-sm text-[var(--ember-muted)]">
+                    Open the full Ember wiki and its different modes.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openShapeRoute(`/image/${shapeMenuImage.id}/story-circle`)}
+                  className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
+                >
+                  <div className="text-base font-semibold text-[var(--ember-text)]">Edit story</div>
+                  <p className="mt-1 text-sm text-[var(--ember-muted)]">
+                    Continue shaping the story circle around this Ember.
+                  </p>
+                </button>
+
+                {shapeMenuImage.accessType === 'owner' && (
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(shapeMenuImage)}
+                    disabled={deletingImageId === shapeMenuImage.id}
+                    className="ember-card rounded-[1.5rem] px-4 py-4 text-left disabled:opacity-60"
+                  >
+                    <div className="text-base font-semibold text-rose-700">
+                      {deletingImageId === shapeMenuImage.id ? 'Deleting...' : 'Delete Ember'}
+                    </div>
+                    <p className="mt-1 text-sm text-[var(--ember-muted)]">
+                      Permanently remove this Ember and its connected records.
+                    </p>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

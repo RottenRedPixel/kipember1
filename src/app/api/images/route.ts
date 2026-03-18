@@ -191,6 +191,7 @@ export async function GET() {
         posterFilename: image.posterFilename,
         durationSeconds: image.durationSeconds,
         originalName: image.originalName,
+        title: image.title,
         description: image.description,
         createdAt: image.createdAt,
         shareToNetwork: image.shareToNetwork,

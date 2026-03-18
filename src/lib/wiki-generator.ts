@@ -1,4 +1,5 @@
 import { prisma } from './db';
+import { getEmberTitle } from './ember-title';
 import { ensureImageAnalysisForImage } from './image-analysis';
 import { generateWiki } from './claude';
 import { parseSportsHighlightsJson, parseSportsModeJson } from './sports-mode';
@@ -205,8 +206,10 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     throw new Error('No image analysis or completed interviews available to generate a wiki');
   }
 
+  const imageTitle = getEmberTitle(image);
+
   const wikiContent = await generateWiki({
-    imageTitle: image.originalName,
+    imageTitle,
     imageDescription: image.description,
     analysis: image.analysis
       ? {

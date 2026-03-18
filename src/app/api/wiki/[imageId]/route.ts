@@ -28,6 +28,7 @@ export async function GET(
         image: {
           select: {
             originalName: true,
+            title: true,
             description: true,
             filename: true,
             mediaType: true,

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import EmberBrand from '@/components/EmberBrand';
+import EmberMobileTopBar from '@/components/EmberMobileTopBar';
 import LogoutButton from '@/components/LogoutButton';
 import { requirePageUser } from '@/lib/auth-server';
 
@@ -22,7 +23,13 @@ export default async function ProtectedLayout({
                   href="/feed"
                   className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-[var(--ember-text)]"
                 >
-                  Feed
+                  Embers
+                </Link>
+                <Link
+                  href="/feed#add-ember"
+                  className="rounded-full px-4 py-2 transition-colors hover:bg-white hover:text-[var(--ember-text)]"
+                >
+                  Add Ember
                 </Link>
                 <Link
                   href="/profile"
@@ -44,47 +51,13 @@ export default async function ProtectedLayout({
             </div>
           </div>
 
-          <details className="sm:hidden">
-            <summary className="ember-summary ember-panel flex w-full items-center justify-between rounded-[1.6rem] px-4 py-4">
-              <EmberBrand subtitle="personal archive" compact staticBrand />
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ember-charcoal)] text-white">
-                <span className="sr-only">Open navigation</span>
-                <span className="flex flex-col gap-1.5">
-                  <span className="h-0.5 w-5 rounded-full bg-white" />
-                  <span className="h-0.5 w-5 rounded-full bg-white" />
-                  <span className="h-0.5 w-5 rounded-full bg-white" />
-                </span>
-              </span>
-            </summary>
-
-            <div className="ember-panel-strong mt-3 rounded-[1.75rem] p-4">
-              <div className="rounded-[1.35rem] bg-white/90 px-4 py-3">
-                <div className="text-sm font-medium text-[var(--ember-text)]">
-                  {user.name || user.email}
-                </div>
-                <div className="mt-1 text-xs text-[var(--ember-muted)]">{user.email}</div>
-              </div>
-
-              <nav className="mt-4 grid gap-2">
-                <Link
-                  href="/feed"
-                  className="rounded-[1.2rem] border border-[var(--ember-line)] bg-white px-4 py-3 text-sm font-medium text-[var(--ember-text)]"
-                >
-                  Feed
-                </Link>
-                <Link
-                  href="/profile"
-                  className="rounded-[1.2rem] border border-[var(--ember-line)] bg-white px-4 py-3 text-sm font-medium text-[var(--ember-text)]"
-                >
-                  Profile
-                </Link>
-              </nav>
-
-              <div className="mt-4">
-                <LogoutButton />
-              </div>
-            </div>
-          </details>
+          <EmberMobileTopBar
+            homeHref="/feed"
+            embersHref="/feed"
+            addHref="/feed?openUploader=1"
+            accountHref="/access"
+            openUploaderOnFeed
+          />
         </div>
       </header>
 

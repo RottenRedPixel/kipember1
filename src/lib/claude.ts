@@ -124,6 +124,16 @@ export async function generateWiki({
   responses: WikiContributorResponse[];
   sportsMode: WikiSportsMode | null;
 }): Promise<string> {
+  const hasMeaningfulAutoAnalysis = Boolean(
+    analysis &&
+      ((analysis.visualDescription && analysis.visualDescription.trim()) ||
+        (analysis.summary &&
+          analysis.summary.trim() &&
+          !analysis.summary.includes('could not be processed by the automatic analysis system') &&
+          !analysis.summary.includes('automatic image analysis encountered a technical error') &&
+          !analysis.summary.startsWith('Uploaded file:')))
+  );
+
   const responsesText = responses
     .map(
       (r) =>
@@ -131,7 +141,7 @@ export async function generateWiki({
     )
     .join('\n\n');
 
-  const analysisText = analysis
+  const analysisText = analysis && hasMeaningfulAutoAnalysis
     ? `STATUS: ${analysis.status}
 SUMMARY: ${analysis.summary || 'None'}
 VISUAL DESCRIPTION: ${analysis.visualDescription || 'None'}
@@ -189,9 +199,8 @@ EMOTIONAL CONTEXT:
 STORY ELEMENTS:
 - What story does this image tell: ${analysis.sceneInsights.storyElements.storyThisImageTells || 'Unknown'}
 - What might have happened before: ${analysis.sceneInsights.storyElements.whatMightHaveHappenedBefore || 'Unknown'}
-- What might happen next: ${analysis.sceneInsights.storyElements.whatMightHappenNext || 'Unknown'}
-ANALYSIS ERROR: ${analysis.errorMessage || 'None'}`
-    : 'No automatic image analysis available.';
+- What might happen next: ${analysis.sceneInsights.storyElements.whatMightHappenNext || 'Unknown'}`
+    : 'No reliable automatic image analysis is available yet.';
 
   const sportsText = sportsMode
     ? `SPORT: ${sportsMode.sportType || 'Unknown'}

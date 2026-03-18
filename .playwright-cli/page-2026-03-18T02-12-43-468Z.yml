@@ -1,0 +1,37 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e33] [cursor=pointer]:
+    - img [ref=e34]
+  - alert [ref=e37]
+  - generic [ref=e38]:
+    - banner [ref=e39]:
+      - generic [ref=e41]:
+        - link "Ember home" [ref=e42] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e43]:
+          - link "Your Embers" [ref=e44] [cursor=pointer]:
+            - /url: /feed
+            - img [ref=e45]
+          - link "Add Ember" [ref=e50] [cursor=pointer]:
+            - /url: /feed#add-ember
+            - img [ref=e51]
+          - link "Account" [ref=e52] [cursor=pointer]:
+            - /url: /profile
+            - img [ref=e53]
+    - main [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e61] [cursor=pointer]:
+          - paragraph [ref=e63]: New Ember
+          - heading "Drop a photo or video here" [level=2] [ref=e64]
+          - paragraph [ref=e65]: Click to start a new Ember. Photos and MP4, MOV, WEBM, or M4V videos are supported.
+          - generic [ref=e66]: Select media
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - paragraph [ref=e70]: Your Embers
+            - heading "Embers" [level=2] [ref=e71]
+          - generic [ref=e72]: Your feed is empty. Add a photo or video above to create your first Ember.
+        - generic [ref=e74]:
+          - paragraph [ref=e75]: What Ember does
+          - heading "Ember is a tool that lets you preserve memories through shared, thoughtful conversations." [level=2] [ref=e76]
+          - paragraph [ref=e77]: Start with a photo or video, invite the people who lived the moment with you, and let Ember turn scattered recollection into one living memory.
+          - link "Learn more" [ref=e79] [cursor=pointer]:
+            - /url: /#learn-more

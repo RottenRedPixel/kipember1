@@ -1,0 +1,101 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Ember owner and contributor workspace" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e9]:
+              - generic [ref=e10]: Ember
+              - generic [ref=e11]: owner and contributor workspace
+          - navigation [ref=e12]:
+            - link "Feed" [ref=e13] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e14] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Codex Face Check
+            - generic [ref=e18]: codex-face-check@example.com
+          - button "Logout" [ref=e19]
+    - main [ref=e20]:
+      - generic [ref=e21]:
+        - link "<- Back to feed" [ref=e32] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e33]:
+          - img "New portrait" [ref=e35]
+          - heading "New portrait" [level=1] [ref=e37]
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - paragraph [ref=e40]: Memory detail
+              - paragraph [ref=e41]: New photo that should get a face suggestion
+              - generic [ref=e42]:
+                - generic [ref=e43]: Photo Ember
+                - generic [ref=e44]: Captured 3/17/2026
+                - generic [ref=e45]: 1 contributors
+                - generic [ref=e46]: 0 tags
+            - generic [ref=e47]:
+              - paragraph [ref=e48]: People connected
+              - generic [ref=e49]:
+                - generic [ref=e50]:
+                  - generic [ref=e51]: Owner
+                  - generic [ref=e52]: Codex Face Check
+                - generic [ref=e53]:
+                  - generic [ref=e54]: Contributors
+                  - generic [ref=e55]: Codex Face Check
+                - generic [ref=e56]:
+                  - generic [ref=e57]: Tags
+                  - generic [ref=e58]: No one has been tagged yet.
+          - generic [ref=e59]:
+            - button "Ask Ember" [ref=e60]:
+              - img [ref=e62]
+              - generic [ref=e64]: Ask Ember
+            - link "Play Ember" [ref=e65] [cursor=pointer]:
+              - /url: /image/cmmv3wnds0002vcmhh59aie82/wiki
+              - img [ref=e67]
+              - generic [ref=e69]: Play Ember
+            - button "Contributors" [ref=e70]:
+              - img [ref=e72]
+              - generic [ref=e75]: Contributors
+            - button "Shape Ember" [ref=e76]:
+              - img [ref=e78]
+              - generic [ref=e80]: Shape Ember
+            - button "Share Ember" [ref=e81]:
+              - img [ref=e83]
+              - generic [ref=e86]: Share Ember
+        - generic [ref=e89]:
+          - generic [ref=e91]:
+            - generic [ref=e92]:
+              - paragraph [ref=e93]: Ember
+              - heading "Tag people" [level=2] [ref=e124]
+              - paragraph [ref=e95]: Pin people to the image, review tags, and turn them into contributor invites.
+            - button "Close" [ref=e96]
+          - generic [ref=e98]:
+            - button "Back to shape tools" [ref=e125]
+            - generic [ref=e126]:
+              - generic [ref=e127]:
+                - generic [ref=e128]:
+                  - paragraph [ref=e129]: Face tags
+                  - paragraph [ref=e130]: Pin people directly on the photo and optionally turn the tag into an invite.
+                - generic [ref=e131]:
+                  - generic [ref=e132]: Face snapping unavailable
+                  - button "Tag a face" [ref=e133]
+              - button "New portrait" [disabled] [ref=e136]:
+                - img "New portrait" [ref=e137]
+            - generic [ref=e138]:
+              - generic [ref=e139]:
+                - paragraph [ref=e140]: Tag people
+                - heading "Tagged people" [level=2] [ref=e141]
+                - paragraph [ref=e142]: Review tagged faces, add contact info, and turn tags into contributor invites.
+              - paragraph [ref=e143]: No one has been tagged yet.
+              - generic [ref=e144]:
+                - paragraph [ref=e145]: Quick tag without pinning
+                - button "Codex Face Check" [ref=e147]
+              - generic [ref=e148]:
+                - textbox "Add a name" [ref=e149]
+                - textbox "Email (optional)" [ref=e150]
+                - textbox "Phone (optional)" [ref=e151]
+                - button "Add tag" [disabled] [ref=e152]
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - img [ref=e29]
+  - alert [ref=e87]

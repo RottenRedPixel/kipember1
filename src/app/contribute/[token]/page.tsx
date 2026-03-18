@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 
 interface Message {
@@ -21,6 +22,7 @@ interface ContributorData {
     posterFilename: string | null;
     durationSeconds: number | null;
     originalName: string;
+    title: string | null;
     description: string | null;
   };
   conversation: {
@@ -214,6 +216,8 @@ export default function ContributePage() {
     );
   }
 
+  const emberTitle = getEmberTitle(data.image);
+
   return (
     <main className="ember-page">
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6">
@@ -233,7 +237,7 @@ export default function ContributePage() {
                 mediaType={data.image.mediaType}
                 filename={data.image.filename}
                 posterFilename={data.image.posterFilename}
-                originalName={data.image.originalName}
+                originalName={emberTitle}
                 controls={data.image.mediaType === 'VIDEO'}
                 className="max-h-[28rem] w-full object-contain bg-[var(--ember-charcoal)]"
               />
@@ -241,7 +245,7 @@ export default function ContributePage() {
 
             <div className="mt-5 min-w-0">
               <h2 className="ember-heading break-all text-xl leading-tight text-[var(--ember-text)] sm:text-2xl">
-                {data.image.originalName}
+                {emberTitle}
               </h2>
               {data.image.description && (
                 <p className="ember-copy mt-2 text-sm">{data.image.description}</p>

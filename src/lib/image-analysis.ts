@@ -508,7 +508,7 @@ function normalizeVisionAnalysis(raw: unknown): ParsedVisionAnalysis {
   const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 
   return {
-    title: sanitizeString(record.title) || 'Uploaded Memory',
+    title: sanitizeString(record.title) || '',
     summary:
       sanitizeString(record.summary) ||
       'A concise visual summary of the uploaded photo.',
@@ -652,6 +652,244 @@ function toBase64ImageSource(buffer: Buffer, mimeType: string) {
   }
 }
 
+function extractMessageText(content: Anthropic.Messages.ContentBlock[]): string {
+  return content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+}
+
+function stripMarkdownCodeFence(text: string): string {
+  return text
+    .trim()
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+}
+
+function sanitizeJsonCandidate(text: string): string {
+  return stripMarkdownCodeFence(text)
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .trim();
+}
+
+function extractBalancedJsonObject(text: string): string | null {
+  const input = sanitizeJsonCandidate(text);
+  const start = input.indexOf('{');
+
+  if (start < 0) {
+    return null;
+  }
+
+  let depth = 0;
+  let inString = false;
+  let isEscaped = false;
+
+  for (let index = start; index < input.length; index += 1) {
+    const char = input[index];
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        isEscaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{') {
+      depth += 1;
+      continue;
+    }
+
+    if (char === '}') {
+      depth -= 1;
+
+      if (depth === 0) {
+        return input.slice(start, index + 1);
+      }
+    }
+  }
+
+  const fallbackEnd = input.lastIndexOf('}');
+  if (fallbackEnd > start) {
+    return input.slice(start, fallbackEnd + 1);
+  }
+
+  return input.slice(start);
+}
+
+function removeTrailingCommas(text: string): string {
+  return text.replace(/,\s*([}\]])/g, '$1');
+}
+
+function parseJsonFromText(text: string): unknown {
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    throw new Error('Visual analysis returned an empty response');
+  }
+
+  const candidates = Array.from(
+    new Set(
+      [
+        sanitizeJsonCandidate(trimmed),
+        extractBalancedJsonObject(trimmed),
+        removeTrailingCommas(sanitizeJsonCandidate(trimmed)),
+        extractBalancedJsonObject(removeTrailingCommas(trimmed)),
+      ].filter((candidate): candidate is string => Boolean(candidate && candidate.trim()))
+    )
+  );
+
+  let lastError: Error | null = null;
+
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Visual analysis returned invalid JSON');
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return parsed;
+  } catch (error) {
+    const detail =
+      lastError?.message ||
+      (error instanceof Error ? error.message : 'Visual analysis returned invalid JSON');
+    throw new Error(`Visual analysis returned invalid JSON: ${detail}`);
+  }
+}
+
+async function repairVisionJson(responseText: string): Promise<unknown> {
+  const repairSource = extractBalancedJsonObject(responseText) || sanitizeJsonCandidate(responseText);
+  const repairMessage = await anthropic.messages.create({
+    model: process.env.ANTHROPIC_IMAGE_ANALYSIS_MODEL || 'claude-sonnet-4-20250514',
+    max_tokens: 2600,
+    system: `You repair malformed JSON responses for an image-analysis pipeline.
+
+Return valid JSON only. Do not add markdown, commentary, or code fences.
+Preserve the original meaning as closely as possible.
+If the source appears truncated or malformed, repair it into the required schema using concise neutral values instead of leaving broken JSON.
+The repaired JSON must match this schema exactly:
+${JSON.stringify(VISION_SCHEMA)}`,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly.
+
+Rules:
+- Return JSON only.
+- Preserve grounded details that are present.
+- If a field is missing, use a short neutral fallback, null, or [] as appropriate.
+- Do not copy any markdown fences.
+
+Malformed JSON:
+${repairSource}`,
+          },
+        ],
+      },
+    ],
+  });
+
+  return parseJsonFromText(extractMessageText(repairMessage.content));
+}
+
+async function requestVisionAnalysisText({
+  buffer,
+  mimeType,
+  originalName,
+  userDescription,
+  metadataSummary,
+  conciseMode,
+}: {
+  buffer: Buffer;
+  mimeType: string;
+  originalName: string;
+  userDescription: string | null;
+  metadataSummary: string | null;
+  conciseMode: boolean;
+}) {
+  const imageSource = toBase64ImageSource(buffer, mimeType);
+  if (!imageSource) {
+    throw new Error(`Visual analysis does not support ${mimeType}`);
+  }
+
+  return anthropic.messages.create({
+    model: process.env.ANTHROPIC_IMAGE_ANALYSIS_MODEL || 'claude-sonnet-4-20250514',
+    max_tokens: conciseMode ? 1900 : 2200,
+    system: `You analyze uploaded personal photos for a memory wiki.
+
+Your job is to describe what is visibly present in the photo and what it may indicate.
+
+Rules:
+- Be grounded in what is actually visible.
+- Do not identify unknown private individuals by name from appearance alone.
+- If the image suggests a recognizable landmark or place, express confidence honestly.
+- Distinguish between strong visual evidence and softer inference.
+- Treat the user's description and embedded metadata as supporting context, not proof of unseen facts.
+- Favor specificity over generic captions.
+- Set "title" to a short, natural Ember name in plain language.
+- Never use the upload filename, file extension, or generic placeholders as the title.
+- Return valid JSON only. Do not include markdown, commentary, or code fences.
+- The JSON must match this schema exactly:
+${JSON.stringify(VISION_SCHEMA)}
+${conciseMode ? `
+- Keep each string concise.
+- Limit arrays to the strongest 3-5 items.
+- Prefer null over long speculative prose.` : ''}`,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: [
+              `Filename: ${originalName}`,
+              `User description: ${userDescription || 'None provided.'}`,
+              `Metadata summary: ${metadataSummary || 'No metadata available.'}`,
+              'Analyze the photo for a memory wiki.',
+              'The title should read like a human memory label, not a filename.',
+              'Return grounded structured observations about visible people, places, objects, activities, mood, visible text, open questions, and richer scene insights.',
+              'In scene insights, include the kinds of fields a human reviewer would want: people/demographics, setting/environment, activities/context, technical photo observations, emotional tone, and likely story context.',
+              'Be explicit when something is only an appearance-based inference instead of a confirmed fact.',
+              conciseMode
+                ? 'Be brief enough that the full response remains compact and valid JSON.'
+                : 'Write naturally, but keep the JSON compact and valid.',
+            ].join('\n'),
+          },
+          {
+            type: 'image',
+            source: imageSource,
+          },
+        ],
+      },
+    ],
+  });
+}
+
 async function analyzeImageVisually({
   buffer,
   mimeType,
@@ -667,57 +905,42 @@ async function analyzeImageVisually({
 }): Promise<ParsedVisionAnalysis> {
   requiredEnv('ANTHROPIC_API_KEY');
 
-  const imageSource = toBase64ImageSource(buffer, mimeType);
-  if (!imageSource) {
-    throw new Error(`Visual analysis does not support ${mimeType}`);
+  const attemptModes = [false, true];
+  let lastError: Error | null = null;
+
+  for (const conciseMode of attemptModes) {
+    const message = await requestVisionAnalysisText({
+      buffer,
+      mimeType,
+      originalName,
+      userDescription,
+      metadataSummary,
+      conciseMode,
+    });
+    const responseText = extractMessageText(message.content);
+
+    if (message.stop_reason === 'max_tokens') {
+      lastError = new Error('Visual analysis response was truncated before it finished');
+      continue;
+    }
+
+    try {
+      return normalizeVisionAnalysis(parseJsonFromText(responseText));
+    } catch (parseError) {
+      try {
+        return normalizeVisionAnalysis(await repairVisionJson(responseText));
+      } catch (repairError) {
+        lastError =
+          repairError instanceof Error
+            ? repairError
+            : parseError instanceof Error
+              ? parseError
+              : new Error('Visual analysis returned invalid JSON');
+      }
+    }
   }
 
-  const message = await anthropic.messages.parse({
-    model: process.env.ANTHROPIC_IMAGE_ANALYSIS_MODEL || 'claude-sonnet-4-20250514',
-    max_tokens: 1600,
-    system: `You analyze uploaded personal photos for a memory wiki.
-
-Your job is to describe what is visibly present in the photo and what it may indicate.
-
-Rules:
-- Be grounded in what is actually visible.
-- Do not identify unknown private individuals by name from appearance alone.
-- If the image suggests a recognizable landmark or place, express confidence honestly.
-- Distinguish between strong visual evidence and softer inference.
-- Treat the user's description and embedded metadata as supporting context, not proof of unseen facts.
-- Favor specificity over generic captions.`,
-    output_config: {
-      format: {
-        type: 'json_schema',
-        schema: VISION_SCHEMA,
-      },
-    },
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: [
-              `Filename: ${originalName}`,
-              `User description: ${userDescription || 'None provided.'}`,
-              `Metadata summary: ${metadataSummary || 'No metadata available.'}`,
-              'Analyze the photo for a memory wiki.',
-              'Return grounded structured observations about visible people, places, objects, activities, mood, visible text, open questions, and richer scene insights.',
-              'In scene insights, include the kinds of fields a human reviewer would want: people/demographics, setting/environment, activities/context, technical photo observations, emotional tone, and likely story context.',
-              'Be explicit when something is only an appearance-based inference instead of a confirmed fact.',
-            ].join('\n'),
-          },
-          {
-            type: 'image',
-            source: imageSource,
-          },
-        ],
-      },
-    ],
-  });
-
-  return normalizeVisionAnalysis(message.parsed_output);
+  throw lastError || new Error('Visual analysis was not completed');
 }
 
 function buildFallbackSummary({
@@ -748,7 +971,15 @@ export async function ensureImageAnalysisForImage(imageId: string) {
     throw new Error('Image not found');
   }
 
-  if (image.analysis?.status === 'ready' || image.analysis?.status === 'partial') {
+  const hasStoredEmberTitle = Boolean(image.title?.trim());
+  const shouldReuseExistingAnalysis =
+    hasStoredEmberTitle &&
+    (image.analysis?.status === 'ready' ||
+      (image.analysis?.status === 'partial' &&
+        !!image.analysis.visualDescription &&
+        !image.analysis.errorMessage?.includes('does not support output format')));
+
+  if (shouldReuseExistingAnalysis) {
     return image.analysis;
   }
 
@@ -831,60 +1062,74 @@ export async function ensureImageAnalysisForImage(imageId: string) {
       errorMessage = 'Could not determine a supported image type for visual analysis';
     }
 
-    return prisma.imageAnalysis.update({
-      where: { id: existing.id },
-      data: {
-        status,
-        errorMessage,
-        summary:
-          vision?.summary ||
-          buildFallbackSummary({
-            originalName:
-              image.mediaType === 'VIDEO'
-                ? `${image.originalName} (video, analyzed from poster frame)`
-                : image.originalName,
-            userDescription: image.description,
-            metadataSummary,
+    const generatedTitle =
+      vision?.title && vision.title.trim() ? vision.title.trim() : null;
+
+    return prisma.$transaction(async (tx) => {
+      if (generatedTitle) {
+        await tx.image.update({
+          where: { id: image.id },
+          data: {
+            title: generatedTitle,
+          },
+        });
+      }
+
+      return tx.imageAnalysis.update({
+        where: { id: existing.id },
+        data: {
+          status,
+          errorMessage,
+          summary:
+            vision?.summary ||
+            buildFallbackSummary({
+              originalName:
+                image.mediaType === 'VIDEO'
+                  ? `${image.originalName} (video, analyzed from poster frame)`
+                  : image.originalName,
+              userDescription: image.description,
+              metadataSummary,
+            }),
+          visualDescription: vision?.visualDescription || null,
+          metadataSummary,
+          mood: vision?.mood || null,
+          peopleJson: stringifyJson(vision?.peopleObserved || []),
+          placesJson: stringifyJson(vision?.placeSignals || []),
+          thingsJson: stringifyJson(vision?.notableThings || []),
+          activitiesJson: stringifyJson(vision?.activities || []),
+          visibleTextJson: stringifyJson(vision?.visibleText || []),
+          keywordsJson: stringifyJson(
+            Array.from(
+              new Set([...(vision?.searchableKeywords || []), ...metadata.keywords])
+            )
+          ),
+          openQuestionsJson: stringifyJson(vision?.openQuestions || []),
+          sceneInsightsJson: stringifyJson(vision?.sceneInsights || null),
+          metadataJson: stringifyJson({
+            capturedAt: metadata.capturedAt?.toISOString() || null,
+            latitude: metadata.latitude,
+            longitude: metadata.longitude,
+            cameraMake: metadata.cameraMake,
+            cameraModel: metadata.cameraModel,
+            lensModel: metadata.lensModel,
+            software: metadata.software,
+            width: metadata.width,
+            height: metadata.height,
+            orientation: metadata.orientation,
+            exposureTime: metadata.exposureTime,
+            fNumber: metadata.fNumber,
+            iso: metadata.iso,
+            focalLength: metadata.focalLength,
+            keywords: metadata.keywords,
           }),
-        visualDescription: vision?.visualDescription || null,
-        metadataSummary,
-        mood: vision?.mood || null,
-        peopleJson: stringifyJson(vision?.peopleObserved || []),
-        placesJson: stringifyJson(vision?.placeSignals || []),
-        thingsJson: stringifyJson(vision?.notableThings || []),
-        activitiesJson: stringifyJson(vision?.activities || []),
-        visibleTextJson: stringifyJson(vision?.visibleText || []),
-        keywordsJson: stringifyJson(
-          Array.from(
-            new Set([...(vision?.searchableKeywords || []), ...metadata.keywords])
-          )
-        ),
-        openQuestionsJson: stringifyJson(vision?.openQuestions || []),
-        sceneInsightsJson: stringifyJson(vision?.sceneInsights || null),
-        metadataJson: stringifyJson({
-          capturedAt: metadata.capturedAt?.toISOString() || null,
+          capturedAt: metadata.capturedAt,
           latitude: metadata.latitude,
           longitude: metadata.longitude,
           cameraMake: metadata.cameraMake,
           cameraModel: metadata.cameraModel,
           lensModel: metadata.lensModel,
-          software: metadata.software,
-          width: metadata.width,
-          height: metadata.height,
-          orientation: metadata.orientation,
-          exposureTime: metadata.exposureTime,
-          fNumber: metadata.fNumber,
-          iso: metadata.iso,
-          focalLength: metadata.focalLength,
-          keywords: metadata.keywords,
-        }),
-        capturedAt: metadata.capturedAt,
-        latitude: metadata.latitude,
-        longitude: metadata.longitude,
-        cameraMake: metadata.cameraMake,
-        cameraModel: metadata.cameraModel,
-        lensModel: metadata.lensModel,
-      },
+        },
+      });
     });
   } catch (error) {
     await prisma.imageAnalysis.update({

@@ -1,0 +1,57 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Ember owner and contributor workspace" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e9]:
+              - generic [ref=e10]: Ember
+              - generic [ref=e11]: owner and contributor workspace
+          - navigation [ref=e12]:
+            - link "Feed" [ref=e13] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e14] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Codex Face Check
+            - generic [ref=e18]: codex-face-check@example.com
+          - button "Logout" [ref=e19]
+    - main [ref=e20]:
+      - generic [ref=e125]:
+        - generic [ref=e126]:
+          - link "<- Back to Ember" [ref=e127] [cursor=pointer]:
+            - /url: /image/cmmv3wnds0002vcmhh59aie82
+          - generic [ref=e128]:
+            - generic [ref=e129]: Memory synthesis
+            - heading "No wiki yet" [level=1] [ref=e130]
+            - paragraph [ref=e131]: Once contributors complete enough of the memory interview, Ember can synthesize the current record into a clean wiki. Kids Mode builds from that wiki, so this is the main unlock step.
+        - complementary [ref=e132]:
+          - generic [ref=e133]:
+            - paragraph [ref=e134]: Actions
+            - heading "Keep the memory current" [level=2] [ref=e135]
+            - paragraph [ref=e136]: Regenerate after new contributors, new tags, or sports details have been added.
+            - button "Generate wiki" [ref=e137]
+          - generic [ref=e138]:
+            - paragraph [ref=e139]: Modes
+            - generic [ref=e140]:
+              - link "Kids mode Storybook" [ref=e141] [cursor=pointer]:
+                - /url: /image/cmmv3wnds0002vcmhh59aie82/kids
+                - generic [ref=e142]: Kids mode
+                - generic [ref=e143]: Storybook
+              - link "Story circle Thread" [ref=e144] [cursor=pointer]:
+                - /url: /image/cmmv3wnds0002vcmhh59aie82/story-circle
+                - generic [ref=e145]: Story circle
+                - generic [ref=e146]: Thread
+              - link "Sports mode Stats" [ref=e147] [cursor=pointer]:
+                - /url: /image/cmmv3wnds0002vcmhh59aie82/sports
+                - generic [ref=e148]: Sports mode
+                - generic [ref=e149]: Stats
+              - link "Ask Ember Q&A" [ref=e150] [cursor=pointer]:
+                - /url: /image/cmmv3wnds0002vcmhh59aie82/chat
+                - generic [ref=e151]: Ask Ember
+                - generic [ref=e152]: Q&A
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - img [ref=e29]
+  - alert [ref=e87]

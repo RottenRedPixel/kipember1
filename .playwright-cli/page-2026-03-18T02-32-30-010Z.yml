@@ -1,0 +1,38 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - link "Ember home" [ref=e45] [cursor=pointer]:
+          - /url: /
+        - link "Your Embers" [ref=e46] [cursor=pointer]:
+          - /url: /feed
+          - img [ref=e47]
+        - button "Add Ember" [ref=e52]:
+          - img [ref=e53]
+      - link "Account" [ref=e54] [cursor=pointer]:
+        - /url: /access
+        - img [ref=e55]
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - link "Ember welcome back" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e19]:
+            - generic [ref=e20]: Ember
+            - generic [ref=e21]: welcome back
+        - heading "Log in to your archive" [level=1] [ref=e22]
+        - paragraph [ref=e23]: Return to your Embers, your network, and the stories already building around them.
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: Email
+          - textbox "you@example.com" [ref=e27]
+        - generic [ref=e28]:
+          - generic [ref=e29]: Password
+          - textbox "At least 8 characters" [ref=e30]
+        - button "Log in" [ref=e31]
+      - paragraph [ref=e32]:
+        - text: Need an account?
+        - link "Create one" [ref=e33] [cursor=pointer]:
+          - /url: /signup
+  - button "Open Next.js Dev Tools" [ref=e39] [cursor=pointer]:
+    - img [ref=e40]
+  - alert [ref=e58]

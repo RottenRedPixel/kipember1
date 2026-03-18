@@ -1,0 +1,93 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e27] [cursor=pointer]:
+    - img [ref=e28]
+  - alert [ref=e31]
+  - generic [ref=e32]:
+    - banner [ref=e33]:
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - link "Ember owner and contributor workspace" [ref=e37] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e39]:
+              - generic [ref=e40]: Ember
+              - generic [ref=e41]: owner and contributor workspace
+          - navigation [ref=e42]:
+            - link "Feed" [ref=e43] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e44] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic [ref=e47]: Codex Face Check
+            - generic [ref=e48]: codex-face-check@example.com
+          - button "Logout" [ref=e49]
+    - main [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e55] [cursor=pointer]:
+          - paragraph [ref=e57]: New Ember
+          - heading "Drop a photo or video here" [level=2] [ref=e58]
+          - paragraph [ref=e59]: Click to start a new Ember. Photos and MP4, MOV, WEBM, or M4V videos are supported.
+          - generic [ref=e60]: Select media
+        - generic [ref=e62]:
+          - generic [ref=e63]:
+            - generic [ref=e64]:
+              - paragraph [ref=e65]: Your Embers
+              - heading "Embers" [level=2] [ref=e66]
+            - paragraph [ref=e67]: Home, share, ask, play, contributors, and shape each Ember from the card.
+          - generic [ref=e68]:
+            - article [ref=e69]:
+              - generic [ref=e70]:
+                - link "Open New portrait" [ref=e71] [cursor=pointer]:
+                  - /url: /image/cmmv3wnds0002vcmhh59aie82
+                  - img [ref=e72]
+                - button "Share New portrait" [ref=e76]:
+                  - img [ref=e77]
+              - link "New portrait" [ref=e80] [cursor=pointer]:
+                - /url: /image/cmmv3wnds0002vcmhh59aie82
+                - img "New portrait" [ref=e81]
+              - heading "New portrait" [level=3] [ref=e82]
+              - generic [ref=e83]:
+                - link "Ask Ember" [ref=e84] [cursor=pointer]:
+                  - /url: /image/cmmv3wnds0002vcmhh59aie82/chat
+                  - img [ref=e85]
+                  - generic [ref=e87]: Ask Ember
+                - link "Play Ember" [ref=e88] [cursor=pointer]:
+                  - /url: /image/cmmv3wnds0002vcmhh59aie82/story-circle
+                  - img [ref=e89]
+                  - generic [ref=e91]: Play Ember
+                - link "Contributors" [ref=e92] [cursor=pointer]:
+                  - /url: /image/cmmv3wnds0002vcmhh59aie82
+                  - img [ref=e93]
+                  - generic [ref=e96]: Contributors
+                - link "Shape Ember" [ref=e97] [cursor=pointer]:
+                  - /url: /image/cmmv3wnds0002vcmhh59aie82/wiki
+                  - img [ref=e98]
+                  - generic [ref=e100]: Shape Ember
+            - article [ref=e101]:
+              - generic [ref=e102]:
+                - link "Open Reference portrait" [ref=e103] [cursor=pointer]:
+                  - /url: /image/cmmv3wncg0000vcmhs0009fgq
+                  - img [ref=e104]
+                - button "Share Reference portrait" [ref=e108]:
+                  - img [ref=e109]
+              - link "Reference portrait" [ref=e112] [cursor=pointer]:
+                - /url: /image/cmmv3wncg0000vcmhs0009fgq
+                - img "Reference portrait" [ref=e113]
+              - heading "Reference portrait" [level=3] [ref=e114]
+              - generic [ref=e115]:
+                - link "Ask Ember" [ref=e116] [cursor=pointer]:
+                  - /url: /image/cmmv3wncg0000vcmhs0009fgq/chat
+                  - img [ref=e117]
+                  - generic [ref=e119]: Ask Ember
+                - link "Play Ember" [ref=e120] [cursor=pointer]:
+                  - /url: /image/cmmv3wncg0000vcmhs0009fgq/story-circle
+                  - img [ref=e121]
+                  - generic [ref=e123]: Play Ember
+                - link "Contributors" [ref=e124] [cursor=pointer]:
+                  - /url: /image/cmmv3wncg0000vcmhs0009fgq
+                  - img [ref=e125]
+                  - generic [ref=e128]: Contributors
+                - link "Shape Ember" [ref=e129] [cursor=pointer]:
+                  - /url: /image/cmmv3wncg0000vcmhs0009fgq/wiki
+                  - img [ref=e130]
+                  - generic [ref=e132]: Shape Ember

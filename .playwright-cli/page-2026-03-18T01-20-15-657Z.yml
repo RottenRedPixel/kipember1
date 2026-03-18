@@ -1,0 +1,101 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Ember owner and contributor workspace" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e9]:
+              - generic [ref=e10]: Ember
+              - generic [ref=e11]: owner and contributor workspace
+          - navigation [ref=e12]:
+            - link "Feed" [ref=e13] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e14] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e15]:
+          - generic [ref=e16]:
+            - generic [ref=e17]: Kip Barrett
+            - generic [ref=e18]: cbarrettjr@gmail.com
+          - button "Logout" [ref=e19]
+    - main [ref=e20]:
+      - generic [ref=e21]:
+        - link "<- Back to feed" [ref=e33] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e34]:
+          - img "Summer cousins gathering in the backyard" [ref=e36]
+          - heading "Summer cousins gathering in the backyard" [level=1] [ref=e38]
+          - generic [ref=e39]:
+            - generic [ref=e40]:
+              - paragraph [ref=e41]: Memory detail
+              - paragraph [ref=e42]: No detail has been captured for this Ember yet.
+              - generic [ref=e43]:
+                - generic [ref=e44]: Photo Ember
+                - generic [ref=e45]: Captured 3/17/2026
+                - generic [ref=e46]: 1 contributors
+                - generic [ref=e47]: 0 tags
+            - generic [ref=e48]:
+              - paragraph [ref=e49]: People connected
+              - generic [ref=e50]:
+                - generic [ref=e51]:
+                  - generic [ref=e52]: Owner
+                  - generic [ref=e53]: Kip Barrett
+                - generic [ref=e54]:
+                  - generic [ref=e55]: Contributors
+                  - generic [ref=e56]: Kip Barrett
+                - generic [ref=e57]:
+                  - generic [ref=e58]: Tags
+                  - generic [ref=e59]: No one has been tagged yet.
+          - generic [ref=e60]:
+            - button "Ask Ember" [ref=e61]:
+              - img [ref=e63]
+              - generic [ref=e65]: Ask Ember
+            - link "Play Ember" [ref=e66] [cursor=pointer]:
+              - /url: /image/cmmvc8apz001bx0mh0udmh65x/wiki
+              - img [ref=e68]
+              - generic [ref=e70]: Play Ember
+            - button "Contributors" [ref=e71]:
+              - img [ref=e73]
+              - generic [ref=e76]: Contributors
+            - button "Shape Ember" [ref=e77]:
+              - img [ref=e79]
+              - generic [ref=e81]: Shape Ember
+            - button "Share Ember" [ref=e82]:
+              - img [ref=e84]
+              - generic [ref=e87]: Share Ember
+        - generic [ref=e226]:
+          - generic [ref=e228]:
+            - generic [ref=e229]:
+              - paragraph [ref=e230]: Ember
+              - heading "Tag people" [level=2] [ref=e261]
+              - paragraph [ref=e232]: Pin people to the image, review tags, and turn them into contributor invites.
+            - button "Close" [ref=e233]
+          - generic [ref=e235]:
+            - button "Back to shape tools" [ref=e262]
+            - generic [ref=e263]:
+              - generic [ref=e264]:
+                - generic [ref=e265]:
+                  - paragraph [ref=e266]: Face tags
+                  - paragraph [ref=e267]: Pin people directly on the photo and optionally turn the tag into an invite.
+                - generic [ref=e268]:
+                  - generic [ref=e269]: Face snapping unavailable
+                  - button "Tag a face" [ref=e270]
+              - button "Summer cousins gathering in the backyard" [disabled] [ref=e273]:
+                - img "Summer cousins gathering in the backyard" [ref=e274]
+            - generic [ref=e275]:
+              - generic [ref=e276]:
+                - paragraph [ref=e277]: Tag people
+                - heading "Tagged people" [level=2] [ref=e278]
+                - paragraph [ref=e279]: Review tagged faces, add contact info, and turn tags into contributor invites.
+              - paragraph [ref=e280]: No one has been tagged yet.
+              - generic [ref=e281]:
+                - paragraph [ref=e282]: Quick tag without pinning
+                - button "Kip Barrett" [ref=e284]
+              - generic [ref=e285]:
+                - textbox "Add a name" [ref=e286]
+                - textbox "Email (optional)" [ref=e287]
+                - textbox "Phone (optional)" [ref=e288]
+                - button "Add tag" [disabled] [ref=e289]
+  - button "Open Next.js Dev Tools" [ref=e28] [cursor=pointer]:
+    - img [ref=e29]
+  - alert [ref=e32]

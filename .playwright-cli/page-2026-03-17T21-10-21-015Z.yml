@@ -1,0 +1,35 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e33] [cursor=pointer]:
+    - img [ref=e34]
+  - alert [ref=e37]
+  - generic [ref=e38]:
+    - banner [ref=e39]:
+      - generic [ref=e41]:
+        - generic [ref=e42]:
+          - link "Ember owner and contributor workspace" [ref=e43] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e45]:
+              - generic [ref=e46]: Ember
+              - generic [ref=e47]: owner and contributor workspace
+          - navigation [ref=e48]:
+            - link "Feed" [ref=e49] [cursor=pointer]:
+              - /url: /feed
+            - link "Profile" [ref=e50] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - generic [ref=e53]: Codex Face Check
+            - generic [ref=e54]: codex-face-check@example.com
+          - button "Logout" [ref=e55]
+    - main [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e61] [cursor=pointer]:
+          - paragraph [ref=e63]: New Ember
+          - heading "Drop a photo or video here" [level=2] [ref=e64]
+          - paragraph [ref=e65]: Click to start a new Ember. Photos and MP4, MOV, WEBM, or M4V videos are supported.
+          - generic [ref=e66]: Select media
+        - generic [ref=e68]:
+          - generic [ref=e69]:
+            - paragraph [ref=e70]: Your Embers
+            - heading "Embers" [level=2] [ref=e71]
+          - generic [ref=e72]: Your feed is empty. Add a photo or video above to create your first Ember.

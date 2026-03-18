@@ -54,6 +54,7 @@ export async function GET(
         posterFilename: contributor.image.posterFilename,
         durationSeconds: contributor.image.durationSeconds,
         originalName: contributor.image.originalName,
+        title: contributor.image.title,
         description: contributor.image.description,
       },
       conversation: contributor.conversation,

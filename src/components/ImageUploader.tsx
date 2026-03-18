@@ -1,8 +1,16 @@
 'use client';
 
 import Image from 'next/image';
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+const UPLOAD_STEPS = [
+  'Uploading your media',
+  'Reading the scene',
+  'Naming your Ember',
+  'Building the memory page',
+  'Looking for familiar faces',
+];
 
 function detectSelectedMediaType(file: File | null): 'image' | 'video' | null {
   if (!file) {
@@ -21,6 +29,7 @@ function detectSelectedMediaType(file: File | null): 'image' | 'video' | null {
 }
 
 export default function ImageUploader() {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [description, setDescription] = useState('');
@@ -28,7 +37,9 @@ export default function ImageUploader() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState('');
+  const [uploadStepIndex, setUploadStepIndex] = useState(0);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     return () => {
@@ -37,6 +48,39 @@ export default function ImageUploader() {
       }
     };
   }, [preview]);
+
+  useEffect(() => {
+    if (!isUploading) {
+      setUploadStepIndex(0);
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setUploadStepIndex((current) =>
+        current < UPLOAD_STEPS.length - 1 ? current + 1 : current
+      );
+    }, 1500);
+
+    return () => window.clearInterval(intervalId);
+  }, [isUploading]);
+
+  useEffect(() => {
+    const openFilePicker = () => {
+      fileInputRef.current?.click();
+    };
+
+    window.addEventListener('ember:open-upload-picker', openFilePicker);
+    return () => window.removeEventListener('ember:open-upload-picker', openFilePicker);
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get('openUploader') !== '1' || selectedFile) {
+      return;
+    }
+
+    fileInputRef.current?.click();
+    window.history.replaceState(null, '', '/feed');
+  }, [router, searchParams, selectedFile]);
 
   const updateSelection = useCallback(
     (file: File | null) => {
@@ -107,7 +151,7 @@ export default function ImageUploader() {
         throw new Error(payload?.error || 'Upload failed');
       }
 
-      const { id, mediaType, wikiGenerated, warning } = await response.json();
+      const { id, mediaType, warning } = await response.json();
 
       if (warning) {
         alert(
@@ -115,7 +159,7 @@ export default function ImageUploader() {
         );
       }
 
-      router.push(wikiGenerated ? `/image/${id}/wiki` : `/image/${id}`);
+      router.push(`/image/${id}?fromUpload=1`);
     } catch (error) {
       console.error('Upload error:', error);
       alert(error instanceof Error ? error.message : 'Failed to upload media. Please try again.');
@@ -140,6 +184,97 @@ export default function ImageUploader() {
 
   return (
     <div className="w-full">
+      {isUploading && (
+        <div className="fixed inset-0 z-[70] bg-[rgba(17,17,17,0.72)] px-4 py-6 backdrop-blur-md">
+          <div className="mx-auto flex min-h-full w-full max-w-2xl items-center justify-center">
+            <div className="w-full overflow-hidden rounded-[2.2rem] border border-white/10 bg-[rgba(20,20,20,0.88)] shadow-[0_32px_80px_rgba(0,0,0,0.35)]">
+              <div className="grid gap-0 md:grid-cols-[1.05fr_0.95fr]">
+                <div className="relative min-h-[18rem] overflow-hidden bg-black">
+                  {selectedMediaType === 'video' ? (
+                    <video
+                      src={preview || undefined}
+                      muted
+                      playsInline
+                      loop
+                      autoPlay
+                      className="h-full w-full object-cover opacity-45"
+                    />
+                  ) : (
+                    <img
+                      src={preview || undefined}
+                      alt="Uploading preview"
+                      className="h-full w-full object-cover opacity-45"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,17,0.08),rgba(17,17,17,0.84))]" />
+                  <div className="absolute inset-x-0 bottom-0 p-6">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/72">
+                      New Ember
+                    </p>
+                    <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
+                      {selectedFile?.name || 'Preparing upload'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col justify-center px-6 py-7 sm:px-8">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(255,102,33,0.16)] text-[var(--ember-orange)]">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/52">
+                        Ember is working
+                      </p>
+                      <div className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-white">
+                        {UPLOAD_STEPS[uploadStepIndex]}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="mt-5 text-sm leading-6 text-white/72">
+                    Hang on while Ember uploads the media, reads the moment, and prepares the first version of the memory.
+                  </p>
+
+                  <div className="mt-6 space-y-3">
+                    {UPLOAD_STEPS.map((step, index) => {
+                      const isActive = index === uploadStepIndex;
+                      const isDone = index < uploadStepIndex;
+
+                      return (
+                        <div
+                          key={step}
+                          className={`flex items-center gap-3 rounded-[1rem] px-3 py-3 text-sm transition ${
+                            isActive
+                              ? 'bg-white/10 text-white'
+                              : isDone
+                                ? 'bg-white/6 text-white/74'
+                                : 'bg-transparent text-white/42'
+                          }`}
+                        >
+                          <span
+                            className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold ${
+                              isActive
+                                ? 'bg-[var(--ember-orange)] text-white'
+                                : isDone
+                                  ? 'bg-white/18 text-white'
+                                  : 'bg-white/10 text-white/60'
+                            }`}
+                          >
+                            {isDone ? '✓' : index + 1}
+                          </span>
+                          <span>{step}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!selectedFile ? (
         <>
           <div
@@ -153,6 +288,7 @@ export default function ImageUploader() {
             }`}
           >
             <input
+              ref={fileInputRef}
               type="file"
               accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
               onChange={handleFileSelect}
@@ -243,8 +379,8 @@ export default function ImageUploader() {
             className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isUploading
-              ? `Uploading ${selectedMediaType || 'media'} and building wiki...`
-              : `Upload ${selectedMediaType || 'media'} and build wiki`}
+              ? `Uploading ${selectedMediaType || 'media'} and opening Ember...`
+              : `Upload ${selectedMediaType || 'media'} and open Ember`}
           </button>
         </div>
       )}

@@ -1,13 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ChatInterface from '@/components/ChatInterface';
 import ContributorList from '@/components/ContributorList';
 import TagManager from '@/components/TagManager';
 import InteractiveImageTagger from '@/components/InteractiveImageTagger';
+import AutoTagPrompt from '@/components/AutoTagPrompt';
+import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
+import { getPreviewMediaUrl } from '@/lib/media';
 
 interface ImageRecord {
   id: string;
@@ -16,6 +19,7 @@ interface ImageRecord {
   posterFilename: string | null;
   durationSeconds: number | null;
   originalName: string;
+  title: string | null;
   description: string | null;
   createdAt: string;
   shareToNetwork: boolean;
@@ -85,6 +89,14 @@ interface ImageRecord {
     email: string;
     phoneNumber: string | null;
   }[];
+  tagIdentities: {
+    id: string;
+    label: string;
+    email: string;
+    phoneNumber: string;
+    userId: string | null;
+    contributorId: string | null;
+  }[];
   wiki: {
     id: string;
   } | null;
@@ -144,6 +156,15 @@ function ShareIcon({ className = 'h-4 w-4' }: IconProps) {
       <path d="M12 4v10" />
       <path d="m8 8 4-4 4 4" />
       <path d="M5 13.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4.5" />
+    </svg>
+  );
+}
+
+function CloseIcon({ className = 'h-4 w-4' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <path d="M6 6 18 18" />
+      <path d="M18 6 6 18" />
     </svg>
   );
 }
@@ -238,9 +259,10 @@ function EmberSheet({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-full border border-[var(--ember-line-strong)] px-3 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line-strong)] bg-white text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+              aria-label="Close panel"
             >
-              Close
+              <CloseIcon />
             </button>
           </div>
         </div>
@@ -256,6 +278,7 @@ function EmberSheet({
 export default function ImagePage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [image, setImage] = useState<ImageRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -266,6 +289,10 @@ export default function ImagePage() {
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [shapeView, setShapeView] = useState<ShapeView>('menu');
   const [deletingEmber, setDeletingEmber] = useState(false);
+  const [autoTagPromptDismissed, setAutoTagPromptDismissed] = useState(false);
+  const fromUpload = searchParams.get('fromUpload') === '1';
+  const requestedPanel = searchParams.get('panel');
+  const requestedShapeView = searchParams.get('view');
 
   const fetchImage = useCallback(async () => {
     try {
@@ -302,6 +329,28 @@ export default function ImagePage() {
   }, [actionNotice, shareError]);
 
   useEffect(() => {
+    setAutoTagPromptDismissed(false);
+  }, [fromUpload, params.id]);
+
+  useEffect(() => {
+    if (requestedPanel === 'ask' || requestedPanel === 'contributors' || requestedPanel === 'shape' || requestedPanel === 'share') {
+      setActivePanel(requestedPanel);
+
+      if (requestedPanel === 'shape') {
+        setShapeView(requestedShapeView === 'tag' ? 'tag' : 'menu');
+      }
+
+      return;
+    }
+
+    if (activePanel) {
+      return;
+    }
+
+    setShapeView('menu');
+  }, [activePanel, requestedPanel, requestedShapeView]);
+
+  useEffect(() => {
     if (typeof document === 'undefined') {
       return;
     }
@@ -322,6 +371,15 @@ export default function ImagePage() {
   const closePanel = () => {
     setActivePanel(null);
     setShapeView('menu');
+
+    if (requestedPanel || requestedShapeView) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete('panel');
+      nextParams.delete('view');
+
+      const nextQuery = nextParams.toString();
+      router.replace(nextQuery ? `/image/${params.id}?${nextQuery}` : `/image/${params.id}`);
+    }
   };
 
   const handleShareSave = async () => {
@@ -359,7 +417,8 @@ export default function ImagePage() {
       return;
     }
 
-    const confirmed = window.confirm(`Delete ${image.originalName}? This cannot be undone.`);
+    const displayTitle = getEmberTitle(image);
+    const confirmed = window.confirm(`Delete ${displayTitle}? This cannot be undone.`);
     if (!confirmed) {
       return;
     }
@@ -400,7 +459,8 @@ export default function ImagePage() {
     }
 
     const shareUrl = `${window.location.origin}/image/${image.id}`;
-    const shareText = `Take a look at ${image.originalName} on Ember`;
+    const displayTitle = getEmberTitle(image);
+    const shareText = `Take a look at ${displayTitle} on Ember`;
 
     try {
       if (target === 'facebook') {
@@ -423,7 +483,7 @@ export default function ImagePage() {
 
       if (target === 'email') {
         window.location.href = `mailto:?subject=${encodeURIComponent(
-          image.originalName
+          displayTitle
         )}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`;
         return;
       }
@@ -456,8 +516,18 @@ export default function ImagePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-[var(--ember-muted)]">Loading Ember...</div>
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="ember-panel w-full max-w-xl rounded-[2rem] p-8 text-center">
+          <p className="ember-eyebrow">Ember</p>
+          <div className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
+            {fromUpload ? 'Finalizing your upload' : 'Loading Ember...'}
+          </div>
+          <p className="mt-3 text-sm text-[var(--ember-muted)]">
+            {fromUpload
+              ? 'Opening the new Ember, pulling in scene detail, and checking for familiar faces.'
+              : 'Pulling this Ember into view.'}
+          </p>
+        </div>
       </div>
     );
   }
@@ -495,6 +565,28 @@ export default function ImagePage() {
       : 'No detail has been captured for this Ember yet.');
   const capturedLabel = new Date(image.createdAt).toLocaleDateString();
   const subjectNoun = image.mediaType === 'VIDEO' ? 'video' : 'photo';
+  const emberTitle = getEmberTitle(image);
+  const previewMediaUrl = getPreviewMediaUrl({
+    mediaType: image.mediaType,
+    filename: image.filename,
+    posterFilename: image.posterFilename,
+  });
+
+  const handleAutoTagDismiss = () => {
+    setAutoTagPromptDismissed(true);
+    if (fromUpload) {
+      router.replace(`/image/${image.id}`);
+    }
+  };
+
+  const handleAutoTagApplied = async (labels: string[]) => {
+    await fetchImage();
+    setActionNotice(
+      labels.length > 0
+        ? `Auto-tagged ${labels.join(labels.length === 2 ? ' and ' : ', ')}.`
+        : 'Auto-tagged familiar faces.'
+    );
+  };
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 pb-28 sm:px-6 sm:pb-10">
@@ -515,7 +607,7 @@ export default function ImagePage() {
             mediaType={image.mediaType}
             filename={image.filename}
             posterFilename={image.posterFilename}
-            originalName={image.originalName}
+            originalName={emberTitle}
             controls={image.mediaType === 'VIDEO'}
             className="max-h-[44rem] w-full object-contain bg-[var(--ember-charcoal)]"
           />
@@ -523,7 +615,7 @@ export default function ImagePage() {
 
         <div>
           <h1 className="ember-heading break-all text-2xl leading-tight text-[var(--ember-text)] sm:break-words sm:text-4xl sm:[overflow-wrap:anywhere]">
-            {image.originalName}
+            {emberTitle}
           </h1>
         </div>
 
@@ -744,7 +836,7 @@ export default function ImagePage() {
               }
               videoUrl={image.mediaType === 'VIDEO' ? `/api/uploads/${image.filename}` : null}
               durationSeconds={image.durationSeconds}
-              imageName={image.originalName}
+              imageName={emberTitle}
               tags={image.tags}
               contributors={image.contributors.map((contributor) => ({
                 id: contributor.id,
@@ -754,6 +846,7 @@ export default function ImagePage() {
                 userId: contributor.userId,
               }))}
               friends={image.friends}
+              tagIdentities={image.tagIdentities}
               canManage={image.canManage}
               onUpdate={fetchImage}
             />
@@ -898,6 +991,16 @@ export default function ImagePage() {
           </div>
         </div>
       )}
+
+      <AutoTagPrompt
+        imageId={image.id}
+        imageName={emberTitle}
+        mediaUrl={previewMediaUrl}
+        enabled={fromUpload && image.canManage && image.tags.length === 0 && !autoTagPromptDismissed}
+        existingTagCount={image.tags.length}
+        onApplied={handleAutoTagApplied}
+        onDismiss={handleAutoTagDismiss}
+      />
     </div>
   );
 }
