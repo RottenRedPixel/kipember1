@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e134] [cursor=pointer]:
+    - img [ref=e135]
+  - alert [ref=e138]
+  - main [ref=e310]:
+    - generic [ref=e312]:
+      - generic [ref=e313]:
+        - link "<- Back to your memory" [ref=e314] [cursor=pointer]:
+          - /url: /guest/cmmvhj3ks004zx0mh6tb0jatb
+        - paragraph [ref=e315]: Contributor invite
+        - heading "Help tell the story behind this Ember." [level=1] [ref=e316]
+        - paragraph [ref=e317]: Add what happened before, during, or after this moment. Ember will fold your memories into the same living archive.
+        - img "Six kids posing by the backyard fence" [ref=e319]
+        - heading "Six kids posing by the backyard fence" [level=2] [ref=e321]
+      - generic [ref=e322]:
+        - generic [ref=e323]:
+          - paragraph [ref=e324]: Conversation
+          - heading "Choose how you want to respond" [level=2] [ref=e325]
+          - paragraph [ref=e326]: Start by text here, or go back and request a phone call from the memory page.
+        - button "Text chat Type with Ember Best if you want to add details slowly or send multiple short memories. Start texting" [ref=e329]:
+          - generic [ref=e330]: Text chat
+          - heading "Type with Ember" [level=3] [ref=e331]
+          - paragraph [ref=e332]: Best if you want to add details slowly or send multiple short memories.
+          - generic [ref=e333]: Start texting

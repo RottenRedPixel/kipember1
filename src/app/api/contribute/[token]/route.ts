@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { chat } from '@/lib/claude';
+import { isGuestUserEmail } from '@/lib/guest-embers';
+import { generateWikiForImage } from '@/lib/wiki-generator';
+import { refreshVoiceCallFromProvider } from '@/lib/voice-calls';
+
+const STALE_VOICE_CALL_MS = 45 * 1000;
 
 // GET - Fetch contributor info and conversation
 export async function GET(
@@ -15,7 +20,15 @@ export async function GET(
     const contributor = await prisma.contributor.findUnique({
       where: { token },
       include: {
-        image: true,
+        image: {
+          include: {
+            owner: {
+              select: {
+                email: true,
+              },
+            },
+          },
+        },
         conversation: {
           include: {
             messages: {
@@ -33,36 +46,122 @@ export async function GET(
             endedAt: true,
             createdAt: true,
             callSummary: true,
+            memorySyncedAt: true,
           },
         },
       },
     });
 
     if (!contributor) {
-      return NextResponse.json({ error: 'Invalid or expired link' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Invalid or expired link' },
+        {
+          status: 404,
+          headers: {
+            'Cache-Control': 'no-store',
+          },
+        }
+      );
     }
 
-    return NextResponse.json({
-      contributor: {
-        id: contributor.id,
-        name: contributor.name,
+    const latestVoiceCall = contributor.voiceCalls[0] ?? null;
+    if (
+      latestVoiceCall &&
+      (!latestVoiceCall.memorySyncedAt || ['registered', 'ongoing'].includes(latestVoiceCall.status)) &&
+      Date.now() - latestVoiceCall.createdAt.getTime() > STALE_VOICE_CALL_MS
+    ) {
+      try {
+        await refreshVoiceCallFromProvider(latestVoiceCall.id);
+      } catch (refreshError) {
+        console.error('Failed to refresh contributor voice call from provider:', refreshError);
+      }
+    }
+
+    const refreshedContributor = await prisma.contributor.findUnique({
+      where: { token },
+      include: {
+        image: {
+          include: {
+            owner: {
+              select: {
+                email: true,
+              },
+            },
+          },
+        },
+        conversation: {
+          include: {
+            messages: {
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        },
+        voiceCalls: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            startedAt: true,
+            endedAt: true,
+            createdAt: true,
+            callSummary: true,
+            memorySyncedAt: true,
+          },
+        },
       },
-      image: {
-        id: contributor.image.id,
-        filename: contributor.image.filename,
-        mediaType: contributor.image.mediaType,
-        posterFilename: contributor.image.posterFilename,
-        durationSeconds: contributor.image.durationSeconds,
-        originalName: contributor.image.originalName,
-        title: contributor.image.title,
-        description: contributor.image.description,
-      },
-      conversation: contributor.conversation,
-      latestVoiceCall: contributor.voiceCalls[0] ?? null,
     });
+
+    if (!refreshedContributor) {
+      return NextResponse.json(
+        { error: 'Invalid or expired link' },
+        {
+          status: 404,
+          headers: {
+            'Cache-Control': 'no-store',
+          },
+        }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        contributor: {
+          id: refreshedContributor.id,
+          name: refreshedContributor.name,
+          phoneNumber: refreshedContributor.phoneNumber,
+        },
+        image: {
+          id: refreshedContributor.image.id,
+          filename: refreshedContributor.image.filename,
+          mediaType: refreshedContributor.image.mediaType,
+          posterFilename: refreshedContributor.image.posterFilename,
+          durationSeconds: refreshedContributor.image.durationSeconds,
+          originalName: refreshedContributor.image.originalName,
+          title: refreshedContributor.image.title,
+          description: refreshedContributor.image.description,
+        },
+        guestFlow: isGuestUserEmail(refreshedContributor.image.owner.email),
+        conversation: refreshedContributor.conversation,
+        latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
   } catch (error) {
     console.error('Error fetching contributor:', error);
-    return NextResponse.json({ error: 'Failed to load' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to load' },
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
+    );
   }
 }
 
@@ -198,9 +297,20 @@ export async function POST(
       });
     }
 
+    let memoryCreated = false;
+    if (response.nextStep === 'completed') {
+      try {
+        await generateWikiForImage(contributor.imageId);
+        memoryCreated = true;
+      } catch (wikiError) {
+        console.error('Failed to create memory after web interview:', wikiError);
+      }
+    }
+
     return NextResponse.json({
       response: response.message,
       isComplete: response.nextStep === 'completed',
+      memoryCreated,
     });
   } catch (error) {
     console.error('Chat error:', error);

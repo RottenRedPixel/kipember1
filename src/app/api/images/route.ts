@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { writeFile, mkdir, unlink } from 'fs/promises';
-import { randomUUID } from 'crypto';
 import { requireApiUser } from '@/lib/auth-server';
 import { getAcceptedFriendIds } from '@/lib/ember-access';
 import {
@@ -9,25 +7,7 @@ import {
   ensureOwnerContributorsForOwnedImages,
 } from '@/lib/owner-contributor';
 import { generateWikiForImage } from '@/lib/wiki-generator';
-import { getUploadPath, getUploadsDir, inferMediaType } from '@/lib/uploads';
-import { generatePosterFrame, probeVideo } from '@/lib/video-processing';
-
-function describeVideoProcessingError(error: unknown): string {
-  if (error instanceof Error) {
-    const message = error.message.toLowerCase();
-    if (
-      message.includes('ffmpeg') ||
-      message.includes('ffprobe') ||
-      message.includes('enoent')
-    ) {
-      return 'Video uploaded, but poster-frame processing failed because ffmpeg/ffprobe is not available on the server';
-    }
-
-    return `Video uploaded, but poster-frame processing failed: ${error.message}`;
-  }
-
-  return 'Video uploaded, but poster-frame processing failed';
-}
+import { persistUploadedMedia } from '@/lib/media-upload';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,65 +25,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const mediaType = inferMediaType(file.name, file.type);
-    if (!mediaType) {
+    let persistedMedia;
+    try {
+      persistedMedia = await persistUploadedMedia(file);
+    } catch (error) {
       return NextResponse.json(
-        { error: 'Only images and MP4, MOV, WEBM, or M4V videos are supported' },
+        {
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Only images and MP4, MOV, WEBM, or M4V videos are supported',
+        },
         { status: 400 }
       );
-    }
-
-    // Generate unique filename
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!ext) {
-      return NextResponse.json({ error: 'File extension is required' }, { status: 400 });
-    }
-    const filename = `${randomUUID()}.${ext}`;
-    const filePath = getUploadPath(filename);
-    let posterFilename: string | null = null;
-    let durationSeconds: number | null = null;
-    let videoProcessingWarning: string | null = null;
-
-    // Ensure uploads directory exists
-    const uploadsDir = getUploadsDir();
-    await mkdir(uploadsDir, { recursive: true });
-
-    // Save file
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
-
-    try {
-      if (mediaType === 'VIDEO') {
-        const posterBase = `${randomUUID()}.jpg`;
-        const posterPath = getUploadPath(posterBase);
-        const videoMetadata = await probeVideo(filePath);
-        await generatePosterFrame({
-          inputPath: filePath,
-          outputPath: posterPath,
-          durationSeconds: videoMetadata.durationSeconds,
-        });
-        posterFilename = posterBase;
-        durationSeconds = videoMetadata.durationSeconds;
-      }
-    } catch (processingError) {
-      console.error('Video processing error:', processingError);
-      if (posterFilename) {
-        await unlink(getUploadPath(posterFilename)).catch(() => undefined);
-        posterFilename = null;
-      }
-      durationSeconds = null;
-      videoProcessingWarning = describeVideoProcessingError(processingError);
     }
 
     // Create database record
     const image = await prisma.image.create({
       data: {
         ownerId: auth.user.id,
-        filename,
-        mediaType,
-        posterFilename,
-        durationSeconds,
+        filename: persistedMedia.filename,
+        mediaType: persistedMedia.mediaType,
+        posterFilename: persistedMedia.posterFilename,
+        durationSeconds: persistedMedia.durationSeconds,
         originalName: file.name,
         description: description || null,
         shareToNetwork,
@@ -123,14 +67,19 @@ export async function POST(request: NextRequest) {
       warning =
         error instanceof Error
           ? error.message
-          : `${mediaType === 'VIDEO' ? 'Video' : 'Image'} uploaded, but the automatic wiki could not be generated`;
+          : `${persistedMedia.mediaType === 'VIDEO' ? 'Video' : 'Image'} uploaded, but the automatic wiki could not be generated`;
     }
 
-    if (videoProcessingWarning) {
-      warning = warning ? `${videoProcessingWarning}. ${warning}` : videoProcessingWarning;
+    if (persistedMedia.warning) {
+      warning = warning ? `${persistedMedia.warning}. ${warning}` : persistedMedia.warning;
     }
 
-    return NextResponse.json({ id: image.id, mediaType, wikiGenerated, warning });
+    return NextResponse.json({
+      id: image.id,
+      mediaType: persistedMedia.mediaType,
+      wikiGenerated,
+      warning,
+    });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(

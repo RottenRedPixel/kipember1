@@ -4,6 +4,7 @@ import {
   LEGACY_OWNER_USER_ID,
   PRIMARY_OWNER_EMAIL,
   applyUserSessionCookie,
+  claimMemoriesForUser,
   createUserSession,
   hashPassword,
   normalizeEmail,
@@ -64,6 +65,13 @@ export async function POST(request: NextRequest) {
         data: { ownerId: user.id },
       });
     }
+
+    await claimMemoriesForUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    });
 
     const token = await createUserSession(user.id);
     const response = NextResponse.json({ user });

@@ -413,7 +413,12 @@ async function upsertVoiceCallRecord(
     durationMs: call.duration_ms ?? null,
     startedAt: toDate(call.start_timestamp),
     endedAt: toDate(call.end_timestamp),
-    analyzedAt: eventType === 'call_analyzed' ? new Date() : existing?.analyzedAt ?? null,
+    analyzedAt:
+      eventType === 'call_analyzed' ||
+      (eventType === 'provider_refresh' &&
+        (Boolean(call.call_analysis) || Boolean(call.transcript?.trim())))
+        ? new Date()
+        : existing?.analyzedAt ?? null,
   };
 
   const voiceCall = existing
@@ -458,8 +463,12 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
   );
 
   const extracted = await extractInterviewFromTranscript(voiceCall.transcript);
+  const hasInterviewResponses = extracted.responses.length > 0;
+  const hasInterviewSummary = extracted.summary.trim().length > 0;
+  const shouldMarkCompleted =
+    extracted.isComplete || hasInterviewResponses || hasInterviewSummary;
 
-  if (extracted.responses.length > 0) {
+  if (hasInterviewResponses) {
     await prisma.response.createMany({
       data: extracted.responses.map((item) => ({
         conversationId: conversation.id,
@@ -474,8 +483,8 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
   await prisma.conversation.update({
     where: { id: conversation.id },
     data: {
-      status: extracted.isComplete ? 'completed' : 'active',
-      currentStep: extracted.isComplete ? 'completed' : conversation.currentStep,
+      status: shouldMarkCompleted ? 'completed' : 'active',
+      currentStep: shouldMarkCompleted ? 'completed' : conversation.currentStep,
     },
   });
 
@@ -488,13 +497,50 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
     },
   });
 
-  if (extracted.isComplete && extracted.responses.length > 0) {
+  if (hasInterviewResponses || hasInterviewSummary) {
     try {
       await generateWikiForImage(voiceCall.contributor.imageId);
     } catch (error) {
       console.error('Failed to auto-generate wiki after voice sync:', error);
     }
   }
+}
+
+export async function refreshVoiceCallFromProvider(voiceCallId: string) {
+  const existing = await prisma.voiceCall.findUnique({
+    where: { id: voiceCallId },
+  });
+
+  if (!existing) {
+    return null;
+  }
+
+  const latestCallResponse = await retrieveRetellCall(existing.retellCallId);
+  const phoneCall = asPhoneCallResponse(latestCallResponse);
+  if (!phoneCall) {
+    throw new Error('Retell provider did not return a phone call');
+  }
+
+  const shouldTreatAsAnalyzed =
+    Boolean(phoneCall.call_analysis) || Boolean(phoneCall.transcript?.trim());
+  const eventType = shouldTreatAsAnalyzed
+    ? 'call_analyzed'
+    : phoneCall.call_status === 'ended'
+      ? 'call_ended'
+      : 'provider_refresh';
+
+  const updated = await upsertVoiceCallRecord(phoneCall, eventType, {
+    source: 'provider_refresh',
+    call: phoneCall,
+  });
+
+  if (shouldTreatAsAnalyzed) {
+    await syncVoiceCallToConversation(updated.id);
+  }
+
+  return prisma.voiceCall.findUnique({
+    where: { id: updated.id },
+  });
 }
 
 export async function startVoiceCallForContributor({

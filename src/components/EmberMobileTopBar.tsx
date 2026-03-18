@@ -42,7 +42,7 @@ function PersonIcon({ className = 'h-5 w-5' }: { className?: string }) {
 }
 
 const iconButtonClass =
-  'inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)] shadow-[0_10px_24px_rgba(17,17,17,0.06)]';
+  'inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--ember-line)] bg-[var(--ember-surface-strong)] text-[var(--ember-text)] shadow-[0_10px_24px_rgba(17,17,17,0.04)]';
 
 export default function EmberMobileTopBar({
   homeHref,
@@ -68,7 +68,7 @@ export default function EmberMobileTopBar({
       <div className="flex items-center gap-2">
         <Link
           href={homeHref}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-[1rem] bg-[rgba(255,102,33,0.08)]"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-[1rem] border border-[var(--ember-line)] bg-[var(--ember-surface)]"
           aria-label="Ember home"
         >
           <Image src="/emberfav.svg" alt="" width={24} height={24} priority />

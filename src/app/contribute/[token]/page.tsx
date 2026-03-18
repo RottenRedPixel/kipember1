@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
@@ -14,6 +15,7 @@ interface ContributorData {
   contributor: {
     id: string;
     name: string | null;
+    phoneNumber: string | null;
   };
   image: {
     id: string;
@@ -25,6 +27,7 @@ interface ContributorData {
     title: string | null;
     description: string | null;
   };
+  guestFlow: boolean;
   conversation: {
     messages: Message[];
     status: string;
@@ -36,6 +39,7 @@ interface ContributorData {
     endedAt: string | null;
     createdAt: string;
     callSummary: string | null;
+    memorySyncedAt: string | null;
   } | null;
 }
 
@@ -63,7 +67,9 @@ export default function ContributePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/contribute/${params.token}`);
+        const response = await fetch(`/api/contribute/${params.token}`, {
+          cache: 'no-store',
+        });
         if (!response.ok) {
           throw new Error('Invalid or expired link');
         }
@@ -85,8 +91,10 @@ export default function ContributePage() {
     fetchData();
   }, [params.token]);
 
-  const refreshContributorData = async () => {
-    const response = await fetch(`/api/contribute/${params.token}`);
+  const refreshContributorData = useCallback(async () => {
+    const response = await fetch(`/api/contribute/${params.token}`, {
+      cache: 'no-store',
+    });
     if (!response.ok) {
       return;
     }
@@ -98,7 +106,26 @@ export default function ContributePage() {
       setMessages(result.conversation.messages);
       setIsComplete(result.conversation.status === 'completed');
     }
-  };
+  }, [params.token]);
+
+  useEffect(() => {
+    if (!data?.latestVoiceCall) {
+      return;
+    }
+
+    if (
+      data.latestVoiceCall.memorySyncedAt ||
+      !['registered', 'ongoing', 'ended'].includes(data.latestVoiceCall.status)
+    ) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshContributorData();
+    }, 4000);
+
+    return () => window.clearInterval(intervalId);
+  }, [data?.latestVoiceCall, refreshContributorData]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -179,6 +206,10 @@ export default function ContributePage() {
   };
 
   const voiceStatusLabel = (status: string) => {
+    if (data?.latestVoiceCall?.memorySyncedAt) {
+      return 'Your call finished and Ember added it to the memory.';
+    }
+
     switch (status) {
       case 'registered':
         return 'Ember is dialing your phone now.';
@@ -223,6 +254,14 @@ export default function ContributePage() {
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
           <section className="ember-panel min-w-0 rounded-[2rem] p-5">
+            {data.guestFlow && (
+              <Link
+                href={`/guest/${params.token}`}
+                className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
+              >
+                {'<- Back to your memory'}
+              </Link>
+            )}
             <p className="ember-eyebrow">Contributor invite</p>
             <h1 className="ember-heading mt-3 break-words text-4xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
               Help tell the story behind this Ember.
@@ -269,14 +308,16 @@ export default function ContributePage() {
               </h2>
               <p className="ember-copy mt-2 text-sm">
                 {messages.length === 0
-                  ? 'Start by text or request a phone call from Ember.'
+                  ? data.guestFlow
+                    ? 'Start by text here, or go back and request a phone call from the memory page.'
+                    : 'Start by text or request a phone call from Ember.'
                   : 'Share what you remember. Ember will guide you with follow-up questions.'}
               </p>
             </div>
 
             <div className="px-5 py-5">
               {messages.length === 0 && !isComplete ? (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className={`grid gap-4 ${data.guestFlow ? '' : 'sm:grid-cols-2'}`}>
                   <button
                     onClick={startConversation}
                     disabled={isSending || isCalling}
@@ -292,25 +333,27 @@ export default function ContributePage() {
                     </span>
                   </button>
 
-                  <button
-                    onClick={startVoiceCall}
-                    disabled={
-                      isSending ||
-                      isCalling ||
-                      data.latestVoiceCall?.status === 'registered' ||
-                      data.latestVoiceCall?.status === 'ongoing'
-                    }
-                    className="ember-card rounded-[1.5rem] p-5 text-left disabled:opacity-60"
-                  >
-                    <div className="ember-eyebrow">Phone interview</div>
-                    <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">Speak with Ember</h3>
-                    <p className="ember-copy mt-2 text-sm">
-                      Best if it is easier to tell the story aloud and let Ember pull out the details.
-                    </p>
-                    <span className="ember-button-secondary mt-4 inline-flex px-4">
-                      {isCalling ? 'Calling...' : 'Request call'}
-                    </span>
-                  </button>
+                  {!data.guestFlow && (
+                    <button
+                      onClick={startVoiceCall}
+                      disabled={
+                        isSending ||
+                        isCalling ||
+                        data.latestVoiceCall?.status === 'registered' ||
+                        data.latestVoiceCall?.status === 'ongoing'
+                      }
+                      className="ember-card rounded-[1.5rem] p-5 text-left disabled:opacity-60"
+                    >
+                      <div className="ember-eyebrow">Phone interview</div>
+                      <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">Speak with Ember</h3>
+                      <p className="ember-copy mt-2 text-sm">
+                        Best if it is easier to tell the story aloud and let Ember pull out the details.
+                      </p>
+                      <span className="ember-button-secondary mt-4 inline-flex px-4">
+                        {isCalling ? 'Calling...' : 'Request call'}
+                      </span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
@@ -383,13 +426,20 @@ export default function ContributePage() {
                   <p className="ember-eyebrow">Contribution saved</p>
                   <h3 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">Thank you.</h3>
                   <p className="ember-copy mt-2 text-sm">
-                    Your memory is now part of this Ember. You can close this page whenever you are ready.
+                    {data.guestFlow
+                      ? 'Your memory has been created from this interview. Go back to see the updated Ember.'
+                      : 'Your memory is now part of this Ember. You can close this page whenever you are ready.'}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <span className="ember-chip">Owner notified</span>
                     <span className="ember-chip">Story updated</span>
                     <span className="ember-chip">Memory saved</span>
                   </div>
+                  {data.guestFlow && (
+                    <Link href={`/guest/${params.token}`} className="ember-button-primary mt-5 inline-flex px-5">
+                      View your memory
+                    </Link>
+                  )}
                 </div>
               )}
             </div>

@@ -7,9 +7,8 @@ import UploadStarterCard from '@/components/UploadStarterCard';
 const UPLOAD_STEPS = [
   'Uploading your media',
   'Reading the scene',
-  'Naming your Ember',
-  'Building the memory page',
-  'Looking for familiar faces',
+  'Writing a quick first memory',
+  'Preparing Ember to talk with you',
 ];
 
 function detectSelectedMediaType(file: File | null): 'image' | 'video' | null {
@@ -28,15 +27,13 @@ function detectSelectedMediaType(file: File | null): 'image' | 'video' | null {
   return null;
 }
 
-export default function ImageUploader() {
+export default function GuestImageUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [description, setDescription] = useState('');
-  const [shareToNetwork, setShareToNetwork] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [uploadStepIndex, setUploadStepIndex] = useState(0);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -65,28 +62,19 @@ export default function ImageUploader() {
   }, [isUploading]);
 
   useEffect(() => {
-    const openFilePicker = () => {
-      fileInputRef.current?.click();
-    };
-
-    window.addEventListener('ember:open-upload-picker', openFilePicker);
-    return () => window.removeEventListener('ember:open-upload-picker', openFilePicker);
-  }, []);
-
-  useEffect(() => {
-    if (searchParams.get('openUploader') !== '1' || selectedFile) {
+    if (searchParams.get('openGuestUploader') !== '1' || selectedFile) {
       return;
     }
 
     fileInputRef.current?.click();
-    window.history.replaceState(null, '', '/feed');
-  }, [router, searchParams, selectedFile]);
+    window.history.replaceState(null, '', '/');
+  }, [searchParams, selectedFile]);
 
   const updateSelection = useCallback(
     (file: File | null) => {
-      const nextMediaType = detectSelectedMediaType(file);
+      const mediaType = detectSelectedMediaType(file);
 
-      if (!file || !nextMediaType) {
+      if (!file || !mediaType) {
         setSelectionError('Only photos and MP4, MOV, WEBM, or M4V videos are supported.');
         return;
       }
@@ -102,31 +90,15 @@ export default function ImageUploader() {
     [preview]
   );
 
-  const handleDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(true);
-  }, []);
+  const clearSelection = () => {
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
 
-  const handleDragLeave = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      setIsDragging(false);
-      updateSelection(event.dataTransfer.files[0] || null);
-    },
-    [updateSelection]
-  );
-
-  const handleFileSelect = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      updateSelection(event.target.files?.[0] || null);
-    },
-    [updateSelection]
-  );
+    setSelectedFile(null);
+    setPreview(null);
+    setSelectionError('');
+  };
 
   const handleUpload = async () => {
     if (!selectedFile) {
@@ -138,10 +110,8 @@ export default function ImageUploader() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('description', description);
-      formData.append('shareToNetwork', shareToNetwork ? 'true' : 'false');
 
-      const response = await fetch('/api/images', {
+      const response = await fetch('/api/guest/upload', {
         method: 'POST',
         body: formData,
       });
@@ -151,33 +121,19 @@ export default function ImageUploader() {
         throw new Error(payload?.error || 'Upload failed');
       }
 
-      const { id, mediaType, warning } = await response.json();
+      const { token, warning } = await response.json();
 
       if (warning) {
-        alert(
-          `${mediaType === 'VIDEO' ? 'Video' : 'Image'} uploaded, but the automatic wiki did not finish: ${warning}`
-        );
+        alert(warning);
       }
 
-      router.push(`/image/${id}?fromUpload=1`);
+      router.push(`/guest/${token}`);
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Guest upload error:', error);
       alert(error instanceof Error ? error.message : 'Failed to upload media. Please try again.');
     } finally {
       setIsUploading(false);
     }
-  };
-
-  const clearSelection = () => {
-    if (preview) {
-      URL.revokeObjectURL(preview);
-    }
-
-    setSelectedFile(null);
-    setPreview(null);
-    setDescription('');
-    setShareToNetwork(false);
-    setSelectionError('');
   };
 
   const selectedMediaType = detectSelectedMediaType(selectedFile);
@@ -209,7 +165,7 @@ export default function ImageUploader() {
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,17,0.08),rgba(17,17,17,0.84))]" />
                   <div className="absolute inset-x-0 bottom-0 p-6">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/72">
-                      New Ember
+                      Guest demo
                     </p>
                     <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
                       {selectedFile?.name || 'Preparing upload'}
@@ -233,7 +189,7 @@ export default function ImageUploader() {
                   </div>
 
                   <p className="mt-5 text-sm leading-6 text-white/72">
-                    Hang on while Ember uploads the media, reads the moment, and prepares the first version of the memory.
+                    Ember is building a quick visual read first, then setting up the interview that brings the memory to life.
                   </p>
 
                   <div className="mt-6 space-y-3">
@@ -281,20 +237,30 @@ export default function ImageUploader() {
             ref={fileInputRef}
             type="file"
             accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
-            onChange={handleFileSelect}
+            onChange={(event) => updateSelection(event.target.files?.[0] || null)}
             className="hidden"
-            id="file-input"
+            id="guest-file-input"
           />
           <UploadStarterCard
             title="Create an Ember"
-            subtitle="Upload a photo or video to start a new ember."
+            subtitle="Upload a photo or video to create your first ember."
             supportText="Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V."
             actionLabel="Create Ember"
             isDragging={isDragging}
             onOpenPicker={() => fileInputRef.current?.click()}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+              updateSelection(event.dataTransfer.files[0] || null);
+            }}
           />
 
           {selectionError && (
@@ -327,36 +293,14 @@ export default function ImageUploader() {
             </button>
           </div>
 
-          <div>
-            <label htmlFor="description" className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
-              Description
-            </label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="What makes this Ember meaningful? Add context Ember should know."
-              className="ember-textarea"
-              rows={4}
-            />
+          <div className="ember-card rounded-[1.6rem] px-5 py-4">
+            <p className="text-sm font-semibold text-[var(--ember-text)]">
+              What happens next
+            </p>
+            <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
+              First Ember gives a quick visual read. Then you can talk to Ember by text or have Ember call your phone to capture the memory in your own words.
+            </p>
           </div>
-
-          <label className="ember-card flex items-start gap-3 rounded-[1.5rem] px-4 py-4">
-            <input
-              type="checkbox"
-              checked={shareToNetwork}
-              onChange={(event) => setShareToNetwork(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
-            />
-            <span>
-              <span className="block text-sm font-medium text-[var(--ember-text)]">
-                Share this Ember to your network feed
-              </span>
-              <span className="mt-1 block text-sm text-[var(--ember-muted)]">
-                Accepted friends will see it in their feed. Contributors can still be invited individually.
-              </span>
-            </span>
-          </label>
 
           <button
             onClick={handleUpload}
@@ -364,8 +308,8 @@ export default function ImageUploader() {
             className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isUploading
-              ? `Uploading ${selectedMediaType || 'media'} and opening Ember...`
-              : `Upload ${selectedMediaType || 'media'} and open Ember`}
+              ? `Uploading ${selectedMediaType || 'media'}...`
+              : `Upload ${selectedMediaType || 'media'} and continue`}
           </button>
         </div>
       )}

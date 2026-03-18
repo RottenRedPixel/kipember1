@@ -1,0 +1,105 @@
+- generic [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e134] [cursor=pointer]:
+    - img [ref=e135]
+  - alert [ref=e138]
+  - main [ref=e179]:
+    - generic [ref=e182]:
+      - link "Ember account access" [ref=e183] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e185]:
+          - generic [ref=e186]: Ember
+          - generic [ref=e187]: account access
+      - generic [ref=e188]:
+        - link "Login" [ref=e189] [cursor=pointer]:
+          - /url: /login
+        - link "Create account" [ref=e190] [cursor=pointer]:
+          - /url: /signup
+    - generic [ref=e191]:
+      - generic [ref=e267]:
+        - generic [ref=e268]:
+          - generic [ref=e269]:
+            - paragraph [ref=e270]: Phone interview
+            - heading "Have Ember call you" [level=2] [ref=e271]
+          - button "Close" [ref=e272]: ×
+        - paragraph [ref=e273]: Enter your phone number and Ember will call to interview you about this moment. If you later create an account with the same number, this memory can come with you.
+        - generic [ref=e274]:
+          - generic [ref=e275]: Phone number
+          - textbox "Phone number" [ref=e276]:
+            - /placeholder: (555) 555-5555
+        - generic [ref=e277]:
+          - button "Call me" [ref=e278]
+          - button "Not now" [ref=e279]
+      - generic [ref=e192]:
+        - generic [ref=e193]:
+          - paragraph [ref=e194]: Quick read
+          - heading "Bring your memory to life" [level=1] [ref=e195]
+          - paragraph [ref=e196]: Ember started with what the photo shows. Now add the human side of the story so the memory becomes something more than an image in the camera roll.
+          - img "Six kids posing by the backyard fence" [ref=e198]
+          - generic [ref=e199]:
+            - heading "Six kids posing by the backyard fence" [level=2] [ref=e200]
+            - paragraph [ref=e201]: Six children of varying ages stand clustered together on grass in front of a tall, weathered wooden privacy fence. The children are dressed in casual summer clothing - colorful t-shirts, shorts, and various footwear including Crocs and sandals. The lighting appears natural and bright, suggesting daytime outdoor conditions.
+          - generic [ref=e202]:
+            - link "Talk to Ember" [ref=e203] [cursor=pointer]:
+              - /url: /contribute/cmmvhj3ks004zx0mh6tb0jatb
+            - button "Get a phone call" [active] [ref=e204]
+          - generic [ref=e205]:
+            - generic [ref=e206]: Quick visual description
+            - generic [ref=e207]: Text or phone interview
+            - generic [ref=e208]: Claim later by phone
+        - generic [ref=e209]:
+          - generic [ref=e210]:
+            - paragraph [ref=e211]: What Ember is doing
+            - generic [ref=e212]:
+              - generic [ref=e213]:
+                - generic [ref=e214]: 1. Reading the scene
+                - paragraph [ref=e215]: Ember writes a grounded first description based on what it can actually see.
+              - generic [ref=e216]:
+                - generic [ref=e217]: 2. Interviewing the memory
+                - paragraph [ref=e218]: Your voice, details, and backstory are what turn the image into a memory instead of a caption.
+              - generic [ref=e219]:
+                - generic [ref=e220]: 3. Building the Ember
+                - paragraph [ref=e221]: Once the conversation finishes, Ember folds everything into one memory record you can keep if you create an account.
+          - generic [ref=e222]:
+            - paragraph [ref=e223]: First memory draft
+            - heading "Ember has a quick start" [level=2] [ref=e224]
+            - paragraph [ref=e225]: After you talk with Ember, this draft will expand with the why, who, and what the moment meant.
+            - generic [ref=e227]:
+              - heading "Six Kids Posing by the Backyard Fence" [level=1] [ref=e280]
+              - heading "Overview" [level=2] [ref=e281]
+              - paragraph [ref=e282]: A heartwarming group photograph capturing six children of varying ages, from toddler to pre-teen, gathered together in a residential backyard setting on what appears to be a pleasant summer day.
+              - heading "What the Photo Shows" [level=2] [ref=e283]
+              - paragraph [ref=e284]: Six children stand clustered together on a grass lawn in front of a tall, weathered wooden privacy fence. The group spans a wide age range - from a very small toddler to children who appear to be around 10-12 years old. They're dressed in bright, casual summer clothing including colorful t-shirts, shorts, dresses, and comfortable footwear like Crocs and sandals. The natural daylight creates bright, even lighting that captures genuine smiles and relaxed expressions.
+              - heading "People" [level=2] [ref=e285]
+              - paragraph [ref=e286]: "The group includes six children arranged naturally for the camera:"
+              - list [ref=e287]:
+                - listitem [ref=e288]: An older boy (approximately 10-12 years old) in a bright green t-shirt
+                - listitem [ref=e289]: The youngest child, a toddler (around 2-3 years old) in a yellow top and denim shorts
+                - listitem [ref=e290]: A girl (5-7 years old) wearing a pink and white striped dress
+                - listitem [ref=e291]: A boy (8-10 years old) in a distinctive orange Puma branded t-shirt
+                - listitem [ref=e292]: Another toddler (3-4 years old) in a patterned white top with black shorts
+                - listitem [ref=e293]: An older girl (9-11 years old) wearing a light purple t-shirt
+              - paragraph [ref=e294]: The comfortable physical proximity and natural grouping suggest these children have a close relationship, likely siblings or close family friends.
+              - heading "Timeline" [level=2] [ref=e295]
+              - paragraph [ref=e296]: The photo appears to have been taken during daytime hours in what seems like summer, based on the bright natural lighting and the children's warm-weather clothing choices.
+              - heading "Location" [level=2] [ref=e297]
+              - paragraph [ref=e298]: A residential backyard setting featuring a well-maintained grass lawn and a mature wooden privacy fence. The suburban backyard environment suggests a comfortable family home where children regularly play and gather.
+              - heading "Story" [level=2] [ref=e299]
+              - paragraph [ref=e300]: This appears to be a spontaneous or semi-planned group photo opportunity during what was likely an informal gathering. The children may have been playing together in the backyard when someone decided to capture the moment, resulting in this natural, joyful group portrait.
+              - heading "Scene Insights" [level=2] [ref=e301]
+              - paragraph [ref=e302]: The image captures a genuinely cheerful and warm atmosphere, with the children displaying natural smiles and comfortable body language that suggests authentic happiness rather than forced posing. The weathered wooden fence provides a rustic backdrop that contrasts nicely with the children's bright, colorful clothing. Notable details include the variety of colorful Crocs footwear and the clearly visible Puma branding on one child's shirt, adding authentic contemporary touches to the scene.
+              - heading "Significance" [level=2] [ref=e303]
+              - paragraph [ref=e304]: This type of informal group photo represents precious moments of childhood and family connections, capturing a specific point in time when these children of various ages came together in a comfortable, familiar setting.
+              - heading "Open Questions" [level=2] [ref=e305]
+              - list [ref=e306]:
+                - listitem [ref=e307]: Are these children siblings, cousins, or family friends?
+                - listitem [ref=e308]: What occasion or activity brought them together for this photo?
+                - listitem [ref=e309]: Is this part of a regular family gathering or special event?
+          - generic [ref=e258]:
+            - paragraph [ref=e259]: Keep it
+            - heading "Want to keep this memory?" [level=2] [ref=e260]
+            - paragraph [ref=e261]: Create an account to keep building your Embers. If you used the phone interview, signing up with that same number lets Ember reconnect this memory for you.
+            - generic [ref=e262]:
+              - link "Create account" [ref=e263] [cursor=pointer]:
+                - /url: /signup
+              - link "I already have an account" [ref=e264] [cursor=pointer]:
+                - /url: /login

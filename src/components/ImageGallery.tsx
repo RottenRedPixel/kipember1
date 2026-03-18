@@ -38,7 +38,7 @@ const MOBILE_PAGE_SIZE = 5;
 
 function DiamondIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path d="m12 3.5 7.5 8.5L12 20.5 4.5 12 12 3.5Z" />
     </svg>
   );
@@ -54,7 +54,7 @@ function PlayIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function CircleIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <circle cx="12" cy="12" r="7.25" />
     </svg>
   );
@@ -92,7 +92,7 @@ const cardActions: CardAction[] = [
 ];
 
 const cardActionClass =
-  'flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--ember-line)] bg-white px-4 text-[var(--ember-text)] transition hover:border-[rgba(255,102,33,0.24)] hover:bg-[rgba(255,102,33,0.06)]';
+  'flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--ember-orange-deep)] bg-[var(--ember-orange)] px-4 text-white transition hover:border-[var(--ember-orange-deep)] hover:bg-[var(--ember-orange-deep)]';
 
 async function shareEmberLink(image: FeedImage) {
   const url = `${window.location.origin}/image/${image.id}`;
@@ -270,7 +270,6 @@ export default function ImageGallery() {
       <section>
         <div className="mb-5">
           <p className="ember-eyebrow">Your Embers</p>
-          <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">Embers</h2>
         </div>
         <div className="ember-panel rounded-[2rem] px-8 py-16 text-center text-[var(--ember-muted)]">
           Your feed is empty. Add a photo or video above to create your first Ember.
@@ -284,10 +283,9 @@ export default function ImageGallery() {
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
           <p className="ember-eyebrow">Your Embers</p>
-          <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">Embers</h2>
         </div>
         <p className="hidden text-sm text-[var(--ember-muted)] md:block">
-          Ask, play, or shape each Ember from the card.
+          Ask, play, or tend each Ember from the card.
         </p>
       </div>
 
@@ -303,8 +301,6 @@ export default function ImageGallery() {
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {visibleImages.map((image) => {
-          const displayTitle = getEmberTitle(image);
-
           return (
             <article
               key={image.id}
@@ -315,20 +311,11 @@ export default function ImageGallery() {
                   mediaType={image.mediaType}
                   filename={image.filename}
                   posterFilename={image.posterFilename}
-                  originalName={displayTitle}
+                  originalName={getEmberTitle(image)}
                   usePosterForVideo
                   className="h-64 w-full object-cover"
                 />
               </Link>
-
-              <div className="mt-4">
-                <h3 className="ember-heading break-all text-xl leading-tight text-[var(--ember-text)] sm:break-words sm:text-2xl sm:[overflow-wrap:anywhere]">
-                  {displayTitle}
-                </h3>
-                <p className="mt-2 text-sm text-[var(--ember-muted)]">
-                  {image._count.contributors} contributors · {image._count.tags} tags
-                </p>
-              </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2">
                 {cardActions.map((action) => {
@@ -351,10 +338,10 @@ export default function ImageGallery() {
                   type="button"
                   onClick={() => setShapeMenuImageId(image.id)}
                   className={cardActionClass}
-                  aria-label="Shape Ember"
+                  aria-label="Tend Ember"
                 >
                   <CircleIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">Shape</span>
+                  <span className="text-sm font-medium">Tend Ember</span>
                 </button>
               </div>
             </article>
@@ -401,7 +388,7 @@ export default function ImageGallery() {
               <div className="border-b ember-divider px-5 py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="ember-eyebrow">Shape Ember</p>
+                    <p className="ember-eyebrow">Tend Ember</p>
                     <h3 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
                       {getEmberTitle(shapeMenuImage)}
                     </h3>
@@ -410,7 +397,7 @@ export default function ImageGallery() {
                     type="button"
                     onClick={() => setShapeMenuImageId(null)}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)]"
-                    aria-label="Close shape menu"
+                    aria-label="Close Tend Ember menu"
                   >
                     <CloseIcon />
                   </button>
@@ -455,7 +442,7 @@ export default function ImageGallery() {
                   >
                     <div className="text-base font-semibold text-[var(--ember-text)]">Add content</div>
                     <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                      Jump into tags and shape tools for this Ember.
+                      Jump into tags and Tend Ember tools for this Ember.
                     </p>
                   </button>
                 )}
@@ -478,7 +465,7 @@ export default function ImageGallery() {
                 >
                   <div className="text-base font-semibold text-[var(--ember-text)]">Edit story</div>
                   <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                    Continue shaping the story circle around this Ember.
+                    Continue tending the story circle around this Ember.
                   </p>
                 </button>
 

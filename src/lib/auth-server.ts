@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { claimGuestMemoriesForUser } from '@/lib/guest-embers';
 
 const SESSION_COOKIE_NAME = 'ember_session';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -78,6 +79,22 @@ async function syncContributorLinksForUser(user: {
   });
 }
 
+export async function claimMemoriesForUser(user: {
+  id: string;
+  email: string;
+  phoneNumber: string | null;
+  name: string | null;
+}) {
+  await syncContributorLinksForUser(user);
+
+  await claimGuestMemoriesForUser({
+    userId: user.id,
+    email: user.email,
+    phoneNumber: user.phoneNumber,
+    name: user.name,
+  });
+}
+
 export async function createUserSession(userId: string): Promise<string> {
   const token = randomBytes(32).toString('hex');
 
@@ -139,7 +156,7 @@ export async function getCurrentAuth() {
     return null;
   }
 
-  await syncContributorLinksForUser({
+  await claimMemoriesForUser({
     id: session.user.id,
     email: session.user.email,
     phoneNumber: session.user.phoneNumber,

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
+import {
+  claimMemoriesForUser,
+  normalizeEmail,
+  normalizePhone,
+  requireApiUser,
+} from '@/lib/auth-server';
 import { prisma } from '@/lib/db';
 
 export async function GET() {
@@ -64,6 +69,13 @@ export async function PATCH(request: NextRequest) {
         email: true,
         phoneNumber: true,
       },
+    });
+
+    await claimMemoriesForUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
     });
 
     return NextResponse.json({ user });

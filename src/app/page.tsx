@@ -1,8 +1,8 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import EmberBrand from '@/components/EmberBrand';
 import EmberExplainerPanel from '@/components/EmberExplainerPanel';
+import GuestImageUploader from '@/components/GuestImageUploader';
 import EmberMobileTopBar from '@/components/EmberMobileTopBar';
 import { getCurrentAuth } from '@/lib/auth-server';
 
@@ -23,7 +23,7 @@ const memoryPrinciples = [
     eyebrow: 'Why it mattered',
     title: 'Living archive',
     copy:
-      'Every response stays connected to the same Ember, giving the memory more shape as new people and details are added over time.',
+      'Every response stays connected to the same Ember, giving the memory more depth as new people and details are added over time.',
   },
 ];
 
@@ -63,11 +63,9 @@ export default async function LandingPage() {
 
   return (
     <main className="ember-page">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[26rem] bg-[radial-gradient(circle_at_top_right,rgba(255,102,33,0.16),transparent_38%),radial-gradient(circle_at_top_left,rgba(20,20,20,0.05),transparent_28%)]" />
-
       <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <header>
-          <div className="ember-panel hidden items-center justify-between rounded-full px-5 py-4 sm:flex">
+          <div className="ember-panel hidden items-center justify-between rounded-[1rem] px-5 py-4 sm:flex">
             <EmberBrand subtitle="living memory companion" />
             <div className="flex items-center gap-3">
               <Link href="/login" className="ember-button-secondary px-5">
@@ -82,33 +80,19 @@ export default async function LandingPage() {
           <EmberMobileTopBar
             homeHref="/"
             embersHref="/feed"
-            addHref="/signup"
+            addHref="/?openGuestUploader=1"
             accountHref="/access"
           />
         </header>
 
-        <section className="grid gap-5 py-8 lg:grid-cols-[1.04fr_0.96fr] lg:items-stretch">
-          <Link
-            id="add-ember"
-            href="/signup"
-            className="group flex min-h-[20rem] flex-col items-center justify-center rounded-[2rem] border border-dashed border-[rgba(20,20,20,0.12)] bg-white/78 px-6 py-10 text-center shadow-[0_16px_34px_rgba(17,17,17,0.05)] sm:px-8"
-          >
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.35rem] bg-[rgba(255,102,33,0.08)]">
-              <Image src="/emberfav.svg" alt="" width={28} height={28} priority />
-            </div>
-            <p className="ember-eyebrow mt-6">Start a memory</p>
-            <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)] sm:text-4xl">
-              Drop a photo or video
-            </h2>
-            <p className="ember-copy mx-auto mt-3 max-w-2xl text-sm">
-              Create an account, add the moment, and let Ember start shaping it into a shared memory.
-            </p>
-            <span className="mt-6 inline-flex rounded-full bg-[var(--ember-charcoal)] px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_32px_rgba(17,17,17,0.16)] transition group-hover:-translate-y-0.5">
-              Create your first Ember
-            </span>
-          </Link>
+        <section className="py-8">
+          <div id="add-ember">
+            <GuestImageUploader />
+          </div>
 
-          <EmberExplainerPanel learnMoreHref="#learn-more" />
+          <div className="mt-5">
+            <EmberExplainerPanel learnMoreHref="#learn-more" />
+          </div>
         </section>
 
         <section
@@ -116,9 +100,9 @@ export default async function LandingPage() {
           className="grid gap-8 py-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:py-16"
         >
           <div>
-            <div className="inline-flex rounded-full border border-[rgba(255,102,33,0.14)] bg-white/88 px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)] shadow-[0_12px_30px_rgba(17,17,17,0.05)]">
-              Hi, this is Ember
-            </div>
+          <div className="inline-flex rounded-[0.85rem] border border-[var(--ember-line)] bg-white px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)]">
+            Hi, this is Ember
+          </div>
 
             <h1 className="ember-heading mt-7 max-w-4xl text-5xl leading-[0.96] text-[var(--ember-text)] sm:text-6xl lg:text-7xl">
               Preserve the memory with the people who lived it.
@@ -153,28 +137,25 @@ export default async function LandingPage() {
             </div>
           </div>
 
-          <div className="ember-panel-strong relative overflow-hidden rounded-[2.4rem] p-5 sm:p-6">
-            <div className="absolute -right-10 top-6 h-44 w-44 rounded-full bg-[rgba(255,102,33,0.14)] blur-3xl" />
-            <div className="absolute left-8 top-10 h-24 w-24 rounded-full border border-[rgba(255,255,255,0.46)] bg-white/12" />
-
+          <div className="ember-panel relative overflow-hidden rounded-[2rem] p-5 sm:p-6">
             <div className="relative grid gap-4">
-              <div className="rounded-[2rem] bg-[var(--ember-charcoal)] px-5 py-5 text-white shadow-[0_18px_40px_rgba(17,17,17,0.18)]">
-                <div className="flex items-center justify-between text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/62">
+              <div className="ember-card rounded-[1.6rem] px-5 py-5">
+                <div className="flex items-center justify-between text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
                   <span>The Story Circle</span>
                   <span>Shared conversation</span>
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  <div className="max-w-[88%] rounded-[1.4rem] bg-white/10 px-4 py-3">
-                    <div className="text-[0.65rem] uppercase tracking-[0.16em] text-white/56">
+                  <div className="max-w-[88%] rounded-[1.2rem] border border-[var(--ember-line)] bg-white px-4 py-3">
+                    <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--ember-muted)]">
                       Owner prompt
                     </div>
-                    <p className="mt-2 text-sm leading-7 text-white/90">
+                    <p className="mt-2 text-sm leading-7 text-[var(--ember-text)]">
                       Tell me what everybody remembers about that night by the lake.
                     </p>
                   </div>
 
-                  <div className="ml-auto max-w-[85%] rounded-[1.4rem] bg-white px-4 py-3 text-[var(--ember-text)]">
+                  <div className="ml-auto max-w-[85%] rounded-[1.2rem] border border-[var(--ember-line)] bg-white px-4 py-3 text-[var(--ember-text)]">
                     <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--ember-muted)]">
                       Family response
                     </div>
@@ -184,11 +165,11 @@ export default async function LandingPage() {
                     </p>
                   </div>
 
-                  <div className="max-w-[80%] rounded-[1.4rem] bg-[rgba(255,102,33,0.15)] px-4 py-3 text-white">
-                    <div className="text-[0.65rem] uppercase tracking-[0.16em] text-white/62">
+                  <div className="max-w-[80%] rounded-[1.2rem] border border-[rgba(255,102,33,0.22)] bg-[rgba(255,102,33,0.08)] px-4 py-3 text-[var(--ember-text)]">
+                    <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--ember-orange-deep)]">
                       Ember thread
                     </div>
-                    <p className="mt-2 text-sm leading-7 text-white/92">
+                    <p className="mt-2 text-sm leading-7 text-[var(--ember-text)]">
                       What happened. How it felt. Why it still matters.
                     </p>
                   </div>
@@ -207,7 +188,7 @@ export default async function LandingPage() {
                   </p>
                 </div>
 
-                <div className="rounded-[1.8rem] border border-[rgba(20,20,20,0.08)] bg-[linear-gradient(160deg,rgba(255,255,255,0.96)_0%,rgba(248,244,240,0.92)_100%)] px-5 py-5 shadow-[0_12px_28px_rgba(17,17,17,0.06)]">
+                <div className="ember-card rounded-[1.8rem] px-5 py-5">
                   <div className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)]">
                     Archive view
                   </div>
@@ -310,16 +291,16 @@ export default async function LandingPage() {
         </section>
 
         <section className="pb-12 pt-6">
-          <div className="overflow-hidden rounded-[2.4rem] bg-[var(--ember-charcoal)] px-6 py-8 text-white shadow-[0_24px_60px_rgba(17,17,17,0.18)] sm:px-8 sm:py-10">
+          <div className="ember-panel overflow-hidden rounded-[2rem] px-6 py-8 sm:px-8 sm:py-10">
             <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
               <div>
-                <p className="text-[0.74rem] font-semibold uppercase tracking-[0.18em] text-white/58">
+                <p className="text-[0.74rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
                   Start preserving the memory now
                 </p>
-                <h2 className="ember-heading mt-4 max-w-3xl text-4xl text-white sm:text-5xl">
+                <h2 className="ember-heading mt-4 max-w-3xl text-4xl text-[var(--ember-text)] sm:text-5xl">
                   Build an archive that feels more human every time someone adds to it.
                 </h2>
-                <p className="mt-4 max-w-2xl text-base leading-8 text-white/72">
+                <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--ember-muted)]">
                   Create an Ember, invite the people who were there, and let the story
                   keep unfolding in one place.
                 </p>
@@ -329,10 +310,7 @@ export default async function LandingPage() {
                 <Link href="/signup" className="ember-button-primary px-6">
                   Create account
                 </Link>
-                <Link
-                  href="/login"
-                  className="inline-flex min-h-[3.35rem] items-center justify-center rounded-full border border-white/18 px-6 text-sm font-medium text-white transition hover:bg-white/8"
-                >
+                <Link href="/login" className="ember-button-secondary px-6">
                   Login
                 </Link>
               </div>

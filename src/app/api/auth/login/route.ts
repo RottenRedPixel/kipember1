@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import {
   applyUserSessionCookie,
+  claimMemoriesForUser,
   createUserSession,
   normalizeEmail,
   verifyPassword,
@@ -28,6 +29,13 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    await claimMemoriesForUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+    });
 
     const token = await createUserSession(user.id);
     const response = NextResponse.json({

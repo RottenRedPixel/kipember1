@@ -119,7 +119,7 @@ type ShapeView = 'menu' | 'tag';
 
 function DiamondIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path d="m12 3.5 7.5 8.5L12 20.5 4.5 12 12 3.5Z" />
     </svg>
   );
@@ -144,7 +144,7 @@ function PersonIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function CircleIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <circle cx="12" cy="12" r="7.25" />
     </svg>
   );
@@ -200,14 +200,14 @@ function ActionButton({
   href?: string;
 }) {
   const className =
-    'flex min-h-[4.5rem] flex-col items-center justify-center gap-2 rounded-[1.5rem] border border-[var(--ember-line)] bg-white px-3 py-3 text-center text-[var(--ember-text)] transition hover:border-[rgba(255,102,33,0.24)] hover:bg-[rgba(255,102,33,0.06)]';
+    'flex min-h-[4.5rem] flex-col items-center justify-center gap-2 rounded-[1.5rem] border border-[var(--ember-orange-deep)] bg-[var(--ember-orange)] px-3 py-3 text-center text-white transition hover:border-[var(--ember-orange-deep)] hover:bg-[var(--ember-orange-deep)]';
 
   const content = (
     <>
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(247,247,244,0.9)] text-[var(--ember-text)]">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/16 text-white">
         {icon}
       </span>
-      <span className="text-sm font-medium">{label}</span>
+      <span className="text-sm font-medium text-white">{label}</span>
     </>
   );
 
@@ -669,7 +669,7 @@ export default function ImagePage() {
           />
           <ActionButton
             icon={<CircleIcon className="h-5 w-5" />}
-            label="Shape Ember"
+            label="Tend Ember"
             onClick={() => {
               setShapeView('menu');
               setActivePanel('shape');
@@ -741,11 +741,11 @@ export default function ImagePage() {
 
       <EmberSheet
         open={activePanel === 'shape'}
-        title={shapeView === 'tag' ? 'Tag people' : 'Shape Ember'}
+        title={shapeView === 'tag' ? 'Tag people' : 'Tend Ember'}
         subtitle={
           shapeView === 'tag'
             ? 'Pin people to the image, review tags, and turn them into contributor invites.'
-            : 'Review added content and shape how this Ember is organized.'
+            : 'Review added content and Tend Ember tools.'
         }
         onClose={closePanel}
       >
@@ -821,7 +821,7 @@ export default function ImagePage() {
               onClick={() => setShapeView('menu')}
               className="rounded-full border border-[var(--ember-line-strong)] px-4 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
             >
-              Back to shape tools
+              Back to Tend Ember tools
             </button>
 
             <InteractiveImageTagger
@@ -974,10 +974,10 @@ export default function ImagePage() {
                 setActivePanel('shape');
               }}
               className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
-              aria-label="Shape Ember"
+              aria-label="Tend Ember"
             >
               <CircleIcon className="h-5 w-5" />
-              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Shape Ember</span>
+              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Tend Ember</span>
             </button>
             <button
               type="button"

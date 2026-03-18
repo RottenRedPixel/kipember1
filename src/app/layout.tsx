@@ -1,21 +1,5 @@
 import type { Metadata } from 'next';
-import { Bricolage_Grotesque, Geist_Mono, Manrope } from 'next/font/google';
 import './globals.css';
-
-const emberSans = Manrope({
-  variable: '--font-ember-sans',
-  subsets: ['latin'],
-});
-
-const emberDisplay = Bricolage_Grotesque({
-  variable: '--font-ember-display',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Ember',
@@ -33,9 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${emberSans.variable} ${emberDisplay.variable} ${geistMono.variable} antialiased`}>
-        {children}
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
