@@ -51,10 +51,10 @@ export default function ImageAttachmentViewer({
   const noteChanged = draftDescription.trim() !== (attachment.description || '').trim();
 
   return (
-    <div className="fixed inset-0 z-[72] bg-[rgba(17,17,17,0.58)] px-4 py-6 backdrop-blur-md" onClick={onClose}>
-      <div className="mx-auto flex min-h-full w-full max-w-6xl items-center justify-center">
+    <div className="fixed inset-0 z-[72] overflow-y-auto bg-[rgba(17,17,17,0.58)] px-4 py-4 backdrop-blur-md sm:py-6" onClick={onClose}>
+      <div className="mx-auto flex min-h-full w-full max-w-6xl items-start justify-center sm:items-center">
         <div
-          className="w-full overflow-hidden rounded-[2.2rem] border border-white/70 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.18)]"
+          className="my-auto w-full overflow-hidden rounded-[2.2rem] border border-white/70 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.18)]"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
@@ -69,7 +69,7 @@ export default function ImageAttachmentViewer({
               />
             </div>
 
-            <div className="relative flex flex-col px-5 py-5 sm:px-7 sm:py-6">
+            <div className="relative flex flex-col px-5 py-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:px-7 sm:py-6">
               <button
                 type="button"
                 onClick={onClose}

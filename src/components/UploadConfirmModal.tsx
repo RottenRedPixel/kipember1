@@ -55,12 +55,12 @@ export default function UploadConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[65] bg-[rgba(15,23,42,0.42)] px-4 py-6 backdrop-blur-md"
+      className="fixed inset-0 z-[65] overflow-y-auto bg-[rgba(15,23,42,0.42)] px-4 py-4 backdrop-blur-md sm:py-6"
       onClick={onCancel}
     >
-      <div className="mx-auto flex min-h-full w-full max-w-4xl items-center justify-center">
+      <div className="mx-auto flex min-h-full w-full max-w-4xl items-start justify-center sm:items-center">
         <div
-          className="w-full overflow-hidden rounded-[2.2rem] border border-white/70 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.18)]"
+          className="my-auto w-full overflow-hidden rounded-[2.2rem] border border-white/70 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.18)]"
           onClick={(event) => event.stopPropagation()}
         >
           <div className="grid gap-0 md:grid-cols-[1.05fr_0.95fr]">
@@ -90,7 +90,7 @@ export default function UploadConfirmModal({
               </div>
             </div>
 
-            <div className="relative flex flex-col px-5 py-5 sm:px-7 sm:py-6">
+            <div className="relative flex flex-col px-5 py-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:px-7 sm:py-6">
               <button
                 type="button"
                 onClick={onCancel}
