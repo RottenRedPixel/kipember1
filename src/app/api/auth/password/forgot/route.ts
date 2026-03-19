@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/auth-server';
+import { getRequestBaseUrl } from '@/lib/app-url';
 import { createPasswordResetChallenge, getPasswordResetTtlMinutes } from '@/lib/auth-challenges';
 import { sendPasswordResetEmail } from '@/lib/auth-email';
 import { prisma } from '@/lib/db';
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         token,
         ttlMinutes: getPasswordResetTtlMinutes(),
-        baseUrl: request.nextUrl.origin,
+        baseUrl: getRequestBaseUrl(request),
       });
     }
 

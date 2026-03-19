@@ -3,6 +3,7 @@ import { normalizeEmail, normalizePhone } from '@/lib/auth-server';
 import { createMagicLinkChallenge, getMagicLinkTtlMinutes, type MagicLinkMode } from '@/lib/auth-challenges';
 import { sendMagicLinkEmail } from '@/lib/auth-email';
 import { findUserByEmail } from '@/lib/auth-users';
+import { getRequestBaseUrl } from '@/lib/app-url';
 import { isEmailConfigured } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       token,
       mode: mode as MagicLinkMode,
       ttlMinutes: getMagicLinkTtlMinutes(),
-      baseUrl: request.nextUrl.origin,
+      baseUrl: getRequestBaseUrl(request),
     });
 
     return NextResponse.json({
