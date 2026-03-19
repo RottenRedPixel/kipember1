@@ -3,6 +3,7 @@ import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-serve
 import { ensureImageOwnerAccess, getAcceptedFriends, getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
+import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
 function normalizeLabelKey(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -31,85 +32,125 @@ export async function GET(
       await ensureOwnerContributorForImage(id, auth.user.id);
     }
 
-    const image = await prisma.image.findUnique({
-      where: { id },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        contributors: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phoneNumber: true,
-              },
-            },
-            conversation: {
-              select: {
-                status: true,
-                currentStep: true,
-              },
-            },
-            voiceCalls: {
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-              select: {
-                id: true,
-                status: true,
-                startedAt: true,
-                endedAt: true,
-                createdAt: true,
-                callSummary: true,
-                initiatedBy: true,
-              },
+    const loadImage = () =>
+      prisma.image.findUnique({
+        where: { id },
+        include: {
+          owner: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
-        },
-        tags: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phoneNumber: true,
+          contributors: {
+            orderBy: { createdAt: 'asc' },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phoneNumber: true,
+                },
               },
-            },
-            contributor: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phoneNumber: true,
-                inviteSent: true,
+              conversation: {
+                select: {
+                  status: true,
+                  currentStep: true,
+                },
+              },
+              voiceCalls: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+                select: {
+                  id: true,
+                  status: true,
+                  startedAt: true,
+                  endedAt: true,
+                  createdAt: true,
+                  updatedAt: true,
+                  analyzedAt: true,
+                  callSummary: true,
+                  initiatedBy: true,
+                  memorySyncedAt: true,
+                },
               },
             },
           },
-        },
-        wiki: {
-          select: { id: true },
-        },
-        sportsMode: {
-          select: {
-            id: true,
-            sportType: true,
-            subjectName: true,
-            finalScore: true,
-            outcome: true,
-            updatedAt: true,
+          tags: {
+            orderBy: { createdAt: 'asc' },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phoneNumber: true,
+                },
+              },
+              contributor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phoneNumber: true,
+                  inviteSent: true,
+                },
+              },
+            },
+          },
+          attachments: {
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true,
+              filename: true,
+              mediaType: true,
+              posterFilename: true,
+              durationSeconds: true,
+              originalName: true,
+              description: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+          wiki: {
+            select: { id: true },
+          },
+          sportsMode: {
+            select: {
+              id: true,
+              sportType: true,
+              subjectName: true,
+              finalScore: true,
+              outcome: true,
+              updatedAt: true,
+            },
           },
         },
-      },
-    });
+      });
+
+    let image = await loadImage();
+
+    if (!image) {
+      return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+    }
+
+    if (accessType === 'owner') {
+      const ownerContributor = image.contributors.find(
+        (contributor) => contributor.userId === auth.user.id
+      );
+      const latestVoiceCall = ownerContributor?.voiceCalls[0] || null;
+
+      if (latestVoiceCall && shouldRefreshVoiceCallStatus(latestVoiceCall)) {
+        try {
+          await refreshVoiceCallFromProvider(latestVoiceCall.id);
+          image = await loadImage();
+        } catch (refreshError) {
+          console.error('Failed to refresh owner voice call from provider:', refreshError);
+        }
+      }
+    }
 
     if (!image) {
       return NextResponse.json({ error: 'Image not found' }, { status: 404 });
@@ -214,6 +255,11 @@ export async function GET(
       accessType,
       canManage: accessType === 'owner',
       contributors: image.contributors,
+      ownerConversationTarget:
+        accessType === 'owner'
+          ? image.contributors.find((contributor) => contributor.userId === auth.user.id) || null
+          : null,
+      attachments: image.attachments,
       tags: image.tags,
       friends,
       tagIdentities: Array.from(tagIdentityMap.values()).slice(0, 12),

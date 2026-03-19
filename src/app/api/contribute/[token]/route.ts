@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { chat } from '@/lib/claude';
+import { getEmberTitle } from '@/lib/ember-title';
 import { isGuestUserEmail } from '@/lib/guest-embers';
+import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
-import { refreshVoiceCallFromProvider } from '@/lib/voice-calls';
-
-const STALE_VOICE_CALL_MS = 45 * 1000;
+import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
 // GET - Fetch contributor info and conversation
 export async function GET(
@@ -45,6 +45,8 @@ export async function GET(
             startedAt: true,
             endedAt: true,
             createdAt: true,
+            updatedAt: true,
+            analyzedAt: true,
             callSummary: true,
             memorySyncedAt: true,
           },
@@ -65,11 +67,7 @@ export async function GET(
     }
 
     const latestVoiceCall = contributor.voiceCalls[0] ?? null;
-    if (
-      latestVoiceCall &&
-      (!latestVoiceCall.memorySyncedAt || ['registered', 'ongoing'].includes(latestVoiceCall.status)) &&
-      Date.now() - latestVoiceCall.createdAt.getTime() > STALE_VOICE_CALL_MS
-    ) {
+    if (shouldRefreshVoiceCallStatus(latestVoiceCall)) {
       try {
         await refreshVoiceCallFromProvider(latestVoiceCall.id);
       } catch (refreshError) {
@@ -105,6 +103,8 @@ export async function GET(
             startedAt: true,
             endedAt: true,
             createdAt: true,
+            updatedAt: true,
+            analyzedAt: true,
             callSummary: true,
             memorySyncedAt: true,
           },
@@ -181,7 +181,27 @@ export async function POST(
     const contributor = await prisma.contributor.findUnique({
       where: { token },
       include: {
-        image: true,
+        image: {
+          include: {
+            analysis: true,
+            tags: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                    email: true,
+                  },
+                },
+                contributor: {
+                  select: {
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         conversation: {
           include: {
             messages: {
@@ -229,6 +249,33 @@ export async function POST(
     }
 
     if (message === '__START__') {
+      if (conversation.status === 'completed') {
+        const restartMessage =
+          "I'm ready for more. Tell me any extra detail, correction, or small moment you want Ember to remember.";
+
+        await prisma.conversation.update({
+          where: { id: conversation.id },
+          data: {
+            status: 'active',
+            currentStep: 'followup',
+          },
+        });
+
+        await prisma.message.create({
+          data: {
+            conversationId: conversation.id,
+            role: 'assistant',
+            content: restartMessage,
+            source: 'web',
+          },
+        });
+
+        return NextResponse.json({
+          response: restartMessage,
+          isComplete: false,
+        });
+      }
+
       const latestAssistantMessage =
         contributor.conversation?.messages
           ?.slice()
@@ -261,7 +308,11 @@ export async function POST(
     });
 
     // Generate AI response based on interview flow
-    const response = await generateInterviewResponse(updatedConversation!, message);
+    const response = await generateInterviewResponse(
+      updatedConversation!,
+      message,
+      buildInterviewKnownContext(contributor)
+    );
 
     // Save assistant response
     await prisma.message.create({
@@ -298,12 +349,15 @@ export async function POST(
     }
 
     let memoryCreated = false;
-    if (response.nextStep === 'completed') {
+    const shouldRefreshWiki =
+      response.nextStep === 'completed' || response.questionType === 'followup';
+
+    if (shouldRefreshWiki) {
       try {
         await generateWikiForImage(contributor.imageId);
         memoryCreated = true;
       } catch (wikiError) {
-        console.error('Failed to create memory after web interview:', wikiError);
+        console.error('Failed to refresh memory after web interview:', wikiError);
       }
     }
 
@@ -336,11 +390,137 @@ type InterviewConversation = {
     role: string;
     content: string;
   }>;
+  responses?: Array<{
+    questionType: string;
+    answer: string;
+  }>;
 };
+
+type InterviewKnownContext = {
+  imageTitle: string;
+  imageDescription: string | null;
+  analysisSummary: string | null;
+  confirmedPeople: string[];
+  knownWhen: string | null;
+  knownWhere: string | null;
+};
+
+function formatCapturedAtForInterview(value: Date | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  return value.toLocaleString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function buildInterviewKnownContext(contributor: {
+  image: {
+    originalName: string;
+    title: string | null;
+    description: string | null;
+    analysis: {
+      summary: string | null;
+      visualDescription: string | null;
+      capturedAt: Date | null;
+      latitude: number | null;
+      longitude: number | null;
+      metadataJson: string | null;
+    } | null;
+    tags: Array<{
+      label: string;
+      user: {
+        name: string | null;
+        email: string;
+      } | null;
+      contributor: {
+        name: string | null;
+        email: string | null;
+      } | null;
+    }>;
+  };
+}): InterviewKnownContext {
+  const confirmedPeople = Array.from(
+    new Set(
+      contributor.image.tags
+        .map((tag) => tag.user?.name || tag.contributor?.name || tag.label)
+        .map((value) => value?.trim())
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+  const confirmedLocation = parseConfirmedLocationContext(
+    contributor.image.analysis?.metadataJson
+  );
+  const knownWhere = confirmedLocation
+    ? [confirmedLocation.label, confirmedLocation.detail].filter(Boolean).join(', ')
+    : contributor.image.analysis?.latitude != null && contributor.image.analysis?.longitude != null
+      ? `GPS metadata already places this photo near ${contributor.image.analysis.latitude.toFixed(5)}, ${contributor.image.analysis.longitude.toFixed(5)}.`
+      : null;
+
+  return {
+    imageTitle: getEmberTitle(contributor.image),
+    imageDescription: contributor.image.description,
+    analysisSummary:
+      contributor.image.analysis?.visualDescription ||
+      contributor.image.analysis?.summary ||
+      null,
+    confirmedPeople,
+    knownWhen: formatCapturedAtForInterview(contributor.image.analysis?.capturedAt),
+    knownWhere,
+  };
+}
+
+function getKnownInterviewSteps(context: InterviewKnownContext) {
+  const steps = new Set<string>();
+
+  if (context.knownWhen) {
+    steps.add('when');
+  }
+
+  if (context.knownWhere) {
+    steps.add('where');
+  }
+
+  return steps;
+}
+
+function getNextInterviewStep({
+  currentStep,
+  answeredSteps,
+  knownSteps,
+}: {
+  currentStep: string;
+  answeredSteps: Set<string>;
+  knownSteps: Set<string>;
+}) {
+  const currentIndex = STEP_ORDER.indexOf(currentStep);
+
+  for (let index = currentIndex + 1; index < STEP_ORDER.length; index += 1) {
+    const candidate = STEP_ORDER[index];
+
+    if (candidate === 'completed') {
+      return 'completed';
+    }
+
+    if (answeredSteps.has(candidate) || knownSteps.has(candidate)) {
+      continue;
+    }
+
+    return candidate;
+  }
+
+  return 'completed';
+}
 
 async function generateInterviewResponse(
   conversation: InterviewConversation,
-  userMessage: string
+  userMessage: string,
+  knownContext: InterviewKnownContext
 ): Promise<{
   message: string;
   questionType?: string;
@@ -350,6 +530,10 @@ async function generateInterviewResponse(
 }> {
   const currentStep = conversation.currentStep;
   const messages = conversation.messages;
+  const conversationHistory = messages.map((m) => ({
+    role: m.role as 'user' | 'assistant',
+    content: m.content,
+  }));
 
   // If already completed
   if (currentStep === 'completed') {
@@ -358,29 +542,110 @@ async function generateInterviewResponse(
     };
   }
 
-  // Get current step index and move to next
-  const currentIndex = STEP_ORDER.indexOf(currentStep);
-  const nextStep = STEP_ORDER[currentIndex + 1] || 'completed';
+  if (currentStep === 'followup') {
+    const shouldCloseFollowup = /^(no|nope|nah|that'?s all|thats all|nothing else|all i have|all i remember)\b/i.test(
+      userMessage.trim()
+    );
 
-  // Build conversation history for Claude
-  const conversationHistory = messages.map((m) => ({
-    role: m.role as 'user' | 'assistant',
-    content: m.content,
-  }));
+    if (shouldCloseFollowup) {
+      return {
+        message: 'Thanks. Ember has everything you wanted to add, and the memory will stay updated.',
+        questionType: 'followup',
+        question: 'Additional detail',
+        answer: userMessage,
+        nextStep: 'completed',
+      };
+    }
 
-  // Use Claude to generate a natural follow-up
-  const systemPrompt = `You are a friendly interviewer helping someone share memories about a photo.
-You just received their answer to a question about "${currentStep}".
+    const followupPrompt = `You are Ember collecting one more memory detail after an interview was already completed.
 
 Your job:
-1. Briefly acknowledge their response (1 short sentence)
-2. Ask the next question naturally
+1. Briefly acknowledge the new detail without embellishing it.
+2. Invite one more small detail only if it feels natural.
 
-${nextStep !== 'completed' ? `Next question topic: "${nextStep}"
-Standard question: "${INTERVIEW_QUESTIONS[nextStep]}"
-Rephrase it naturally based on the conversation flow.` : 'This was the last question. Thank them warmly for sharing their memories and let them know their stories have been saved.'}
+Rules:
+- Do not add facts the contributor did not say.
+- Keep it to at most 2 short sentences.
+- Sound warm and concise.
+- End by making it clear they can add more or stop whenever they want.`;
 
-Keep your response concise and conversational (2-3 sentences max).`;
+    const followupResponse = await chat(followupPrompt, [
+      ...conversationHistory,
+      { role: 'user', content: userMessage },
+    ]);
+
+    return {
+      message: followupResponse,
+      questionType: 'followup',
+      question: 'Additional detail',
+      answer: userMessage,
+      nextStep: 'followup',
+    };
+  }
+
+  const answeredSteps = new Set(
+    (conversation.responses || [])
+      .map((response) => response.questionType)
+      .filter(Boolean)
+  );
+  answeredSteps.add(currentStep);
+
+  const nextStep = getNextInterviewStep({
+    currentStep,
+    answeredSteps,
+    knownSteps: getKnownInterviewSteps(knownContext),
+  });
+
+  const knownFacts = [
+    `Ember title: ${knownContext.imageTitle}`,
+    knownContext.imageDescription
+      ? `Image description: ${knownContext.imageDescription}`
+      : null,
+    knownContext.analysisSummary
+      ? `Image analysis summary: ${knownContext.analysisSummary}`
+      : null,
+    knownContext.confirmedPeople.length > 0
+      ? `Confirmed tagged people: ${knownContext.confirmedPeople.join(', ')}`
+      : null,
+    knownContext.knownWhen
+      ? `Known capture time from metadata: ${knownContext.knownWhen}`
+      : null,
+    knownContext.knownWhere
+      ? `Known location from metadata: ${knownContext.knownWhere}`
+      : null,
+    (conversation.responses || []).length > 0
+      ? `Answers already collected:\n${(conversation.responses || [])
+          .map((response) => `- ${response.questionType}: ${response.answer}`)
+          .join('\n')}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const systemPrompt = `You are Ember, guiding someone through a short memory interview about a photo.
+You just received their answer to the "${currentStep}" topic.
+
+Your job:
+1. Briefly acknowledge only what they actually said.
+2. Ask the next useful question naturally, or wrap up if the interview is complete.
+
+Rules:
+- Do not embellish, dramatize, or add facts the contributor did not say.
+- Do not reinterpret objects or people. If the contributor says "statue", "doll", "decoration", or similar, keep that wording.
+- Do not ask for facts already known from metadata, tags, or earlier answers.
+- Do not ask for date/time if metadata already provides it.
+- Do not ask for location if metadata already provides it.
+- Keep the whole response to at most 2 short sentences.
+- Sound warm, but restrained and grounded.
+
+Known context:
+${knownFacts || 'No extra confirmed context.'}
+
+${nextStep !== 'completed'
+  ? `Next question topic: "${nextStep}"
+Standard question intent: "${INTERVIEW_QUESTIONS[nextStep]}"
+Rephrase it naturally based on the conversation flow and known context.`
+  : 'The interview is complete. Thank them briefly and say Ember will update the memory with what they shared.'}`;
 
   const aiResponse = await chat(systemPrompt, [
     ...conversationHistory,

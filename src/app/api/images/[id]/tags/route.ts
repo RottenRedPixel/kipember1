@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
+import { generateWikiForImage } from '@/lib/wiki-generator';
 
 function parseOptionalPercentage(value: unknown): number | null {
   if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
@@ -29,6 +30,7 @@ export async function POST(
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
+    const body = await request.json();
     const {
       userId,
       contributorId,
@@ -39,7 +41,8 @@ export async function POST(
       topPct,
       widthPct,
       heightPct,
-    } = await request.json();
+    } = body;
+    const shouldRefreshWiki = body?.refreshWiki !== false;
 
     let tagLabel: string | null = typeof label === 'string' && label.trim() ? label.trim() : null;
     let linkedUserId: string | null = null;
@@ -132,6 +135,12 @@ export async function POST(
         },
       },
     });
+
+    if (shouldRefreshWiki) {
+      await generateWikiForImage(id).catch((wikiError) => {
+        console.error('Wiki refresh failed after tag create:', wikiError);
+      });
+    }
 
     return NextResponse.json({ tag });
   } catch (error) {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import UploadStarterCard from '@/components/UploadStarterCard';
+import UploadConfirmModal from '@/components/UploadConfirmModal';
 
 const UPLOAD_STEPS = [
   'Uploading your media',
@@ -93,6 +94,10 @@ export default function GuestImageUploader() {
   const clearSelection = () => {
     if (preview) {
       URL.revokeObjectURL(preview);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
 
     setSelectedFile(null);
@@ -231,88 +236,62 @@ export default function GuestImageUploader() {
         </div>
       )}
 
-      {!selectedFile ? (
-        <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
-            onChange={(event) => updateSelection(event.target.files?.[0] || null)}
-            className="hidden"
-            id="guest-file-input"
-          />
-          <UploadStarterCard
-            title="Create an Ember"
-            subtitle="Upload a photo or video to create your first ember."
-            supportText="Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V."
-            actionLabel="Create Ember"
-            isDragging={isDragging}
-            onOpenPicker={() => fileInputRef.current?.click()}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={(event) => {
-              event.preventDefault();
-              setIsDragging(false);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              setIsDragging(false);
-              updateSelection(event.dataTransfer.files[0] || null);
-            }}
-          />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
+        onChange={(event) => updateSelection(event.target.files?.[0] || null)}
+        className="hidden"
+        id="guest-file-input"
+      />
+      <UploadStarterCard
+        title="Create an Ember"
+        subtitle="Upload a photo or video to create your first ember."
+        supportText="Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V."
+        isDragging={isDragging}
+        onOpenPicker={() => fileInputRef.current?.click()}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          setIsDragging(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          setIsDragging(false);
+          updateSelection(event.dataTransfer.files[0] || null);
+        }}
+      />
 
-          {selectionError && (
-            <div className="ember-status ember-status-error mt-4">{selectionError}</div>
-          )}
-        </>
-      ) : (
-        <div className="space-y-4">
-          <div className="ember-card relative overflow-hidden rounded-[1.75rem]">
-            {selectedMediaType === 'video' ? (
-              <video
-                src={preview || undefined}
-                controls
-                playsInline
-                preload="metadata"
-                className="h-72 w-full object-contain bg-[var(--ember-charcoal)] sm:h-[30rem]"
-              />
-            ) : (
-              <img
-                src={preview || undefined}
-                alt="Preview"
-                className="h-72 w-full object-contain sm:h-[30rem]"
-              />
-            )}
-            <button
-              onClick={clearSelection}
-              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-sm font-medium text-white"
-            >
-              x
-            </button>
-          </div>
-
-          <div className="ember-card rounded-[1.6rem] px-5 py-4">
-            <p className="text-sm font-semibold text-[var(--ember-text)]">
-              What happens next
-            </p>
-            <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
-              First Ember gives a quick visual read. Then you can talk to Ember by text or have Ember call your phone to capture the memory in your own words.
-            </p>
-          </div>
-
-          <button
-            onClick={handleUpload}
-            disabled={isUploading}
-            className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isUploading
-              ? `Uploading ${selectedMediaType || 'media'}...`
-              : `Upload ${selectedMediaType || 'media'} and continue`}
-          </button>
-        </div>
+      {selectionError && (
+        <div className="ember-status ember-status-error mt-4">{selectionError}</div>
       )}
+
+      <UploadConfirmModal
+        open={Boolean(selectedFile && preview && !isUploading)}
+        preview={preview}
+        mediaType={selectedMediaType}
+        fileName={selectedFile?.name || 'Selected media'}
+        eyebrow="Guest demo"
+        title="Send this memory to Ember?"
+        subtitle="Ember will create a quick first read, then invite you to bring the memory to life by text or by phone call."
+        confirmLabel={`Upload ${selectedMediaType || 'media'} and continue`}
+        confirmBusyLabel={`Uploading ${selectedMediaType || 'media'}...`}
+        isSubmitting={isUploading}
+        onCancel={clearSelection}
+        onConfirm={() => void handleUpload()}
+      >
+        <div className="ember-card rounded-[1.6rem] px-5 py-4">
+          <p className="text-sm font-semibold text-[var(--ember-text)]">
+            What happens next
+          </p>
+          <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
+            Ember starts with a quick visual read, then lets you talk by text or get a phone call so the memory becomes more than just a photo.
+          </p>
+        </div>
+      </UploadConfirmModal>
     </div>
   );
 }

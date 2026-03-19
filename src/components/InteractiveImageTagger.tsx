@@ -148,6 +148,7 @@ export default function InteractiveImageTagger({
   tagIdentities,
   canManage,
   onUpdate,
+  onTagCreated,
 }: {
   imageId: string;
   mediaType: 'IMAGE' | 'VIDEO';
@@ -161,6 +162,7 @@ export default function InteractiveImageTagger({
   tagIdentities: TagIdentityOption[];
   canManage: boolean;
   onUpdate: () => void;
+  onTagCreated?: () => Promise<void> | void;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -637,7 +639,12 @@ export default function InteractiveImageTagger({
       }
 
       resetDraft();
-      onUpdate();
+
+      if (onTagCreated) {
+        await onTagCreated();
+      } else {
+        onUpdate();
+      }
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Failed to create tag');
     } finally {

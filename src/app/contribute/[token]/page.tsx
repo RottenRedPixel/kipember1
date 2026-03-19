@@ -216,7 +216,9 @@ export default function ContributePage() {
       case 'ongoing':
         return 'Your conversation with Ember is in progress.';
       case 'ended':
-        return 'Your call with Ember finished. We will sync it shortly.';
+        return data?.latestVoiceCall?.callSummary
+          ? 'Your call with Ember finished. We will sync it shortly.'
+          : 'Your last call with Ember ended.';
       case 'not_connected':
         return 'We could not connect your call with Ember.';
       case 'error':
@@ -254,12 +256,19 @@ export default function ContributePage() {
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
           <section className="ember-panel min-w-0 rounded-[2rem] p-5">
-            {data.guestFlow && (
+            {data.guestFlow ? (
               <Link
                 href={`/guest/${params.token}`}
                 className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
               >
                 {'<- Back to your memory'}
+              </Link>
+            ) : (
+              <Link
+                href={`/image/${data.image.id}/wiki`}
+                className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
+              >
+                {'<- Back to wiki'}
               </Link>
             )}
             <p className="ember-eyebrow">Contributor invite</p>
@@ -435,9 +444,22 @@ export default function ContributePage() {
                     <span className="ember-chip">Story updated</span>
                     <span className="ember-chip">Memory saved</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={startConversation}
+                    disabled={isSending || isCalling}
+                    className="ember-button-secondary mt-5 inline-flex px-5 disabled:opacity-60"
+                  >
+                    {isSending ? 'Opening...' : 'Add more by text'}
+                  </button>
                   {data.guestFlow && (
                     <Link href={`/guest/${params.token}`} className="ember-button-primary mt-5 inline-flex px-5">
                       View your memory
+                    </Link>
+                  )}
+                  {!data.guestFlow && (
+                    <Link href={`/image/${data.image.id}/wiki`} className="ember-button-primary mt-5 inline-flex px-5">
+                      View updated wiki
                     </Link>
                   )}
                 </div>

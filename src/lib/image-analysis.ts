@@ -1,7 +1,8 @@
 import { readFile } from 'fs/promises';
-import Anthropic from '@anthropic-ai/sdk';
 import exifr from 'exifr';
+import sharp from 'sharp';
 import { prisma } from '@/lib/db';
+import { getImageAnalysisModel, getOpenAIClient } from '@/lib/openai';
 import { getUploadPath, inferImageMimeType } from '@/lib/uploads';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -32,11 +33,14 @@ type ParsedVisionAnalysis = {
       genderPresentation: string | null;
       clothingAndStyle: string | null;
       bodyLanguageAndExpressions: string | null;
+      spatialRelationships: string | null;
       relationshipInference: string | null;
     };
     settingAndEnvironment: {
+      environmentType: string | null;
       locationType: string | null;
       timeOfDayAndLighting: string | null;
+      lightingDescription: string | null;
       weatherConditions: string | null;
       backgroundDetails: string | null;
       architectureOrLandscape: string | null;
@@ -44,6 +48,7 @@ type ParsedVisionAnalysis = {
     activitiesAndContext: {
       whatAppearsToBeHappening: string | null;
       socialDynamics: string | null;
+      interactionsBetweenPeople: string | null;
       eventType: string | null;
       visibleActivities: string[];
     };
@@ -56,10 +61,16 @@ type ParsedVisionAnalysis = {
     emotionalContext: {
       overallMoodAndAtmosphere: string | null;
       emotionalExpressions: string | null;
+      individualEmotions: string | null;
+      energyLevel: string | null;
       socialEnergy: string | null;
     };
     storyElements: {
       storyThisImageTells: string | null;
+      emberStory: string | null;
+      whyThisMomentMightMatter: string | null;
+      whatMakesThisPhotoSpecial: string | null;
+      meaningfulDetails: string | null;
       whatMightHaveHappenedBefore: string | null;
       whatMightHappenNext: string | null;
     };
@@ -84,9 +95,8 @@ type ParsedMetadata = {
   keywords: string[];
 };
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const MAX_VISION_BASE64_BYTES = 5 * 1024 * 1024;
+const TARGET_VISION_BASE64_BYTES = Math.floor(4.6 * 1024 * 1024);
 
 const VISION_SCHEMA = {
   type: 'object',
@@ -186,6 +196,7 @@ const VISION_SCHEMA = {
             'genderPresentation',
             'clothingAndStyle',
             'bodyLanguageAndExpressions',
+            'spatialRelationships',
             'relationshipInference',
           ],
           properties: {
@@ -205,6 +216,9 @@ const VISION_SCHEMA = {
             bodyLanguageAndExpressions: {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
+            spatialRelationships: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
             relationshipInference: {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
@@ -214,17 +228,25 @@ const VISION_SCHEMA = {
           type: 'object',
           additionalProperties: false,
           required: [
+            'environmentType',
             'locationType',
             'timeOfDayAndLighting',
+            'lightingDescription',
             'weatherConditions',
             'backgroundDetails',
             'architectureOrLandscape',
           ],
           properties: {
+            environmentType: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
             locationType: {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
             timeOfDayAndLighting: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            lightingDescription: {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
             weatherConditions: {
@@ -244,6 +266,7 @@ const VISION_SCHEMA = {
           required: [
             'whatAppearsToBeHappening',
             'socialDynamics',
+            'interactionsBetweenPeople',
             'eventType',
             'visibleActivities',
           ],
@@ -252,6 +275,9 @@ const VISION_SCHEMA = {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
             socialDynamics: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            interactionsBetweenPeople: {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
             eventType: {
@@ -294,6 +320,8 @@ const VISION_SCHEMA = {
           required: [
             'overallMoodAndAtmosphere',
             'emotionalExpressions',
+            'individualEmotions',
+            'energyLevel',
             'socialEnergy',
           ],
           properties: {
@@ -301,6 +329,12 @@ const VISION_SCHEMA = {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
             emotionalExpressions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            individualEmotions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            energyLevel: {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
             socialEnergy: {
@@ -313,11 +347,27 @@ const VISION_SCHEMA = {
           additionalProperties: false,
           required: [
             'storyThisImageTells',
+            'emberStory',
+            'whyThisMomentMightMatter',
+            'whatMakesThisPhotoSpecial',
+            'meaningfulDetails',
             'whatMightHaveHappenedBefore',
             'whatMightHappenNext',
           ],
           properties: {
             storyThisImageTells: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            emberStory: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            whyThisMomentMightMatter: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            whatMakesThisPhotoSpecial: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            meaningfulDetails: {
               anyOf: [{ type: 'string' }, { type: 'null' }],
             },
             whatMightHaveHappenedBefore: {
@@ -340,11 +390,14 @@ const EMPTY_SCENE_INSIGHTS: ParsedVisionAnalysis['sceneInsights'] = {
     genderPresentation: null,
     clothingAndStyle: null,
     bodyLanguageAndExpressions: null,
+    spatialRelationships: null,
     relationshipInference: null,
   },
   settingAndEnvironment: {
+    environmentType: null,
     locationType: null,
     timeOfDayAndLighting: null,
+    lightingDescription: null,
     weatherConditions: null,
     backgroundDetails: null,
     architectureOrLandscape: null,
@@ -352,6 +405,7 @@ const EMPTY_SCENE_INSIGHTS: ParsedVisionAnalysis['sceneInsights'] = {
   activitiesAndContext: {
     whatAppearsToBeHappening: null,
     socialDynamics: null,
+    interactionsBetweenPeople: null,
     eventType: null,
     visibleActivities: [],
   },
@@ -364,22 +418,20 @@ const EMPTY_SCENE_INSIGHTS: ParsedVisionAnalysis['sceneInsights'] = {
   emotionalContext: {
     overallMoodAndAtmosphere: null,
     emotionalExpressions: null,
+    individualEmotions: null,
+    energyLevel: null,
     socialEnergy: null,
   },
   storyElements: {
     storyThisImageTells: null,
+    emberStory: null,
+    whyThisMomentMightMatter: null,
+    whatMakesThisPhotoSpecial: null,
+    meaningfulDetails: null,
     whatMightHaveHappenedBefore: null,
     whatMightHappenNext: null,
   },
 };
-
-function requiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} is not configured`);
-  }
-  return value;
-}
 
 function stringifyJson(value: unknown): string | null {
   if (value == null) {
@@ -465,12 +517,15 @@ function normalizeSceneInsights(value: unknown): ParsedVisionAnalysis['sceneInsi
       genderPresentation: sanitizeNullableString(people?.genderPresentation),
       clothingAndStyle: sanitizeNullableString(people?.clothingAndStyle),
       bodyLanguageAndExpressions: sanitizeNullableString(people?.bodyLanguageAndExpressions),
+      spatialRelationships: sanitizeNullableString(people?.spatialRelationships),
       relationshipInference: sanitizeNullableString(people?.relationshipInference),
     },
     settingAndEnvironment: {
       ...EMPTY_SCENE_INSIGHTS.settingAndEnvironment,
+      environmentType: sanitizeNullableString(setting?.environmentType),
       locationType: sanitizeNullableString(setting?.locationType),
       timeOfDayAndLighting: sanitizeNullableString(setting?.timeOfDayAndLighting),
+      lightingDescription: sanitizeNullableString(setting?.lightingDescription),
       weatherConditions: sanitizeNullableString(setting?.weatherConditions),
       backgroundDetails: sanitizeNullableString(setting?.backgroundDetails),
       architectureOrLandscape: sanitizeNullableString(setting?.architectureOrLandscape),
@@ -479,6 +534,7 @@ function normalizeSceneInsights(value: unknown): ParsedVisionAnalysis['sceneInsi
       ...EMPTY_SCENE_INSIGHTS.activitiesAndContext,
       whatAppearsToBeHappening: sanitizeNullableString(activities?.whatAppearsToBeHappening),
       socialDynamics: sanitizeNullableString(activities?.socialDynamics),
+      interactionsBetweenPeople: sanitizeNullableString(activities?.interactionsBetweenPeople),
       eventType: sanitizeNullableString(activities?.eventType),
       visibleActivities: sanitizeStringList(activities?.visibleActivities),
     },
@@ -493,11 +549,17 @@ function normalizeSceneInsights(value: unknown): ParsedVisionAnalysis['sceneInsi
       ...EMPTY_SCENE_INSIGHTS.emotionalContext,
       overallMoodAndAtmosphere: sanitizeNullableString(emotional?.overallMoodAndAtmosphere),
       emotionalExpressions: sanitizeNullableString(emotional?.emotionalExpressions),
+      individualEmotions: sanitizeNullableString(emotional?.individualEmotions),
+      energyLevel: sanitizeNullableString(emotional?.energyLevel),
       socialEnergy: sanitizeNullableString(emotional?.socialEnergy),
     },
     storyElements: {
       ...EMPTY_SCENE_INSIGHTS.storyElements,
       storyThisImageTells: sanitizeNullableString(story?.storyThisImageTells),
+      emberStory: sanitizeNullableString(story?.emberStory),
+      whyThisMomentMightMatter: sanitizeNullableString(story?.whyThisMomentMightMatter),
+      whatMakesThisPhotoSpecial: sanitizeNullableString(story?.whatMakesThisPhotoSpecial),
+      meaningfulDetails: sanitizeNullableString(story?.meaningfulDetails),
       whatMightHaveHappenedBefore: sanitizeNullableString(story?.whatMightHaveHappenedBefore),
       whatMightHappenNext: sanitizeNullableString(story?.whatMightHappenNext),
     },
@@ -636,28 +698,89 @@ function buildMetadataSummary(metadata: ParsedMetadata): string | null {
   return parts.length > 0 ? parts.join(' ') : null;
 }
 
-function toBase64ImageSource(buffer: Buffer, mimeType: string) {
+async function prepareVisionImageBuffer(
+  buffer: Buffer,
+  mimeType: string
+): Promise<{ buffer: Buffer; mediaType: SupportedVisionMimeType } | null> {
   switch (mimeType) {
     case 'image/jpeg':
     case 'image/png':
     case 'image/gif':
     case 'image/webp':
-      return {
-        type: 'base64' as const,
-        media_type: mimeType as SupportedVisionMimeType,
-        data: buffer.toString('base64'),
-      };
+      break;
     default:
       return null;
   }
+
+  if (Buffer.byteLength(buffer.toString('base64'), 'utf8') <= MAX_VISION_BASE64_BYTES) {
+    return {
+      buffer,
+      mediaType: mimeType as SupportedVisionMimeType,
+    };
+  }
+
+  const metadata = await sharp(buffer, { animated: false }).metadata();
+  const largerDimension = Math.max(metadata.width || 0, metadata.height || 0);
+  const maxDimensions = [2200, 1800, 1440, 1200, 960, 768];
+  const qualities = [82, 74, 66, 58, 50, 42];
+
+  let smallestCandidate: Buffer | null = null;
+
+  for (const maxDimension of maxDimensions) {
+    for (const quality of qualities) {
+      let pipeline = sharp(buffer, { animated: false }).rotate();
+
+      if (largerDimension > 0) {
+        pipeline = pipeline.resize({
+          width: maxDimension,
+          height: maxDimension,
+          fit: 'inside',
+          withoutEnlargement: true,
+        });
+      }
+
+      const candidate = await pipeline
+        .flatten({ background: '#ffffff' })
+        .jpeg({ quality, mozjpeg: true })
+        .toBuffer();
+
+      if (!smallestCandidate || candidate.byteLength < smallestCandidate.byteLength) {
+        smallestCandidate = candidate;
+      }
+
+      if (
+        Buffer.byteLength(candidate.toString('base64'), 'utf8') <= TARGET_VISION_BASE64_BYTES
+      ) {
+        return {
+          buffer: candidate,
+          mediaType: 'image/jpeg',
+        };
+      }
+    }
+  }
+
+  if (
+    smallestCandidate &&
+    Buffer.byteLength(smallestCandidate.toString('base64'), 'utf8') <= MAX_VISION_BASE64_BYTES
+  ) {
+    return {
+      buffer: smallestCandidate,
+      mediaType: 'image/jpeg',
+    };
+  }
+
+  throw new Error(
+    `Image is too large for visual analysis even after resizing (${buffer.byteLength} bytes).`
+  );
 }
 
-function extractMessageText(content: Anthropic.Messages.ContentBlock[]): string {
-  return content
-    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
-    .join('\n')
-    .trim();
+async function toBase64ImageSource(buffer: Buffer, mimeType: string) {
+  const prepared = await prepareVisionImageBuffer(buffer, mimeType);
+  if (!prepared) {
+    return null;
+  }
+
+  return `data:${prepared.mediaType};base64,${prepared.buffer.toString('base64')}`;
 }
 
 function stripMarkdownCodeFence(text: string): string {
@@ -782,39 +905,44 @@ function parseJsonFromText(text: string): unknown {
 
 async function repairVisionJson(responseText: string): Promise<unknown> {
   const repairSource = extractBalancedJsonObject(responseText) || sanitizeJsonCandidate(responseText);
-  const repairMessage = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_IMAGE_ANALYSIS_MODEL || 'claude-sonnet-4-20250514',
-    max_tokens: 2600,
-    system: `You repair malformed JSON responses for an image-analysis pipeline.
-
-Return valid JSON only. Do not add markdown, commentary, or code fences.
-Preserve the original meaning as closely as possible.
-If the source appears truncated or malformed, repair it into the required schema using concise neutral values instead of leaving broken JSON.
-The repaired JSON must match this schema exactly:
-${JSON.stringify(VISION_SCHEMA)}`,
-    messages: [
+  const openai = getOpenAIClient();
+  const repairMessage = await openai.responses.create({
+    model: getImageAnalysisModel(),
+    input: [
       {
-        role: 'user',
+        role: 'developer',
+        type: 'message',
         content: [
           {
-            type: 'text',
-            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly.
-
-Rules:
-- Return JSON only.
-- Preserve grounded details that are present.
-- If a field is missing, use a short neutral fallback, null, or [] as appropriate.
-- Do not copy any markdown fences.
-
-Malformed JSON:
-${repairSource}`,
+            type: 'input_text',
+            text: 'You repair malformed JSON responses for an image-analysis pipeline. Return JSON only. Preserve grounded details, and use short neutral fallbacks, null, or [] when fields are missing.',
+          },
+        ],
+      },
+      {
+        role: 'user',
+        type: 'message',
+        content: [
+          {
+            type: 'input_text',
+            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly.\n\nMalformed JSON:\n${repairSource}`,
           },
         ],
       },
     ],
+    text: {
+      verbosity: 'low',
+      format: {
+        type: 'json_schema',
+        name: 'ember_image_analysis_repair',
+        description: 'Repaired JSON for Ember image analysis.',
+        schema: VISION_SCHEMA,
+        strict: false,
+      },
+    },
   });
 
-  return parseJsonFromText(extractMessageText(repairMessage.content));
+  return parseJsonFromText(repairMessage.output_text || '');
 }
 
 async function requestVisionAnalysisText({
@@ -832,62 +960,141 @@ async function requestVisionAnalysisText({
   metadataSummary: string | null;
   conciseMode: boolean;
 }) {
-  const imageSource = toBase64ImageSource(buffer, mimeType);
+  const imageSource = await toBase64ImageSource(buffer, mimeType);
   if (!imageSource) {
     throw new Error(`Visual analysis does not support ${mimeType}`);
   }
 
-  return anthropic.messages.create({
-    model: process.env.ANTHROPIC_IMAGE_ANALYSIS_MODEL || 'claude-sonnet-4-20250514',
-    max_tokens: conciseMode ? 1900 : 2200,
-    system: `You analyze uploaded personal photos for a memory wiki.
+  const openai = getOpenAIClient();
 
-Your job is to describe what is visibly present in the photo and what it may indicate.
+  const response = await openai.responses.create({
+    model: getImageAnalysisModel(),
+    input: [
+      {
+        role: 'developer',
+        type: 'message',
+        content: [
+          {
+            type: 'input_text',
+            text: `You are analyzing an image to transform it into a meaningful, searchable memory.
 
-Rules:
-- Be grounded in what is actually visible.
+CORE RULES:
+- Only describe what is visually supported.
+- Do NOT guess relationships, identities, or intent unless strongly implied.
+- If uncertain, say "unknown" or use null.
+- Avoid generic phrases.
+- Be vivid, human, and memory-focused, not robotic.
 - Do not identify unknown private individuals by name from appearance alone.
-- If the image suggests a recognizable landmark or place, express confidence honestly.
-- Distinguish between strong visual evidence and softer inference.
-- Treat the user's description and embedded metadata as supporting context, not proof of unseen facts.
-- Favor specificity over generic captions.
+- Treat the user's description and metadata as supporting context, not proof of unseen facts.
 - Set "title" to a short, natural Ember name in plain language.
 - Never use the upload filename, file extension, or generic placeholders as the title.
 - Return valid JSON only. Do not include markdown, commentary, or code fences.
 - The JSON must match this schema exactly:
 ${JSON.stringify(VISION_SCHEMA)}
+
+Use this review framework and map it into the JSON:
+
+1. PEOPLE
+- Count -> sceneInsights.peopleAndDemographics.numberOfPeopleVisible
+- Age groups + confidence -> sceneInsights.peopleAndDemographics.estimatedAgeRanges
+- Gender presentation (if clear) -> sceneInsights.peopleAndDemographics.genderPresentation
+- Clothing & notable details -> sceneInsights.peopleAndDemographics.clothingAndStyle
+- Facial expressions & body language -> sceneInsights.peopleAndDemographics.bodyLanguageAndExpressions
+- Spatial relationships -> sceneInsights.peopleAndDemographics.spatialRelationships
+- Possible relationships -> sceneInsights.peopleAndDemographics.relationshipInference
+
+2. SETTING
+- Environment (indoor/outdoor) -> sceneInsights.settingAndEnvironment.environmentType
+- Location type -> sceneInsights.settingAndEnvironment.locationType
+- Time of day + confidence -> sceneInsights.settingAndEnvironment.timeOfDayAndLighting
+- Lighting description -> sceneInsights.settingAndEnvironment.lightingDescription
+- Weather -> sceneInsights.settingAndEnvironment.weatherConditions
+- Background details -> sceneInsights.settingAndEnvironment.backgroundDetails
+
+3. ACTIVITY
+- What is happening in this exact moment -> sceneInsights.activitiesAndContext.whatAppearsToBeHappening
+- Interactions between people -> sceneInsights.activitiesAndContext.interactionsBetweenPeople
+- Social dynamics -> sceneInsights.activitiesAndContext.socialDynamics
+- Objects being used or focused on -> sceneInsights.technicalDetails.objectsOfInterest and notableThings
+- Event type -> sceneInsights.activitiesAndContext.eventType
+
+4. EMOTIONAL SIGNALS
+- Overall mood -> mood and sceneInsights.emotionalContext.overallMoodAndAtmosphere
+- Individual emotions -> sceneInsights.emotionalContext.individualEmotions
+- Visible emotional expressions -> sceneInsights.emotionalContext.emotionalExpressions
+- Energy level -> sceneInsights.emotionalContext.energyLevel
+
+5. MEMORY SIGNALS
+- Why this moment might matter -> sceneInsights.storyElements.whyThisMomentMightMatter
+- What makes this photo special -> sceneInsights.storyElements.whatMakesThisPhotoSpecial
+- Small but meaningful details -> sceneInsights.storyElements.meaningfulDetails
+
+6. EMBER STORY
+- Write 3-5 sentences like a human recalling the moment.
+- Put the full memory-style version in sceneInsights.storyElements.emberStory.
+- Keep summary as a concise overview.
+- Keep visualDescription as a grounded visual description.
+
+7. BEFORE & AFTER
+- 30 seconds before -> sceneInsights.storyElements.whatMightHaveHappenedBefore
+- 30 seconds after -> sceneInsights.storyElements.whatMightHappenNext
+
+8. CONTEXT GAPS
+- Put 3-5 missing-but-useful questions in openQuestions.
+
+9. SEARCH TAGS
+- Put 10-15 useful retrieval tags in searchableKeywords.
+
+Also fill peopleObserved, placeSignals, notableThings, activities, and visibleText with the strongest grounded observations.
+Use "unknown", null, or [] instead of guessing.
 ${conciseMode ? `
-- Keep each string concise.
-- Limit arrays to the strongest 3-5 items.
-- Prefer null over long speculative prose.` : ''}`,
-    messages: [
+Keep each string concise.
+Limit arrays to the strongest items.
+Prefer null over long speculative prose.` : ''}`,
+          },
+        ],
+      },
       {
         role: 'user',
         content: [
           {
-            type: 'text',
+            type: 'input_text',
             text: [
               `Filename: ${originalName}`,
               `User description: ${userDescription || 'None provided.'}`,
               `Metadata summary: ${metadataSummary || 'No metadata available.'}`,
-              'Analyze the photo for a memory wiki.',
+              'Analyze this image as a memory reviewer for Ember.',
+              'Make it useful for search, recall, and future conversation.',
               'The title should read like a human memory label, not a filename.',
-              'Return grounded structured observations about visible people, places, objects, activities, mood, visible text, open questions, and richer scene insights.',
-              'In scene insights, include the kinds of fields a human reviewer would want: people/demographics, setting/environment, activities/context, technical photo observations, emotional tone, and likely story context.',
-              'Be explicit when something is only an appearance-based inference instead of a confirmed fact.',
+              'Only include relationships or event labels when they are strongly implied by the image.',
+              'If a detail is uncertain, mark it as unknown or lower-confidence instead of inventing it.',
               conciseMode
                 ? 'Be brief enough that the full response remains compact and valid JSON.'
                 : 'Write naturally, but keep the JSON compact and valid.',
             ].join('\n'),
           },
           {
-            type: 'image',
-            source: imageSource,
+            type: 'input_image',
+            image_url: imageSource,
+            detail: conciseMode ? 'auto' : 'high',
           },
         ],
+        type: 'message',
       },
     ],
+    text: {
+      verbosity: conciseMode ? 'low' : 'medium',
+      format: {
+        type: 'json_schema',
+        name: 'ember_image_analysis',
+        description: 'Structured image analysis for Ember memory creation.',
+        schema: VISION_SCHEMA,
+        strict: false,
+      },
+    },
   });
+
+  return response.output_text || '';
 }
 
 async function analyzeImageVisually({
@@ -903,24 +1110,25 @@ async function analyzeImageVisually({
   userDescription: string | null;
   metadataSummary: string | null;
 }): Promise<ParsedVisionAnalysis> {
-  requiredEnv('ANTHROPIC_API_KEY');
-
   const attemptModes = [false, true];
   let lastError: Error | null = null;
 
   for (const conciseMode of attemptModes) {
-    const message = await requestVisionAnalysisText({
-      buffer,
-      mimeType,
-      originalName,
-      userDescription,
-      metadataSummary,
-      conciseMode,
-    });
-    const responseText = extractMessageText(message.content);
-
-    if (message.stop_reason === 'max_tokens') {
-      lastError = new Error('Visual analysis response was truncated before it finished');
+    let responseText = '';
+    try {
+      responseText = await requestVisionAnalysisText({
+        buffer,
+        mimeType,
+        originalName,
+        userDescription,
+        metadataSummary,
+        conciseMode,
+      });
+    } catch (requestError) {
+      lastError =
+        requestError instanceof Error
+          ? requestError
+          : new Error('Visual analysis request failed');
       continue;
     }
 

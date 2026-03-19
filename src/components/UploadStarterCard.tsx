@@ -6,7 +6,6 @@ type UploadStarterCardProps = {
   title: string;
   subtitle: string;
   supportText: string;
-  actionLabel: string;
   isDragging: boolean;
   onOpenPicker: () => void;
   onDragOver: (event: DragEvent<HTMLButtonElement>) => void;
@@ -53,7 +52,6 @@ export default function UploadStarterCard({
   title,
   subtitle,
   supportText,
-  actionLabel,
   isDragging,
   onOpenPicker,
   onDragOver,
@@ -90,14 +88,6 @@ export default function UploadStarterCard({
           <span className="text-[var(--ember-orange-deep)]">browse</span>
         </p>
         <p className="mt-4 text-sm leading-7 text-[var(--ember-muted)]">{supportText}</p>
-      </button>
-
-      <button
-        type="button"
-        onClick={onOpenPicker}
-        className="mt-8 inline-flex min-h-[3.55rem] w-full items-center justify-center rounded-[1rem] bg-[var(--ember-orange)] px-6 text-base font-semibold text-white shadow-[0_16px_30px_rgba(255,102,33,0.2)] transition hover:bg-[var(--ember-orange-deep)]"
-      >
-        {actionLabel}
       </button>
     </div>
   );

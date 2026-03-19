@@ -8,9 +8,12 @@ import ContributorList from '@/components/ContributorList';
 import TagManager from '@/components/TagManager';
 import InteractiveImageTagger from '@/components/InteractiveImageTagger';
 import AutoTagPrompt from '@/components/AutoTagPrompt';
+import LocationSuggestionPrompt from '@/components/LocationSuggestionPrompt';
+import MemoryTellMoreActions from '@/components/MemoryTellMoreActions';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 import { getPreviewMediaUrl } from '@/lib/media';
+import ImageAttachmentGallery from '@/components/ImageAttachmentGallery';
 
 interface ImageRecord {
   id: string;
@@ -56,8 +59,30 @@ interface ImageRecord {
       createdAt: string;
       callSummary: string | null;
       initiatedBy: string;
+      memorySyncedAt: string | null;
     }[];
   }[];
+  ownerConversationTarget: {
+    id: string;
+    phoneNumber: string | null;
+    token: string;
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+      phoneNumber: string | null;
+    } | null;
+    voiceCalls: {
+      id: string;
+      status: string;
+      startedAt: string | null;
+      endedAt: string | null;
+      createdAt: string;
+      callSummary: string | null;
+      initiatedBy: string;
+      memorySyncedAt: string | null;
+    }[];
+  } | null;
   tags: {
     id: string;
     label: string;
@@ -82,6 +107,17 @@ interface ImageRecord {
       phoneNumber: string | null;
       inviteSent: boolean;
     } | null;
+  }[];
+  attachments: {
+    id: string;
+    filename: string;
+    mediaType: 'IMAGE' | 'VIDEO';
+    posterFilename: string | null;
+    durationSeconds: number | null;
+    originalName: string;
+    description: string | null;
+    createdAt: string;
+    updatedAt: string;
   }[];
   friends: {
     id: string;
@@ -152,10 +188,9 @@ function CircleIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function ShareIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M12 4v10" />
-      <path d="m8 8 4-4 4 4" />
-      <path d="M5 13.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4.5" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M11.28 3.72a1.02 1.02 0 0 1 1.44 0l3.9 3.9a1.02 1.02 0 0 1-1.44 1.44L13.02 6.9v7.22a1.02 1.02 0 1 1-2.04 0V6.9L8.82 9.06a1.02 1.02 0 1 1-1.44-1.44l3.9-3.9Z" />
+      <path d="M8.1 11.88a1.02 1.02 0 1 0 0 2.04h-.66c-.72 0-1.32.59-1.32 1.32v4.14c0 .73.6 1.32 1.32 1.32h9.12c.72 0 1.32-.59 1.32-1.32v-4.14c0-.73-.6-1.32-1.32-1.32h-.66a1.02 1.02 0 1 0 0-2.04h.66a3.36 3.36 0 0 1 3.36 3.36v4.14A3.36 3.36 0 0 1 16.56 22H7.44a3.36 3.36 0 0 1-3.36-3.36v-4.14a3.36 3.36 0 0 1 3.36-3.36h.66Z" />
     </svg>
   );
 }
@@ -200,27 +235,24 @@ function ActionButton({
   href?: string;
 }) {
   const className =
-    'flex min-h-[4.5rem] flex-col items-center justify-center gap-2 rounded-[1.5rem] border border-[var(--ember-orange-deep)] bg-[var(--ember-orange)] px-3 py-3 text-center text-white transition hover:border-[var(--ember-orange-deep)] hover:bg-[var(--ember-orange-deep)]';
+    'flex min-h-[4.5rem] items-center justify-center rounded-[1.5rem] border border-[var(--ember-orange-deep)] bg-[var(--ember-orange)] px-3 py-3 text-center text-white transition hover:border-[var(--ember-orange-deep)] hover:bg-[var(--ember-orange-deep)]';
 
   const content = (
-    <>
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/16 text-white">
-        {icon}
-      </span>
-      <span className="text-sm font-medium text-white">{label}</span>
-    </>
+    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/16 text-white">
+      {icon}
+    </span>
   );
 
   if (href) {
     return (
-      <Link href={href} className={className}>
+      <Link href={href} className={className} aria-label={label}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={onClick} className={className}>
+    <button type="button" onClick={onClick} className={className} aria-label={label}>
       {content}
     </button>
   );
@@ -290,6 +322,7 @@ export default function ImagePage() {
   const [shapeView, setShapeView] = useState<ShapeView>('menu');
   const [deletingEmber, setDeletingEmber] = useState(false);
   const [autoTagPromptDismissed, setAutoTagPromptDismissed] = useState(false);
+  const [locationPromptDismissed, setLocationPromptDismissed] = useState(false);
   const fromUpload = searchParams.get('fromUpload') === '1';
   const requestedPanel = searchParams.get('panel');
   const requestedShapeView = searchParams.get('view');
@@ -330,6 +363,7 @@ export default function ImagePage() {
 
   useEffect(() => {
     setAutoTagPromptDismissed(false);
+    setLocationPromptDismissed(false);
   }, [fromUpload, params.id]);
 
   useEffect(() => {
@@ -380,6 +414,11 @@ export default function ImagePage() {
       const nextQuery = nextParams.toString();
       router.replace(nextQuery ? `/image/${params.id}?${nextQuery}` : `/image/${params.id}`);
     }
+  };
+
+  const handleOpenAttachmentPicker = () => {
+    closePanel();
+    window.dispatchEvent(new CustomEvent('ember:open-attachment-picker'));
   };
 
   const handleShareSave = async () => {
@@ -571,21 +610,65 @@ export default function ImagePage() {
     filename: image.filename,
     posterFilename: image.posterFilename,
   });
+  const ownerConversationTarget = image.ownerConversationTarget;
+  const autoTagStepComplete =
+    autoTagPromptDismissed || !fromUpload || !image.canManage || image.tags.length > 0;
 
   const handleAutoTagDismiss = () => {
     setAutoTagPromptDismissed(true);
+  };
+
+  const handleManualTagFromPrompt = () => {
+    setAutoTagPromptDismissed(true);
+    setShapeView('tag');
+    setActivePanel('shape');
+  };
+
+  const handleAutoTagApplied = async (labels: string[]) => {
+    await fetchImage();
+
+    try {
+      const response = await fetch(`/api/wiki/${image.id}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Failed to refresh the wiki after auto-tagging');
+      }
+    } catch (wikiError) {
+      setShareError(
+        wikiError instanceof Error
+          ? wikiError.message
+          : 'Failed to refresh the wiki after auto-tagging'
+      );
+    }
+
+    setAutoTagPromptDismissed(true);
+    setShapeView('tag');
+    setActivePanel('shape');
+    setActionNotice(
+      labels.length > 0
+        ? `Auto-tagged ${labels.join(labels.length === 2 ? ' and ' : ', ')}. Add any remaining tags, then close when you are ready to continue.`
+        : 'Auto-tagged familiar faces. Add any remaining tags, then close when you are ready to continue.'
+    );
+  };
+
+  const handleLocationPromptDismiss = () => {
+    setLocationPromptDismissed(true);
     if (fromUpload) {
       router.replace(`/image/${image.id}`);
     }
   };
 
-  const handleAutoTagApplied = async (labels: string[]) => {
+  const handleLocationApplied = (locationLabel: string) => {
+    setActionNotice(`Added ${locationLabel} into the Ember story and refreshed the wiki.`);
+  };
+
+  const handleManualTagComplete = async () => {
     await fetchImage();
-    setActionNotice(
-      labels.length > 0
-        ? `Auto-tagged ${labels.join(labels.length === 2 ? ' and ' : ', ')}.`
-        : 'Auto-tagged familiar faces.'
-    );
+    closePanel();
+    router.push(`/image/${image.id}/wiki`);
   };
 
   return (
@@ -618,6 +701,26 @@ export default function ImagePage() {
             {emberTitle}
           </h1>
         </div>
+
+        {image.canManage && ownerConversationTarget && (
+          <div className="ember-panel rounded-[2rem] p-5 sm:p-6">
+            <p className="ember-eyebrow">Tell more</p>
+            <h2 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
+              Add more to this memory
+            </h2>
+            <p className="ember-copy mt-2 text-sm">
+              Type with Ember or have it call you so this Ember can keep growing.
+            </p>
+            <MemoryTellMoreActions
+              className="mt-5"
+              contributorToken={ownerConversationTarget.token}
+              contributorId={ownerConversationTarget.id}
+              phoneAvailable={Boolean(ownerConversationTarget.phoneNumber || ownerConversationTarget.user?.phoneNumber)}
+              latestVoiceCall={ownerConversationTarget.voiceCalls[0] || null}
+              onRefreshRequested={fetchImage}
+            />
+          </div>
+        )}
 
         <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="ember-panel rounded-[2rem] p-5 sm:p-6">
@@ -681,6 +784,13 @@ export default function ImagePage() {
             onClick={() => setActivePanel('share')}
           />
         </div>
+
+        <ImageAttachmentGallery
+          imageId={image.id}
+          canManage={image.canManage}
+          attachments={image.attachments}
+          onUpdate={fetchImage}
+        />
       </section>
 
       <EmberSheet
@@ -777,6 +887,19 @@ export default function ImagePage() {
               {image.canManage && (
                 <button
                   type="button"
+                  onClick={handleOpenAttachmentPicker}
+                  className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                >
+                  <div className="text-lg font-semibold text-[var(--ember-text)]">Add content</div>
+                  <p className="mt-2 text-sm text-[var(--ember-muted)]">
+                    Attach more photos or videos to this Ember.
+                  </p>
+                </button>
+              )}
+
+              {image.canManage && (
+                <button
+                  type="button"
                   onClick={() => setShapeView('tag')}
                   className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)]"
                 >
@@ -849,6 +972,7 @@ export default function ImagePage() {
               tagIdentities={image.tagIdentities}
               canManage={image.canManage}
               onUpdate={fetchImage}
+              onTagCreated={handleManualTagComplete}
             />
 
             <TagManager
@@ -944,28 +1068,25 @@ export default function ImagePage() {
             <button
               type="button"
               onClick={() => setActivePanel('ask')}
-              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
               aria-label="Ask Ember"
             >
               <DiamondIcon className="h-5 w-5" />
-              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Ask Ember</span>
             </button>
             <Link
               href={`/image/${image.id}/wiki`}
-              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
               aria-label="Play Ember"
             >
               <PlayIcon className="h-5 w-5" />
-              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Play Ember</span>
             </Link>
             <button
               type="button"
               onClick={() => setActivePanel('contributors')}
-              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
               aria-label="Contributors"
             >
               <PersonIcon className="h-5 w-5" />
-              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Contributors</span>
             </button>
             <button
               type="button"
@@ -973,20 +1094,18 @@ export default function ImagePage() {
                 setShapeView('menu');
                 setActivePanel('shape');
               }}
-              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
               aria-label="Tend Ember"
             >
               <CircleIcon className="h-5 w-5" />
-              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Tend Ember</span>
             </button>
             <button
               type="button"
               onClick={() => setActivePanel('share')}
-              className="flex min-h-[4.2rem] flex-col items-center justify-center gap-1 px-1 text-center text-white"
+              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
               aria-label="Share Ember"
             >
               <ShareIcon className="h-5 w-5" />
-              <span className="text-[0.62rem] font-medium leading-tight text-white/84">Share Ember</span>
             </button>
           </div>
         </div>
@@ -996,10 +1115,31 @@ export default function ImagePage() {
         imageId={image.id}
         imageName={emberTitle}
         mediaUrl={previewMediaUrl}
-        enabled={fromUpload && image.canManage && image.tags.length === 0 && !autoTagPromptDismissed}
+        enabled={
+          fromUpload &&
+          image.canManage &&
+          image.tags.length === 0 &&
+          !autoTagPromptDismissed &&
+          !activePanel
+        }
         existingTagCount={image.tags.length}
         onApplied={handleAutoTagApplied}
+        onAddManualTags={handleManualTagFromPrompt}
         onDismiss={handleAutoTagDismiss}
+      />
+
+      <LocationSuggestionPrompt
+        imageId={image.id}
+        imageName={emberTitle}
+        enabled={
+          fromUpload &&
+          image.canManage &&
+          autoTagStepComplete &&
+          !locationPromptDismissed &&
+          !activePanel
+        }
+        onApplied={handleLocationApplied}
+        onDismiss={handleLocationPromptDismiss}
       />
     </div>
   );

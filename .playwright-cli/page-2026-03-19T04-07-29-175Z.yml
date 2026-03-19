@@ -1,0 +1,43 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e39] [cursor=pointer]:
+    - img [ref=e40]
+  - alert [ref=e43]
+  - main [ref=e45]:
+    - generic [ref=e48]:
+      - link "Ember account access" [ref=e49] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e51]:
+          - generic [ref=e52]: Ember
+          - generic [ref=e53]: account access
+      - generic [ref=e54]:
+        - link "Login" [ref=e55] [cursor=pointer]:
+          - /url: /login
+        - link "Create account" [ref=e56] [cursor=pointer]:
+          - /url: /signup
+    - generic [ref=e58]:
+      - generic [ref=e59]:
+        - link "Ember new account" [ref=e60] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e62]:
+            - generic [ref=e63]: Ember
+            - generic [ref=e64]: new account
+        - heading "Create your account" [level=1] [ref=e65]
+        - paragraph [ref=e66]: Start your Ember network, upload photos, and invite the people who help tell the story.
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - generic [ref=e69]: Name
+          - textbox "How should Ember know you?" [ref=e70]
+        - generic [ref=e71]:
+          - generic [ref=e72]: Email
+          - textbox "you@example.com" [ref=e73]
+        - generic [ref=e74]:
+          - generic [ref=e75]: Phone
+          - textbox "Optional, but useful for contributor invites" [ref=e76]
+        - generic [ref=e77]:
+          - generic [ref=e78]: Password
+          - textbox "At least 8 characters" [ref=e79]
+        - button "Create account" [ref=e80]
+      - paragraph [ref=e81]:
+        - text: Already have an account?
+        - link "Log in" [ref=e82] [cursor=pointer]:
+          - /url: /login

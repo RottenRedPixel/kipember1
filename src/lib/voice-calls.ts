@@ -149,6 +149,70 @@ type PriorMemoryContext = {
   followUpFocus: string | null;
 };
 
+type RefreshableVoiceCallState = {
+  status: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  endedAt?: Date | string | null;
+  analyzedAt?: Date | string | null;
+  memorySyncedAt?: Date | string | null;
+};
+
+const REGISTERED_REFRESH_MS = 8 * 1000;
+const ONGOING_REFRESH_MS = 15 * 1000;
+const ENDED_REFRESH_MS = 8 * 1000;
+const ENDED_REFRESH_WINDOW_MS = 90 * 1000;
+
+function toTimestamp(value: Date | string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value.getTime() : null;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function shouldRefreshVoiceCallStatus(call: RefreshableVoiceCallState | null) {
+  if (!call || call.memorySyncedAt) {
+    return false;
+  }
+
+  const now = Date.now();
+  const updatedAtMs = toTimestamp(call.updatedAt) ?? 0;
+  const createdAtMs = toTimestamp(call.createdAt) ?? updatedAtMs;
+  const sinceUpdateMs = now - updatedAtMs;
+
+  switch (call.status) {
+    case 'registered':
+      return (
+        sinceUpdateMs >= REGISTERED_REFRESH_MS &&
+        now - createdAtMs <= ACTIVE_CALL_WINDOW_MS
+      );
+    case 'ongoing':
+      return (
+        sinceUpdateMs >= ONGOING_REFRESH_MS &&
+        now - createdAtMs <= ACTIVE_CALL_WINDOW_MS
+      );
+    case 'ended': {
+      if (call.analyzedAt) {
+        return false;
+      }
+
+      const endedAtMs = toTimestamp(call.endedAt) ?? createdAtMs;
+      return (
+        sinceUpdateMs >= ENDED_REFRESH_MS &&
+        now - endedAtMs <= ENDED_REFRESH_WINDOW_MS
+      );
+    }
+    default:
+      return false;
+  }
+}
+
 function summarizeAnswer(answer: string, maxLength = 180): string {
   const compact = answer.replace(/\s+/g, ' ').trim();
   if (compact.length <= maxLength) {

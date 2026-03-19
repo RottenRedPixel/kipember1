@@ -299,23 +299,30 @@ async function cropFaceBuffer(
 
   const left = Math.max(
     0,
-    Math.floor((normalizedBox.leftPct / 100) * metadata.width)
+    Math.min(
+      metadata.width - 1,
+      Math.floor((normalizedBox.leftPct / 100) * metadata.width)
+    )
   );
   const top = Math.max(
     0,
-    Math.floor((normalizedBox.topPct / 100) * metadata.height)
-  );
-  const width = Math.max(
-    32,
-    Math.min(metadata.width - left, Math.floor((normalizedBox.widthPct / 100) * metadata.width))
-  );
-  const height = Math.max(
-    32,
     Math.min(
-      metadata.height - top,
-      Math.floor((normalizedBox.heightPct / 100) * metadata.height)
+      metadata.height - 1,
+      Math.floor((normalizedBox.topPct / 100) * metadata.height)
     )
   );
+  const availableWidth = Math.max(1, metadata.width - left);
+  const availableHeight = Math.max(1, metadata.height - top);
+  const requestedWidth = Math.max(
+    1,
+    Math.floor((normalizedBox.widthPct / 100) * metadata.width)
+  );
+  const requestedHeight = Math.max(
+    1,
+    Math.floor((normalizedBox.heightPct / 100) * metadata.height)
+  );
+  const width = Math.min(availableWidth, Math.max(32, requestedWidth));
+  const height = Math.min(availableHeight, Math.max(32, requestedHeight));
 
   return rotated
     .extract({ left, top, width, height })
@@ -898,19 +905,27 @@ export async function suggestFaceMatchesForImage({
     return [];
   }
 
-  const loadedCandidates = await Promise.all(
-    referenceCandidates.map(async (candidate) => ({
-      ...candidate,
-      referenceImages: (
-        await Promise.all(
-          candidate.references.flatMap((reference) => [
-            cropFaceBuffer(reference.image, reference.box, 'tight'),
-            cropFaceBuffer(reference.image, reference.box, 'expanded'),
-          ])
+  const loadedCandidates = (
+    await Promise.all(
+      referenceCandidates.map(async (candidate) => ({
+        ...candidate,
+        referenceImages: (
+          await Promise.allSettled(
+            candidate.references.flatMap((reference) => [
+              cropFaceBuffer(reference.image, reference.box, 'tight'),
+              cropFaceBuffer(reference.image, reference.box, 'expanded'),
+            ])
+          )
         )
-      ).filter(Boolean),
-    }))
-  );
+          .flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
+          .filter(Boolean),
+      }))
+    )
+  ).filter((candidate) => candidate.referenceImages.length > 0);
+
+  if (loadedCandidates.length === 0) {
+    return [];
+  }
 
   const suggestions: FaceMatchSuggestion[] = [];
 
@@ -1033,33 +1048,43 @@ export async function suggestAutoTagMatchesForImage({
       referenceCandidates.map(async (candidate) => ({
         ...candidate,
         referenceImages: (
-          await Promise.all(
+          await Promise.allSettled(
             candidate.references.flatMap((reference) => [
               cropFaceBuffer(reference.image, reference.box, 'tight'),
               cropFaceBuffer(reference.image, reference.box, 'expanded'),
             ])
           )
-        ).filter(Boolean),
+        )
+          .flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
+          .filter(Boolean),
       }))
     ),
   ]);
 
+  const validCandidates = loadedCandidates.filter(
+    (candidate) => candidate.referenceImages.length > 0
+  );
+
+  if (validCandidates.length === 0) {
+    return [];
+  }
+
   const matches =
-    loadedCandidates.length <= 3
+    validCandidates.length <= 3
       ? (
           await Promise.all(
-            loadedCandidates.map(async (candidate) => {
+            validCandidates.map(async (candidate) => {
               const candidateMatches = await locateCandidateMatchesInImage(targetImage, [candidate]);
               return candidateMatches[0] || null;
             })
           )
         ).filter((match): match is NonNullable<typeof match> => Boolean(match))
-      : await locateCandidateMatchesInImage(targetImage, loadedCandidates);
+      : await locateCandidateMatchesInImage(targetImage, validCandidates);
 
   const suggestions: FaceMatchSuggestion[] = [];
 
   matches.forEach((match, index) => {
-    const candidate = loadedCandidates.find((item) => item.personKey === match.personKey);
+    const candidate = validCandidates.find((item) => item.personKey === match.personKey);
     if (!candidate || match.confidence === 'low') {
       return;
     }

@@ -55,6 +55,18 @@ function joinLabels(labels: string[]) {
   return `${labels.slice(0, -1).join(', ')}, and ${labels[labels.length - 1]}`;
 }
 
+function getSuggestionCopy(suggestion: Pick<MatchSuggestion, 'label' | 'confidence'>) {
+  if (suggestion.confidence === 'low') {
+    return `Maybe ${suggestion.label}`;
+  }
+
+  if (suggestion.confidence === 'medium') {
+    return `${suggestion.label}?`;
+  }
+
+  return `Looks like ${suggestion.label}`;
+}
+
 export default function AutoTagPrompt({
   imageId,
   imageName,
@@ -62,6 +74,7 @@ export default function AutoTagPrompt({
   enabled,
   existingTagCount,
   onApplied,
+  onAddManualTags,
   onDismiss,
 }: {
   imageId: string;
@@ -70,6 +83,7 @@ export default function AutoTagPrompt({
   enabled: boolean;
   existingTagCount: number;
   onApplied: (labels: string[]) => Promise<void> | void;
+  onAddManualTags: () => void;
   onDismiss: () => void;
 }) {
   const [status, setStatus] = useState<'idle' | 'detecting' | 'matching' | 'ready' | 'applying'>('idle');
@@ -215,6 +229,46 @@ export default function AutoTagPrompt({
     [detectedFaces, suggestions]
   );
 
+  const persistSuggestions = async (items: MatchSuggestion[]) => {
+    const results = await Promise.allSettled(
+      items.map(async (suggestion) => {
+        const response = await fetch(`/api/images/${imageId}/tags`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            label: suggestion.label,
+            email: suggestion.email,
+            phoneNumber: suggestion.phoneNumber,
+            userId: suggestion.userId,
+            contributorId: suggestion.contributorId,
+            leftPct: suggestion.leftPct,
+            topPct: suggestion.topPct,
+            widthPct: suggestion.widthPct,
+            heightPct: suggestion.heightPct,
+            refreshWiki: false,
+          }),
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.error || `Failed to auto-tag ${suggestion.label}`);
+        }
+
+        return suggestion.label;
+      })
+    );
+
+    const savedLabels = results
+      .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
+      .map((result) => result.value);
+
+    if (savedLabels.length === 0) {
+      throw new Error('Ember could not save the suggested tags');
+    }
+
+    return Array.from(new Set(savedLabels));
+  };
+
   const handleAutoTag = async () => {
     if (snappedSuggestions.length === 0) {
       onDismiss();
@@ -225,42 +279,22 @@ export default function AutoTagPrompt({
     setError('');
 
     try {
-      const results = await Promise.allSettled(
-        snappedSuggestions.map(async (suggestion) => {
-          const response = await fetch(`/api/images/${imageId}/tags`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              label: suggestion.label,
-              email: suggestion.email,
-              phoneNumber: suggestion.phoneNumber,
-              userId: suggestion.userId,
-              contributorId: suggestion.contributorId,
-              leftPct: suggestion.leftPct,
-              topPct: suggestion.topPct,
-              widthPct: suggestion.widthPct,
-              heightPct: suggestion.heightPct,
-            }),
-          });
+      const savedLabels = await persistSuggestions(snappedSuggestions);
+      await onApplied(savedLabels);
+      onDismiss();
+    } catch (applyError) {
+      setError(applyError instanceof Error ? applyError.message : 'Failed to auto-tag people');
+      setStatus('ready');
+    }
+  };
 
-          if (!response.ok) {
-            const payload = await response.json().catch(() => null);
-            throw new Error(payload?.error || `Failed to auto-tag ${suggestion.label}`);
-          }
+  const handleSingleSuggestion = async (suggestion: MatchSuggestion) => {
+    setStatus('applying');
+    setError('');
 
-          return suggestion.label;
-        })
-      );
-
-      const savedLabels = results
-        .filter((result): result is PromiseFulfilledResult<string> => result.status === 'fulfilled')
-        .map((result) => result.value);
-
-      if (savedLabels.length === 0) {
-        throw new Error('Ember could not save the suggested tags');
-      }
-
-      await onApplied(Array.from(new Set(savedLabels)));
+    try {
+      const savedLabels = await persistSuggestions([suggestion]);
+      await onApplied(savedLabels);
       onDismiss();
     } catch (applyError) {
       setError(applyError instanceof Error ? applyError.message : 'Failed to auto-tag people');
@@ -299,6 +333,47 @@ export default function AutoTagPrompt({
             ))}
           </div>
 
+          {mediaUrl && snappedSuggestions.length > 0 && (
+            <div className="mt-6 overflow-hidden rounded-[1.7rem] border border-[var(--ember-line)] bg-[var(--ember-charcoal)]">
+              <div className="relative inline-block max-w-full">
+                <img
+                  src={mediaUrl}
+                  alt={imageName}
+                  className="block max-h-[24rem] w-full object-contain"
+                />
+                <div className="pointer-events-none absolute inset-0">
+                  {snappedSuggestions.map((suggestion) => (
+                    <div
+                      key={`${suggestion.faceIndex}-${suggestion.label}`}
+                      className="absolute rounded-[1rem] border-2 border-[rgba(255,102,33,0.5)] bg-[rgba(255,102,33,0.08)]"
+                      style={{
+                        left: `${suggestion.leftPct}%`,
+                        top: `${suggestion.topPct}%`,
+                        width: `${suggestion.widthPct}%`,
+                        height: `${suggestion.heightPct}%`,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => void handleSingleSuggestion(suggestion)}
+                        disabled={status === 'applying'}
+                        title={suggestion.reason}
+                        className="pointer-events-auto absolute bottom-2 left-2 inline-flex max-w-[calc(100%-1rem)] items-center gap-2 rounded-full bg-white/96 px-3 py-1 text-left text-xs font-semibold text-[var(--ember-text)] shadow-sm transition hover:bg-white disabled:opacity-60"
+                      >
+                        <span className="truncate">
+                          {status === 'applying' ? 'Saving...' : getSuggestionCopy(suggestion)}
+                        </span>
+                        <span className="rounded-full bg-[rgba(255,102,33,0.12)] px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-[var(--ember-orange-deep)]">
+                          {suggestion.confidence}
+                        </span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {error && <div className="ember-status ember-status-error mt-5">{error}</div>}
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -309,6 +384,13 @@ export default function AutoTagPrompt({
               className="ember-button-primary disabled:opacity-60"
             >
               {status === 'applying' ? 'Auto-tagging...' : 'Auto-tag them'}
+            </button>
+            <button
+              type="button"
+              onClick={onAddManualTags}
+              className="rounded-full border border-[var(--ember-line-strong)] px-4 py-3 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+            >
+              Add tags manually
             </button>
             <button
               type="button"

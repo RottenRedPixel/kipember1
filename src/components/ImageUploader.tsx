@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import UploadStarterCard from '@/components/UploadStarterCard';
+import UploadConfirmModal from '@/components/UploadConfirmModal';
 
 const UPLOAD_STEPS = [
   'Uploading your media',
@@ -173,6 +174,10 @@ export default function ImageUploader() {
       URL.revokeObjectURL(preview);
     }
 
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
     setSelectedFile(null);
     setPreview(null);
     setDescription('');
@@ -275,100 +280,74 @@ export default function ImageUploader() {
         </div>
       )}
 
-      {!selectedFile ? (
-        <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="file-input"
-          />
-          <UploadStarterCard
-            title="Create an Ember"
-            subtitle="Upload a photo or video to start a new ember."
-            supportText="Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V."
-            actionLabel="Create Ember"
-            isDragging={isDragging}
-            onOpenPicker={() => fileInputRef.current?.click()}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
+        onChange={handleFileSelect}
+        className="hidden"
+        id="file-input"
+      />
+      <UploadStarterCard
+        title="Create an Ember"
+        subtitle="Upload a photo or video to start a new ember."
+        supportText="Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V."
+        isDragging={isDragging}
+        onOpenPicker={() => fileInputRef.current?.click()}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      />
 
-          {selectionError && (
-            <div className="ember-status ember-status-error mt-4">{selectionError}</div>
-          )}
-        </>
-      ) : (
-        <div className="space-y-4">
-          <div className="ember-card relative overflow-hidden rounded-[1.75rem]">
-            {selectedMediaType === 'video' ? (
-              <video
-                src={preview || undefined}
-                controls
-                playsInline
-                preload="metadata"
-                className="h-72 w-full object-contain bg-[var(--ember-charcoal)] sm:h-[30rem]"
-              />
-            ) : (
-              <img
-                src={preview || undefined}
-                alt="Preview"
-                className="h-72 w-full object-contain sm:h-[30rem]"
-              />
-            )}
-            <button
-              onClick={clearSelection}
-              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-sm font-medium text-white"
-            >
-              x
-            </button>
-          </div>
-
-          <div>
-            <label htmlFor="description" className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
-              Description
-            </label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="What makes this Ember meaningful? Add context Ember should know."
-              className="ember-textarea"
-              rows={4}
-            />
-          </div>
-
-          <label className="ember-card flex items-start gap-3 rounded-[1.5rem] px-4 py-4">
-            <input
-              type="checkbox"
-              checked={shareToNetwork}
-              onChange={(event) => setShareToNetwork(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
-            />
-            <span>
-              <span className="block text-sm font-medium text-[var(--ember-text)]">
-                Share this Ember to your network feed
-              </span>
-              <span className="mt-1 block text-sm text-[var(--ember-muted)]">
-                Accepted friends will see it in their feed. Contributors can still be invited individually.
-              </span>
-            </span>
-          </label>
-
-          <button
-            onClick={handleUpload}
-            disabled={isUploading}
-            className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isUploading
-              ? `Uploading ${selectedMediaType || 'media'} and opening Ember...`
-              : `Upload ${selectedMediaType || 'media'} and open Ember`}
-          </button>
-        </div>
+      {selectionError && (
+        <div className="ember-status ember-status-error mt-4">{selectionError}</div>
       )}
+
+      <UploadConfirmModal
+        open={Boolean(selectedFile && preview && !isUploading)}
+        preview={preview}
+        mediaType={selectedMediaType}
+        fileName={selectedFile?.name || 'Selected media'}
+        eyebrow="New Ember"
+        title="Create this Ember?"
+        subtitle="Check the media, add any quick context, and confirm when you are ready to send it into Ember."
+        confirmLabel={`Create ${selectedMediaType || 'media'} Ember`}
+        confirmBusyLabel={`Uploading ${selectedMediaType || 'media'}...`}
+        isSubmitting={isUploading}
+        onCancel={clearSelection}
+        onConfirm={() => void handleUpload()}
+      >
+        <div>
+          <label htmlFor="description" className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
+            Description
+          </label>
+          <textarea
+            id="description"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="What makes this Ember meaningful? Add context Ember should know."
+            className="ember-textarea"
+            rows={4}
+          />
+        </div>
+
+        <label className="ember-card flex items-start gap-3 rounded-[1.5rem] px-4 py-4">
+          <input
+            type="checkbox"
+            checked={shareToNetwork}
+            onChange={(event) => setShareToNetwork(event.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
+          />
+          <span>
+            <span className="block text-sm font-medium text-[var(--ember-text)]">
+              Share this Ember to your network feed
+            </span>
+            <span className="mt-1 block text-sm text-[var(--ember-muted)]">
+              Accepted friends will see it in their feed. Contributors can still be invited individually.
+            </span>
+          </span>
+        </label>
+      </UploadConfirmModal>
     </div>
   );
 }

@@ -31,9 +31,26 @@ model Image {
   sportsMode   SportsMode?
   chatSessions ChatSession[]
   tags         ImageTag[]
+  attachments  ImageAttachment[]
 
   @@index([ownerId, createdAt])
   @@index([shareToNetwork, createdAt])
+}
+
+model ImageAttachment {
+  id              String    @id @default(cuid())
+  imageId         String
+  filename        String
+  mediaType       MediaType @default(IMAGE)
+  posterFilename  String?
+  durationSeconds Float?
+  originalName    String
+  description     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  image           Image     @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([imageId, createdAt])
 }
 
 model ImageAnalysis {

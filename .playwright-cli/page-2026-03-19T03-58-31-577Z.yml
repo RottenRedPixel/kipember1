@@ -1,0 +1,96 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Ember owner and contributor workspace" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e9]:
+              - generic [ref=e10]: Ember
+              - generic [ref=e11]: owner and contributor workspace
+          - navigation [ref=e12]:
+            - link "Embers" [ref=e13] [cursor=pointer]:
+              - /url: /feed
+            - link "Add Ember" [ref=e14] [cursor=pointer]:
+              - /url: /feed#add-ember
+            - link "Profile" [ref=e15] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]: Codex Attach
+            - generic [ref=e19]: codex-attach-0319@example.com
+          - button "Logout" [ref=e20]
+    - main [ref=e21]:
+      - generic [ref=e144]:
+        - generic [ref=e145]:
+          - link "<- Back to Ember" [ref=e146] [cursor=pointer]:
+            - /url: /image/cmmwxtc8700b3c4mhqza2ugya
+          - generic [ref=e172]:
+            - img "Create an Ember — upload screen" [ref=e174]
+            - generic [ref=e175]:
+              - paragraph [ref=e176]: Wiki
+              - heading "Create an Ember — upload screen" [level=1] [ref=e177]
+              - paragraph [ref=e178]: Main Ember test for added photos
+              - generic [ref=e179]:
+                - generic [ref=e180]: Version 1
+                - generic [ref=e181]: Updated 3/18/2026
+                - generic [ref=e182]: Owner controls enabled
+              - generic [ref=e185]:
+                - link "Tell by text" [ref=e186] [cursor=pointer]:
+                  - /url: /contribute/cmmwxtc8f00b5c4mheyvpqf3s
+                - button "Get phone call" [ref=e187]
+          - generic [ref=e189]:
+            - heading "Overview" [level=2] [ref=e190]
+            - paragraph [ref=e191]: A clean onboarding screen invites the user to upload an image to create their first Ember. It feels like the starting point of the app's flow, with a simple drag-and-drop area and a single clear action button.
+            - heading "What the Photo Shows" [level=2] [ref=e192]
+            - paragraph [ref=e193]: A white web page with the heading "Create an Ember," a dashed upload box, a cloud-style upload icon, text offering drag-and-drop or browsing, supported file format notes, and a blue "Create Ember" button.
+            - heading "When and Where" [level=2] [ref=e194]
+            - paragraph [ref=e195]: A browser-based Ember onboarding/upload screen; exact time and device are unknown.
+            - heading "Story" [level=2] [ref=e196]
+            - paragraph [ref=e197]: This screenshot captures the first step of creating an Ember. The page prompts the user to drop an image or browse for one, with a clear note about supported file types and size limits. A prominent blue "Create Ember" button sits below, waiting for the user's next action.
+            - paragraph [ref=e198]: It marks the beginning of the app's image-upload flow and shows the main entry point for creating a new Ember.
+            - heading "Details Worth Keeping" [level=2] [ref=e199]
+            - paragraph [ref=e200]: The large dashed drop zone sits centered on the page with an inline blue "browse" link inside the upload prompt. Supported formats are listed as JPG, PNG, GIF, and WebP up to 10MB. The prominent blue "Create Ember" button anchors the minimal white layout with its centered onboarding content.
+            - heading "Open Questions" [level=2] [ref=e201]
+            - paragraph [ref=e202]: Is this a live site or a design mockup?
+            - heading "Metadata" [level=2] [ref=e203]
+            - paragraph [ref=e204]:
+              - strong [ref=e205]: "Image title:"
+              - text: Create an Ember — upload screen
+              - strong [ref=e206]: "Dimensions:"
+              - text: 957x508
+              - strong [ref=e207]: "Environment:"
+              - text: Web application screenshot
+            - heading "Added Photos And Notes" [level=2] [ref=e208]
+            - list [ref=e209]:
+              - listitem [ref=e210]:
+                - strong [ref=e211]: Photo 1
+                - text: (2037cac5-2172-4b43-8a4b-75a005aa3219.jpg) CJ after the appointment, still smiling because Dr. Morrison gave him holiday candy.
+        - complementary [ref=e151]:
+          - generic [ref=e152]:
+            - paragraph [ref=e153]: Actions
+            - heading "Keep the memory current" [level=2] [ref=e154]
+            - paragraph [ref=e155]: Regenerate after new contributors, tags, added photos, or sports details have been added.
+            - button "Regenerate wiki" [ref=e212]
+          - generic [ref=e157]:
+            - paragraph [ref=e158]: Modes
+            - generic [ref=e159]:
+              - link "Kids mode Storybook" [ref=e160] [cursor=pointer]:
+                - /url: /image/cmmwxtc8700b3c4mhqza2ugya/kids
+                - generic [ref=e161]: Kids mode
+                - generic [ref=e162]: Storybook
+              - link "Story circle Thread" [ref=e163] [cursor=pointer]:
+                - /url: /image/cmmwxtc8700b3c4mhqza2ugya/story-circle
+                - generic [ref=e164]: Story circle
+                - generic [ref=e165]: Thread
+              - link "Sports mode Stats" [ref=e166] [cursor=pointer]:
+                - /url: /image/cmmwxtc8700b3c4mhqza2ugya/sports
+                - generic [ref=e167]: Sports mode
+                - generic [ref=e168]: Stats
+              - link "Ask Ember Q&A" [ref=e169] [cursor=pointer]:
+                - /url: /image/cmmwxtc8700b3c4mhqza2ugya/chat
+                - generic [ref=e170]: Ask Ember
+                - generic [ref=e171]: Q&A
+  - button "Open Next.js Dev Tools" [ref=e98] [cursor=pointer]:
+    - img [ref=e99]
+  - alert [ref=e102]

@@ -7,8 +7,7 @@ export default function EmberExplainerPanel({
 }) {
   return (
     <section className="ember-panel rounded-[2rem] p-6 sm:p-7">
-      <p className="ember-eyebrow">What Ember does</p>
-      <h2 className="ember-heading mt-4 text-3xl text-[var(--ember-text)] sm:text-4xl">
+      <h2 className="ember-heading text-3xl text-[var(--ember-text)] sm:text-4xl">
         Capture life&apos;s moments together and relive them anytime.
       </h2>
       <p className="ember-copy mt-4 max-w-2xl text-sm">

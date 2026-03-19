@@ -92,7 +92,7 @@ const cardActions: CardAction[] = [
 ];
 
 const cardActionClass =
-  'flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--ember-orange-deep)] bg-[var(--ember-orange)] px-4 text-white transition hover:border-[var(--ember-orange-deep)] hover:bg-[var(--ember-orange-deep)]';
+  'flex h-12 items-center justify-center rounded-full border border-[var(--ember-orange-deep)] bg-[var(--ember-orange)] text-white transition hover:border-[var(--ember-orange-deep)] hover:bg-[var(--ember-orange-deep)]';
 
 async function shareEmberLink(image: FeedImage) {
   const url = `${window.location.origin}/image/${image.id}`;
@@ -329,7 +329,6 @@ export default function ImageGallery() {
                       aria-label={action.label}
                     >
                       <Icon className="h-5 w-5" />
-                      <span className="text-sm font-medium">{action.label}</span>
                     </Link>
                   );
                 })}
@@ -341,7 +340,6 @@ export default function ImageGallery() {
                   aria-label="Tend Ember"
                 >
                   <CircleIcon className="h-5 w-5" />
-                  <span className="text-sm font-medium">Tend Ember</span>
                 </button>
               </div>
             </article>

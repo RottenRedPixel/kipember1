@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { getOpenAIClient, getWikiStructureModel } from './openai';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -9,6 +10,12 @@ type WikiContributorResponse = {
   questionType: string;
   question: string;
   answer: string;
+  source?: string | null;
+};
+
+type WikiContributorCallSummary = {
+  contributorName: string;
+  summary: string;
 };
 
 type WikiAnalysisEntity = {
@@ -44,11 +51,14 @@ type WikiImageAnalysis = {
       genderPresentation: string | null;
       clothingAndStyle: string | null;
       bodyLanguageAndExpressions: string | null;
+      spatialRelationships: string | null;
       relationshipInference: string | null;
     };
     settingAndEnvironment: {
+      environmentType: string | null;
       locationType: string | null;
       timeOfDayAndLighting: string | null;
+      lightingDescription: string | null;
       weatherConditions: string | null;
       backgroundDetails: string | null;
       architectureOrLandscape: string | null;
@@ -56,6 +66,7 @@ type WikiImageAnalysis = {
     activitiesAndContext: {
       whatAppearsToBeHappening: string | null;
       socialDynamics: string | null;
+      interactionsBetweenPeople: string | null;
       eventType: string | null;
       visibleActivities: string[];
     };
@@ -68,10 +79,16 @@ type WikiImageAnalysis = {
     emotionalContext: {
       overallMoodAndAtmosphere: string | null;
       emotionalExpressions: string | null;
+      individualEmotions: string | null;
+      energyLevel: string | null;
       socialEnergy: string | null;
     };
     storyElements: {
       storyThisImageTells: string | null;
+      emberStory: string | null;
+      whyThisMomentMightMatter: string | null;
+      whatMakesThisPhotoSpecial: string | null;
+      meaningfulDetails: string | null;
       whatMightHaveHappenedBefore: string | null;
       whatMightHappenNext: string | null;
     };
@@ -96,6 +113,452 @@ type WikiSportsMode = {
   highlights: string[];
 };
 
+type WikiConfirmedTag = {
+  label: string;
+  userId: string | null;
+  contributorId: string | null;
+  leftPct: number | null;
+  topPct: number | null;
+  widthPct: number | null;
+  heightPct: number | null;
+};
+
+type StructuredMemoryQuote = {
+  speaker: string;
+  quote: string;
+};
+
+type StructuredMemoryMetadataItem = {
+  label: string;
+  value: string;
+};
+
+type StructuredMemory = {
+  title: string;
+  overview: string;
+  whatThePhotoShows: string;
+  people: {
+    summary: string;
+    confirmedTags: string[];
+    ambiguities: string[];
+  };
+  whenAndWhere: string;
+  story: {
+    main: string;
+    significance: string | null;
+  };
+  detailsWorthKeeping: string[];
+  quotes: StructuredMemoryQuote[];
+  openQuestions: string[];
+  metadata: StructuredMemoryMetadataItem[];
+  sportsSnapshot: {
+    summary: string;
+    details: string[];
+  } | null;
+};
+
+type ContributorMemoryTopic = {
+  questionType: string;
+  topicLabel: string;
+  answer: string;
+  source: string | null;
+};
+
+type ContributorMemoryDigest = {
+  contributorName: string;
+  answeredTopics: ContributorMemoryTopic[];
+  storyHighlights: string[];
+  voiceCallSummaries: string[];
+};
+
+const STRUCTURED_MEMORY_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'title',
+    'overview',
+    'whatThePhotoShows',
+    'people',
+    'whenAndWhere',
+    'story',
+    'detailsWorthKeeping',
+    'quotes',
+    'openQuestions',
+    'metadata',
+    'sportsSnapshot',
+  ],
+  properties: {
+    title: { type: 'string' },
+    overview: { type: 'string' },
+    whatThePhotoShows: { type: 'string' },
+    people: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['summary', 'confirmedTags', 'ambiguities'],
+      properties: {
+        summary: { type: 'string' },
+        confirmedTags: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+        ambiguities: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+    },
+    whenAndWhere: { type: 'string' },
+    story: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['main', 'significance'],
+      properties: {
+        main: { type: 'string' },
+        significance: {
+          anyOf: [{ type: 'string' }, { type: 'null' }],
+        },
+      },
+    },
+    detailsWorthKeeping: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    quotes: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['speaker', 'quote'],
+        properties: {
+          speaker: { type: 'string' },
+          quote: { type: 'string' },
+        },
+      },
+    },
+    openQuestions: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    metadata: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['label', 'value'],
+        properties: {
+          label: { type: 'string' },
+          value: { type: 'string' },
+        },
+      },
+    },
+    sportsSnapshot: {
+      anyOf: [
+        {
+          type: 'object',
+          additionalProperties: false,
+          required: ['summary', 'details'],
+          properties: {
+            summary: { type: 'string' },
+            details: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+        { type: 'null' },
+      ],
+    },
+  },
+} as const;
+
+const CONTRIBUTOR_TOPIC_LABELS: Record<string, string> = {
+  context: 'What they remember',
+  who: 'Who is involved',
+  when: 'When it happened',
+  where: 'Where it happened',
+  what: 'What was happening',
+  why: 'Why it mattered',
+  how: 'How it came about',
+  followup: 'Additional detail',
+};
+
+const CONTRIBUTOR_TOPIC_ORDER = ['context', 'who', 'when', 'where', 'what', 'why', 'how'] as const;
+
+function uniqueStrings(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    output.push(trimmed);
+  }
+
+  return output;
+}
+
+function normalizeForHeuristics(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isUsefulVoiceSummary(summary: string) {
+  const normalized = normalizeForHeuristics(summary);
+  return !(
+    normalized.includes('no personal memory was shared') ||
+    normalized.includes('no meaningful memory was shared') ||
+    normalized.includes('no useful memory was shared') ||
+    normalized.includes('voicemail') ||
+    normalized.includes('forwarded to voicemail')
+  );
+}
+
+function buildContributorMemoryDigest(
+  responses: WikiContributorResponse[],
+  callSummaries: WikiContributorCallSummary[]
+): ContributorMemoryDigest[] {
+  const grouped = new Map<
+    string,
+    {
+      contributorName: string;
+      answeredTopics: Map<string, ContributorMemoryTopic>;
+      followUps: ContributorMemoryTopic[];
+      voiceCallSummaries: string[];
+    }
+  >();
+
+  const ensureGroup = (contributorName: string) => {
+    const key = contributorName.trim() || 'Anonymous';
+    const existing = grouped.get(key);
+    if (existing) {
+      return existing;
+    }
+
+    const created = {
+      contributorName: key,
+      answeredTopics: new Map<string, ContributorMemoryTopic>(),
+      followUps: [],
+      voiceCallSummaries: [],
+    };
+    grouped.set(key, created);
+    return created;
+  };
+
+  for (const response of responses) {
+    const answer = response.answer?.trim();
+    if (!answer) {
+      continue;
+    }
+
+    const contributorName = response.contributorName?.trim() || 'Anonymous';
+    const group = ensureGroup(contributorName);
+    const topic: ContributorMemoryTopic = {
+      questionType: response.questionType,
+      topicLabel: CONTRIBUTOR_TOPIC_LABELS[response.questionType] || response.questionType,
+      answer,
+      source: response.source || null,
+    };
+
+    if (response.questionType === 'followup') {
+      group.followUps.push(topic);
+      continue;
+    }
+
+    group.answeredTopics.set(response.questionType, topic);
+  }
+
+  for (const callSummary of callSummaries) {
+    const summary = callSummary.summary?.trim();
+    if (!summary || !isUsefulVoiceSummary(summary)) {
+      continue;
+    }
+
+    const contributorName = callSummary.contributorName?.trim() || 'Anonymous';
+    ensureGroup(contributorName).voiceCallSummaries.push(summary);
+  }
+
+  return Array.from(grouped.values()).map((group) => {
+    const answeredTopics = [
+      ...CONTRIBUTOR_TOPIC_ORDER.flatMap((questionType) => {
+        const topic = group.answeredTopics.get(questionType);
+        return topic ? [topic] : [];
+      }),
+      ...group.followUps,
+    ];
+
+    return {
+      contributorName: group.contributorName,
+      answeredTopics,
+      storyHighlights: uniqueStrings([
+        group.answeredTopics.get('context')?.answer,
+        group.answeredTopics.get('what')?.answer,
+        group.answeredTopics.get('why')?.answer,
+        group.answeredTopics.get('how')?.answer,
+        ...group.followUps.map((item) => item.answer),
+        group.answeredTopics.get('who')?.answer,
+        group.answeredTopics.get('where')?.answer,
+        group.answeredTopics.get('when')?.answer,
+        ...group.voiceCallSummaries,
+      ]).slice(0, 8),
+      voiceCallSummaries: uniqueStrings(group.voiceCallSummaries).slice(0, 3),
+    };
+  });
+}
+
+function sanitizeStructuredMemory({
+  structuredMemory,
+  responses,
+  confirmedPeople,
+  confirmedLocation,
+  analysis,
+}: {
+  structuredMemory: StructuredMemory;
+  responses: WikiContributorResponse[];
+  confirmedPeople: string[];
+  confirmedLocation: {
+    label: string;
+    detail: string | null;
+    kind: string;
+  } | null;
+  analysis: WikiImageAnalysis | null;
+}): StructuredMemory {
+  const answeredTopics = new Set(
+    responses
+      .map((response) => response.questionType?.trim())
+      .filter((value): value is string => Boolean(value))
+  );
+
+  const hasKnownWhen = answeredTopics.has('when') || Boolean(analysis?.capturedAt);
+  const hasKnownWhere =
+    answeredTopics.has('where') ||
+    Boolean(confirmedLocation) ||
+    (analysis?.latitude != null && analysis?.longitude != null);
+  const hasKnownWho = answeredTopics.has('who') || confirmedPeople.length > 0;
+  const hasKnownWhy = answeredTopics.has('why');
+
+  const detailsWorthKeeping = structuredMemory.detailsWorthKeeping
+    .map((detail) => detail.trim())
+    .filter(Boolean)
+    .filter((detail) => {
+      const normalized = normalizeForHeuristics(detail);
+      if (
+        normalized.includes('not a person') ||
+        normalized.includes('not the real santa') ||
+        normalized.includes('not real santa')
+      ) {
+        return false;
+      }
+
+      if (
+        normalized.includes('coat indoors') ||
+        normalized.includes('jacket indoors') ||
+        normalized.includes('winter coat indoors')
+      ) {
+        return false;
+      }
+
+      return true;
+    })
+    .slice(0, 5);
+
+  const openQuestions = structuredMemory.openQuestions
+    .map((question) => question.trim())
+    .filter(Boolean)
+    .filter((question) => {
+      const normalized = normalizeForHeuristics(question);
+
+      if (
+        normalized.includes('coat') ||
+        normalized.includes('jacket') ||
+        normalized.includes('wearing indoors')
+      ) {
+        return false;
+      }
+
+      if (
+        hasKnownWho &&
+        (normalized.includes('which person') ||
+          normalized.includes('who is cj') ||
+          normalized.includes('who is kip') ||
+          normalized.includes('who was cj') ||
+          normalized.includes('who was kip') ||
+          normalized.includes('versus') ||
+          normalized.includes('which visible person'))
+      ) {
+        return false;
+      }
+
+      if (hasKnownWhere && (normalized.includes('where') || normalized.includes('location'))) {
+        return false;
+      }
+
+      if (
+        hasKnownWhen &&
+        (normalized.includes('when') ||
+          normalized.includes('what year') ||
+          normalized.includes('what date') ||
+          normalized.includes('holiday season'))
+      ) {
+        return false;
+      }
+
+      if (
+        hasKnownWhy &&
+        (normalized.includes('why') ||
+          normalized.includes('what makes') ||
+          normalized.includes('what made') ||
+          normalized.includes('significant') ||
+          normalized.includes('special'))
+      ) {
+        return false;
+      }
+
+      return true;
+    })
+    .slice(0, 3);
+
+  const metadata = structuredMemory.metadata
+    .map((item) => ({
+      label: item.label.trim(),
+      value: item.value.trim(),
+    }))
+    .filter((item) => item.label && item.value)
+    .slice(0, 4);
+
+  return {
+    ...structuredMemory,
+    detailsWorthKeeping,
+    openQuestions,
+    metadata,
+  };
+}
+
+function parseStructuredMemoryResponse(responseText: string): StructuredMemory {
+  const trimmed = responseText.trim();
+  if (!trimmed) {
+    throw new Error('OpenAI structured memory pass returned an empty response');
+  }
+
+  const parsed = JSON.parse(trimmed) as StructuredMemory;
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('OpenAI structured memory pass returned invalid JSON');
+  }
+
+  return parsed;
+}
+
 export async function chat(
   systemPrompt: string,
   messages: { role: 'user' | 'assistant'; content: string }[]
@@ -114,149 +577,213 @@ export async function chat(
 export async function generateWiki({
   imageTitle,
   imageDescription,
+  confirmedPeople,
+  confirmedTags,
+  confirmedLocation,
   analysis,
   responses,
+  callSummaries,
   sportsMode,
 }: {
   imageTitle: string;
   imageDescription: string | null;
+  confirmedPeople: string[];
+  confirmedTags: WikiConfirmedTag[];
+  confirmedLocation: {
+    label: string;
+    detail: string | null;
+    kind: string;
+  } | null;
   analysis: WikiImageAnalysis | null;
   responses: WikiContributorResponse[];
+  callSummaries: WikiContributorCallSummary[];
   sportsMode: WikiSportsMode | null;
 }): Promise<string> {
   const hasMeaningfulAutoAnalysis = Boolean(
     analysis &&
+      (analysis.status === 'ready' || (analysis.visualDescription && analysis.visualDescription.trim())) &&
       ((analysis.visualDescription && analysis.visualDescription.trim()) ||
         (analysis.summary &&
           analysis.summary.trim() &&
           !analysis.summary.includes('could not be processed by the automatic analysis system') &&
           !analysis.summary.includes('automatic image analysis encountered a technical error') &&
+          !analysis.summary.startsWith('Captured on ') &&
           !analysis.summary.startsWith('Uploaded file:')))
   );
+  const evidencePacket = {
+    imageTitle,
+    imageDescription: imageDescription || null,
+    confirmedPeople,
+    confirmedTags,
+    confirmedLocation,
+    contributorMemories: buildContributorMemoryDigest(responses, callSummaries),
+    rawContributorResponses: responses,
+    recentVoiceCallSummaries: callSummaries,
+    analysis:
+      analysis && hasMeaningfulAutoAnalysis
+        ? {
+            summary: analysis.summary,
+            visualDescription: analysis.visualDescription,
+            mood: analysis.mood,
+            peopleObserved: analysis.people,
+            placeSignals: analysis.places,
+            notableThings: analysis.things,
+            activities: analysis.sceneInsights.activitiesAndContext.visibleActivities.length
+              ? analysis.sceneInsights.activitiesAndContext.visibleActivities
+              : analysis.activities,
+            visibleText: analysis.visibleText,
+            openQuestions: analysis.openQuestions,
+            peopleAndDemographics: analysis.sceneInsights.peopleAndDemographics,
+            settingAndEnvironment: analysis.sceneInsights.settingAndEnvironment,
+            activitiesAndContext: analysis.sceneInsights.activitiesAndContext,
+            emotionalContext: analysis.sceneInsights.emotionalContext,
+            storyElements: analysis.sceneInsights.storyElements,
+            metadata: {
+              capturedAt: analysis.capturedAt,
+              latitude: analysis.latitude,
+              longitude: analysis.longitude,
+              camera: [analysis.cameraMake, analysis.cameraModel].filter(Boolean).join(' ') || null,
+              lens: analysis.lensModel,
+              metadataSummary: analysis.metadataSummary,
+            },
+          }
+        : null,
+    sportsMode: sportsMode
+      ? {
+          sportType: sportsMode.sportType,
+          subjectName: sportsMode.subjectName,
+          teamName: sportsMode.teamName,
+          opponentName: sportsMode.opponentName,
+          eventName: sportsMode.eventName,
+          season: sportsMode.season,
+          outcome: sportsMode.outcome,
+          finalScore: sportsMode.finalScore,
+          summary: sportsMode.summary,
+          statLines: sportsMode.statLines,
+          highlights: sportsMode.highlights,
+        }
+      : null,
+  };
 
-  const responsesText = responses
-    .map(
-      (r) =>
-        `[${r.contributorName || 'Anonymous'}] ${r.questionType.toUpperCase()}\nQ: ${r.question}\nA: ${r.answer}`
-    )
-    .join('\n\n');
+  const openai = getOpenAIClient();
+  const structuredResponse = await openai.responses.create({
+    model: getWikiStructureModel(),
+    input: [
+      {
+        role: 'developer',
+        type: 'message',
+        content: [
+          {
+            type: 'input_text',
+            text: `You turn Ember evidence into a clean structured memory object.
 
-  const analysisText = analysis && hasMeaningfulAutoAnalysis
-    ? `STATUS: ${analysis.status}
-SUMMARY: ${analysis.summary || 'None'}
-VISUAL DESCRIPTION: ${analysis.visualDescription || 'None'}
-MOOD: ${analysis.mood || 'None'}
-METADATA SUMMARY: ${analysis.metadataSummary || 'None'}
-CAPTURED AT: ${analysis.capturedAt || 'Unknown'}
-GPS: ${
-      analysis.latitude != null && analysis.longitude != null
-        ? `${analysis.latitude}, ${analysis.longitude}`
-        : 'Unknown'
-    }
-CAMERA: ${[analysis.cameraMake, analysis.cameraModel].filter(Boolean).join(' ') || 'Unknown'}
-LENS: ${analysis.lensModel || 'Unknown'}
-PEOPLE OBSERVED:
-${analysis.people.map((item) => `- ${item.label} (${item.confidence}): ${item.details}`).join('\n') || '- None'}
-PLACE SIGNALS:
-${analysis.places.map((item) => `- ${item.label} (${item.confidence}): ${item.details}`).join('\n') || '- None'}
-NOTABLE THINGS:
-${analysis.things.map((item) => `- ${item.label} (${item.confidence}): ${item.details}`).join('\n') || '- None'}
-ACTIVITIES:
-${analysis.activities.map((item) => `- ${item}`).join('\n') || '- None'}
-VISIBLE TEXT:
-${analysis.visibleText.map((item) => `- ${item}`).join('\n') || '- None'}
-KEYWORDS:
-${analysis.keywords.map((item) => `- ${item}`).join('\n') || '- None'}
-OPEN QUESTIONS:
-${analysis.openQuestions.map((item) => `- ${item}`).join('\n') || '- None'}
-PEOPLE & DEMOGRAPHICS:
-- Number of people visible: ${analysis.sceneInsights.peopleAndDemographics.numberOfPeopleVisible ?? 'Unknown'}
-- Estimated age ranges: ${analysis.sceneInsights.peopleAndDemographics.estimatedAgeRanges.join(', ') || 'Unknown'}
-- Gender identification: ${analysis.sceneInsights.peopleAndDemographics.genderPresentation || 'Unknown'}
-- Clothing and style descriptions: ${analysis.sceneInsights.peopleAndDemographics.clothingAndStyle || 'Unknown'}
-- Body language and expressions: ${analysis.sceneInsights.peopleAndDemographics.bodyLanguageAndExpressions || 'Unknown'}
-- Relationship inference: ${analysis.sceneInsights.peopleAndDemographics.relationshipInference || 'Unknown'}
-SETTING & ENVIRONMENT:
-- Location type: ${analysis.sceneInsights.settingAndEnvironment.locationType || 'Unknown'}
-- Time of day / lighting: ${analysis.sceneInsights.settingAndEnvironment.timeOfDayAndLighting || 'Unknown'}
-- Weather conditions: ${analysis.sceneInsights.settingAndEnvironment.weatherConditions || 'Unknown'}
-- Background details: ${analysis.sceneInsights.settingAndEnvironment.backgroundDetails || 'Unknown'}
-- Architectural or landscape features: ${analysis.sceneInsights.settingAndEnvironment.architectureOrLandscape || 'Unknown'}
-ACTIVITIES & CONTEXT:
-- What appears to be happening: ${analysis.sceneInsights.activitiesAndContext.whatAppearsToBeHappening || 'Unknown'}
-- Social dynamics: ${analysis.sceneInsights.activitiesAndContext.socialDynamics || 'Unknown'}
-- Event type: ${analysis.sceneInsights.activitiesAndContext.eventType || 'Unknown'}
-- Activities: ${analysis.sceneInsights.activitiesAndContext.visibleActivities.join(', ') || 'Unknown'}
-TECHNICAL DETAILS:
-- Photo quality and composition: ${analysis.sceneInsights.technicalDetails.photoQualityAndComposition || 'Unknown'}
-- Lighting analysis: ${analysis.sceneInsights.technicalDetails.lightingAnalysis || 'Unknown'}
-- Notable photographic elements: ${analysis.sceneInsights.technicalDetails.notablePhotographicElements || 'Unknown'}
-- Objects of interest: ${analysis.sceneInsights.technicalDetails.objectsOfInterest.join(', ') || 'Unknown'}
-EMOTIONAL CONTEXT:
-- Overall mood and atmosphere: ${analysis.sceneInsights.emotionalContext.overallMoodAndAtmosphere || 'Unknown'}
-- Emotional expressions visible: ${analysis.sceneInsights.emotionalContext.emotionalExpressions || 'Unknown'}
-- Social dynamics and energy: ${analysis.sceneInsights.emotionalContext.socialEnergy || 'Unknown'}
-STORY ELEMENTS:
-- What story does this image tell: ${analysis.sceneInsights.storyElements.storyThisImageTells || 'Unknown'}
-- What might have happened before: ${analysis.sceneInsights.storyElements.whatMightHaveHappenedBefore || 'Unknown'}
-- What might happen next: ${analysis.sceneInsights.storyElements.whatMightHappenNext || 'Unknown'}`
-    : 'No reliable automatic image analysis is available yet.';
+Rules:
+- Use only supported evidence.
+- Contributor memories, confirmed tags, and confirmed location are strongest.
+- If contributor memories exist, let them drive the overview and story instead of metadata or visual-analysis filler.
+- The memory should feel like the moment people described, not like a camera report.
+- Do not invent identities, relationships, motives, or backstory.
+- Treat confirmedTags as explicit human-confirmed labels attached to the image.
+- If confirmed tags cover the visible people in the photo, do not generate identity ambiguity or open questions about who is who.
+- Contributor memories override weaker image-analysis guesses. If a contributor says Santa was a statue, use that over any weaker visual interpretation.
+- If contributor memories say a tagged person is the contributor's child/son/daughter and the photo clearly shows a child plus an adult, resolve that naturally instead of keeping it ambiguous.
+- Prefer contributor-supplied facts such as why the moment mattered, how it happened, little reactions, and follow-up details over clothing or camera trivia.
+- Do not surface corrective phrasing as a memorable detail. Fold clarifications into the story naturally when needed, instead of lines like "X was a statue, not a person."
+- Do not keep mundane observations from the image alone unless a contributor made them meaningful.
+- Do not create open questions that are already answered by contributor memories, confirmed tags, or metadata.
+- Do not create nitpicky open questions about clothing, posture, or other ordinary details unless a contributor explicitly made them meaningful.
+- Open questions should be 0-3 high-value unresolved gaps only.
+- If a tagged name still cannot be visually mapped with confidence, keep that ambiguity in people.ambiguities.
+- Keep every string concise and useful.
+- detailsWorthKeeping should contain 2-5 vivid grounded details that a person would genuinely want to remember later.
+- story.main should be 2-4 sentences and should include the strongest human memory details when available.
+- story.significance should explain why the moment mattered in human terms when the evidence supports it.
+- quotes must only contain direct contributor wording worth preserving; otherwise [].
+- metadata should contain at most 4 high-value items and should stay secondary to the memory itself.
+- sportsSnapshot should be null when not relevant.
+- Return JSON only that matches the schema exactly.`,
+          },
+        ],
+      },
+      {
+        role: 'user',
+        type: 'message',
+        content: [
+          {
+            type: 'input_text',
+            text: `Create a structured memory object for this Ember.
 
-  const sportsText = sportsMode
-    ? `SPORT: ${sportsMode.sportType || 'Unknown'}
-SUBJECT: ${sportsMode.subjectName || 'Unknown'}
-TEAM: ${sportsMode.teamName || 'Unknown'}
-OPPONENT: ${sportsMode.opponentName || 'Unknown'}
-EVENT: ${sportsMode.eventName || 'Unknown'}
-SEASON: ${sportsMode.season || 'Unknown'}
-OUTCOME: ${sportsMode.outcome || 'Unknown'}
-FINAL SCORE: ${sportsMode.finalScore || 'Unknown'}
-SUMMARY: ${sportsMode.summary || 'None'}
-STAT LINES:
-${sportsMode.statLines.map((item) => `- ${item.label}: ${item.value}`).join('\n') || '- None'}
-HIGHLIGHTS:
-${sportsMode.highlights.map((item) => `- ${item}`).join('\n') || '- None'}
-RAW SPORTS DETAILS: ${sportsMode.rawDetails}`
-    : 'No sports-mode details available.';
+Evidence:
+${JSON.stringify(evidencePacket, null, 2)}`,
+          },
+        ],
+      },
+    ],
+    text: {
+      verbosity: 'low',
+      format: {
+        type: 'json_schema',
+        name: 'ember_structured_memory',
+        description: 'Structured memory object for Ember wiki generation.',
+        schema: STRUCTURED_MEMORY_SCHEMA,
+        strict: false,
+      },
+    },
+  });
 
-  const systemPrompt = `You are a wiki editor. Your task is to synthesize automatic photo analysis, file metadata, and contributor memories into a well-structured wiki entry.
+  const structuredMemory = sanitizeStructuredMemory({
+    structuredMemory: parseStructuredMemoryResponse(structuredResponse.output_text || ''),
+    responses,
+    confirmedPeople,
+    confirmedLocation,
+    analysis,
+  });
 
-Evidence rules:
-- Treat embedded metadata and direct contributor memories as the strongest sources.
-- Treat automatic visual analysis as helpful but potentially uncertain. If something is inferred rather than confirmed, phrase it carefully.
-- Never claim that an unknown person has been identified by name from appearance alone.
+  const systemPrompt = `You are Ember's memory writer. Rewrite a structured memory object into a warm, readable markdown page.
 
-The wiki should include:
-- Overview: A brief summary of the image/memory
-- What the Photo Shows: A grounded visual description
-- People: Visible people plus any known relationships
-- Timeline: When this happened or likely happened
-- Location: Where it took place or what the setting appears to be
-- Story: What was happening and the backstory
-- Sports Snapshot: If sports-mode details exist, include the sport, player/team, opponent, result, score, and key stats in a clear section
-- Scene Insights: Use the richer image-review notes when they add value, especially for demographics, environment, activity, technical composition, emotional tone, and likely story context
-- Photo Metadata: Relevant camera/date/location metadata if present
-- Significance: Why this memory matters, if contributor memories provide that
-- Quotes: Notable quotes from contributors (attributed), if available
-- Open Questions: Only include this if there are meaningful unanswered details
+Rules:
+- Use only the structured memory object below.
+- Do not add facts, identities, motives, or background not present in the object.
+- Make it feel like a memory someone would want to revisit, not a report.
+- Let the human memory details lead. If contributor details are present, they should shape the voice of the page more than metadata or visual-analysis leftovers.
+- Prefer short paragraphs and avoid repeating the same detail across sections.
+- If a tagged name is ambiguous, mention it naturally as tagged in the image instead of assigning it by sight.
+- Do not reintroduce weaker visual ambiguity if the structured memory already resolved it from tags or contributor memories.
+- Do not turn obvious corrections into standalone lines. If a clarification matters, weave it into the story naturally and positively.
+- Do not include low-value observations that do not deepen the memory, such as ordinary clothing notes, unless the structured memory makes them meaningful.
+- Do not include filler open questions; omit the section entirely when nothing meaningful remains unresolved.
+- Do not repeat the title as a top heading; the page already shows the Ember title outside the markdown.
+- Omit empty sections.
+- Keep the page concise and high-signal.
 
-Write in an engaging, informative style. Use markdown formatting.`;
+Use these sections when supported:
+## Overview
+## What the Photo Shows
+## People
+## When and Where
+## Story
+## Details Worth Keeping
+## Sports Snapshot
+## Quotes
+## Open Questions
+## Metadata
 
-  const userMessage = `Image title: ${imageTitle}
-Image description: ${imageDescription || 'No description provided'}
+Write markdown only.`;
 
-Automatic image analysis:
-${analysisText}
+  const output = await chat(systemPrompt, [
+    {
+      role: 'user',
+      content: `Structured memory JSON:
+${JSON.stringify(structuredMemory, null, 2)}`,
+    },
+  ]);
 
-Sports mode:
-${sportsText}
+  const trimmedOutput = output.trim();
+  if (!trimmedOutput) {
+    throw new Error('Anthropic wiki rewrite returned an empty response');
+  }
 
-Contributor responses:
-${responsesText || 'No contributor memories yet.'}
-
-Please create a wiki entry for this memory.`;
-
-  return chat(systemPrompt, [{ role: 'user', content: userMessage }]);
+  return trimmedOutput;
 }
 
 export async function generateFollowUpQuestion(

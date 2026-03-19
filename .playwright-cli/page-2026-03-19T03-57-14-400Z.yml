@@ -1,0 +1,84 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - link "Ember owner and contributor workspace" [ref=e7] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e9]:
+              - generic [ref=e10]: Ember
+              - generic [ref=e11]: owner and contributor workspace
+          - navigation [ref=e12]:
+            - link "Embers" [ref=e13] [cursor=pointer]:
+              - /url: /feed
+            - link "Add Ember" [ref=e14] [cursor=pointer]:
+              - /url: /feed#add-ember
+            - link "Profile" [ref=e15] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]: Codex Attach
+            - generic [ref=e19]: codex-attach-0319@example.com
+          - button "Logout" [ref=e20]
+    - main [ref=e21]:
+      - generic [ref=e22]:
+        - link "<- Back to feed" [ref=e24] [cursor=pointer]:
+          - /url: /feed
+        - generic [ref=e25]:
+          - img "Create an Ember — upload screen" [ref=e27]
+          - heading "Create an Ember — upload screen" [level=1] [ref=e29]
+          - generic [ref=e30]:
+            - paragraph [ref=e31]: Tell more
+            - heading "Add more to this memory" [level=2] [ref=e32]
+            - paragraph [ref=e33]: Type with Ember or have it call you so this Ember can keep growing.
+            - generic [ref=e35]:
+              - link "Tell by text" [ref=e36] [cursor=pointer]:
+                - /url: /contribute/cmmwxtc8f00b5c4mheyvpqf3s
+              - button "Get phone call" [ref=e37]
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - paragraph [ref=e40]: Memory detail
+              - paragraph [ref=e41]: Main Ember test for added photos
+              - generic [ref=e42]:
+                - generic [ref=e43]: Photo Ember
+                - generic [ref=e44]: Captured 3/18/2026
+                - generic [ref=e45]: 1 contributors
+                - generic [ref=e46]: 0 tags
+            - generic [ref=e47]:
+              - paragraph [ref=e48]: People connected
+              - generic [ref=e49]:
+                - generic [ref=e50]:
+                  - generic [ref=e51]: Owner
+                  - generic [ref=e52]: Codex Attach
+                - generic [ref=e53]:
+                  - generic [ref=e54]: Contributors
+                  - generic [ref=e55]: Codex Attach
+                - generic [ref=e56]:
+                  - generic [ref=e57]: Tags
+                  - generic [ref=e58]: No one has been tagged yet.
+          - generic [ref=e59]:
+            - generic [ref=e60]:
+              - generic [ref=e61]:
+                - paragraph [ref=e62]: Added content
+                - heading "Extra photos and videos" [level=2] [ref=e63]
+                - paragraph [ref=e64]: Add more moments into this Ember without running them through the interview. Their notes will appear in the wiki the next time you regenerate it.
+              - button "Add photo or video" [ref=e65]
+            - generic [ref=e66]:
+              - generic [ref=e67]: No extra photos or videos yet.
+              - generic [ref=e68]: Manual wiki refresh required
+            - generic [ref=e69]: No extra photos or videos have been added to this Ember yet.
+          - generic [ref=e70]:
+            - button "Ask Ember" [ref=e71]:
+              - img [ref=e73]
+            - link "Play Ember" [ref=e75] [cursor=pointer]:
+              - /url: /image/cmmwxtc8700b3c4mhqza2ugya/wiki
+              - img [ref=e77]
+            - button "Contributors" [ref=e79]:
+              - img [ref=e81]
+            - button "Tend Ember" [ref=e84]:
+              - img [ref=e86]
+            - button "Share Ember" [ref=e88]:
+              - img [ref=e90]
+  - button "Open Next.js Dev Tools" [ref=e98] [cursor=pointer]:
+    - img [ref=e99]
+  - alert [ref=e102]

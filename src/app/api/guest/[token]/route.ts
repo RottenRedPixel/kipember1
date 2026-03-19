@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { isGuestUserEmail } from '@/lib/guest-embers';
-import { refreshVoiceCallFromProvider } from '@/lib/voice-calls';
-
-const STALE_VOICE_CALL_MS = 45 * 1000;
+import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
 export async function GET(
   request: NextRequest,
@@ -32,6 +30,8 @@ export async function GET(
             startedAt: true,
             endedAt: true,
             createdAt: true,
+            updatedAt: true,
+            analyzedAt: true,
             callSummary: true,
             memorySyncedAt: true,
           },
@@ -78,11 +78,7 @@ export async function GET(
     }
 
     const latestVoiceCall = contributor.voiceCalls[0] ?? null;
-    if (
-      latestVoiceCall &&
-      (!latestVoiceCall.memorySyncedAt || ['registered', 'ongoing'].includes(latestVoiceCall.status)) &&
-      Date.now() - latestVoiceCall.createdAt.getTime() > STALE_VOICE_CALL_MS
-    ) {
+    if (shouldRefreshVoiceCallStatus(latestVoiceCall)) {
       try {
         await refreshVoiceCallFromProvider(latestVoiceCall.id);
       } catch (refreshError) {
@@ -109,6 +105,8 @@ export async function GET(
             startedAt: true,
             endedAt: true,
             createdAt: true,
+            updatedAt: true,
+            analyzedAt: true,
             callSummary: true,
             memorySyncedAt: true,
           },

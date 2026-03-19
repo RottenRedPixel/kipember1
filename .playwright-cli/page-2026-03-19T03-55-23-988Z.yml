@@ -1,0 +1,72 @@
+- generic [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e39] [cursor=pointer]:
+    - img [ref=e40]
+  - alert [ref=e43]
+  - generic [ref=e82]:
+    - banner [ref=e83]:
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - link "Ember owner and contributor workspace" [ref=e87] [cursor=pointer]:
+            - /url: /feed
+            - generic [ref=e89]:
+              - generic [ref=e90]: Ember
+              - generic [ref=e91]: owner and contributor workspace
+          - navigation [ref=e92]:
+            - link "Embers" [ref=e93] [cursor=pointer]:
+              - /url: /feed
+            - link "Add Ember" [ref=e94] [cursor=pointer]:
+              - /url: /feed#add-ember
+            - link "Profile" [ref=e95] [cursor=pointer]:
+              - /url: /profile
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - generic [ref=e98]: Codex Attach
+            - generic [ref=e99]: codex-attach-0319@example.com
+          - button "Logout" [ref=e100]
+    - main [ref=e101]:
+      - generic [ref=e102]:
+        - generic [ref=e104]:
+          - generic [ref=e105]:
+            - heading "Create an Ember" [level=2] [ref=e106]
+            - paragraph [ref=e107]: Upload a photo or video to start a new ember.
+            - button "Drop your photo or video here, or browse Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V." [active] [ref=e108]:
+              - img [ref=e110]
+              - paragraph [ref=e113]: Drop your photo or video here, or browse
+              - paragraph [ref=e114]: Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V.
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - img "392ebee6-21ab-4627-8da0-82fdcb68f1d9.png" [ref=e132]
+              - generic [ref=e133]:
+                - paragraph [ref=e134]: New Ember
+                - generic [ref=e135]: 392ebee6-21ab-4627-8da0-82fdcb68f1d9.png
+            - generic [ref=e136]:
+              - button "Close upload confirmation" [ref=e137]:
+                - img [ref=e138]
+              - paragraph [ref=e141]: Ready to send
+              - heading "Create this Ember?" [level=3] [ref=e142]
+              - paragraph [ref=e143]: Check the media, add any quick context, and confirm when you are ready to send it into Ember.
+              - generic [ref=e144]:
+                - paragraph [ref=e145]: Nothing uploads until you confirm.
+                - paragraph [ref=e146]: Ember will process the media, create the memory page, and open it as soon as the first pass is ready.
+              - generic [ref=e147]:
+                - generic [ref=e148]:
+                  - generic [ref=e149]: Description
+                  - textbox "Description" [ref=e150]:
+                    - /placeholder: What makes this Ember meaningful? Add context Ember should know.
+                - generic [ref=e151]:
+                  - checkbox "Share this Ember to your network feed Accepted friends will see it in their feed. Contributors can still be invited individually." [ref=e152]
+                  - generic [ref=e153]:
+                    - generic [ref=e154]: Share this Ember to your network feed
+                    - generic [ref=e155]: Accepted friends will see it in their feed. Contributors can still be invited individually.
+              - generic [ref=e156]:
+                - button "Create image Ember" [ref=e157]
+                - button "Pick a different file" [ref=e158]
+        - generic [ref=e116]:
+          - paragraph [ref=e118]: Your Embers
+          - generic [ref=e119]: Your feed is empty. Add a photo or video above to create your first Ember.
+        - generic [ref=e121]:
+          - paragraph [ref=e122]: What Ember does
+          - heading "Capture life's moments together and relive them anytime." [level=2] [ref=e123]
+          - paragraph [ref=e124]: Through simple, AI-guided conversations, Ember creates interactive memories that grow over time.
+          - link "Learn more" [ref=e126] [cursor=pointer]:
+            - /url: /#learn-more

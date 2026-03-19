@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
+import ImageAttachmentViewer, { type ImageAttachmentRecord } from '@/components/ImageAttachmentViewer';
 import MediaPreview from '@/components/MediaPreview';
+import MemoryTellMoreActions from '@/components/MemoryTellMoreActions';
 import WikiView from '@/components/WikiView';
 
 interface WikiRecord {
@@ -21,7 +23,23 @@ interface WikiRecord {
     mediaType: 'IMAGE' | 'VIDEO';
     posterFilename: string | null;
     durationSeconds: number | null;
+    attachments: ImageAttachmentRecord[];
   };
+  ownerConversationTarget: {
+    id: string;
+    token: string;
+    phoneNumber: string | null;
+    phoneAvailable: boolean;
+    latestVoiceCall: {
+      id: string;
+      status: string;
+      startedAt: string | null;
+      endedAt: string | null;
+      createdAt: string;
+      callSummary: string | null;
+      memorySyncedAt: string | null;
+    } | null;
+  } | null;
 }
 
 export default function WikiPage() {
@@ -30,6 +48,7 @@ export default function WikiPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [activeAttachmentId, setActiveAttachmentId] = useState<string | null>(null);
 
   const fetchWiki = useCallback(async () => {
     try {
@@ -91,6 +110,8 @@ export default function WikiPage() {
         originalName: wiki.image.originalName,
       })
     : '';
+  const activeAttachment =
+    wiki?.image.attachments.find((attachment) => attachment.id === activeAttachmentId) || null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -125,7 +146,7 @@ export default function WikiPage() {
 
                 <div className="min-w-0 flex-1">
                   <p className="ember-eyebrow">Wiki</p>
-                  <h1 className="ember-heading mt-4 break-all text-3xl leading-tight text-[var(--ember-text)] sm:break-words sm:text-4xl sm:[overflow-wrap:anywhere]">
+                  <h1 className="ember-heading mt-4 break-words text-3xl leading-tight text-[var(--ember-text)] [overflow-wrap:anywhere] sm:text-4xl">
                     {emberTitle}
                   </h1>
                   <p className="ember-copy mt-4 max-w-3xl break-words text-sm">
@@ -142,6 +163,18 @@ export default function WikiPage() {
                       {wiki.canManage ? 'Owner controls enabled' : 'Read only'}
                     </span>
                   </div>
+
+                  {wiki.canManage && wiki.ownerConversationTarget && (
+                    <div className="mt-6">
+                      <MemoryTellMoreActions
+                        contributorToken={wiki.ownerConversationTarget.token}
+                        contributorId={wiki.ownerConversationTarget.id}
+                        phoneAvailable={wiki.ownerConversationTarget.phoneAvailable}
+                        latestVoiceCall={wiki.ownerConversationTarget.latestVoiceCall}
+                        onRefreshRequested={fetchWiki}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -173,7 +206,7 @@ export default function WikiPage() {
               Keep the memory current
             </h2>
             <p className="ember-copy mt-3 text-sm">
-              Regenerate after new contributors, new tags, or sports details have been added.
+              Regenerate after new contributors, tags, added photos, or sports details have been added.
             </p>
 
             <button
@@ -190,6 +223,43 @@ export default function WikiPage() {
                   : 'Generate wiki'}
             </button>
           </section>
+
+          {wiki && wiki.image.attachments.length > 0 && (
+            <section className="ember-panel rounded-[2.25rem] p-6">
+              <p className="ember-eyebrow">Added content</p>
+              <p className="ember-copy mt-3 text-sm">
+                Click a thumbnail to open the full photo or video and its note.
+              </p>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                {wiki.image.attachments.map((attachment) => (
+                  <button
+                    key={attachment.id}
+                    type="button"
+                    onClick={() => setActiveAttachmentId(attachment.id)}
+                    className="group overflow-hidden rounded-[1.2rem] border border-[rgba(20,20,20,0.08)] bg-[var(--ember-soft)] text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                  >
+                    <MediaPreview
+                      mediaType={attachment.mediaType}
+                      filename={attachment.filename}
+                      posterFilename={attachment.posterFilename}
+                      originalName={attachment.originalName}
+                      usePosterForVideo
+                      className="h-24 w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                    />
+                    <div className="space-y-1 px-3 py-3">
+                      <div className="line-clamp-2 text-xs font-medium text-[var(--ember-text)] [overflow-wrap:anywhere]">
+                        {attachment.originalName}
+                      </div>
+                      <div className="line-clamp-2 text-[11px] leading-5 text-[var(--ember-muted)]">
+                        {attachment.description?.trim() || 'Open to view note'}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="ember-panel rounded-[2.25rem] p-6">
             <p className="ember-eyebrow">Modes</p>
@@ -214,6 +284,16 @@ export default function WikiPage() {
           </section>
         </aside>
       </div>
+
+      <ImageAttachmentViewer
+        attachment={activeAttachment}
+        canManage={false}
+        draftDescription={activeAttachment?.description || ''}
+        isSaving={false}
+        isDeleting={false}
+        onDraftChange={() => undefined}
+        onClose={() => setActiveAttachmentId(null)}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
+import { generateWikiForImage } from '@/lib/wiki-generator';
 
 function parseOptionalPercentage(value: unknown): number | null | undefined {
   if (value === undefined) {
@@ -99,6 +100,10 @@ export async function PATCH(
       },
     });
 
+    await generateWikiForImage(id).catch((wikiError) => {
+      console.error('Wiki refresh failed after tag update:', wikiError);
+    });
+
     return NextResponse.json({ tag });
   } catch (error) {
     console.error('Tag update error:', error);
@@ -133,6 +138,10 @@ export async function DELETE(
         id: tagId,
         imageId: id,
       },
+    });
+
+    await generateWikiForImage(id).catch((wikiError) => {
+      console.error('Wiki refresh failed after tag delete:', wikiError);
     });
 
     return NextResponse.json({ success: true });
