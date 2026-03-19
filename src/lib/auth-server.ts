@@ -9,6 +9,7 @@ const SESSION_COOKIE_NAME = 'ember_session';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 export const LEGACY_OWNER_USER_ID = 'legacy_owner_march_2026';
 export const PRIMARY_OWNER_EMAIL = 'sethtropper@gmail.com';
+export const PHONE_ACCOUNT_EMAIL_DOMAIN = 'phone.ember.local';
 
 export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -31,6 +32,10 @@ function hashSessionToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
+export function hashAuthSecret(secret: string): string {
+  return createHash('sha256').update(secret).digest('hex');
+}
+
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex');
   const derived = scryptSync(password, salt, 64).toString('hex');
@@ -51,6 +56,32 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   }
 
   return timingSafeEqual(computed, expected);
+}
+
+export function createTemporaryPasswordHash(): string {
+  return hashPassword(randomBytes(24).toString('hex'));
+}
+
+export function getPhoneAccountEmail(phoneNumber: string): string {
+  return `phone-${phoneNumber}@${PHONE_ACCOUNT_EMAIL_DOMAIN}`;
+}
+
+export function isPhoneAccountEmail(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.toLowerCase().endsWith(`@${PHONE_ACCOUNT_EMAIL_DOMAIN}`);
+}
+
+export async function transferLegacyOwnerImagesIfNeeded(user: {
+  id: string;
+  email: string;
+}) {
+  if (normalizeEmail(user.email) !== PRIMARY_OWNER_EMAIL) {
+    return;
+  }
+
+  await prisma.image.updateMany({
+    where: { ownerId: LEGACY_OWNER_USER_ID },
+    data: { ownerId: user.id },
+  });
 }
 
 async function syncContributorLinksForUser(user: {

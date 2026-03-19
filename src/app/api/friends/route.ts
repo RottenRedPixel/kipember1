@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, requireApiUser } from '@/lib/auth-server';
+import { sendFriendRequestEmail } from '@/lib/auth-email';
+import { createUserAccount } from '@/lib/auth-users';
 import { prisma } from '@/lib/db';
 
 function toCounterpartyUser(friendship: {
@@ -99,17 +101,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const targetUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true, name: true, email: true, phoneNumber: true },
-    });
-
-    if (!targetUser) {
-      return NextResponse.json(
-        { error: 'No Ember account was found with that email yet' },
-        { status: 404 }
-      );
-    }
+    const targetUser =
+      (await prisma.user.findUnique({
+        where: { email: normalizedEmail },
+        select: { id: true, name: true, email: true, phoneNumber: true },
+      })) ||
+      (await createUserAccount({
+        email: normalizedEmail,
+        phoneNumber: null,
+        name: null,
+      }));
 
     const existingFriendship = await prisma.friendship.findFirst({
       where: {
@@ -162,6 +163,16 @@ export async function POST(request: NextRequest) {
             addresseeId: targetUser.id,
           },
         });
+
+    try {
+      const requesterName = auth.user.name || auth.user.email;
+      await sendFriendRequestEmail({
+        toEmail: targetUser.email,
+        requesterName,
+      });
+    } catch (emailError) {
+      console.error('Friend request email failed:', emailError);
+    }
 
     return NextResponse.json({ friendship });
   } catch (error) {

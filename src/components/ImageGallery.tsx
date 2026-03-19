@@ -92,7 +92,7 @@ const cardActions: CardAction[] = [
 ];
 
 const cardActionClass =
-  'flex h-12 items-center justify-center rounded-full border border-[var(--ember-orange-deep)] bg-[var(--ember-orange)] text-white transition hover:border-[var(--ember-orange-deep)] hover:bg-[var(--ember-orange-deep)]';
+  'flex h-12 items-center justify-center rounded-full border border-[var(--ember-orange)] bg-white text-[var(--ember-orange)] transition hover:bg-[rgba(255,102,33,0.06)] hover:border-[var(--ember-orange-deep)] hover:text-[var(--ember-orange-deep)]';
 
 async function shareEmberLink(image: FeedImage) {
   const url = `${window.location.origin}/image/${image.id}`;

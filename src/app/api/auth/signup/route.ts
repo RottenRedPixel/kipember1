@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import {
-  LEGACY_OWNER_USER_ID,
-  PRIMARY_OWNER_EMAIL,
   applyUserSessionCookie,
   claimMemoriesForUser,
   createUserSession,
@@ -10,6 +7,7 @@ import {
   normalizeEmail,
   normalizePhone,
 } from '@/lib/auth-server';
+import { createUserAccount, findUserByEmail } from '@/lib/auth-users';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,10 +30,7 @@ export async function POST(request: NextRequest) {
     const normalizedEmail = normalizeEmail(email);
     const normalizedPhone = normalizePhone(phoneNumber);
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      select: { id: true },
-    });
+    const existingUser = await findUserByEmail(normalizedEmail);
 
     if (existingUser) {
       return NextResponse.json(
@@ -44,27 +39,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.create({
-      data: {
-        name: typeof name === 'string' && name.trim() ? name.trim() : null,
-        email: normalizedEmail,
-        phoneNumber: normalizedPhone,
-        passwordHash: hashPassword(password),
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phoneNumber: true,
-      },
+    const user = await createUserAccount({
+      name: typeof name === 'string' && name.trim() ? name.trim() : null,
+      email: normalizedEmail,
+      phoneNumber: normalizedPhone,
+      passwordHash: hashPassword(password),
     });
-
-    if (normalizedEmail === PRIMARY_OWNER_EMAIL) {
-      await prisma.image.updateMany({
-        where: { ownerId: LEGACY_OWNER_USER_ID },
-        data: { ownerId: user.id },
-      });
-    }
 
     await claimMemoriesForUser({
       id: user.id,

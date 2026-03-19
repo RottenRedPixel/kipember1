@@ -235,10 +235,10 @@ function ActionButton({
   href?: string;
 }) {
   const className =
-    'flex min-h-[4.5rem] items-center justify-center rounded-[1.5rem] border border-[var(--ember-orange-deep)] bg-[var(--ember-orange)] px-3 py-3 text-center text-white transition hover:border-[var(--ember-orange-deep)] hover:bg-[var(--ember-orange-deep)]';
+    'flex min-h-[4.5rem] items-center justify-center rounded-[1.5rem] border border-[var(--ember-orange)] bg-white px-3 py-3 text-center text-[var(--ember-orange)] transition hover:bg-[rgba(255,102,33,0.06)] hover:border-[var(--ember-orange-deep)] hover:text-[var(--ember-orange-deep)]';
 
   const content = (
-    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/16 text-white">
+    <span className="flex h-10 w-10 items-center justify-center rounded-full">
       {icon}
     </span>
   );

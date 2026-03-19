@@ -238,6 +238,7 @@ model User {
   phoneNumber          String?
   passwordHash         String
   sessions             UserSession[]
+  authChallenges       AuthChallenge[]
   ownedImages          Image[]      @relation("OwnedImages")
   contributorRecords   Contributor[]
   sentFriendships      Friendship[] @relation("FriendshipRequester")
@@ -256,6 +257,27 @@ model UserSession {
   createdAt DateTime @default(now())
   expiresAt DateTime
 
+  @@index([userId, createdAt])
+}
+
+model AuthChallenge {
+  id           String   @id @default(cuid())
+  type         String
+  tokenHash    String?  @unique
+  codeHash     String?
+  email        String?
+  phoneNumber  String?
+  name         String?
+  metadataJson String?
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([type, email, createdAt])
+  @@index([type, phoneNumber, createdAt])
   @@index([userId, createdAt])
 }
 
