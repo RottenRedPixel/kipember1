@@ -739,3 +739,6 @@ Couldn't load zlib
 Couldn't load fs
 Couldn't load zlib
 ✓ Compiled in 119ms
+✓ Compiled in 389ms
+✓ Finished filesystem cache database compaction in 11.6s
+✓ Compiled in 187ms

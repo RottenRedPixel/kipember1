@@ -48,9 +48,11 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const MAX_FACES_PER_IMAGE = 6;
-const MAX_PEOPLE_TO_COMPARE = 6;
-const MAX_REFERENCES_PER_PERSON = 2;
+const MAX_FACES_PER_IMAGE = 4;
+const MAX_PEOPLE_TO_COMPARE = 4;
+const MAX_REFERENCES_PER_PERSON = 1;
+const FACE_CROP_SIZE = 192;
+const TARGET_IMAGE_MAX_DIMENSION = 1280;
 
 const FACE_MATCH_SCHEMA = {
   type: 'object',
@@ -326,12 +328,51 @@ async function cropFaceBuffer(
 
   return rotated
     .extract({ left, top, width, height })
-    .resize(256, 256, {
+    .resize(FACE_CROP_SIZE, FACE_CROP_SIZE, {
       fit: 'cover',
       position: 'attention',
     })
-    .jpeg({ quality: 84 })
+    .jpeg({ quality: 78 })
     .toBuffer();
+}
+
+async function loadCandidateReferenceImages(candidate: CandidateGroup) {
+  const referenceImages: Buffer[] = [];
+
+  for (const reference of candidate.references) {
+    const variants: CropVariant[] = ['tight', 'expanded'];
+
+    for (const variant of variants) {
+      try {
+        const buffer = await cropFaceBuffer(reference.image, reference.box, variant);
+        referenceImages.push(buffer);
+      } catch {
+        // Skip bad historical crops instead of failing the whole candidate.
+      }
+    }
+  }
+
+  return {
+    ...candidate,
+    referenceImages,
+  };
+}
+
+async function loadCandidatesWithReferences(referenceCandidates: CandidateGroup[]) {
+  const loadedCandidates: Array<
+    CandidateGroup & {
+      referenceImages: Buffer[];
+    }
+  > = [];
+
+  for (const candidate of referenceCandidates) {
+    const loadedCandidate = await loadCandidateReferenceImages(candidate);
+    if (loadedCandidate.referenceImages.length > 0) {
+      loadedCandidates.push(loadedCandidate);
+    }
+  }
+
+  return loadedCandidates;
 }
 
 async function repairFaceMatchJson(responseText: string): Promise<unknown> {
@@ -729,11 +770,11 @@ async function loadTargetImageBuffer(image: {
 
   return sharp(input)
     .rotate()
-    .resize(1600, 1600, {
+    .resize(TARGET_IMAGE_MAX_DIMENSION, TARGET_IMAGE_MAX_DIMENSION, {
       fit: 'inside',
       withoutEnlargement: true,
     })
-    .jpeg({ quality: 86 })
+    .jpeg({ quality: 78 })
     .toBuffer();
 }
 
@@ -905,23 +946,7 @@ export async function suggestFaceMatchesForImage({
     return [];
   }
 
-  const loadedCandidates = (
-    await Promise.all(
-      referenceCandidates.map(async (candidate) => ({
-        ...candidate,
-        referenceImages: (
-          await Promise.allSettled(
-            candidate.references.flatMap((reference) => [
-              cropFaceBuffer(reference.image, reference.box, 'tight'),
-              cropFaceBuffer(reference.image, reference.box, 'expanded'),
-            ])
-          )
-        )
-          .flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
-          .filter(Boolean),
-      }))
-    )
-  ).filter((candidate) => candidate.referenceImages.length > 0);
+  const loadedCandidates = await loadCandidatesWithReferences(referenceCandidates);
 
   if (loadedCandidates.length === 0) {
     return [];
@@ -1042,28 +1067,8 @@ export async function suggestAutoTagMatchesForImage({
     return [];
   }
 
-  const [targetImage, loadedCandidates] = await Promise.all([
-    loadTargetImageBuffer(image),
-    Promise.all(
-      referenceCandidates.map(async (candidate) => ({
-        ...candidate,
-        referenceImages: (
-          await Promise.allSettled(
-            candidate.references.flatMap((reference) => [
-              cropFaceBuffer(reference.image, reference.box, 'tight'),
-              cropFaceBuffer(reference.image, reference.box, 'expanded'),
-            ])
-          )
-        )
-          .flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []))
-          .filter(Boolean),
-      }))
-    ),
-  ]);
-
-  const validCandidates = loadedCandidates.filter(
-    (candidate) => candidate.referenceImages.length > 0
-  );
+  const targetImage = await loadTargetImageBuffer(image);
+  const validCandidates = await loadCandidatesWithReferences(referenceCandidates);
 
   if (validCandidates.length === 0) {
     return [];
@@ -1072,12 +1077,18 @@ export async function suggestAutoTagMatchesForImage({
   const matches =
     validCandidates.length <= 3
       ? (
-          await Promise.all(
-            validCandidates.map(async (candidate) => {
+          await (async () => {
+            const sequentialMatches: Array<NonNullable<Awaited<ReturnType<typeof locateCandidateMatchesInImage>>[number]>> = [];
+
+            for (const candidate of validCandidates) {
               const candidateMatches = await locateCandidateMatchesInImage(targetImage, [candidate]);
-              return candidateMatches[0] || null;
-            })
-          )
+              if (candidateMatches[0]) {
+                sequentialMatches.push(candidateMatches[0]);
+              }
+            }
+
+            return sequentialMatches;
+          })()
         ).filter((match): match is NonNullable<typeof match> => Boolean(match))
       : await locateCandidateMatchesInImage(targetImage, validCandidates);
 

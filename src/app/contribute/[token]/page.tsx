@@ -292,7 +292,10 @@ export default function ContributePage() {
             </div>
 
             <div className="mt-5 min-w-0">
-              <h2 className="ember-heading break-all text-xl leading-tight text-[var(--ember-text)] sm:text-2xl">
+              <h2
+                title={emberTitle}
+                className="ember-heading overflow-hidden text-ellipsis whitespace-nowrap text-lg leading-tight text-[var(--ember-text)] sm:text-2xl"
+              >
                 {emberTitle}
               </h2>
               {data.image.description && (
@@ -315,14 +318,14 @@ export default function ContributePage() {
                 <div className="space-y-5">
                   {!data.guestFlow && (
                     <div className="ember-card rounded-[1.75rem] p-5">
-                      <div className="ember-eyebrow">Phone interview</div>
+                      <div className="ember-eyebrow">Start here</div>
                       <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
-                        Talk with Ember
+                        Talk Via Phone
                       </h2>
                       <p className="ember-copy mt-3 text-sm">
-                        Voice gives Ember the richest context. It is the easiest way to capture
-                        how this moment felt, what happened around it, and the details that matter
-                        most.
+                        Tap the phone button and tell Ember the story out loud. Voice gives the
+                        richest context and is the best way to capture what happened, how it felt,
+                        and the small details that matter most.
                       </p>
                       <button
                         onClick={startVoiceCall}
@@ -334,13 +337,16 @@ export default function ContributePage() {
                         }
                         className="ember-button-primary mt-5 w-full justify-center disabled:opacity-60"
                       >
-                        {isCalling ? 'Calling...' : 'Talk Via Phone'}
+                        {isCalling ? 'Calling...' : 'Start phone interview'}
                       </button>
                     </div>
                   )}
 
                   <div className="rounded-[1.5rem] border border-[var(--ember-line)] bg-white/70 px-5 py-5">
                     <div className="ember-eyebrow">Other options</div>
+                    <p className="mt-3 text-sm text-[var(--ember-muted)]">
+                      Prefer typing instead? You can still share the memory with Ember by text.
+                    </p>
                     <button
                       onClick={startConversation}
                       disabled={isSending || isCalling}

@@ -358,7 +358,14 @@ export default function InteractiveImageTagger({
   }, [canManage, imageLoaded, imageUrl]);
 
   useEffect(() => {
-    if (!canManage || !imageUrl || !imageLoaded || detectedFaces.length === 0) {
+    if (
+      !canManage ||
+      !imageUrl ||
+      !imageLoaded ||
+      detectedFaces.length === 0 ||
+      tags.length > 0 ||
+      !isPickingTag
+    ) {
       setMatchSuggestions([]);
       setMatchState('idle');
       return;
@@ -408,7 +415,7 @@ export default function InteractiveImageTagger({
       cancelled = true;
       controller.abort();
     };
-  }, [canManage, detectedFaces, imageId, imageLoaded, imageUrl]);
+  }, [canManage, detectedFaces, imageId, imageLoaded, imageUrl, isPickingTag, tags.length]);
 
   useEffect(() => {
     if (!canManage || !draftBox) {
