@@ -115,14 +115,14 @@ export default function ChatPage() {
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href={`/image/${params.id}/wiki`} className="ember-button-secondary">
-              Open wiki
+            <Link href={`/image/${params.id}`} className="ember-button-secondary">
+              Open Ember
             </Link>
             <Link href={`/image/${params.id}/story-circle`} className="ember-button-secondary">
               Story circle
             </Link>
-            <Link href={`/image/${params.id}/sports`} className="ember-button-secondary">
-              Sports mode
+            <Link href={`/image/${params.id}/play`} className="ember-button-secondary">
+              Play Ember
             </Link>
           </div>
 

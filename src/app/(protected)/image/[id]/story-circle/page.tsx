@@ -31,10 +31,10 @@ export default async function StoryCirclePage({
       <section className="mb-6 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="ember-panel-strong rounded-[2.5rem] p-6 sm:p-8">
           <Link
-            href={`/image/${id}/wiki`}
+            href={`/image/${id}/play`}
             className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
           >
-            {'<- Back to wiki'}
+            {'<- Back to Play Ember'}
           </Link>
 
           <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -90,8 +90,8 @@ export default async function StoryCirclePage({
             <Link href={`/image/${id}/chat`} className="ember-button-secondary">
               Ask Ember
             </Link>
-            <Link href={`/image/${id}/wiki`} className="ember-button-secondary">
-              Back to wiki
+            <Link href={`/image/${id}/play`} className="ember-button-secondary">
+              Back to Play Ember
             </Link>
           </div>
         </div>

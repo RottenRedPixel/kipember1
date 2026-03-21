@@ -10,6 +10,7 @@ import InteractiveImageTagger from '@/components/InteractiveImageTagger';
 import AutoTagPrompt from '@/components/AutoTagPrompt';
 import LocationSuggestionPrompt from '@/components/LocationSuggestionPrompt';
 import MemoryTellMoreActions from '@/components/MemoryTellMoreActions';
+import WikiView from '@/components/WikiView';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -135,6 +136,9 @@ interface ImageRecord {
   }[];
   wiki: {
     id: string;
+    content: string;
+    version: number;
+    updatedAt: string;
   } | null;
   sportsMode: {
     id: string;
@@ -153,10 +157,10 @@ type IconProps = {
 type ActivePanel = 'ask' | 'contributors' | 'shape' | 'share' | null;
 type ShapeView = 'menu' | 'tag';
 
-function DiamondIcon({ className = 'h-4 w-4' }: IconProps) {
+function GeminiIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="m12 3.5 7.5 8.5L12 20.5 4.5 12 12 3.5Z" />
+    <svg viewBox="0 0 256 256" fill="currentColor" className={className}>
+      <path d="M128 16C137 74 182 119 240 128C182 137 137 182 128 240C119 182 74 137 16 128C74 119 119 74 128 16Z" />
     </svg>
   );
 }
@@ -188,9 +192,20 @@ function CircleIcon({ className = 'h-4 w-4' }: IconProps) {
 
 function ShareIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M11.28 3.72a1.02 1.02 0 0 1 1.44 0l3.9 3.9a1.02 1.02 0 0 1-1.44 1.44L13.02 6.9v7.22a1.02 1.02 0 1 1-2.04 0V6.9L8.82 9.06a1.02 1.02 0 1 1-1.44-1.44l3.9-3.9Z" />
-      <path d="M8.1 11.88a1.02 1.02 0 1 0 0 2.04h-.66c-.72 0-1.32.59-1.32 1.32v4.14c0 .73.6 1.32 1.32 1.32h9.12c.72 0 1.32-.59 1.32-1.32v-4.14c0-.73-.6-1.32-1.32-1.32h-.66a1.02 1.02 0 1 0 0-2.04h.66a3.36 3.36 0 0 1 3.36 3.36v4.14A3.36 3.36 0 0 1 16.56 22H7.44a3.36 3.36 0 0 1-3.36-3.36v-4.14a3.36 3.36 0 0 1 3.36-3.36h.66Z" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="18" cy="5" r="3" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="12" r="3" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="19" r="3" fill="currentColor" stroke="none" />
+      <line x1="8.6" y1="10.7" x2="15.4" y2="6.3" />
+      <line x1="8.6" y1="13.3" x2="15.4" y2="17.7" />
     </svg>
   );
 }
@@ -204,13 +219,7 @@ function CloseIcon({ className = 'h-4 w-4' }: IconProps) {
   );
 }
 
-function DetailBlock({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function DetailBlock({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
@@ -235,10 +244,10 @@ function ActionButton({
   href?: string;
 }) {
   const className =
-    'flex min-h-[4.5rem] items-center justify-center rounded-[1.5rem] border border-[var(--ember-orange)] bg-white px-3 py-3 text-center text-[var(--ember-orange)] transition hover:bg-[rgba(255,102,33,0.06)] hover:border-[var(--ember-orange-deep)] hover:text-[var(--ember-orange-deep)]';
+    'flex min-h-[5rem] items-center justify-center rounded-[1.6rem] bg-transparent px-3 py-3 text-center text-[var(--ember-orange)] transition hover:text-[var(--ember-orange-deep)]';
 
   const content = (
-    <span className="flex h-10 w-10 items-center justify-center rounded-full">
+    <span className="flex h-14 w-14 items-center justify-center rounded-full">
       {icon}
     </span>
   );
@@ -318,6 +327,7 @@ export default function ImagePage() {
   const [savingShareState, setSavingShareState] = useState(false);
   const [shareError, setShareError] = useState('');
   const [actionNotice, setActionNotice] = useState('');
+  const [generatingWiki, setGeneratingWiki] = useState(false);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [shapeView, setShapeView] = useState<ShapeView>('menu');
   const [deletingEmber, setDeletingEmber] = useState(false);
@@ -414,6 +424,19 @@ export default function ImagePage() {
       const nextQuery = nextParams.toString();
       router.replace(nextQuery ? `/image/${params.id}?${nextQuery}` : `/image/${params.id}`);
     }
+  };
+
+  const focusStorySection = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    window.setTimeout(() => {
+      document.getElementById('ember-story')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 160);
   };
 
   const handleOpenAttachmentPicker = () => {
@@ -553,6 +576,40 @@ export default function ImagePage() {
     }
   };
 
+  const handleGenerateWiki = async () => {
+    if (!image || generatingWiki) {
+      return;
+    }
+
+    const imageId = image.id;
+    setGeneratingWiki(true);
+    setShareError('');
+
+    try {
+      const response = await fetch(`/api/wiki/${imageId}`, {
+        method: 'POST',
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to regenerate the memory story.');
+      }
+
+      await fetchImage();
+      setActionNotice('Memory story updated.');
+      focusStorySection();
+    } catch (wikiError) {
+      setShareError(
+        wikiError instanceof Error
+          ? wikiError.message
+          : 'Failed to regenerate the memory story.'
+      );
+    } finally {
+      setGeneratingWiki(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
@@ -584,25 +641,6 @@ export default function ImagePage() {
     );
   }
 
-  const completedCount = image.contributors.filter(
-    (contributor) => contributor.conversation?.status === 'completed'
-  ).length;
-
-  const ownerLabel = image.owner.name || image.owner.email;
-  const contributorNames = image.contributors.map(
-    (contributor) =>
-      contributor.name ||
-      contributor.user?.name ||
-      contributor.email ||
-      contributor.phoneNumber
-  );
-  const tagNames = image.tags.map((tag) => tag.label);
-  const detailSummary =
-    image.description ||
-    (completedCount > 0
-      ? `${completedCount} contributor memories have been captured for this Ember so far.`
-      : 'No detail has been captured for this Ember yet.');
-  const capturedLabel = new Date(image.createdAt).toLocaleDateString();
   const subjectNoun = image.mediaType === 'VIDEO' ? 'video' : 'photo';
   const emberTitle = getEmberTitle(image);
   const previewMediaUrl = getPreviewMediaUrl({
@@ -663,12 +701,13 @@ export default function ImagePage() {
 
   const handleLocationApplied = (locationLabel: string) => {
     setActionNotice(`Added ${locationLabel} into the Ember story and refreshed the wiki.`);
+    void fetchImage();
   };
 
   const handleManualTagComplete = async () => {
     await fetchImage();
     closePanel();
-    router.push(`/image/${image.id}/wiki`);
+    focusStorySection();
   };
 
   return (
@@ -702,6 +741,37 @@ export default function ImagePage() {
           </h1>
         </div>
 
+        <div className="grid grid-cols-5 gap-3">
+          <ActionButton
+            icon={<GeminiIcon className="h-7 w-7" />}
+            label="Ask Ember"
+            onClick={() => setActivePanel('ask')}
+          />
+          <ActionButton
+            icon={<PlayIcon className="h-7 w-7" />}
+            label="Play Ember"
+            href={`/image/${image.id}/play`}
+          />
+          <ActionButton
+            icon={<PersonIcon className="h-7 w-7" />}
+            label="Contributors"
+            onClick={() => setActivePanel('contributors')}
+          />
+          <ActionButton
+            icon={<CircleIcon className="h-7 w-7" />}
+            label="Tend Ember"
+            onClick={() => {
+              setShapeView('menu');
+              setActivePanel('shape');
+            }}
+          />
+          <ActionButton
+            icon={<ShareIcon className="h-7 w-7" />}
+            label="Share Ember"
+            onClick={() => setActivePanel('share')}
+          />
+        </div>
+
         {image.canManage && ownerConversationTarget && (
           <div className="ember-panel rounded-[2rem] p-5 sm:p-6">
             <p className="ember-eyebrow">Tell more</p>
@@ -722,68 +792,40 @@ export default function ImagePage() {
           </div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="ember-panel rounded-[2rem] p-5 sm:p-6">
-            <p className="ember-eyebrow">Memory detail</p>
-            <p className="mt-4 text-sm leading-7 text-[var(--ember-text)]">{detailSummary}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="ember-chip">{image.mediaType === 'VIDEO' ? 'Video Ember' : 'Photo Ember'}</span>
-              <span className="ember-chip">Captured {capturedLabel}</span>
-              <span className="ember-chip">{image.contributors.length} contributors</span>
-              <span className="ember-chip">{image.tags.length} tags</span>
+        <section id="ember-story" className="ember-panel-strong rounded-[2rem] p-5 sm:p-6">
+          {image.wiki ? (
+            <div className="min-w-0">
+              <WikiView content={image.wiki.content} />
             </div>
-          </div>
-
-          <div className="ember-panel rounded-[2rem] p-5 sm:p-6">
-            <p className="ember-eyebrow">People connected</p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-              <DetailBlock label="Owner" value={ownerLabel} />
-              <DetailBlock
-                label="Contributors"
-                value={
-                  contributorNames.length
-                    ? contributorNames.join(', ')
-                    : 'No contributors have been added yet.'
-                }
-              />
-              <DetailBlock
-                label="Tags"
-                value={tagNames.length ? tagNames.join(', ') : 'No one has been tagged yet.'}
-              />
+          ) : (
+            <div className="rounded-[1.8rem] border border-dashed border-[rgba(20,20,20,0.12)] bg-white px-5 py-8">
+              <h2 className="ember-heading text-3xl text-[var(--ember-text)]">
+                No story yet
+              </h2>
+              <p className="ember-copy mt-3 max-w-3xl text-sm">
+                Ember can turn the current photo, tags, contributor memories, and added content
+                into a single story here. Generate it when you are ready.
+              </p>
             </div>
-          </div>
-        </div>
+          )}
 
-        <div className="hidden grid-cols-5 gap-3 md:grid">
-          <ActionButton
-            icon={<DiamondIcon className="h-5 w-5" />}
-            label="Ask Ember"
-            onClick={() => setActivePanel('ask')}
-          />
-          <ActionButton
-            icon={<PlayIcon className="h-5 w-5" />}
-            label="Play Ember"
-            href={`/image/${image.id}/wiki`}
-          />
-          <ActionButton
-            icon={<PersonIcon className="h-5 w-5" />}
-            label="Contributors"
-            onClick={() => setActivePanel('contributors')}
-          />
-          <ActionButton
-            icon={<CircleIcon className="h-5 w-5" />}
-            label="Tend Ember"
-            onClick={() => {
-              setShapeView('menu');
-              setActivePanel('shape');
-            }}
-          />
-          <ActionButton
-            icon={<ShareIcon className="h-5 w-5" />}
-            label="Share Ember"
-            onClick={() => setActivePanel('share')}
-          />
-        </div>
+          {image.canManage && (
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => void handleGenerateWiki()}
+                disabled={generatingWiki}
+                className="ember-button-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {generatingWiki
+                  ? 'Regenerating...'
+                  : image.wiki
+                    ? 'Regenerate story'
+                    : 'Generate story'}
+              </button>
+            </div>
+          )}
+        </section>
 
         <ImageAttachmentGallery
           imageId={image.id}
@@ -817,9 +859,9 @@ export default function ImagePage() {
             onUpdate={fetchImage}
           />
         ) : (
-          <div className="ember-panel rounded-[2rem] p-5">
-            <div className="space-y-3">
-              {contributorNames.length === 0 ? (
+            <div className="ember-panel rounded-[2rem] p-5">
+              <div className="space-y-3">
+              {image.contributors.length === 0 ? (
                 <p className="text-sm text-[var(--ember-muted)]">
                   No contributors have been added yet.
                 </p>
@@ -864,25 +906,40 @@ export default function ImagePage() {
             <div className="ember-panel rounded-[2rem] p-5">
               <p className="ember-eyebrow">Added content</p>
               <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <DetailBlock label="Memory detail" value={detailSummary} />
+                <DetailBlock
+                  label="Story"
+                  value={
+                    image.wiki
+                      ? `Version ${image.wiki.version} updated ${new Date(
+                          image.wiki.updatedAt
+                        ).toLocaleDateString()}`
+                      : 'No story has been generated yet.'
+                  }
+                />
                 <DetailBlock
                   label="Contributor notes"
-                  value={`${completedCount} completed memory threads`}
+                  value={`${image.contributors.filter(
+                    (contributor) => contributor.conversation?.status === 'completed'
+                  ).length} completed memory threads`}
                 />
                 <DetailBlock label="Tagged people" value={`${image.tags.length} tagged records`} />
               </div>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <Link
-                href={`/image/${image.id}/wiki`}
-                className="ember-card rounded-[1.6rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
+              <button
+                type="button"
+                onClick={() => {
+                  closePanel();
+                  focusStorySection();
+                }}
+                className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)]"
               >
-                <div className="text-lg font-semibold text-[var(--ember-text)]">View wiki</div>
+                <div className="text-lg font-semibold text-[var(--ember-text)]">View story</div>
                 <p className="mt-2 text-sm text-[var(--ember-muted)]">
-                  Open the full Ember wiki and all its modes.
+                  Jump back to the main memory story on this page.
                 </p>
-              </Link>
+              </button>
 
               {image.canManage && (
                 <button
@@ -1061,55 +1118,6 @@ export default function ImagePage() {
           </div>
         </div>
       </EmberSheet>
-
-      {!activePanel && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[var(--ember-charcoal)] px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 md:hidden">
-          <div className="grid grid-cols-5 gap-1">
-            <button
-              type="button"
-              onClick={() => setActivePanel('ask')}
-              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
-              aria-label="Ask Ember"
-            >
-              <DiamondIcon className="h-5 w-5" />
-            </button>
-            <Link
-              href={`/image/${image.id}/wiki`}
-              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
-              aria-label="Play Ember"
-            >
-              <PlayIcon className="h-5 w-5" />
-            </Link>
-            <button
-              type="button"
-              onClick={() => setActivePanel('contributors')}
-              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
-              aria-label="Contributors"
-            >
-              <PersonIcon className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setShapeView('menu');
-                setActivePanel('shape');
-              }}
-              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
-              aria-label="Tend Ember"
-            >
-              <CircleIcon className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setActivePanel('share')}
-              className="flex min-h-[4.2rem] items-center justify-center px-1 text-center text-white"
-              aria-label="Share Ember"
-            >
-              <ShareIcon className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      )}
 
       <AutoTagPrompt
         imageId={image.id}

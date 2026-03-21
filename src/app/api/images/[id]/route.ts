@@ -115,7 +115,12 @@ export async function GET(
             },
           },
           wiki: {
-            select: { id: true },
+            select: {
+              id: true,
+              content: true,
+              version: true,
+              updatedAt: true,
+            },
           },
           sportsMode: {
             select: {

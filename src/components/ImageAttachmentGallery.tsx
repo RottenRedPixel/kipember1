@@ -322,7 +322,6 @@ export default function ImageAttachmentGallery({
         preview={previewUrl}
         mediaType={selectedMediaType}
         fileName={selectedFile?.name || 'Selected media'}
-        eyebrow="Added content"
         title="Add this to the Ember?"
         subtitle="This extra photo or video stays attached to the current Ember. It will not start a new interview, but its note can be pulled into the wiki later."
         confirmLabel="Add to Ember"

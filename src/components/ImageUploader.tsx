@@ -33,8 +33,6 @@ export default function ImageUploader() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [description, setDescription] = useState('');
-  const [shareToNetwork, setShareToNetwork] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState('');
@@ -139,8 +137,6 @@ export default function ImageUploader() {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('description', description);
-      formData.append('shareToNetwork', shareToNetwork ? 'true' : 'false');
 
       const response = await fetch('/api/images', {
         method: 'POST',
@@ -180,8 +176,6 @@ export default function ImageUploader() {
 
     setSelectedFile(null);
     setPreview(null);
-    setDescription('');
-    setShareToNetwork(false);
     setSelectionError('');
   };
 
@@ -212,14 +206,6 @@ export default function ImageUploader() {
                     />
                   )}
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,17,0.08),rgba(17,17,17,0.84))]" />
-                  <div className="absolute inset-x-0 bottom-0 p-6">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/72">
-                      New Ember
-                    </p>
-                    <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
-                      {selectedFile?.name || 'Preparing upload'}
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex flex-col justify-center px-6 py-7 sm:px-8">
@@ -308,46 +294,14 @@ export default function ImageUploader() {
         preview={preview}
         mediaType={selectedMediaType}
         fileName={selectedFile?.name || 'Selected media'}
-        eyebrow="New Ember"
         title="Create this Ember?"
-        subtitle="Check the media, add any quick context, and confirm when you are ready to send it into Ember."
+        subtitle="Check the media and confirm when you are ready to send it into Ember."
         confirmLabel={`Create ${selectedMediaType || 'media'} Ember`}
         confirmBusyLabel={`Uploading ${selectedMediaType || 'media'}...`}
         isSubmitting={isUploading}
         onCancel={clearSelection}
         onConfirm={() => void handleUpload()}
-      >
-        <div>
-          <label htmlFor="description" className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
-            Description
-          </label>
-          <textarea
-            id="description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="What makes this Ember meaningful? Add context Ember should know."
-            className="ember-textarea"
-            rows={4}
-          />
-        </div>
-
-        <label className="ember-card flex items-start gap-3 rounded-[1.5rem] px-4 py-4">
-          <input
-            type="checkbox"
-            checked={shareToNetwork}
-            onChange={(event) => setShareToNetwork(event.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-[var(--ember-line-strong)] text-[var(--ember-orange)]"
-          />
-          <span>
-            <span className="block text-sm font-medium text-[var(--ember-text)]">
-              Share this Ember to your network feed
-            </span>
-            <span className="mt-1 block text-sm text-[var(--ember-muted)]">
-              Accepted friends will see it in their feed. Contributors can still be invited individually.
-            </span>
-          </span>
-        </label>
-      </UploadConfirmModal>
+      />
     </div>
   );
 }

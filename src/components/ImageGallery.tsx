@@ -36,10 +36,10 @@ type IconProps = {
 
 const MOBILE_PAGE_SIZE = 5;
 
-function DiamondIcon({ className = 'h-4 w-4' }: IconProps) {
+function GeminiIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="m12 3.5 7.5 8.5L12 20.5 4.5 12 12 3.5Z" />
+    <svg viewBox="0 0 256 256" fill="currentColor" className={className}>
+      <path d="M128 16C137 74 182 119 240 128C182 137 137 182 128 240C119 182 74 137 16 128C74 119 119 74 128 16Z" />
     </svg>
   );
 }
@@ -81,18 +81,18 @@ const cardActions: CardAction[] = [
     key: 'ask',
     label: 'Ask Ember',
     href: (image) => `/image/${image.id}/chat`,
-    icon: DiamondIcon,
+    icon: GeminiIcon,
   },
   {
     key: 'play',
     label: 'Play Ember',
-    href: (image) => `/image/${image.id}/wiki`,
+    href: (image) => `/image/${image.id}/play`,
     icon: PlayIcon,
   },
 ];
 
 const cardActionClass =
-  'flex h-12 items-center justify-center rounded-full border border-[var(--ember-orange)] bg-white text-[var(--ember-orange)] transition hover:bg-[rgba(255,102,33,0.06)] hover:border-[var(--ember-orange-deep)] hover:text-[var(--ember-orange-deep)]';
+  'flex h-14 items-center justify-center rounded-[1.45rem] bg-transparent text-[var(--ember-orange)] transition hover:text-[var(--ember-orange-deep)]';
 
 async function shareEmberLink(image: FeedImage) {
   const url = `${window.location.origin}/image/${image.id}`;
@@ -328,7 +328,7 @@ export default function ImageGallery() {
                       className={cardActionClass}
                       aria-label={action.label}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-7 w-7" />
                     </Link>
                   );
                 })}
@@ -339,7 +339,7 @@ export default function ImageGallery() {
                   className={cardActionClass}
                   aria-label="Tend Ember"
                 >
-                  <CircleIcon className="h-5 w-5" />
+                  <CircleIcon className="h-7 w-7" />
                 </button>
               </div>
             </article>
@@ -447,12 +447,12 @@ export default function ImageGallery() {
 
                 <button
                   type="button"
-                  onClick={() => openShapeRoute(`/image/${shapeMenuImage.id}/wiki`)}
+                  onClick={() => openShapeRoute(`/image/${shapeMenuImage.id}`)}
                   className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
                 >
-                  <div className="text-base font-semibold text-[var(--ember-text)]">View wiki</div>
+                  <div className="text-base font-semibold text-[var(--ember-text)]">View memory</div>
                   <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                    Open the full Ember wiki and its different modes.
+                    Open the main Ember page and its memory story.
                   </p>
                 </button>
 

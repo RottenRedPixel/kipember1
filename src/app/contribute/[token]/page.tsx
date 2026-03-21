@@ -265,10 +265,10 @@ export default function ContributePage() {
               </Link>
             ) : (
               <Link
-                href={`/image/${data.image.id}/wiki`}
+                href={`/image/${data.image.id}`}
                 className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
               >
-                {'<- Back to wiki'}
+                {'<- Back to Ember'}
               </Link>
             )}
             <p className="ember-eyebrow">Contributor invite</p>
@@ -310,62 +310,67 @@ export default function ContributePage() {
               </div>
             )}
 
-            <div className="border-b ember-divider px-5 py-5">
-              <p className="ember-eyebrow">Conversation</p>
-              <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
-                {messages.length === 0 ? 'Choose how you want to respond' : 'Talk with Ember'}
-              </h2>
-              <p className="ember-copy mt-2 text-sm">
-                {messages.length === 0
-                  ? data.guestFlow
-                    ? 'Start by text here, or go back and request a phone call from the memory page.'
-                    : 'Start by text or request a phone call from Ember.'
-                  : 'Share what you remember. Ember will guide you with follow-up questions.'}
-              </p>
-            </div>
-
             <div className="px-5 py-5">
               {messages.length === 0 && !isComplete ? (
-                <div className={`grid gap-4 ${data.guestFlow ? '' : 'sm:grid-cols-2'}`}>
-                  <button
-                    onClick={startConversation}
-                    disabled={isSending || isCalling}
-                    className="ember-card rounded-[1.5rem] p-5 text-left disabled:opacity-60"
-                  >
-                    <div className="ember-eyebrow">Text chat</div>
-                    <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">Type with Ember</h3>
-                    <p className="ember-copy mt-2 text-sm">
-                      Best if you want to add details slowly or send multiple short memories.
-                    </p>
-                    <span className="ember-button-primary mt-4 inline-flex px-4">
-                      {isSending ? 'Starting...' : 'Start texting'}
-                    </span>
-                  </button>
-
+                <div className="space-y-5">
                   {!data.guestFlow && (
-                    <button
-                      onClick={startVoiceCall}
-                      disabled={
-                        isSending ||
-                        isCalling ||
-                        data.latestVoiceCall?.status === 'registered' ||
-                        data.latestVoiceCall?.status === 'ongoing'
-                      }
-                      className="ember-card rounded-[1.5rem] p-5 text-left disabled:opacity-60"
-                    >
+                    <div className="ember-card rounded-[1.75rem] p-5">
                       <div className="ember-eyebrow">Phone interview</div>
-                      <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">Speak with Ember</h3>
-                      <p className="ember-copy mt-2 text-sm">
-                        Best if it is easier to tell the story aloud and let Ember pull out the details.
+                      <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
+                        Talk with Ember
+                      </h2>
+                      <p className="ember-copy mt-3 text-sm">
+                        Voice gives Ember the richest context. It is the easiest way to capture
+                        how this moment felt, what happened around it, and the details that matter
+                        most.
                       </p>
-                      <span className="ember-button-secondary mt-4 inline-flex px-4">
-                        {isCalling ? 'Calling...' : 'Request call'}
+                      <button
+                        onClick={startVoiceCall}
+                        disabled={
+                          isSending ||
+                          isCalling ||
+                          data.latestVoiceCall?.status === 'registered' ||
+                          data.latestVoiceCall?.status === 'ongoing'
+                        }
+                        className="ember-button-primary mt-5 w-full justify-center disabled:opacity-60"
+                      >
+                        {isCalling ? 'Calling...' : 'Talk Via Phone'}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="rounded-[1.5rem] border border-[var(--ember-line)] bg-white/70 px-5 py-5">
+                    <div className="ember-eyebrow">Other options</div>
+                    <button
+                      onClick={startConversation}
+                      disabled={isSending || isCalling}
+                      className="mt-4 flex w-full items-center justify-between gap-4 rounded-[1.25rem] border border-[var(--ember-line)] bg-white px-4 py-4 text-left disabled:opacity-60"
+                    >
+                      <div>
+                        <h3 className="text-base font-semibold text-[var(--ember-text)]">
+                          Chat Via Text
+                        </h3>
+                        <p className="mt-1 text-sm text-[var(--ember-muted)]">
+                          Best if you want to add details slowly or send a few short memories.
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-[var(--ember-orange)]">
+                        {isSending ? 'Starting...' : 'Open'}
                       </span>
                     </button>
-                  )}
+                  </div>
                 </div>
               ) : (
                 <>
+                  <div className="border-b ember-divider pb-4">
+                    <h2 className="ember-heading text-3xl text-[var(--ember-text)]">
+                      Talk with Ember
+                    </h2>
+                    <p className="ember-copy mt-2 text-sm">
+                      Share what you remember. Ember will guide you with follow-up questions.
+                    </p>
+                  </div>
+
                   <div className="space-y-3 rounded-[1.75rem] bg-white/40 p-1">
                     {messages.map((message, index) => (
                       <div
@@ -458,8 +463,8 @@ export default function ContributePage() {
                     </Link>
                   )}
                   {!data.guestFlow && (
-                    <Link href={`/image/${data.image.id}/wiki`} className="ember-button-primary mt-5 inline-flex px-5">
-                      View updated wiki
+                    <Link href={`/image/${data.image.id}`} className="ember-button-primary mt-5 inline-flex px-5">
+                      View updated memory
                     </Link>
                   )}
                 </div>

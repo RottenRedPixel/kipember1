@@ -317,6 +317,17 @@ export default async function LandingPage() {
             </div>
           </div>
         </section>
+
+        <footer className="pb-10 text-sm text-[var(--ember-muted)]">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href="/privacy" className="ember-button-secondary px-4">
+              Privacy
+            </Link>
+            <Link href="/support" className="ember-button-secondary px-4">
+              Support
+            </Link>
+          </div>
+        </footer>
       </div>
     </main>
   );

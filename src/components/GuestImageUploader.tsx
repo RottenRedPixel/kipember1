@@ -274,7 +274,6 @@ export default function GuestImageUploader() {
         preview={preview}
         mediaType={selectedMediaType}
         fileName={selectedFile?.name || 'Selected media'}
-        eyebrow="Guest demo"
         title="Send this memory to Ember?"
         subtitle="Ember will create a quick first read, then invite you to bring the memory to life by text or by phone call."
         confirmLabel={`Upload ${selectedMediaType || 'media'} and continue`}

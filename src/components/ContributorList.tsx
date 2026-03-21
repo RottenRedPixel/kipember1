@@ -387,59 +387,65 @@ export default function ContributorList({
               <div className="max-h-[calc(92dvh-6.5rem)] overflow-y-auto px-5 py-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:max-h-[calc(88vh-7rem)] sm:px-6">
                 <div className="space-y-5">
                   <div className="ember-card rounded-[1.6rem] px-4 py-4">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                          Contact
-                        </div>
-                        <div className="mt-3 text-xl font-semibold text-[var(--ember-text)]">
-                          {selectedContributor.name ||
-                            selectedContributor.user?.name ||
-                            selectedContributor.email ||
-                            selectedContributor.phoneNumber ||
-                            'Contributor'}
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
+                      Contact
+                    </div>
+
+                    <div className="mt-3 text-xl font-semibold text-[var(--ember-text)]">
+                      {selectedContributor.name ||
+                        selectedContributor.user?.name ||
+                        selectedContributor.email ||
+                        selectedContributor.phoneNumber ||
+                        'Contributor'}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        onClick={() => void handleSendInvite(selectedContributor.id)}
+                        disabled={
+                          !selectedContributorPhone ||
+                          sendingContributorId === selectedContributor.id
+                        }
+                        className="ember-button-secondary justify-center disabled:opacity-40"
+                      >
+                        {sendingContributorId === selectedContributor.id
+                          ? 'Sending...'
+                          : 'Send SMS'}
+                      </button>
+                      <button
+                        onClick={() => void handleStartVoiceCall(selectedContributor.id)}
+                        disabled={
+                          !selectedContributorPhone ||
+                          callingContributorId === selectedContributor.id ||
+                          getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
+                          getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
+                        }
+                        className="ember-button-secondary justify-center disabled:opacity-40"
+                      >
+                        {callingContributorId === selectedContributor.id
+                          ? 'Calling...'
+                          : 'Call'}
+                      </button>
+                      <button
+                        onClick={() => void copyLink(selectedContributor.token)}
+                        className="ember-button-secondary justify-center"
+                      >
+                        Copy link
+                      </button>
+                      {!selectedContributorIsOwner && (
+                        <button
+                          onClick={() => void handleRemoveContributor(selectedContributor.id)}
+                          className="ember-button-secondary justify-center text-rose-700"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
                       {getStatusBadge(selectedContributor)}
                       {selectedContributorIsOwner && <span className="ember-chip">Creator</span>}
                       {selectedContributor.inviteSent && <span className="ember-chip">Invite sent</span>}
-                    </div>
-                  </div>
-
-                    <div className="mt-4 space-y-3">
-                      <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                          Email
-                        </div>
-                        <div className="mt-2 break-all text-sm text-[var(--ember-text)]">
-                          {selectedContributor.email || selectedContributor.user?.email || 'None'}
-                        </div>
-                      </div>
-
-                      <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                          Phone
-                        </div>
-                        <div className="mt-2 text-sm text-[var(--ember-text)]">
-                          {selectedContributor.phoneNumber
-                            ? formatPhoneNumber(selectedContributor.phoneNumber)
-                            : selectedContributor.user?.phoneNumber
-                              ? formatPhoneNumber(selectedContributor.user.phoneNumber)
-                              : 'None'}
-                        </div>
-                      </div>
-
-                      <div className="rounded-[1.2rem] border border-[var(--ember-line)] bg-[rgba(247,247,244,0.72)] px-4 py-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                          Linked account
-                        </div>
-                        <div className="mt-2 break-all text-sm text-[var(--ember-text)]">
-                          {selectedContributor.user
-                            ? selectedContributor.user.name || selectedContributor.user.email
-                            : 'None'}
-                        </div>
-                      </div>
                     </div>
 
                     {selectedContributorDetail?.voiceCalls[0]?.callSummary && (
@@ -451,49 +457,6 @@ export default function ContributorList({
                           {selectedContributorDetail.voiceCalls[0].callSummary}
                         </p>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() => void handleSendInvite(selectedContributor.id)}
-                      disabled={
-                        !selectedContributorPhone ||
-                        sendingContributorId === selectedContributor.id
-                      }
-                      className="ember-button-secondary justify-center disabled:opacity-40"
-                    >
-                      {sendingContributorId === selectedContributor.id
-                        ? 'Sending...'
-                        : 'Send SMS'}
-                    </button>
-                    <button
-                      onClick={() => void handleStartVoiceCall(selectedContributor.id)}
-                      disabled={
-                        !selectedContributorPhone ||
-                        callingContributorId === selectedContributor.id ||
-                        getLatestVoiceCall(selectedContributor)?.status === 'registered' ||
-                        getLatestVoiceCall(selectedContributor)?.status === 'ongoing'
-                      }
-                      className="ember-button-secondary justify-center disabled:opacity-40"
-                    >
-                      {callingContributorId === selectedContributor.id
-                        ? 'Calling...'
-                        : 'Call'}
-                    </button>
-                    <button
-                      onClick={() => void copyLink(selectedContributor.token)}
-                      className="ember-button-secondary justify-center"
-                    >
-                      Copy link
-                    </button>
-                    {!selectedContributorIsOwner && (
-                      <button
-                        onClick={() => void handleRemoveContributor(selectedContributor.id)}
-                        className="ember-button-secondary justify-center text-rose-700"
-                      >
-                        Remove
-                      </button>
                     )}
                   </div>
 
@@ -586,41 +549,78 @@ export default function ContributorList({
                 contributor.email ||
                 contributor.phoneNumber ||
                 'Contributor';
+              const contributorPhone =
+                contributor.phoneNumber || contributor.user?.phoneNumber || null;
 
               return (
-                <button
+                <div
                   key={contributor.id}
-                  type="button"
-                  onClick={() => setSelectedContributorId(contributor.id)}
-                  className="ember-card flex w-full items-center justify-between gap-3 rounded-[1.5rem] px-4 py-4 text-left hover:border-[rgba(255,102,33,0.18)] hover:bg-[rgba(255,102,33,0.03)]"
-                  aria-label={`Open ${contributorLabel}`}
+                  className="ember-card rounded-[1.5rem] px-4 py-4"
                 >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-semibold text-[var(--ember-text)]">
-                        {contributorLabel}
-                      </p>
-                      {getStatusBadge(contributor)}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedContributorId(contributor.id)}
+                    className="flex w-full items-center justify-between gap-3 text-left hover:text-[var(--ember-orange-deep)]"
+                    aria-label={`Open ${contributorLabel}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate font-semibold text-[var(--ember-text)]">
+                          {contributorLabel}
+                        </p>
+                        {getStatusBadge(contributor)}
+                      </div>
+
+                      {(contributor.email || contributor.phoneNumber) && (
+                        <p className="mt-1 truncate text-sm text-[var(--ember-muted)]">
+                          {contributor.email ||
+                            formatPhoneNumber(contributor.phoneNumber || '')}
+                        </p>
+                      )}
+
+                      {latestVoiceCall && (
+                        <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--ember-muted)]">
+                          {getVoiceCallLabel(latestVoiceCall.status)}
+                        </p>
+                      )}
                     </div>
 
-                    {(contributor.email || contributor.phoneNumber) && (
-                      <p className="mt-1 truncate text-sm text-[var(--ember-muted)]">
-                        {contributor.email ||
-                          formatPhoneNumber(contributor.phoneNumber || '')}
-                      </p>
-                    )}
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--ember-line-strong)] bg-white text-xl font-semibold text-[var(--ember-text)]">
+                      +
+                    </span>
+                  </button>
 
-                    {latestVoiceCall && (
-                      <p className="mt-1 text-xs uppercase tracking-[0.12em] text-[var(--ember-muted)]">
-                        {getVoiceCallLabel(latestVoiceCall.status)}
-                      </p>
-                    )}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSendInvite(contributor.id)}
+                      disabled={!contributorPhone || sendingContributorId === contributor.id}
+                      className="ember-button-secondary min-h-0 px-4 py-2 text-sm disabled:opacity-40"
+                    >
+                      {sendingContributorId === contributor.id ? 'Sending...' : 'Send SMS'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleStartVoiceCall(contributor.id)}
+                      disabled={
+                        !contributorPhone ||
+                        callingContributorId === contributor.id ||
+                        latestVoiceCall?.status === 'registered' ||
+                        latestVoiceCall?.status === 'ongoing'
+                      }
+                      className="ember-button-secondary min-h-0 px-4 py-2 text-sm disabled:opacity-40"
+                    >
+                      {callingContributorId === contributor.id ? 'Calling...' : 'Call'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void copyLink(contributor.token)}
+                      className="ember-button-secondary min-h-0 px-4 py-2 text-sm"
+                    >
+                      Copy link
+                    </button>
                   </div>
-
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--ember-line-strong)] bg-white text-xl font-semibold text-[var(--ember-text)]">
-                    +
-                  </span>
-                </button>
+                </div>
               );
             })}
           </div>

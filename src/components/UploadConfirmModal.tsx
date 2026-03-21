@@ -7,7 +7,6 @@ type UploadConfirmModalProps = {
   preview: string | null;
   mediaType: 'image' | 'video' | null;
   fileName: string;
-  eyebrow: string;
   title: string;
   subtitle: string;
   confirmLabel: string;
@@ -39,7 +38,6 @@ export default function UploadConfirmModal({
   preview,
   mediaType,
   fileName,
-  eyebrow,
   title,
   subtitle,
   confirmLabel,
@@ -80,14 +78,6 @@ export default function UploadConfirmModal({
                   className="h-full w-full object-contain"
                 />
               )}
-              <div className="absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,rgba(15,23,42,0),rgba(15,23,42,0.84))] px-6 py-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/68">
-                  {eyebrow}
-                </p>
-                <div className="mt-2 break-all text-xl font-semibold tracking-[-0.03em] text-white sm:break-words sm:[overflow-wrap:anywhere]">
-                  {fileName}
-                </div>
-              </div>
             </div>
 
             <div className="relative flex flex-col px-5 py-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:px-7 sm:py-6">

@@ -49,3 +49,6 @@ next-env.d.ts
 # uploads
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+# local screenshot artifacts
+/output/playwright/app-store-screenshots/

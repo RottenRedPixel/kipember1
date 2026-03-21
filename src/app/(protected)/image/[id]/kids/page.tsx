@@ -160,10 +160,10 @@ export default function KidsModePage() {
       <section className="mb-6 grid gap-6 lg:grid-cols-[1.02fr_0.98fr]">
         <div className="ember-panel-strong rounded-[2.5rem] p-6 sm:p-8">
           <Link
-            href={`/image/${imageId}/wiki`}
+            href={`/image/${imageId}/play`}
             className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
           >
-            {'<- Back to wiki'}
+            {'<- Back to Play Ember'}
           </Link>
 
           <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -230,8 +230,8 @@ export default function KidsModePage() {
           </button>
 
           <div className="mt-6 grid gap-3">
-            <Link href={`/image/${imageId}/wiki`} className="ember-button-secondary">
-              Open wiki
+            <Link href={`/image/${imageId}/play`} className="ember-button-secondary">
+              Back to Play Ember
             </Link>
             <Link href={`/image/${imageId}`} className="ember-button-secondary">
               Back to workspace

@@ -220,8 +220,8 @@ export default function SportsModePage() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             {wiki && (
-              <Link href={`/image/${imageId}/wiki`} className="ember-button-secondary">
-                View wiki
+              <Link href={`/image/${imageId}/play`} className="ember-button-secondary">
+                Play Ember
               </Link>
             )}
             <Link href={`/image/${imageId}/chat`} className="ember-button-secondary">
