@@ -368,13 +368,48 @@ export default function ContributePage() {
                 </div>
               ) : (
                 <>
-                  <div className="border-b ember-divider pb-4">
-                    <h2 className="ember-heading text-3xl text-[var(--ember-text)]">
-                      Talk with Ember
-                    </h2>
-                    <p className="ember-copy mt-2 text-sm">
-                      Share what you remember. Ember will guide you with follow-up questions.
-                    </p>
+                  <div className="space-y-4 border-b ember-divider pb-4">
+                    {!data.guestFlow && !isComplete && (
+                      <div className="rounded-[1.5rem] border border-[rgba(255,102,33,0.16)] bg-[rgba(255,102,33,0.06)] px-4 py-4">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)]">
+                          Richer option
+                        </div>
+                        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
+                          Talk Via Phone
+                        </h2>
+                        <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
+                          Want to add more detail faster? Voice gives Ember richer context than
+                          text alone, and it can pull more memory from a short conversation.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={startVoiceCall}
+                          disabled={
+                            isSending ||
+                            isCalling ||
+                            data.latestVoiceCall?.status === 'registered' ||
+                            data.latestVoiceCall?.status === 'ongoing'
+                          }
+                          className="ember-button-primary mt-4 w-full justify-center disabled:opacity-60"
+                        >
+                          {isCalling
+                            ? 'Calling...'
+                            : data.latestVoiceCall?.status === 'registered' ||
+                                data.latestVoiceCall?.status === 'ongoing'
+                              ? 'Call in progress'
+                              : 'Start phone interview'}
+                        </button>
+                      </div>
+                    )}
+
+                    <div>
+                      <h2 className="ember-heading text-3xl text-[var(--ember-text)]">
+                        Talk with Ember
+                      </h2>
+                      <p className="ember-copy mt-2 text-sm">
+                        Share what you remember. Ember will guide you with follow-up questions.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="space-y-3 rounded-[1.75rem] bg-white/40 p-1">
