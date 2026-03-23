@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import UploadStarterCard from '@/components/UploadStarterCard';
 import UploadConfirmModal from '@/components/UploadConfirmModal';
 
@@ -36,6 +36,7 @@ export default function GuestImageUploader() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStepIndex, setUploadStepIndex] = useState(0);
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -63,13 +64,22 @@ export default function GuestImageUploader() {
   }, [isUploading]);
 
   useEffect(() => {
+    const openFilePicker = () => {
+      fileInputRef.current?.click();
+    };
+
+    window.addEventListener('ember:open-upload-picker', openFilePicker);
+    return () => window.removeEventListener('ember:open-upload-picker', openFilePicker);
+  }, []);
+
+  useEffect(() => {
     if (searchParams.get('openGuestUploader') !== '1' || selectedFile) {
       return;
     }
 
     fileInputRef.current?.click();
-    window.history.replaceState(null, '', '/');
-  }, [searchParams, selectedFile]);
+    window.history.replaceState(null, '', pathname || '/');
+  }, [pathname, searchParams, selectedFile]);
 
   const updateSelection = useCallback(
     (file: File | null) => {
@@ -274,23 +284,15 @@ export default function GuestImageUploader() {
         preview={preview}
         mediaType={selectedMediaType}
         fileName={selectedFile?.name || 'Selected media'}
-        title="Send this memory to Ember?"
-        subtitle="Ember will create a quick first read, then invite you to bring the memory to life by text or by phone call."
-        confirmLabel={`Upload ${selectedMediaType || 'media'} and continue`}
+        title="Create an Ember"
+        subtitle=""
+        confirmLabel="Create an Ember"
         confirmBusyLabel={`Uploading ${selectedMediaType || 'media'}...`}
+        cancelLabel="Pick a different Ember"
         isSubmitting={isUploading}
         onCancel={clearSelection}
         onConfirm={() => void handleUpload()}
-      >
-        <div className="ember-card rounded-[1.6rem] px-5 py-4">
-          <p className="text-sm font-semibold text-[var(--ember-text)]">
-            What happens next
-          </p>
-          <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
-            Ember starts with a quick visual read, then lets you talk by text or get a phone call so the memory becomes more than just a photo.
-          </p>
-        </div>
-      </UploadConfirmModal>
+      />
     </div>
   );
 }

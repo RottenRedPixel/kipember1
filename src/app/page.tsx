@@ -58,7 +58,7 @@ export default async function LandingPage() {
   const auth = await getCurrentAuth();
 
   if (auth) {
-    redirect('/feed');
+    redirect('/create');
   }
 
   return (

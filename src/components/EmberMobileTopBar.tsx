@@ -9,7 +9,6 @@ type EmberMobileTopBarProps = {
   embersHref: string;
   addHref: string;
   accountHref: string;
-  openUploaderOnFeed?: boolean;
 };
 
 function GridDotsIcon({ className = 'h-5 w-5' }: { className?: string }) {
@@ -49,13 +48,18 @@ export default function EmberMobileTopBar({
   embersHref,
   addHref,
   accountHref,
-  openUploaderOnFeed = false,
 }: EmberMobileTopBarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
   const handleAddClick = () => {
-    if (openUploaderOnFeed && pathname === '/feed') {
+    const targetUrl = new URL(addHref, 'http://ember.local');
+    const shouldOpenInline =
+      pathname === targetUrl.pathname &&
+      (targetUrl.searchParams.get('openUploader') === '1' ||
+        targetUrl.searchParams.get('openGuestUploader') === '1');
+
+    if (shouldOpenInline) {
       window.dispatchEvent(new Event('ember:open-upload-picker'));
       return;
     }

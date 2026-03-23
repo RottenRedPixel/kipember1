@@ -17,7 +17,7 @@ export default async function ProtectedLayout({
         <div className="mx-auto max-w-6xl">
           <div className="ember-panel hidden items-center justify-between rounded-[1rem] px-4 py-3 sm:flex">
             <div className="flex items-center gap-4">
-              <EmberBrand href="/feed" subtitle="owner and contributor workspace" compact />
+              <EmberBrand href="/create" subtitle="owner and contributor workspace" compact />
               <nav className="hidden items-center gap-2 rounded-[0.95rem] border border-[var(--ember-line)] bg-[var(--ember-surface-strong)] p-1 text-sm font-medium text-[var(--ember-muted)] sm:flex">
                 <Link
                   href="/feed"
@@ -26,7 +26,7 @@ export default async function ProtectedLayout({
                   Embers
                 </Link>
                 <Link
-                  href="/feed#add-ember"
+                  href="/create"
                   className="rounded-[0.85rem] px-4 py-2 transition-colors hover:bg-white hover:text-[var(--ember-text)]"
                 >
                   Add Ember
@@ -52,11 +52,10 @@ export default async function ProtectedLayout({
           </div>
 
           <EmberMobileTopBar
-            homeHref="/feed"
+            homeHref="/create"
             embersHref="/feed"
-            addHref="/feed?openUploader=1"
+            addHref="/create?openUploader=1"
             accountHref="/access"
-            openUploaderOnFeed
           />
         </div>
       </header>

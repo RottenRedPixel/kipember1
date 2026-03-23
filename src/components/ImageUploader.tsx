@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import UploadStarterCard from '@/components/UploadStarterCard';
 import UploadConfirmModal from '@/components/UploadConfirmModal';
 
@@ -37,6 +37,7 @@ export default function ImageUploader() {
   const [preview, setPreview] = useState<string | null>(null);
   const [selectionError, setSelectionError] = useState('');
   const [uploadStepIndex, setUploadStepIndex] = useState(0);
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -78,8 +79,8 @@ export default function ImageUploader() {
     }
 
     fileInputRef.current?.click();
-    window.history.replaceState(null, '', '/feed');
-  }, [router, searchParams, selectedFile]);
+    window.history.replaceState(null, '', pathname || '/create');
+  }, [pathname, router, searchParams, selectedFile]);
 
   const updateSelection = useCallback(
     (file: File | null) => {
@@ -294,10 +295,11 @@ export default function ImageUploader() {
         preview={preview}
         mediaType={selectedMediaType}
         fileName={selectedFile?.name || 'Selected media'}
-        title="Create this Ember?"
-        subtitle="Check the media and confirm when you are ready to send it into Ember."
-        confirmLabel={`Create ${selectedMediaType || 'media'} Ember`}
+        title="Create an Ember"
+        subtitle=""
+        confirmLabel="Create an Ember"
         confirmBusyLabel={`Uploading ${selectedMediaType || 'media'}...`}
+        cancelLabel="Pick a different Ember"
         isSubmitting={isUploading}
         onCancel={clearSelection}
         onConfirm={() => void handleUpload()}
