@@ -162,6 +162,8 @@ export async function GET(
     }
 
     const friends = accessType === 'owner' ? await getAcceptedFriends(auth.user.id) : [];
+    const viewerContributor =
+      image.contributors.find((contributor) => contributor.userId === auth.user.id) || null;
     const tagIdentityMap = new Map<
       string,
       {
@@ -259,6 +261,9 @@ export async function GET(
       owner: image.owner,
       accessType,
       canManage: accessType === 'owner',
+      currentUserId: auth.user.id,
+      viewerContributorId: viewerContributor?.id || null,
+      viewerCanLeave: accessType === 'contributor' && Boolean(viewerContributor),
       contributors: image.contributors,
       ownerConversationTarget:
         accessType === 'owner'

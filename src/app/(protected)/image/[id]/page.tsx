@@ -29,6 +29,9 @@ interface ImageRecord {
   shareToNetwork: boolean;
   accessType: 'owner' | 'contributor' | 'network';
   canManage: boolean;
+  currentUserId: string;
+  viewerContributorId: string | null;
+  viewerCanLeave: boolean;
   owner: {
     id: string;
     name: string | null;
@@ -333,6 +336,7 @@ export default function ImagePage() {
   const [deletingEmber, setDeletingEmber] = useState(false);
   const [autoTagPromptDismissed, setAutoTagPromptDismissed] = useState(false);
   const [locationPromptDismissed, setLocationPromptDismissed] = useState(false);
+  const [leavingEmber, setLeavingEmber] = useState(false);
   const fromUpload = searchParams.get('fromUpload') === '1';
   const requestedPanel = searchParams.get('panel');
   const requestedShapeView = searchParams.get('view');
@@ -358,6 +362,10 @@ export default function ImagePage() {
   useEffect(() => {
     fetchImage();
   }, [fetchImage]);
+
+  useEffect(() => {
+    void router.prefetch('/feed');
+  }, [router]);
 
   useEffect(() => {
     if (!actionNotice && !shareError) {
@@ -607,6 +615,41 @@ export default function ImagePage() {
       );
     } finally {
       setGeneratingWiki(false);
+    }
+  };
+
+  const handleLeaveEmber = async () => {
+    if (!image?.viewerCanLeave || !image.viewerContributorId || leavingEmber) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Remove yourself from ${emberTitle}? You will lose access to this Ember unless you are added again.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setLeavingEmber(true);
+    setShareError('');
+
+    try {
+      const response = await fetch(`/api/contributors?id=${image.viewerContributorId}`, {
+        method: 'DELETE',
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to leave this Ember');
+      }
+
+      router.replace('/feed');
+    } catch (leaveError) {
+      setShareError(
+        leaveError instanceof Error ? leaveError.message : 'Failed to leave this Ember'
+      );
+      setLeavingEmber(false);
     }
   };
 
@@ -860,7 +903,22 @@ export default function ImagePage() {
           />
         ) : (
             <div className="ember-panel rounded-[2rem] p-5">
-              <div className="space-y-3">
+              <div className="space-y-4">
+              {image.viewerCanLeave && (
+                <div className="rounded-[1.5rem] border border-[rgba(255,102,33,0.18)] bg-[rgba(255,102,33,0.04)] px-4 py-4">
+                  <div className="text-sm leading-7 text-[var(--ember-text)]">
+                    You are connected to this Ember as a contributor. If you no longer want to be part of it, you can remove yourself here.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleLeaveEmber()}
+                    disabled={leavingEmber}
+                    className="ember-button-secondary mt-4 justify-center text-rose-700 disabled:opacity-60"
+                  >
+                    {leavingEmber ? 'Leaving...' : 'Leave Ember'}
+                  </button>
+                </div>
+              )}
               {image.contributors.length === 0 ? (
                 <p className="text-sm text-[var(--ember-muted)]">
                   No contributors have been added yet.
@@ -876,7 +934,12 @@ export default function ImagePage() {
 
                   return (
                     <div key={contributor.id} className="ember-card rounded-[1.5rem] px-4 py-4">
-                      <div className="font-semibold text-[var(--ember-text)]">{contributorLabel}</div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="font-semibold text-[var(--ember-text)]">{contributorLabel}</div>
+                        {contributor.userId === image.currentUserId && (
+                          <span className="ember-chip text-[var(--ember-orange-deep)]">You</span>
+                        )}
+                      </div>
                       {(contributor.email || contributor.phoneNumber) && (
                         <div className="mt-1 text-sm text-[var(--ember-muted)]">
                           {contributor.email || contributor.phoneNumber}

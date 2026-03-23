@@ -116,3 +116,41 @@ export async function ensureOwnedContributorAccess(userId: string, contributorId
 
   return contributor;
 }
+
+export async function ensureContributorRemovalAccess(userId: string, contributorId: string) {
+  const contributor = await prisma.contributor.findUnique({
+    where: { id: contributorId },
+    include: {
+      image: {
+        select: {
+          id: true,
+          ownerId: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phoneNumber: true,
+        },
+      },
+    },
+  });
+
+  if (!contributor) {
+    return null;
+  }
+
+  const canManageAsOwner = contributor.image.ownerId === userId;
+  const canRemoveSelf = contributor.userId === userId;
+
+  if (!canManageAsOwner && !canRemoveSelf) {
+    return null;
+  }
+
+  return {
+    contributor,
+    removalMode: canManageAsOwner ? 'owner' : 'self' as const,
+  };
+}

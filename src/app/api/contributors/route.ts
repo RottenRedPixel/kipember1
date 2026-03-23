@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess, ensureOwnedContributorAccess } from '@/lib/ember-access';
+import {
+  ensureContributorRemovalAccess,
+  ensureImageOwnerAccess,
+} from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
@@ -127,11 +130,13 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const contributor = await ensureOwnedContributorAccess(auth.user.id, id);
+    const removalAccess = await ensureContributorRemovalAccess(auth.user.id, id);
 
-    if (!contributor) {
+    if (!removalAccess) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
+
+    const { contributor, removalMode } = removalAccess;
 
     if (contributor.userId && contributor.userId === contributor.image.ownerId) {
       return NextResponse.json(
@@ -144,7 +149,10 @@ export async function DELETE(request: NextRequest) {
       where: { id: contributor.id },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      removalMode,
+    });
   } catch (error) {
     console.error('Error deleting contributor:', error);
     return NextResponse.json(
