@@ -35,3 +35,7 @@ export function getWikiModel(): string {
 export function getWikiStructureModel(): string {
   return process.env.OPENAI_WIKI_STRUCTURE_MODEL || 'gpt-5.4-mini';
 }
+
+export function getNarrationCleanupModel(): string {
+  return process.env.OPENAI_NARRATION_MODEL || 'gpt-5-mini';
+}

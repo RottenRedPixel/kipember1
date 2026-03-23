@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
+import type { NarrationPreference } from '@/lib/elevenlabs';
 
 type PlayPageData = {
   id: string;
@@ -61,17 +62,6 @@ function BallIcon({ className = 'h-5 w-5' }: { className?: string }) {
   );
 }
 
-function getNarrationText(content: string): string {
-  return content
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^\s*[-*+]\s+/gm, '')
-    .replace(/^\s*\d+\.\s+/gm, '')
-    .replace(/[`*_>#]/g, '')
-    .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
-    .replace(/\n{2,}/g, '\n')
-    .trim();
-}
-
 export default function PlayEmberPage() {
   const params = useParams<{ id: string }>();
   const imageId = params.id;
@@ -79,8 +69,11 @@ export default function PlayEmberPage() {
   const [data, setData] = useState<PlayPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isNarrating, setIsNarrating] = useState(false);
+  const [narrationState, setNarrationState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const [narrationError, setNarrationError] = useState('');
+  const [voicePreference, setVoicePreference] = useState<NarrationPreference>('female');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   const loadImage = useCallback(async () => {
     if (!imageId) {
@@ -112,48 +105,88 @@ export default function PlayEmberPage() {
 
   useEffect(() => {
     return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
       }
     };
   }, []);
 
   const emberTitle = data ? getEmberTitle(data) : '';
-  const narrationText = useMemo(
-    () => (data?.wiki?.content ? getNarrationText(data.wiki.content) : ''),
-    [data?.wiki?.content]
-  );
 
-  const handleNarrationToggle = () => {
-    if (!data?.wiki?.content) {
-      return;
+  const stopNarration = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
 
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      setNarrationError('Narration is not available in this browser.');
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+
+    setNarrationState('idle');
+  }, []);
+
+  const handleNarrationToggle = async () => {
+    if (!data?.wiki?.content) {
       return;
     }
 
     setNarrationError('');
 
-    if (isNarrating) {
-      window.speechSynthesis.cancel();
-      setIsNarrating(false);
+    if (narrationState === 'loading' || narrationState === 'playing') {
+      stopNarration();
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(narrationText);
-    utterance.rate = 0.96;
-    utterance.pitch = 1;
-    utterance.onend = () => setIsNarrating(false);
-    utterance.onerror = () => {
-      setIsNarrating(false);
-      setNarrationError('Narration could not be played on this device.');
-    };
+    setNarrationState('loading');
 
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-    setIsNarrating(true);
+    try {
+      const response = await fetch('/api/narration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: data.wiki.content,
+          voicePreference,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Narration could not be generated.');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audioUrlRef.current = audioUrl;
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        stopNarration();
+      };
+
+      audio.onerror = () => {
+        stopNarration();
+        setNarrationError('Narration could not be played on this device.');
+      };
+
+      await audio.play();
+      setNarrationState('playing');
+    } catch (playError) {
+      stopNarration();
+      setNarrationError(
+        playError instanceof Error ? playError.message : 'Narration could not be generated.'
+      );
+    }
   };
 
   if (loading) {
@@ -234,8 +267,25 @@ export default function PlayEmberPage() {
             Hear the memory out loud
           </h2>
           <p className="ember-copy mt-3 text-sm">
-            Use your device voice to narrate the current Ember story. This works best after the story has been generated on the main Ember page.
+            Choose a male or female voice and let ElevenLabs read the Ember story like a narrative, without the utility headings.
           </p>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {(['female', 'male'] as NarrationPreference[]).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setVoicePreference(option)}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                  voicePreference === option
+                    ? 'border-[var(--ember-orange)] bg-[rgba(255,102,33,0.08)] text-[var(--ember-orange-deep)]'
+                    : 'border-[var(--ember-line-strong)] text-[var(--ember-text)]'
+                }`}
+              >
+                {option === 'female' ? 'Female voice' : 'Male voice'}
+              </button>
+            ))}
+          </div>
 
           {narrationError && (
             <div className="mt-5 ember-status ember-status-error">
@@ -249,7 +299,11 @@ export default function PlayEmberPage() {
             disabled={!data.wiki?.content}
             className="ember-button-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isNarrating ? 'Stop narration' : 'Listen to narration'}
+            {narrationState === 'loading'
+              ? 'Generating narration...'
+              : narrationState === 'playing'
+                ? 'Stop narration'
+                : 'Listen to narration'}
           </button>
 
           {!data.wiki?.content && (
@@ -280,10 +334,14 @@ export default function PlayEmberPage() {
         >
           <PlayIcon className="h-5 w-5 text-[var(--ember-orange)]" />
           <div className="mt-4 text-xl font-semibold text-[var(--ember-text)]">
-            {isNarrating ? 'Stop narration' : 'Narrate memory'}
+            {narrationState === 'loading'
+              ? 'Generating narration'
+              : narrationState === 'playing'
+                ? 'Stop narration'
+                : 'Narrate memory'}
           </div>
           <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
-            Read the current Ember story aloud using your browser voice.
+            Read the Ember story aloud with your selected ElevenLabs voice.
           </p>
         </button>
 
