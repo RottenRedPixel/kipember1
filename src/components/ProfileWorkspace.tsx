@@ -164,14 +164,14 @@ export default function ProfileWorkspace() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-12 text-center text-[var(--ember-muted)] sm:px-6">
+      <div className="mx-auto max-w-6xl px-3 pt-4 pb-8 text-center text-[var(--ember-muted)] sm:px-4 sm:pt-5 sm:pb-10">
         Loading profile...
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl px-3 pt-3 pb-6 sm:px-4 sm:pt-4 sm:pb-8">
       <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="ember-panel rounded-[2.25rem] p-8">
           <p className="ember-eyebrow">Profile</p>

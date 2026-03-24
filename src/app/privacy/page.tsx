@@ -34,7 +34,7 @@ const sharingItems = [
 export default function PrivacyPage() {
   return (
     <main className="ember-page">
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-4xl px-3 pt-1 pb-4 sm:px-4 sm:pt-2 sm:pb-6">
         <header className="ember-panel rounded-[1.8rem] px-5 py-5 sm:px-6">
           <EmberBrand staticBrand subtitle="privacy policy" />
           <div className="mt-6 flex flex-wrap gap-3 text-sm">
