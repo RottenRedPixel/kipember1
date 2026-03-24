@@ -277,8 +277,8 @@ export default function ImageUploader() {
       />
       <UploadStarterCard
         title="Create an Ember"
-        subtitle="Upload a photo or video to start a new ember."
-        supportText="Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V."
+        subtitle="Upload a photo to start a new ember."
+        supportText="Supports JPG, PNG, GIF, and WebP."
         isDragging={isDragging}
         onOpenPicker={() => fileInputRef.current?.click()}
         onDragOver={handleDragOver}

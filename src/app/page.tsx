@@ -63,9 +63,9 @@ export default async function LandingPage() {
 
   return (
     <main className="ember-page">
-      <div className="relative z-10 mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="relative z-10 mx-auto max-w-6xl px-4 pt-2 pb-6 sm:px-6 sm:pt-3 sm:pb-8">
         <header>
-          <div className="ember-panel hidden items-center justify-between rounded-[1rem] px-5 py-4 sm:flex">
+          <div className="hidden items-center justify-between px-1 py-1 sm:flex">
             <EmberBrand subtitle="living memory companion" />
             <div className="flex items-center gap-3">
               <Link href="/login" className="ember-button-secondary px-5">

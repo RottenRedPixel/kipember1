@@ -10,13 +10,19 @@ interface Message {
 interface ChatInterfaceProps {
   imageId: string;
   subjectNoun?: 'photo' | 'video';
+  variant?: 'default' | 'overlay';
 }
 
-export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatInterfaceProps) {
+export default function ChatInterface({
+  imageId,
+  subjectNoun = 'photo',
+  variant = 'default',
+}: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const overlayMode = variant === 'overlay';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -95,15 +101,23 @@ export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatIn
   ];
 
   return (
-    <div className="ember-panel-strong flex min-h-[36rem] flex-col overflow-hidden rounded-[2.25rem]">
-      <div className="border-b ember-divider px-5 py-5 sm:px-6">
+    <div
+        className={
+          overlayMode
+            ? 'flex h-full flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-[rgba(12,12,12,0.5)] text-white'
+            : 'ember-panel-strong flex min-h-[36rem] flex-col overflow-hidden rounded-[2.25rem]'
+        }
+      >
+      <div className={overlayMode ? 'border-b border-white/10 px-4 py-3 sm:px-5' : 'border-b ember-divider px-5 py-5 sm:px-6'}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="ember-eyebrow">Ask Ember</p>
-            <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
+            <p className={overlayMode ? 'text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55' : 'ember-eyebrow'}>
+              Ask Ember
+            </p>
+            <h2 className={overlayMode ? 'mt-2 text-2xl font-semibold tracking-[-0.04em] text-white' : 'ember-heading mt-3 text-3xl text-[var(--ember-text)]'}>
               Memory Q&amp;A
             </h2>
-            <p className="ember-copy mt-3 max-w-2xl text-sm">
+            <p className={overlayMode ? 'mt-2 max-w-2xl text-sm leading-6 text-white/70' : 'ember-copy mt-3 max-w-2xl text-sm'}>
               Ask grounded questions about this {subjectNoun}, contributor memories,
               and the current wiki. Ember should answer directly and say when
               something is still unknown.
@@ -111,26 +125,26 @@ export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatIn
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <span className="ember-chip">
+            <span className={overlayMode ? 'inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-medium text-white/72' : 'ember-chip'}>
               {subjectNoun === 'video' ? 'Video context' : 'Photo context'}
             </span>
-            <span className="ember-chip">
+            <span className={overlayMode ? 'inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-medium text-white/72' : 'ember-chip'}>
               {messages.length === 0 ? 'No history yet' : `${messages.length} messages`}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+      <div className={overlayMode ? 'flex-1 overflow-y-auto px-4 py-4 sm:px-5' : 'flex-1 overflow-y-auto px-5 py-5 sm:px-6'}>
         {messages.length === 0 ? (
           <div className="flex h-full min-h-[20rem] flex-col items-center justify-center text-center">
-            <div className="ember-card inline-flex rounded-full px-4 py-2 text-sm font-semibold text-[var(--ember-orange-deep)]">
+            <div className={overlayMode ? 'inline-flex rounded-full border border-[rgba(255,102,33,0.18)] bg-[rgba(255,102,33,0.12)] px-4 py-2 text-sm font-semibold text-[var(--ember-orange)]' : 'ember-card inline-flex rounded-full px-4 py-2 text-sm font-semibold text-[var(--ember-orange-deep)]'}>
               {subjectNoun === 'video' ? 'Video Q&A' : 'Photo Q&A'}
             </div>
-            <h3 className="ember-heading mt-5 text-3xl text-[var(--ember-text)]">
+            <h3 className={overlayMode ? 'mt-5 text-2xl font-semibold tracking-[-0.04em] text-white' : 'ember-heading mt-5 text-3xl text-[var(--ember-text)]'}>
               Start with a precise question
             </h3>
-            <p className="ember-copy mt-3 max-w-xl text-sm">
+            <p className={overlayMode ? 'mt-3 max-w-xl text-sm leading-7 text-white/70' : 'ember-copy mt-3 max-w-xl text-sm'}>
               Use the quick prompts below or write your own question about who is
               here, what happened, and how the memory is documented so far.
             </p>
@@ -139,7 +153,11 @@ export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatIn
                 <button
                   key={question}
                   onClick={() => setInput(question)}
-                  className="ember-chip cursor-pointer hover:border-[rgba(255,102,33,0.18)] hover:text-[var(--ember-orange-deep)]"
+                  className={
+                    overlayMode
+                      ? 'inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs font-medium text-white/78 transition hover:border-[rgba(255,102,33,0.18)] hover:text-[var(--ember-orange)]'
+                      : 'ember-chip cursor-pointer hover:border-[rgba(255,102,33,0.18)] hover:text-[var(--ember-orange-deep)]'
+                  }
                 >
                   {question}
                 </button>
@@ -155,15 +173,21 @@ export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatIn
               <div
                 className={`max-w-[85%] rounded-[1.7rem] px-4 py-3 sm:px-5 ${
                   message.role === 'user'
-                    ? 'rounded-br-md bg-[var(--ember-charcoal)] text-white shadow-[0_18px_34px_rgba(17,17,17,0.16)]'
-                    : 'rounded-bl-md border border-[rgba(20,20,20,0.08)] bg-white text-[var(--ember-text)] shadow-[0_12px_28px_rgba(17,17,17,0.06)]'
+                    ? overlayMode
+                      ? 'rounded-br-md bg-[var(--ember-orange)] text-white shadow-[0_18px_34px_rgba(0,0,0,0.22)]'
+                      : 'rounded-br-md bg-[var(--ember-charcoal)] text-white shadow-[0_18px_34px_rgba(17,17,17,0.16)]'
+                    : overlayMode
+                      ? 'rounded-bl-md border border-white/10 bg-white/8 text-white shadow-[0_12px_28px_rgba(0,0,0,0.18)]'
+                      : 'rounded-bl-md border border-[rgba(20,20,20,0.08)] bg-white text-[var(--ember-text)] shadow-[0_12px_28px_rgba(17,17,17,0.06)]'
                 }`}
               >
                 <div
                   className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${
                     message.role === 'user'
                       ? 'text-white/60'
-                      : 'text-[var(--ember-orange-deep)]'
+                      : overlayMode
+                        ? 'text-[var(--ember-orange)]'
+                        : 'text-[var(--ember-orange-deep)]'
                   }`}
                 >
                   {message.role === 'user' ? 'You' : 'Ember'}
@@ -177,8 +201,8 @@ export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatIn
         )}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="rounded-[1.7rem] rounded-bl-md border border-[rgba(20,20,20,0.08)] bg-white px-4 py-3 shadow-[0_12px_28px_rgba(17,17,17,0.06)]">
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)]">
+            <div className={overlayMode ? 'rounded-[1.7rem] rounded-bl-md border border-white/10 bg-white/8 px-4 py-3 shadow-[0_12px_28px_rgba(0,0,0,0.18)]' : 'rounded-[1.7rem] rounded-bl-md border border-[rgba(20,20,20,0.08)] bg-white px-4 py-3 shadow-[0_12px_28px_rgba(17,17,17,0.06)]'}>
+              <div className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] ${overlayMode ? 'text-[var(--ember-orange)]' : 'text-[var(--ember-orange-deep)]'}`}>
                 Ember
               </div>
               <div className="flex gap-1">
@@ -198,15 +222,15 @@ export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatIn
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="border-t ember-divider px-5 py-5 sm:px-6">
-        <div className="rounded-[1.7rem] border border-[rgba(20,20,20,0.08)] bg-white/94 p-2 shadow-[0_12px_30px_rgba(17,17,17,0.05)]">
+      <form onSubmit={handleSubmit} className={overlayMode ? 'border-t border-white/10 px-4 py-3 sm:px-5' : 'border-t ember-divider px-5 py-5 sm:px-6'}>
+        <div className={overlayMode ? 'rounded-[1.4rem] border border-white/10 bg-white/8 p-2 shadow-[0_12px_30px_rgba(0,0,0,0.18)]' : 'rounded-[1.7rem] border border-[rgba(20,20,20,0.08)] bg-white/94 p-2 shadow-[0_12px_30px_rgba(17,17,17,0.05)]'}>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={`Ask about this ${subjectNoun}...`}
-              className="min-w-0 flex-1 rounded-[1.2rem] border border-transparent bg-transparent px-4 py-3 text-sm text-[var(--ember-text)] outline-none placeholder:text-[var(--ember-muted)] focus:border-[rgba(255,102,33,0.2)] focus:bg-[rgba(247,247,244,0.7)]"
+              className={overlayMode ? 'min-w-0 flex-1 rounded-[1.2rem] border border-transparent bg-transparent px-4 py-3 text-sm text-white outline-none placeholder:text-white/45 focus:border-[rgba(255,102,33,0.2)] focus:bg-white/8' : 'min-w-0 flex-1 rounded-[1.2rem] border border-transparent bg-transparent px-4 py-3 text-sm text-[var(--ember-text)] outline-none placeholder:text-[var(--ember-muted)] focus:border-[rgba(255,102,33,0.2)] focus:bg-[rgba(247,247,244,0.7)]'}
               disabled={isLoading}
             />
             <button
@@ -218,7 +242,7 @@ export default function ChatInterface({ imageId, subjectNoun = 'photo' }: ChatIn
             </button>
           </div>
 
-          <div className="mt-2 px-2 text-xs text-[var(--ember-muted)]">
+          <div className={overlayMode ? 'mt-2 px-2 text-xs text-white/45' : 'mt-2 px-2 text-xs text-[var(--ember-muted)]'}>
             Keep questions specific if you want grounded answers tied to the current memory record.
           </div>
         </div>

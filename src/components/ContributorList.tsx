@@ -514,17 +514,6 @@ export default function ContributorList({
   return (
     <>
       <div className="ember-panel rounded-[2rem] p-5">
-        <div className="mb-4">
-          <p className="ember-eyebrow">Contributors</p>
-          <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
-            Manage the memory circle
-          </h2>
-          <p className="ember-copy mt-2 text-sm">
-            Keep the list compact here, then open each contributor for actions and
-            their submitted memories.
-          </p>
-        </div>
-
         {(error || notice) && (
           <div
             className={`mb-4 ember-status ${
@@ -549,8 +538,6 @@ export default function ContributorList({
                 contributor.email ||
                 contributor.phoneNumber ||
                 'Contributor';
-              const contributorPhone =
-                contributor.phoneNumber || contributor.user?.phoneNumber || null;
 
               return (
                 <div
@@ -589,37 +576,6 @@ export default function ContributorList({
                       +
                     </span>
                   </button>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => void handleSendInvite(contributor.id)}
-                      disabled={!contributorPhone || sendingContributorId === contributor.id}
-                      className="ember-button-secondary min-h-0 px-4 py-2 text-sm disabled:opacity-40"
-                    >
-                      {sendingContributorId === contributor.id ? 'Sending...' : 'Send SMS'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleStartVoiceCall(contributor.id)}
-                      disabled={
-                        !contributorPhone ||
-                        callingContributorId === contributor.id ||
-                        latestVoiceCall?.status === 'registered' ||
-                        latestVoiceCall?.status === 'ongoing'
-                      }
-                      className="ember-button-secondary min-h-0 px-4 py-2 text-sm disabled:opacity-40"
-                    >
-                      {callingContributorId === contributor.id ? 'Calling...' : 'Call'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void copyLink(contributor.token)}
-                      className="ember-button-secondary min-h-0 px-4 py-2 text-sm"
-                    >
-                      Copy link
-                    </button>
-                  </div>
                 </div>
               );
             })}

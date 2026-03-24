@@ -1,20 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ChatInterface from '@/components/ChatInterface';
 import ContributorList from '@/components/ContributorList';
 import TagManager from '@/components/TagManager';
 import InteractiveImageTagger from '@/components/InteractiveImageTagger';
+import ImageAttachmentGallery from '@/components/ImageAttachmentGallery';
+import EmberActivityView from '@/components/EmberActivityView';
+import MemoryTellMoreActions from '@/components/MemoryTellMoreActions';
 import AutoTagPrompt from '@/components/AutoTagPrompt';
 import LocationSuggestionPrompt from '@/components/LocationSuggestionPrompt';
-import MemoryTellMoreActions from '@/components/MemoryTellMoreActions';
-import WikiView from '@/components/WikiView';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 import { getPreviewMediaUrl } from '@/lib/media';
-import ImageAttachmentGallery from '@/components/ImageAttachmentGallery';
+import type { NarrationPreference } from '@/lib/elevenlabs';
 
 interface ImageRecord {
   id: string;
@@ -54,6 +55,13 @@ interface ImageRecord {
     conversation: {
       status: string;
       currentStep: string;
+      messages: {
+        id: string;
+        role: string;
+        content: string;
+        source: string;
+        createdAt: string;
+      }[];
     } | null;
     voiceCalls: {
       id: string;
@@ -123,6 +131,19 @@ interface ImageRecord {
     createdAt: string;
     updatedAt: string;
   }[];
+  analysis: {
+    status: string;
+    summary: string | null;
+    visualDescription: string | null;
+    metadataSummary: string | null;
+    capturedAt: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    cameraMake: string | null;
+    cameraModel: string | null;
+    lensModel: string | null;
+    updatedAt: string;
+  } | null;
   friends: {
     id: string;
     name: string | null;
@@ -157,8 +178,14 @@ type IconProps = {
   className?: string;
 };
 
-type ActivePanel = 'ask' | 'contributors' | 'shape' | 'share' | null;
-type ShapeView = 'menu' | 'tag';
+type ActivePanel = 'ask' | 'contributors' | 'shape' | 'share' | 'play' | null;
+type ShapeView =
+  | 'menu'
+  | 'tag'
+  | 'addContent'
+  | 'editTitle'
+  | 'editCaption'
+  | 'activity';
 
 function GeminiIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
@@ -172,15 +199,6 @@ function PlayIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path d="m8 5.75 10 6.25L8 18.25V5.75Z" />
-    </svg>
-  );
-}
-
-function PersonIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M12 12.25a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
-      <path d="M5 19.25c1.35-2.8 3.78-4.25 7-4.25s5.65 1.45 7 4.25" />
     </svg>
   );
 }
@@ -222,29 +240,14 @@ function CloseIcon({ className = 'h-4 w-4' }: IconProps) {
   );
 }
 
-function DetailBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-        {label}
-      </div>
-      <div className="mt-2 break-words text-sm leading-6 text-[var(--ember-text)]">
-        {value}
-      </div>
-    </div>
-  );
-}
-
 function ActionButton({
   icon,
   label,
   onClick,
-  href,
 }: {
   icon: ReactNode;
   label: string;
-  onClick?: () => void;
-  href?: string;
+  onClick: () => void;
 }) {
   const className =
     'flex min-h-[5rem] items-center justify-center rounded-[1.6rem] bg-transparent px-3 py-3 text-center text-[var(--ember-orange)] transition hover:text-[var(--ember-orange-deep)]';
@@ -254,14 +257,6 @@ function ActionButton({
       {icon}
     </span>
   );
-
-  if (href) {
-    return (
-      <Link href={href} className={className} aria-label={label}>
-        {content}
-      </Link>
-    );
-  }
 
   return (
     <button type="button" onClick={onClick} className={className} aria-label={label}>
@@ -330,13 +325,23 @@ export default function ImagePage() {
   const [savingShareState, setSavingShareState] = useState(false);
   const [shareError, setShareError] = useState('');
   const [actionNotice, setActionNotice] = useState('');
-  const [generatingWiki, setGeneratingWiki] = useState(false);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [shapeView, setShapeView] = useState<ShapeView>('menu');
   const [deletingEmber, setDeletingEmber] = useState(false);
   const [autoTagPromptDismissed, setAutoTagPromptDismissed] = useState(false);
   const [locationPromptDismissed, setLocationPromptDismissed] = useState(false);
   const [leavingEmber, setLeavingEmber] = useState(false);
+  const [askChatExpanded, setAskChatExpanded] = useState(true);
+  const [tendTagPromptOpen, setTendTagPromptOpen] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const [captionDraft, setCaptionDraft] = useState('');
+  const [savingDetails, setSavingDetails] = useState(false);
+  const [narrationState, setNarrationState] = useState<'idle' | 'loading' | 'playing'>('idle');
+  const [narrationError, setNarrationError] = useState('');
+  const [narrationScript, setNarrationScript] = useState('');
+  const [voicePreference, setVoicePreference] = useState<NarrationPreference>('female');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
   const fromUpload = searchParams.get('fromUpload') === '1';
   const requestedPanel = searchParams.get('panel');
   const requestedShapeView = searchParams.get('view');
@@ -364,8 +369,31 @@ export default function ImagePage() {
   }, [fetchImage]);
 
   useEffect(() => {
+    if (!image) {
+      return;
+    }
+
+    setTitleDraft(image.title?.trim() || getEmberTitle(image));
+    setCaptionDraft(image.description || '');
+  }, [image]);
+
+  useEffect(() => {
     void router.prefetch('/feed');
   }, [router]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+      }
+
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!actionNotice && !shareError) {
@@ -386,10 +414,23 @@ export default function ImagePage() {
 
   useEffect(() => {
     if (requestedPanel === 'ask' || requestedPanel === 'contributors' || requestedPanel === 'shape' || requestedPanel === 'share') {
+      if (requestedPanel === 'ask') {
+        setAskChatExpanded(true);
+      }
       setActivePanel(requestedPanel);
 
       if (requestedPanel === 'shape') {
-        setShapeView(requestedShapeView === 'tag' ? 'tag' : 'menu');
+        if (
+          requestedShapeView === 'tag' ||
+          requestedShapeView === 'addContent' ||
+          requestedShapeView === 'editTitle' ||
+          requestedShapeView === 'editCaption' ||
+          requestedShapeView === 'activity'
+        ) {
+          setShapeView(requestedShapeView);
+        } else {
+          setShapeView('menu');
+        }
       }
 
       return;
@@ -421,6 +462,24 @@ export default function ImagePage() {
   }, [activePanel]);
 
   const closePanel = () => {
+    if (activePanel === 'play') {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current = null;
+      }
+
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
+
+      setNarrationState('idle');
+      setNarrationError('');
+    }
+
+    setAskChatExpanded(true);
+    setTendTagPromptOpen(false);
     setActivePanel(null);
     setShapeView('menu');
 
@@ -434,22 +493,45 @@ export default function ImagePage() {
     }
   };
 
-  const focusStorySection = () => {
-    if (typeof document === 'undefined') {
+  const openTendView = (view: ShapeView) => {
+    setShapeView(view);
+    setActivePanel('shape');
+  };
+
+  const handleSaveImageDetails = async (updates: {
+    title?: string | null;
+    description?: string | null;
+  }) => {
+    if (!image || savingDetails) {
       return;
     }
 
-    window.setTimeout(() => {
-      document.getElementById('ember-story')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }, 160);
-  };
+    setSavingDetails(true);
+    setShareError('');
 
-  const handleOpenAttachmentPicker = () => {
-    closePanel();
-    window.dispatchEvent(new CustomEvent('ember:open-attachment-picker'));
+    try {
+      const response = await fetch(`/api/images/${image.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to update this Ember.');
+      }
+
+      await fetchImage();
+      setActionNotice('Ember details updated.');
+      setShapeView('menu');
+    } catch (detailsError) {
+      setShareError(
+        detailsError instanceof Error ? detailsError.message : 'Failed to update this Ember.'
+      );
+    } finally {
+      setSavingDetails(false);
+    }
   };
 
   const handleShareSave = async () => {
@@ -584,37 +666,93 @@ export default function ImagePage() {
     }
   };
 
-  const handleGenerateWiki = async () => {
-    if (!image || generatingWiki) {
+  const stopNarration = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+
+    setNarrationState('idle');
+  }, []);
+
+  const handleNarrationToggle = async () => {
+    if (!image?.wiki?.content) {
       return;
     }
 
-    const imageId = image.id;
-    setGeneratingWiki(true);
-    setShareError('');
+    if (narrationState === 'loading' || narrationState === 'playing') {
+      stopNarration();
+      return;
+    }
+
+    setNarrationError('');
+    setNarrationState('loading');
 
     try {
-      const response = await fetch(`/api/wiki/${imageId}`, {
-        method: 'POST',
-      });
+      let script = narrationScript;
 
-      const payload = await response.json().catch(() => null);
+      if (!script) {
+        const scriptResponse = await fetch('/api/narration/script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: image.wiki.content,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to regenerate the memory story.');
+        const scriptPayload = await scriptResponse.json().catch(() => null);
+
+        if (!scriptResponse.ok) {
+          throw new Error(scriptPayload?.error || 'Narration text could not be prepared.');
+        }
+
+        script = scriptPayload?.script || '';
+        setNarrationScript(script);
       }
 
-      await fetchImage();
-      setActionNotice('Memory story updated.');
-      focusStorySection();
-    } catch (wikiError) {
-      setShareError(
-        wikiError instanceof Error
-          ? wikiError.message
-          : 'Failed to regenerate the memory story.'
+      const response = await fetch('/api/narration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          script,
+          voicePreference,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Narration could not be generated.');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audioUrlRef.current = audioUrl;
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        stopNarration();
+      };
+
+      audio.onerror = () => {
+        stopNarration();
+        setNarrationError('Narration could not be played on this device.');
+      };
+
+      await audio.play();
+      setNarrationState('playing');
+    } catch (playError) {
+      stopNarration();
+      setNarrationError(
+        playError instanceof Error ? playError.message : 'Narration could not be generated.'
       );
-    } finally {
-      setGeneratingWiki(false);
     }
   };
 
@@ -691,9 +829,26 @@ export default function ImagePage() {
     filename: image.filename,
     posterFilename: image.posterFilename,
   });
-  const ownerConversationTarget = image.ownerConversationTarget;
   const autoTagStepComplete =
     autoTagPromptDismissed || !fromUpload || !image.canManage || image.tags.length > 0;
+  const activityMessages = image.contributors
+    .flatMap((contributor) =>
+      (contributor.conversation?.messages || []).map((message) => ({
+        id: message.id,
+        contributorId: contributor.id,
+        contributorLabel:
+          contributor.name ||
+          contributor.user?.name ||
+          contributor.email ||
+          contributor.phoneNumber ||
+          'Contributor',
+        role: message.role,
+        source: message.source,
+        content: message.content,
+        createdAt: message.createdAt,
+      }))
+    )
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
 
   const handleAutoTagDismiss = () => {
     setAutoTagPromptDismissed(true);
@@ -747,20 +902,63 @@ export default function ImagePage() {
     void fetchImage();
   };
 
+  const handleTendAutoTagApplied = async (labels: string[]) => {
+    await fetchImage();
+
+    try {
+      const response = await fetch(`/api/wiki/${image.id}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Failed to refresh the wiki after auto-tagging');
+      }
+    } catch (wikiError) {
+      setShareError(
+        wikiError instanceof Error
+          ? wikiError.message
+          : 'Failed to refresh the wiki after auto-tagging'
+      );
+    }
+
+    setTendTagPromptOpen(false);
+    setActionNotice(
+      labels.length > 0
+        ? `Auto-tagged ${labels.join(labels.length === 2 ? ' and ' : ', ')}.`
+        : 'Auto-tagged familiar faces.'
+    );
+  };
+
   const handleManualTagComplete = async () => {
     await fetchImage();
     closePanel();
-    focusStorySection();
+    router.push(`/image/${image.id}/wiki`);
+  };
+
+  const handleOpenContributors = () => {
+    setShapeView('menu');
+    setActivePanel('contributors');
   };
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 pb-28 sm:px-6 sm:pb-10">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/feed" className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]">
-          {'<- Back to feed'}
-        </Link>
+      <div className="mb-6">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/feed" className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]">
+            {'<- Back to feed'}
+          </Link>
+          <button
+            type="button"
+            onClick={() => setActivePanel('share')}
+            className="inline-flex h-12 w-12 items-center justify-center rounded-full text-[var(--ember-orange)] transition hover:text-[var(--ember-orange-deep)]"
+            aria-label="Share Ember"
+          >
+            <ShareIcon className="h-8 w-8" />
+          </button>
+        </div>
         {(actionNotice || shareError) && (
-          <div className={`text-sm ${shareError ? 'text-rose-600' : 'text-[var(--ember-muted)]'}`}>
+          <div className={`mt-3 text-sm ${shareError ? 'text-rose-600' : 'text-[var(--ember-muted)]'}`}>
             {shareError || actionNotice}
           </div>
         )}
@@ -784,21 +982,19 @@ export default function ImagePage() {
           </h1>
         </div>
 
-        <div className="grid grid-cols-5 gap-3">
-          <ActionButton
-            icon={<GeminiIcon className="h-7 w-7" />}
-            label="Ask Ember"
-            onClick={() => setActivePanel('ask')}
-          />
+        <div className="grid grid-cols-3 gap-3">
+            <ActionButton
+              icon={<GeminiIcon className="h-7 w-7" />}
+              label="Ask Ember"
+              onClick={() => {
+                setAskChatExpanded(true);
+                setActivePanel('ask');
+              }}
+            />
           <ActionButton
             icon={<PlayIcon className="h-7 w-7" />}
             label="Play Ember"
-            href={`/image/${image.id}/play`}
-          />
-          <ActionButton
-            icon={<PersonIcon className="h-7 w-7" />}
-            label="Contributors"
-            onClick={() => setActivePanel('contributors')}
+            onClick={() => setActivePanel('play')}
           />
           <ActionButton
             icon={<CircleIcon className="h-7 w-7" />}
@@ -808,84 +1004,162 @@ export default function ImagePage() {
               setActivePanel('shape');
             }}
           />
-          <ActionButton
-            icon={<ShareIcon className="h-7 w-7" />}
-            label="Share Ember"
-            onClick={() => setActivePanel('share')}
-          />
         </div>
-
-        {image.canManage && ownerConversationTarget && (
-          <div className="ember-panel rounded-[2rem] p-5 sm:p-6">
-            <p className="ember-eyebrow">Tell more</p>
-            <h2 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
-              Add more to this memory
-            </h2>
-            <p className="ember-copy mt-2 text-sm">
-              Type with Ember or have it call you so this Ember can keep growing.
-            </p>
-            <MemoryTellMoreActions
-              className="mt-5"
-              contributorToken={ownerConversationTarget.token}
-              contributorId={ownerConversationTarget.id}
-              phoneAvailable={Boolean(ownerConversationTarget.phoneNumber || ownerConversationTarget.user?.phoneNumber)}
-              latestVoiceCall={ownerConversationTarget.voiceCalls[0] || null}
-              onRefreshRequested={fetchImage}
-            />
-          </div>
-        )}
-
-        <section id="ember-story" className="ember-panel-strong rounded-[2rem] p-5 sm:p-6">
-          {image.wiki ? (
-            <div className="min-w-0">
-              <WikiView content={image.wiki.content} />
-            </div>
-          ) : (
-            <div className="rounded-[1.8rem] border border-dashed border-[rgba(20,20,20,0.12)] bg-white px-5 py-8">
-              <h2 className="ember-heading text-3xl text-[var(--ember-text)]">
-                No story yet
-              </h2>
-              <p className="ember-copy mt-3 max-w-3xl text-sm">
-                Ember can turn the current photo, tags, contributor memories, and added content
-                into a single story here. Generate it when you are ready.
-              </p>
-            </div>
-          )}
-
-          {image.canManage && (
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => void handleGenerateWiki()}
-                disabled={generatingWiki}
-                className="ember-button-primary disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {generatingWiki
-                  ? 'Regenerating...'
-                  : image.wiki
-                    ? 'Regenerate story'
-                    : 'Generate story'}
-              </button>
-            </div>
-          )}
-        </section>
-
-        <ImageAttachmentGallery
-          imageId={image.id}
-          canManage={image.canManage}
-          attachments={image.attachments}
-          onUpdate={fetchImage}
-        />
       </section>
 
-      <EmberSheet
-        open={activePanel === 'ask'}
-        title="Ask Ember"
-        subtitle="Chat with this Ember without leaving the memory."
-        onClose={closePanel}
-      >
-        <ChatInterface imageId={image.id} subjectNoun={subjectNoun} />
-      </EmberSheet>
+        {activePanel === 'ask' && (
+          <div className="fixed inset-0 z-50" onClick={closePanel}>
+            <div className="flex min-h-full w-full items-stretch justify-center">
+              <div
+                className="flex h-screen w-full max-w-none flex-col overflow-hidden bg-transparent text-white"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="relative min-h-screen flex-1 overflow-hidden bg-transparent">
+                  <MediaPreview
+                    mediaType={image.mediaType}
+                    filename={image.filename}
+                    posterFilename={image.posterFilename}
+                    originalName={emberTitle}
+                    usePosterForVideo
+                    controls={image.mediaType === 'VIDEO'}
+                    className="h-full w-full object-contain bg-transparent"
+                  />
+                <button
+                  type="button"
+                  onClick={closePanel}
+                  className="absolute right-4 top-[max(env(safe-area-inset-top),1rem)] inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/92 text-[var(--ember-text)] shadow-[0_10px_24px_rgba(17,17,17,0.18)]"
+                  aria-label="Close Ask Ember"
+                >
+                  <CloseIcon />
+                </button>
+
+                <div
+                  className={`pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 via-black/30 to-transparent px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:px-5 ${
+                    askChatExpanded ? 'pt-[8vh] sm:pt-[10vh]' : 'pt-[52vh] sm:pt-[58vh]'
+                  }`}
+                >
+                  <div className="pointer-events-auto mx-auto mb-3 flex max-w-3xl justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setAskChatExpanded((value) => !value)}
+                      className="inline-flex items-center rounded-full border border-white/16 bg-[rgba(12,12,12,0.5)] px-4 py-2 text-sm font-medium text-white shadow-[0_12px_28px_rgba(0,0,0,0.22)] transition hover:border-[rgba(255,102,33,0.3)] hover:text-[var(--ember-orange)]"
+                    >
+                      {askChatExpanded ? 'Collapse chat' : 'Expand chat'}
+                    </button>
+                  </div>
+                  <div
+                    className={`pointer-events-auto mx-auto max-w-3xl overflow-hidden rounded-[1.8rem] border border-white/10 bg-[rgba(12,12,12,0.5)] shadow-[0_24px_60px_rgba(0,0,0,0.3)] ${
+                      askChatExpanded ? 'h-[82vh] sm:h-[78vh]' : 'h-[48vh] sm:h-[42vh]'
+                    }`}
+                  >
+                    <ChatInterface imageId={image.id} subjectNoun={subjectNoun} variant="overlay" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activePanel === 'play' && (
+        <div className="fixed inset-0 z-50 bg-black" onClick={closePanel}>
+          <div className="flex min-h-full w-full items-stretch justify-center">
+            <div
+              className="flex h-screen w-full max-w-none flex-col overflow-hidden bg-black text-white"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="relative min-h-screen flex-1 overflow-hidden bg-black">
+                <MediaPreview
+                  mediaType={image.mediaType}
+                  filename={image.filename}
+                  posterFilename={image.posterFilename}
+                  originalName={emberTitle}
+                  usePosterForVideo
+                  controls={image.mediaType === 'VIDEO'}
+                  className="h-full w-full object-contain bg-black"
+                />
+                <button
+                  type="button"
+                  onClick={closePanel}
+                  className="absolute right-4 top-[max(env(safe-area-inset-top),1rem)] inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/92 text-[var(--ember-text)] shadow-[0_10px_24px_rgba(17,17,17,0.18)]"
+                  aria-label="Close narration"
+                >
+                  <CloseIcon />
+                </button>
+
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 via-black/45 to-transparent px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-16 sm:px-5">
+                  <div className="pointer-events-auto mx-auto max-w-3xl overflow-hidden rounded-[1.8rem] border border-white/10 bg-[rgba(12,12,12,0.6)] shadow-[0_24px_60px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+                    <div className="max-h-[42vh] overflow-y-auto px-4 py-4 sm:max-h-[38vh] sm:px-5 sm:py-5">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
+                        Listen to narration
+                      </p>
+                      <h2 className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">
+                        Hear the story out loud
+                      </h2>
+                      <p className="mt-3 text-sm leading-7 text-white/72">
+                        Choose a voice, listen to the Ember as a story, and read the final narration text below.
+                      </p>
+
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {(['female', 'male'] as NarrationPreference[]).map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => setVoicePreference(option)}
+                            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+                              voicePreference === option
+                                ? 'border-[var(--ember-orange)] bg-[rgba(255,102,33,0.14)] text-[var(--ember-orange)]'
+                                : 'border-white/16 text-white/78'
+                            }`}
+                          >
+                            {option === 'female' ? 'Female voice' : 'Male voice'}
+                          </button>
+                        ))}
+                      </div>
+
+                      {narrationError && (
+                        <div className="mt-5 rounded-[1.2rem] border border-rose-500/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+                          {narrationError}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => void handleNarrationToggle()}
+                        disabled={!image.wiki?.content}
+                        className="mt-6 inline-flex min-h-[3.4rem] w-full items-center justify-center rounded-full bg-[var(--ember-orange)] px-5 py-3 text-base font-semibold text-white transition hover:bg-[var(--ember-orange-deep)] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {narrationState === 'loading'
+                          ? 'Generating narration...'
+                          : narrationState === 'playing'
+                            ? 'Stop narration'
+                            : 'Listen to narration'}
+                      </button>
+
+                      {!image.wiki?.content && (
+                        <p className="mt-3 text-sm text-white/55">
+                          Generate the story on this page first.
+                        </p>
+                      )}
+
+                      {narrationScript && (
+                        <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/6 px-4 py-4">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/55">
+                            Narration text
+                          </div>
+                          <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-white/88">
+                            {narrationScript}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <EmberSheet
         open={activePanel === 'contributors'}
@@ -954,163 +1228,338 @@ export default function ImagePage() {
         )}
       </EmberSheet>
 
+      {activePanel === 'shape' && shapeView === 'menu' && (
+        <div className="fixed inset-0 z-50" onClick={closePanel}>
+          <div className="flex min-h-full w-full items-stretch justify-center">
+            <div
+              className="flex h-screen w-full max-w-none flex-col overflow-hidden bg-transparent text-white"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="relative min-h-screen flex-1 overflow-hidden bg-transparent">
+                <MediaPreview
+                  mediaType={image.mediaType}
+                  filename={image.filename}
+                  posterFilename={image.posterFilename}
+                  originalName={emberTitle}
+                  usePosterForVideo
+                  controls={image.mediaType === 'VIDEO'}
+                  className="h-full w-full object-contain bg-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={closePanel}
+                  className="absolute right-4 top-[max(env(safe-area-inset-top),1rem)] inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/92 text-[var(--ember-text)] shadow-[0_10px_24px_rgba(17,17,17,0.18)]"
+                  aria-label="Close Tend Ember"
+                >
+                  <CloseIcon />
+                </button>
+
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/22 to-transparent px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-24 sm:px-5">
+                  <div className="pointer-events-auto mx-auto max-w-lg rounded-[2rem] border border-white/70 bg-[rgba(255,255,255,0.96)] p-4 shadow-[0_24px_64px_rgba(17,17,17,0.22)]">
+                    <p className="ember-eyebrow">Tend Ember</p>
+                    <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[var(--ember-text)]">
+                      Choose a tool
+                    </h2>
+
+                    <div className="mt-5 grid gap-3">
+                      {image.canManage && (
+                        <button
+                          type="button"
+                          onClick={() => openTendView('addContent')}
+                          className="rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white px-5 py-4 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                        >
+                          <div className="text-lg font-semibold text-[var(--ember-text)]">Add Content</div>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closePanel();
+                          router.push(`/image/${image.id}/wiki`);
+                        }}
+                        className="rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white px-5 py-4 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                      >
+                        <div className="text-lg font-semibold text-[var(--ember-text)]">View Wiki</div>
+                      </button>
+                      {image.canManage && (
+                        <button
+                          type="button"
+                          onClick={() => openTendView('editTitle')}
+                          className="rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white px-5 py-4 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                        >
+                          <div className="text-lg font-semibold text-[var(--ember-text)]">Edit Title</div>
+                        </button>
+                      )}
+                      {image.canManage && (
+                        <button
+                          type="button"
+                          onClick={() => openTendView('editCaption')}
+                          className="rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white px-5 py-4 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                        >
+                          <div className="text-lg font-semibold text-[var(--ember-text)]">Edit Caption</div>
+                        </button>
+                      )}
+                      {image.canManage && (
+                        <button
+                          type="button"
+                          onClick={() => openTendView('tag')}
+                          className="rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white px-5 py-4 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                        >
+                          <div className="text-lg font-semibold text-[var(--ember-text)]">Tag People</div>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleOpenContributors}
+                        className="rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white px-5 py-4 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                      >
+                        <div className="text-lg font-semibold text-[var(--ember-text)]">Add Contributors</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openTendView('activity')}
+                        className="rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white px-5 py-4 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                      >
+                        <div className="text-lg font-semibold text-[var(--ember-text)]">View Activity</div>
+                      </button>
+                      {image.canManage && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteEmber()}
+                          disabled={deletingEmber}
+                          className="rounded-[1.5rem] border border-[rgba(244,63,94,0.2)] bg-white px-5 py-4 text-left transition hover:border-[rgba(244,63,94,0.34)] disabled:opacity-60"
+                        >
+                          <div className="text-lg font-semibold text-rose-700">
+                            {deletingEmber ? 'Deleting...' : 'Delete Ember'}
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <EmberSheet
-        open={activePanel === 'shape'}
-        title={shapeView === 'tag' ? 'Tag people' : 'Tend Ember'}
+        open={activePanel === 'shape' && shapeView !== 'menu'}
+        title={
+          shapeView === 'tag'
+            ? 'Tag People'
+            : shapeView === 'addContent'
+              ? 'Add Content'
+              : shapeView === 'editTitle'
+                ? 'Edit Title'
+                : shapeView === 'editCaption'
+                  ? 'Edit Caption'
+                  : 'Ember Activity'
+        }
         subtitle={
           shapeView === 'tag'
-            ? 'Pin people to the image, review tags, and turn them into contributor invites.'
-            : 'Review added content and Tend Ember tools.'
+            ? 'Pin people to the image, review tags, and run familiar-face matching.'
+            : shapeView === 'addContent'
+              ? 'Attach additional photos or videos to this Ember.'
+              : shapeView === 'editTitle'
+                ? 'Refine the generated title for this Ember.'
+                : shapeView === 'editCaption'
+                  ? 'Add or update a caption for this Ember.'
+                  : 'Review the wiki and media activity connected to this Ember.'
         }
         onClose={closePanel}
       >
-        {shapeView === 'menu' ? (
-          <div className="space-y-4">
-            <div className="ember-panel rounded-[2rem] p-5">
-              <p className="ember-eyebrow">Added content</p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-3">
-                <DetailBlock
-                  label="Story"
-                  value={
-                    image.wiki
-                      ? `Version ${image.wiki.version} updated ${new Date(
-                          image.wiki.updatedAt
-                        ).toLocaleDateString()}`
-                      : 'No story has been generated yet.'
-                  }
+        <div className="space-y-5">
+          <button
+            type="button"
+            onClick={() => {
+              setShapeView('menu');
+              setTendTagPromptOpen(false);
+            }}
+            className="rounded-full border border-[var(--ember-line-strong)] px-4 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+          >
+            Back to Tend Ember
+          </button>
+
+          {shapeView === 'addContent' && (
+            <div className="space-y-5">
+              {image.ownerConversationTarget && (
+                <div className="ember-panel rounded-[2rem] p-6">
+                  <p className="ember-eyebrow">Add more to the memory</p>
+                  <h3 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
+                    Keep telling the story
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-[var(--ember-muted)]">
+                    Add more context by text or phone, then attach additional photos and videos below.
+                  </p>
+
+                  <div className="mt-5">
+                    <MemoryTellMoreActions
+                      contributorToken={image.ownerConversationTarget.token}
+                      contributorId={image.ownerConversationTarget.id}
+                      phoneAvailable={Boolean(
+                        image.ownerConversationTarget.phoneNumber ||
+                          image.ownerConversationTarget.user?.phoneNumber
+                      )}
+                      latestVoiceCall={image.ownerConversationTarget.voiceCalls[0] || null}
+                      onRefreshRequested={fetchImage}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <ImageAttachmentGallery
+                imageId={image.id}
+                canManage={image.canManage}
+                attachments={image.attachments}
+                onUpdate={fetchImage}
+              />
+            </div>
+          )}
+
+          {shapeView === 'editTitle' && (
+            <div className="ember-panel rounded-[2rem] p-6">
+              <div className="text-sm leading-7 text-[var(--ember-muted)]">
+                Ember generated this title from the current memory. You can refine it here.
+              </div>
+              <label className="mt-5 block text-sm font-medium text-[var(--ember-text)]">
+                <div className="mb-2">Title</div>
+                <input
+                  type="text"
+                  value={titleDraft}
+                  onChange={(event) => setTitleDraft(event.target.value)}
+                  className="ember-input"
                 />
-                <DetailBlock
-                  label="Contributor notes"
-                  value={`${image.contributors.filter(
-                    (contributor) => contributor.conversation?.status === 'completed'
-                  ).length} completed memory threads`}
-                />
-                <DetailBlock label="Tagged people" value={`${image.tags.length} tagged records`} />
+              </label>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => void handleSaveImageDetails({ title: titleDraft.trim() || null })}
+                  disabled={savingDetails || !titleDraft.trim()}
+                  className="ember-button-primary disabled:opacity-60"
+                >
+                  {savingDetails ? 'Saving...' : 'Save title'}
+                </button>
               </div>
             </div>
+          )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => {
-                  closePanel();
-                  focusStorySection();
-                }}
-                className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)]"
-              >
-                <div className="text-lg font-semibold text-[var(--ember-text)]">View story</div>
-                <p className="mt-2 text-sm text-[var(--ember-muted)]">
-                  Jump back to the main memory story on this page.
-                </p>
-              </button>
-
-              {image.canManage && (
+          {shapeView === 'editCaption' && (
+            <div className="ember-panel rounded-[2rem] p-6">
+              <div className="text-sm leading-7 text-[var(--ember-muted)]">
+                Add a caption or short note that should stay attached to this Ember.
+              </div>
+              <label className="mt-5 block text-sm font-medium text-[var(--ember-text)]">
+                <div className="mb-2">Caption</div>
+                <textarea
+                  value={captionDraft}
+                  onChange={(event) => setCaptionDraft(event.target.value)}
+                  className="ember-textarea"
+                  rows={5}
+                  placeholder="Add a caption for this Ember..."
+                />
+              </label>
+              <div className="mt-5 flex flex-wrap gap-3">
                 <button
                   type="button"
-                  onClick={handleOpenAttachmentPicker}
-                  className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                  onClick={() => void handleSaveImageDetails({ description: captionDraft.trim() || null })}
+                  disabled={savingDetails}
+                  className="ember-button-primary disabled:opacity-60"
                 >
-                  <div className="text-lg font-semibold text-[var(--ember-text)]">Add content</div>
-                  <p className="mt-2 text-sm text-[var(--ember-muted)]">
-                    Attach more photos or videos to this Ember.
-                  </p>
+                  {savingDetails ? 'Saving...' : 'Save caption'}
                 </button>
-              )}
-
-              {image.canManage && (
-                <button
-                  type="button"
-                  onClick={() => setShapeView('tag')}
-                  className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)]"
-                >
-                  <div className="text-lg font-semibold text-[var(--ember-text)]">Tag people</div>
-                  <p className="mt-2 text-sm text-[var(--ember-muted)]">
-                    Add or update tags without cluttering the main screen.
-                  </p>
-                </button>
-              )}
-
-              <Link
-                href="/feed"
-                className="ember-card rounded-[1.6rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
-              >
-                <div className="text-lg font-semibold text-[var(--ember-text)]">View feed</div>
-                <p className="mt-2 text-sm text-[var(--ember-muted)]">
-                  Return to your Ember feed.
-                </p>
-              </Link>
-
-              {image.canManage && (
-                <button
-                  type="button"
-                  onClick={() => void handleDeleteEmber()}
-                  disabled={deletingEmber}
-                  className="ember-card rounded-[1.6rem] px-5 py-5 text-left transition hover:border-[rgba(244,63,94,0.28)] disabled:opacity-60"
-                >
-                  <div className="text-lg font-semibold text-rose-700">
-                    {deletingEmber ? 'Deleting...' : 'Delete Ember'}
-                  </div>
-                  <p className="mt-2 text-sm text-[var(--ember-muted)]">
-                    Permanently remove this Ember and its connected records.
-                  </p>
-                </button>
-              )}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            <button
-              type="button"
-              onClick={() => setShapeView('menu')}
-              className="rounded-full border border-[var(--ember-line-strong)] px-4 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
-            >
-              Back to Tend Ember tools
-            </button>
+          )}
 
-            <InteractiveImageTagger
-              imageId={image.id}
+          {shapeView === 'tag' && (
+            <>
+              {image.canManage && (
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTendTagPromptOpen(true)}
+                    className="ember-button-secondary"
+                  >
+                    Look for familiar faces
+                  </button>
+                </div>
+              )}
+
+              <InteractiveImageTagger
+                imageId={image.id}
+                mediaType={image.mediaType}
+                imageUrl={
+                  image.mediaType === 'VIDEO'
+                    ? image.posterFilename
+                      ? `/api/uploads/${image.posterFilename}`
+                      : null
+                    : `/api/uploads/${image.filename}`
+                }
+                videoUrl={image.mediaType === 'VIDEO' ? `/api/uploads/${image.filename}` : null}
+                durationSeconds={image.durationSeconds}
+                imageName={emberTitle}
+                tags={image.tags}
+                contributors={image.contributors.map((contributor) => ({
+                  id: contributor.id,
+                  name: contributor.name,
+                  email: contributor.email,
+                  phoneNumber: contributor.phoneNumber,
+                  userId: contributor.userId,
+                }))}
+                friends={image.friends}
+                tagIdentities={image.tagIdentities}
+                canManage={image.canManage}
+                onUpdate={fetchImage}
+                onTagCreated={handleManualTagComplete}
+              />
+
+              <TagManager
+                imageId={image.id}
+                tags={image.tags}
+                contributors={image.contributors.map((contributor) => ({
+                  id: contributor.id,
+                  name: contributor.name,
+                  email: contributor.email,
+                  phoneNumber: contributor.phoneNumber,
+                  userId: contributor.userId,
+                }))}
+                friends={image.friends}
+                canManage={image.canManage}
+                onUpdate={fetchImage}
+              />
+
+              <AutoTagPrompt
+                imageId={image.id}
+                imageName={emberTitle}
+                mediaUrl={previewMediaUrl}
+                enabled={activePanel === 'shape' && shapeView === 'tag' && tendTagPromptOpen}
+                existingTagCount={0}
+                onApplied={handleTendAutoTagApplied}
+                onAddManualTags={() => setTendTagPromptOpen(false)}
+                onDismiss={() => setTendTagPromptOpen(false)}
+              />
+            </>
+          )}
+
+          {shapeView === 'activity' && (
+            <EmberActivityView
+              emberTitle={emberTitle}
+              originalName={image.originalName}
+              description={image.description}
+              createdAt={image.createdAt}
+              titleSaved={Boolean(image.title?.trim())}
               mediaType={image.mediaType}
-              imageUrl={
-                image.mediaType === 'VIDEO'
-                  ? image.posterFilename
-                    ? `/api/uploads/${image.posterFilename}`
-                    : null
-                  : `/api/uploads/${image.filename}`
-              }
-              videoUrl={image.mediaType === 'VIDEO' ? `/api/uploads/${image.filename}` : null}
-              durationSeconds={image.durationSeconds}
-              imageName={emberTitle}
+              filename={image.filename}
+              posterFilename={image.posterFilename}
+              contributors={image.contributors}
               tags={image.tags}
-              contributors={image.contributors.map((contributor) => ({
-                id: contributor.id,
-                name: contributor.name,
-                email: contributor.email,
-                phoneNumber: contributor.phoneNumber,
-                userId: contributor.userId,
-              }))}
-              friends={image.friends}
-              tagIdentities={image.tagIdentities}
-              canManage={image.canManage}
-              onUpdate={fetchImage}
-              onTagCreated={handleManualTagComplete}
+              attachments={image.attachments}
+              analysis={image.analysis}
+              messages={activityMessages}
             />
-
-            <TagManager
-              imageId={image.id}
-              tags={image.tags}
-              contributors={image.contributors.map((contributor) => ({
-                id: contributor.id,
-                name: contributor.name,
-                email: contributor.email,
-                phoneNumber: contributor.phoneNumber,
-                userId: contributor.userId,
-              }))}
-              friends={image.friends}
-              canManage={image.canManage}
-              onUpdate={fetchImage}
-            />
-          </div>
-        )}
+          )}
+        </div>
       </EmberSheet>
 
       <EmberSheet

@@ -58,6 +58,16 @@ export async function GET(
                 select: {
                   status: true,
                   currentStep: true,
+                  messages: {
+                    orderBy: { createdAt: 'asc' },
+                    select: {
+                      id: true,
+                      role: true,
+                      content: true,
+                      source: true,
+                      createdAt: true,
+                    },
+                  },
                 },
               },
               voiceCalls: {
@@ -76,6 +86,21 @@ export async function GET(
                   memorySyncedAt: true,
                 },
               },
+            },
+          },
+          analysis: {
+            select: {
+              status: true,
+              summary: true,
+              visualDescription: true,
+              metadataSummary: true,
+              capturedAt: true,
+              latitude: true,
+              longitude: true,
+              cameraMake: true,
+              cameraModel: true,
+              lensModel: true,
+              updatedAt: true,
             },
           },
           tags: {
@@ -273,6 +298,7 @@ export async function GET(
       tags: image.tags,
       friends,
       tagIdentities: Array.from(tagIdentityMap.values()).slice(0, 12),
+      analysis: image.analysis,
       wiki: image.wiki,
       sportsMode: image.sportsMode,
     });
@@ -338,21 +364,54 @@ export async function PATCH(
 
     const body = await request.json();
 
-    if (typeof body?.shareToNetwork !== 'boolean') {
+    const updateData: {
+      shareToNetwork?: boolean;
+      title?: string | null;
+      description?: string | null;
+    } = {};
+
+    if (typeof body?.shareToNetwork === 'boolean') {
+      updateData.shareToNetwork = body.shareToNetwork;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body ?? {}, 'title')) {
+      if (body.title !== null && typeof body.title !== 'string') {
+        return NextResponse.json(
+          { error: 'title must be a string or null' },
+          { status: 400 }
+        );
+      }
+
+      updateData.title = typeof body.title === 'string' ? body.title.trim() || null : null;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body ?? {}, 'description')) {
+      if (body.description !== null && typeof body.description !== 'string') {
+        return NextResponse.json(
+          { error: 'description must be a string or null' },
+          { status: 400 }
+        );
+      }
+
+      updateData.description =
+        typeof body.description === 'string' ? body.description.trim() || null : null;
+    }
+
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
-        { error: 'shareToNetwork must be a boolean' },
+        { error: 'No valid image fields were provided' },
         { status: 400 }
       );
     }
 
     const image = await prisma.image.update({
       where: { id },
-      data: {
-        shareToNetwork: body.shareToNetwork,
-      },
+      data: updateData,
       select: {
         id: true,
         shareToNetwork: true,
+        title: true,
+        description: true,
       },
     });
 

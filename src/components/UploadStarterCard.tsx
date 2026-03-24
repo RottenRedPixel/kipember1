@@ -84,7 +84,7 @@ export default function UploadStarterCard({
         </span>
 
         <p className="mt-7 text-[1.9rem] font-semibold tracking-[-0.04em] text-[var(--ember-text)] sm:text-[2.1rem]">
-          Drop your photo or video here, or{' '}
+          Drop your photo here, or{' '}
           <span className="text-[var(--ember-orange-deep)]">browse</span>
         </p>
         <p className="mt-4 text-sm leading-7 text-[var(--ember-muted)]">{supportText}</p>

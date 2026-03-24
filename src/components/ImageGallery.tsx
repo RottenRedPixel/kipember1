@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, type JSX } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 
@@ -30,104 +29,15 @@ type FeedImage = {
   wiki: { id: string } | null;
 };
 
-type IconProps = {
-  className?: string;
-};
-
-const MOBILE_PAGE_SIZE = 5;
-
-function GeminiIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg viewBox="0 0 256 256" fill="currentColor" className={className}>
-      <path d="M128 16C137 74 182 119 240 128C182 137 137 182 128 240C119 182 74 137 16 128C74 119 119 74 128 16Z" />
-    </svg>
-  );
-}
-
-function PlayIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="m8 5.75 10 6.25L8 18.25V5.75Z" />
-    </svg>
-  );
-}
-
-function CircleIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <circle cx="12" cy="12" r="7.25" />
-    </svg>
-  );
-}
-
-function CloseIcon({ className = 'h-4 w-4' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M6 6 18 18" />
-      <path d="M18 6 6 18" />
-    </svg>
-  );
-}
-
-type CardAction = {
-  key: 'ask' | 'play';
-  label: string;
-  href: (image: FeedImage) => string;
-  icon: (props: IconProps) => JSX.Element;
-};
-
-const cardActions: CardAction[] = [
-  {
-    key: 'ask',
-    label: 'Ask Ember',
-    href: (image) => `/image/${image.id}/chat`,
-    icon: GeminiIcon,
-  },
-  {
-    key: 'play',
-    label: 'Play Ember',
-    href: (image) => `/image/${image.id}/play`,
-    icon: PlayIcon,
-  },
-];
-
-const cardActionClass =
-  'flex h-14 items-center justify-center rounded-[1.45rem] bg-transparent text-[var(--ember-orange)] transition hover:text-[var(--ember-orange-deep)]';
-
-async function shareEmberLink(image: FeedImage) {
-  const url = `${window.location.origin}/image/${image.id}`;
-  const displayTitle = getEmberTitle(image);
-
-  if (navigator.share) {
-    await navigator.share({
-      title: displayTitle,
-      text: 'Open this Ember',
-      url,
-    });
-    return 'Share sheet opened.';
-  }
-
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(url);
-    return 'Ember link copied.';
-  }
-
-  throw new Error('Sharing is not available on this device.');
-}
+const MOBILE_PAGE_SIZE = 9;
 
 export default function ImageGallery() {
-  const router = useRouter();
   const [images, setImages] = useState<FeedImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [shapeMenuImageId, setShapeMenuImageId] = useState<string | null>(null);
-  const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
-  const [shareFeedback, setShareFeedback] = useState<{
-    type: 'success' | 'error';
-    text: string;
-  } | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [mobilePage, setMobilePage] = useState(1);
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     fetch('/api/images')
@@ -167,95 +77,18 @@ export default function ImageGallery() {
 
   const totalMobilePages = Math.max(1, Math.ceil(sortedImages.length / MOBILE_PAGE_SIZE));
 
-  useEffect(() => {
-    if (!isMobileViewport) {
-      setMobilePage(1);
-      return;
-    }
-
-    setMobilePage((current) => Math.min(current, totalMobilePages));
-  }, [isMobileViewport, totalMobilePages]);
-
-  useEffect(() => {
-    if (!shareFeedback) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => setShareFeedback(null), 2500);
-    return () => window.clearTimeout(timeoutId);
-  }, [shareFeedback]);
+  const effectiveMobilePage = isMobileViewport
+    ? Math.min(mobilePage, totalMobilePages)
+    : 1;
 
   const visibleImages = useMemo(() => {
     if (!isMobileViewport) {
       return sortedImages;
     }
 
-    const start = (mobilePage - 1) * MOBILE_PAGE_SIZE;
+    const start = (effectiveMobilePage - 1) * MOBILE_PAGE_SIZE;
     return sortedImages.slice(start, start + MOBILE_PAGE_SIZE);
-  }, [isMobileViewport, mobilePage, sortedImages]);
-
-  const shapeMenuImage =
-    sortedImages.find((image) => image.id === shapeMenuImageId) || null;
-
-  const handleShare = async (image: FeedImage) => {
-    try {
-      const text = await shareEmberLink(image);
-      setShareFeedback({ type: 'success', text });
-    } catch (shareError) {
-      if (shareError instanceof DOMException && shareError.name === 'AbortError') {
-        return;
-      }
-
-      setShareFeedback({
-        type: 'error',
-        text:
-          shareError instanceof Error ? shareError.message : 'Failed to share this Ember.',
-      });
-    }
-  };
-
-  const openShapeRoute = (href: string) => {
-    setShapeMenuImageId(null);
-    router.push(href);
-  };
-
-  const handleDelete = async (image: FeedImage) => {
-    if (image.accessType !== 'owner' || deletingImageId) {
-      return;
-    }
-
-    const displayTitle = getEmberTitle(image);
-    const confirmed = window.confirm(`Delete ${displayTitle}? This cannot be undone.`);
-    if (!confirmed) {
-      return;
-    }
-
-    setDeletingImageId(image.id);
-
-    try {
-      const response = await fetch(`/api/images/${image.id}`, {
-        method: 'DELETE',
-      });
-
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to delete Ember');
-      }
-
-      setImages((current) => current.filter((item) => item.id !== image.id));
-      setShapeMenuImageId(null);
-      setShareFeedback({ type: 'success', text: 'Ember deleted.' });
-    } catch (deleteError) {
-      setShareFeedback({
-        type: 'error',
-        text:
-          deleteError instanceof Error ? deleteError.message : 'Failed to delete Ember.',
-      });
-    } finally {
-      setDeletingImageId(null);
-    }
-  };
+  }, [effectiveMobilePage, isMobileViewport, sortedImages]);
 
   if (loading) {
     return <div className="py-16 text-center text-[var(--ember-muted)]">Loading your Embers...</div>;
@@ -272,7 +105,7 @@ export default function ImageGallery() {
           <p className="ember-eyebrow">Your Embers</p>
         </div>
         <div className="ember-panel rounded-[2rem] px-8 py-16 text-center text-[var(--ember-muted)]">
-          Your feed is empty. Add a photo or video above to create your first Ember.
+          Your feed is empty. Create your first Ember to see it here.
         </div>
       </section>
     );
@@ -284,64 +117,73 @@ export default function ImageGallery() {
         <div>
           <p className="ember-eyebrow">Your Embers</p>
         </div>
-        <p className="hidden text-sm text-[var(--ember-muted)] md:block">
-          Ask, play, or tend each Ember from the card.
-        </p>
+
+        <div className="inline-flex rounded-full border border-[var(--ember-line)] p-1 text-sm font-medium text-[var(--ember-muted)]">
+          <button
+            type="button"
+            onClick={() => setLayoutMode('grid')}
+            className={`rounded-full px-4 py-2 transition ${
+              layoutMode === 'grid'
+                ? 'bg-[var(--ember-orange)] text-white'
+                : 'text-[var(--ember-muted)] hover:text-[var(--ember-text)]'
+            }`}
+          >
+            Grid
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayoutMode('list')}
+            className={`rounded-full px-4 py-2 transition ${
+              layoutMode === 'list'
+                ? 'bg-[var(--ember-orange)] text-white'
+                : 'text-[var(--ember-muted)] hover:text-[var(--ember-text)]'
+            }`}
+          >
+            In order
+          </button>
+        </div>
       </div>
 
-      {shareFeedback && (
-        <div
-          className={`mb-4 ember-status ${
-            shareFeedback.type === 'error' ? 'ember-status-error' : 'ember-status-success'
-          }`}
-        >
-          {shareFeedback.text}
-        </div>
-      )}
-
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <div
+        className={
+          layoutMode === 'grid'
+            ? 'grid grid-cols-3 gap-3 sm:gap-5'
+            : 'grid gap-5'
+        }
+      >
         {visibleImages.map((image) => {
+          const title = getEmberTitle(image);
+
           return (
             <article
               key={image.id}
-              className="ember-panel overflow-hidden rounded-[2rem] p-4 transition hover:-translate-y-0.5 hover:shadow-[0_22px_46px_rgba(17,17,17,0.08)]"
+              className={`overflow-hidden rounded-[1.4rem] transition hover:-translate-y-0.5 hover:shadow-[0_22px_46px_rgba(17,17,17,0.08)] sm:rounded-[2rem] ${
+                layoutMode === 'list' ? 'ember-panel p-4' : ''
+              }`}
             >
-              <Link href={`/image/${image.id}`} className="block overflow-hidden rounded-[1.6rem]">
-                <MediaPreview
-                  mediaType={image.mediaType}
-                  filename={image.filename}
-                  posterFilename={image.posterFilename}
-                  originalName={getEmberTitle(image)}
-                  usePosterForVideo
-                  className="h-64 w-full object-cover"
-                />
+              <Link
+                href={`/image/${image.id}`}
+                className="group block overflow-hidden rounded-[1.15rem] sm:rounded-[1.6rem]"
+              >
+                <div className="relative overflow-hidden rounded-[1.15rem] sm:rounded-[1.6rem]">
+                  <MediaPreview
+                    mediaType={image.mediaType}
+                    filename={image.filename}
+                    posterFilename={image.posterFilename}
+                    originalName={title}
+                    usePosterForVideo
+                    className={`w-full object-cover ${
+                      layoutMode === 'list' ? 'h-[19rem] sm:h-[24rem]' : 'h-32 sm:h-64'
+                    }`}
+                  />
+
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(17,17,17,0.82)] via-[rgba(17,17,17,0.42)] to-transparent px-2 py-2 sm:px-5 sm:py-5">
+                    <h2 className="line-clamp-2 text-[0.72rem] font-semibold leading-tight tracking-[-0.03em] text-white sm:text-2xl">
+                      {title}
+                    </h2>
+                  </div>
+                </div>
               </Link>
-
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {cardActions.map((action) => {
-                  const Icon = action.icon;
-
-                  return (
-                    <Link
-                      key={action.key}
-                      href={action.href(image)}
-                      className={cardActionClass}
-                      aria-label={action.label}
-                    >
-                      <Icon className="h-7 w-7" />
-                    </Link>
-                  );
-                })}
-
-                <button
-                  type="button"
-                  onClick={() => setShapeMenuImageId(image.id)}
-                  className={cardActionClass}
-                  aria-label="Tend Ember"
-                >
-                  <CircleIcon className="h-7 w-7" />
-                </button>
-              </div>
             </article>
           );
         })}
@@ -352,139 +194,24 @@ export default function ImageGallery() {
           <button
             type="button"
             onClick={() => setMobilePage((current) => Math.max(1, current - 1))}
-            disabled={mobilePage === 1}
+            disabled={effectiveMobilePage === 1}
             className="rounded-full border border-[var(--ember-line)] px-4 py-2 text-sm font-medium text-[var(--ember-text)] disabled:opacity-40"
           >
             Previous
           </button>
           <span className="text-sm text-[var(--ember-muted)]">
-            Page {mobilePage} of {totalMobilePages}
+            Page {effectiveMobilePage} of {totalMobilePages}
           </span>
           <button
             type="button"
             onClick={() =>
               setMobilePage((current) => Math.min(totalMobilePages, current + 1))
             }
-            disabled={mobilePage === totalMobilePages}
+            disabled={effectiveMobilePage === totalMobilePages}
             className="rounded-full border border-[var(--ember-line)] px-4 py-2 text-sm font-medium text-[var(--ember-text)] disabled:opacity-40"
           >
             Next
           </button>
-        </div>
-      )}
-
-      {shapeMenuImage && (
-        <div
-          className="fixed inset-0 z-50 bg-[rgba(17,17,17,0.42)] px-4 py-6"
-          onClick={() => setShapeMenuImageId(null)}
-        >
-          <div className="mx-auto flex min-h-full max-w-xl items-end justify-center sm:items-center">
-            <div
-              className="w-full overflow-hidden rounded-[2rem] border border-white/70 bg-[rgba(255,255,255,0.98)] shadow-[0_24px_64px_rgba(17,17,17,0.18)]"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="border-b ember-divider px-5 py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="ember-eyebrow">Tend Ember</p>
-                    <h3 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
-                      {getEmberTitle(shapeMenuImage)}
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShapeMenuImageId(null)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)]"
-                    aria-label="Close Tend Ember menu"
-                  >
-                    <CloseIcon />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid gap-3 px-5 py-5">
-                <button
-                  type="button"
-                  onClick={() =>
-                    openShapeRoute(`/image/${shapeMenuImage.id}?panel=contributors`)
-                  }
-                  className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
-                >
-                  <div className="text-base font-semibold text-[var(--ember-text)]">Contributors</div>
-                  <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                    Review and manage the people connected to this Ember.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    void handleShare(shapeMenuImage);
-                    setShapeMenuImageId(null);
-                  }}
-                  className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
-                >
-                  <div className="text-base font-semibold text-[var(--ember-text)]">Share Ember</div>
-                  <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                    Open the share sheet or copy a direct Ember link.
-                  </p>
-                </button>
-
-                {shapeMenuImage.accessType === 'owner' && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      openShapeRoute(`/image/${shapeMenuImage.id}?panel=shape&view=tag`)
-                    }
-                    className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
-                  >
-                    <div className="text-base font-semibold text-[var(--ember-text)]">Add content</div>
-                    <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                      Jump into tags and Tend Ember tools for this Ember.
-                    </p>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => openShapeRoute(`/image/${shapeMenuImage.id}`)}
-                  className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
-                >
-                  <div className="text-base font-semibold text-[var(--ember-text)]">View memory</div>
-                  <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                    Open the main Ember page and its memory story.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openShapeRoute(`/image/${shapeMenuImage.id}/story-circle`)}
-                  className="ember-card rounded-[1.5rem] px-4 py-4 text-left"
-                >
-                  <div className="text-base font-semibold text-[var(--ember-text)]">Edit story</div>
-                  <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                    Continue tending the story circle around this Ember.
-                  </p>
-                </button>
-
-                {shapeMenuImage.accessType === 'owner' && (
-                  <button
-                    type="button"
-                    onClick={() => void handleDelete(shapeMenuImage)}
-                    disabled={deletingImageId === shapeMenuImage.id}
-                    className="ember-card rounded-[1.5rem] px-4 py-4 text-left disabled:opacity-60"
-                  >
-                    <div className="text-base font-semibold text-rose-700">
-                      {deletingImageId === shapeMenuImage.id ? 'Deleting...' : 'Delete Ember'}
-                    </div>
-                    <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                      Permanently remove this Ember and its connected records.
-                    </p>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </section>
