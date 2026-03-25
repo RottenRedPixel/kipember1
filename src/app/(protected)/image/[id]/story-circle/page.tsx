@@ -38,7 +38,7 @@ export default async function StoryCirclePage({
           </Link>
 
           <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
-            <div className="relative h-44 w-full overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white lg:h-48 lg:w-48">
+            <div className="ember-photo-shell relative h-44 w-full border border-[rgba(20,20,20,0.06)] bg-white lg:h-48 lg:w-48">
               <Image
                 src={getPreviewMediaUrl({
                   mediaType: storyCircle.image.mediaType,

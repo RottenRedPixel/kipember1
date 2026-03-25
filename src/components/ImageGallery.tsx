@@ -178,20 +178,20 @@ export default function ImageGallery() {
           const title = getEmberTitle(image);
 
           return (
-            <article
-              key={image.id}
-              className={`overflow-hidden rounded-[1.05rem] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(17,17,17,0.08)] sm:rounded-[1.4rem] ${
-                layoutMode === 'list' ? 'ember-panel p-2 sm:p-3' : ''
-              }`}
-            >
-              <Link
-                href={`/image/${image.id}`}
-                className="group block overflow-hidden rounded-[0.95rem] sm:rounded-[1.25rem]"
+              <article
+                key={image.id}
+                className={`overflow-hidden ember-photo-shell transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(17,17,17,0.08)] ${
+                  layoutMode === 'list' ? 'ember-panel p-2 sm:p-3' : ''
+                }`}
               >
-                <div className="relative overflow-hidden rounded-[0.95rem] sm:rounded-[1.25rem]">
-                  <MediaPreview
-                    mediaType={image.mediaType}
-                    filename={image.filename}
+                <Link
+                  href={`/image/${image.id}`}
+                  className="group block overflow-hidden ember-photo-shell"
+                >
+                  <div className="relative overflow-hidden ember-photo-shell">
+                    <MediaPreview
+                      mediaType={image.mediaType}
+                      filename={image.filename}
                     posterFilename={image.posterFilename}
                     originalName={title}
                     usePosterForVideo

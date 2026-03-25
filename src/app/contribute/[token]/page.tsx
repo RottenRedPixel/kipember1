@@ -280,10 +280,10 @@ export default function ContributePage() {
               memories into the same living archive.
             </p>
 
-            <div className="ember-card mt-5 overflow-hidden rounded-[1.75rem]">
-              <MediaPreview
-                mediaType={data.image.mediaType}
-                filename={data.image.filename}
+              <div className="ember-card mt-5 ember-photo-shell">
+                <MediaPreview
+                  mediaType={data.image.mediaType}
+                  filename={data.image.filename}
                 posterFilename={data.image.posterFilename}
                 originalName={emberTitle}
                 controls={data.image.mediaType === 'VIDEO'}

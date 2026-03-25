@@ -177,10 +177,10 @@ export default function SportsModePage() {
             {'<- Back to Ember'}
           </Link>
 
-          <div className="mt-5 overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white">
-            <MediaPreview
-              mediaType={image.mediaType}
-              filename={image.filename}
+            <div className="mt-5 overflow-hidden ember-photo-shell border border-[rgba(20,20,20,0.06)] bg-white">
+              <MediaPreview
+                mediaType={image.mediaType}
+                filename={image.filename}
               posterFilename={image.posterFilename}
               originalName={image.originalName}
               controls={image.mediaType === 'VIDEO'}

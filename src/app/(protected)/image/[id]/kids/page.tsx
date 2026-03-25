@@ -166,10 +166,10 @@ export default function KidsModePage() {
             {'<- Back to Play Ember'}
           </Link>
 
-          <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
-            <div className="overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white lg:w-56">
-              <Image
-                src={getPreviewMediaUrl({
+            <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+              <div className="overflow-hidden ember-photo-shell border border-[rgba(20,20,20,0.06)] bg-white lg:w-56">
+                <Image
+                  src={getPreviewMediaUrl({
                   mediaType: image.mediaType,
                   filename: image.filename,
                   posterFilename: image.posterFilename,

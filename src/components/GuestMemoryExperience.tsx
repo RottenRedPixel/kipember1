@@ -287,7 +287,7 @@ export default function GuestMemoryExperience({ token }: { token: string }) {
             Ember started with what the photo shows. Now add the human side of the story so the memory becomes something more than an image in the camera roll.
           </p>
 
-          <div className="ember-card mt-6 overflow-hidden rounded-[1.8rem]">
+          <div className="ember-card mt-6 ember-photo-shell">
             <MediaPreview
               mediaType={data.image.mediaType}
               filename={data.image.filename}

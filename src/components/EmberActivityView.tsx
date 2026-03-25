@@ -266,11 +266,11 @@ export default function EmberActivityView({
           </ActivitySection>
 
           <ActivitySection title="Photos" complete={true}>
-            <div className="flex gap-4">
-              <div className="overflow-hidden rounded-[1.2rem] border border-[rgba(20,20,20,0.08)] bg-white">
-                <MediaPreview
-                  mediaType={mediaType}
-                  filename={filename}
+              <div className="flex gap-4">
+                <div className="overflow-hidden ember-photo-shell border border-[rgba(20,20,20,0.08)] bg-white">
+                  <MediaPreview
+                    mediaType={mediaType}
+                    filename={filename}
                   posterFilename={posterFilename}
                   originalName={emberTitle}
                   usePosterForVideo
@@ -294,13 +294,13 @@ export default function EmberActivityView({
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {attachments.map((attachment) => (
-                  <div
-                    key={attachment.id}
-                    className="overflow-hidden rounded-[1.2rem] border border-[rgba(20,20,20,0.08)] bg-white"
-                  >
-                    <MediaPreview
-                      mediaType={attachment.mediaType}
-                      filename={attachment.filename}
+                    <div
+                      key={attachment.id}
+                      className="overflow-hidden ember-photo-shell border border-[rgba(20,20,20,0.08)] bg-white"
+                    >
+                      <MediaPreview
+                        mediaType={attachment.mediaType}
+                        filename={attachment.filename}
                       posterFilename={attachment.posterFilename}
                       originalName={attachment.originalName}
                       usePosterForVideo

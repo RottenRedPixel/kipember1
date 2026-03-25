@@ -283,7 +283,7 @@ export default function ImageAttachmentGallery({
                 key={attachment.id}
                 type="button"
                 onClick={() => setActiveAttachmentId(attachment.id)}
-                className="group overflow-hidden rounded-[1.4rem] border border-[rgba(20,20,20,0.08)] bg-[var(--ember-soft)] text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                className="group overflow-hidden ember-photo-shell border border-[rgba(20,20,20,0.08)] bg-[var(--ember-soft)] text-left transition hover:border-[rgba(255,102,33,0.24)]"
               >
                 <div className="overflow-hidden bg-[var(--ember-charcoal)]">
                   <MediaPreview

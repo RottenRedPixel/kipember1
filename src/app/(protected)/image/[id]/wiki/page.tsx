@@ -132,8 +132,8 @@ export default function WikiPage() {
 
           {wiki ? (
             <>
-              <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
-                <div className="w-full overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-[var(--ember-charcoal)] lg:w-56 lg:bg-white">
+                <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+                  <div className="ember-photo-shell w-full border border-[rgba(20,20,20,0.06)] bg-[var(--ember-charcoal)] lg:w-56 lg:bg-white">
                   <MediaPreview
                     mediaType={wiki.image.mediaType}
                     filename={wiki.image.filename}
@@ -237,7 +237,7 @@ export default function WikiPage() {
                     key={attachment.id}
                     type="button"
                     onClick={() => setActiveAttachmentId(attachment.id)}
-                    className="group overflow-hidden rounded-[1.2rem] border border-[rgba(20,20,20,0.08)] bg-[var(--ember-soft)] text-left transition hover:border-[rgba(255,102,33,0.24)]"
+                      className="group overflow-hidden ember-photo-shell border border-[rgba(20,20,20,0.08)] bg-[var(--ember-soft)] text-left transition hover:border-[rgba(255,102,33,0.24)]"
                   >
                     <MediaPreview
                       mediaType={attachment.mediaType}

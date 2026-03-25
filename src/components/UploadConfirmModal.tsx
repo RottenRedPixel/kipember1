@@ -47,10 +47,10 @@ export default function UploadConfirmModal({
           className="my-auto w-full overflow-hidden rounded-[2rem] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.2)]"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="space-y-4">
-            <div className="relative aspect-[0.82] overflow-hidden rounded-[1.7rem] bg-[var(--ember-charcoal)]">
-              {mediaType === 'video' ? (
-                <video
+            <div className="space-y-4">
+              <div className="ember-photo-shell relative aspect-[0.82] bg-[var(--ember-charcoal)]">
+                {mediaType === 'video' ? (
+                  <video
                   src={preview || undefined}
                   controls
                   playsInline

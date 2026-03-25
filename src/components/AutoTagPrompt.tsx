@@ -333,10 +333,10 @@ export default function AutoTagPrompt({
             ))}
           </div>
 
-          {mediaUrl && snappedSuggestions.length > 0 && (
-            <div className="mt-6 overflow-hidden rounded-[1.7rem] border border-[var(--ember-line)] bg-[var(--ember-charcoal)]">
-              <div className="relative inline-block max-w-full">
-                <img
+            {mediaUrl && snappedSuggestions.length > 0 && (
+              <div className="mt-6 overflow-hidden ember-photo-shell border border-[var(--ember-line)] bg-[var(--ember-charcoal)]">
+                <div className="relative inline-block max-w-full">
+                  <img
                   src={mediaUrl}
                   alt={imageName}
                   className="block max-h-[24rem] w-full object-contain"

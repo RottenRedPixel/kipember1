@@ -57,11 +57,11 @@ export default function ImageAttachmentViewer({
           className="my-auto w-full overflow-hidden rounded-[2.2rem] border border-white/70 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.18)]"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="min-h-[20rem] overflow-hidden bg-[var(--ember-charcoal)]">
-              <MediaPreview
-                mediaType={attachment.mediaType}
-                filename={attachment.filename}
+            <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="ember-photo-shell min-h-[20rem] bg-[var(--ember-charcoal)]">
+                <MediaPreview
+                  mediaType={attachment.mediaType}
+                  filename={attachment.filename}
                 posterFilename={attachment.posterFilename}
                 originalName={attachment.originalName}
                 controls={attachment.mediaType === 'VIDEO'}

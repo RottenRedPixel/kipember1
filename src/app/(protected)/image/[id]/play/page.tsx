@@ -223,11 +223,11 @@ export default function PlayEmberPage() {
             {'<- Back to Ember'}
           </Link>
 
-          <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
-            <div className="w-full overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-white lg:w-56">
-              <MediaPreview
-                mediaType={data.mediaType}
-                filename={data.filename}
+            <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
+              <div className="ember-photo-shell w-full border border-[rgba(20,20,20,0.06)] bg-white lg:w-56">
+                <MediaPreview
+                  mediaType={data.mediaType}
+                  filename={data.filename}
                 posterFilename={data.posterFilename}
                 originalName={emberTitle}
                 usePosterForVideo

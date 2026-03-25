@@ -102,7 +102,7 @@ export default function KidsFlipbook({
             key={currentPanel.id}
             className="kids-flip-page grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]"
           >
-            <div className="overflow-hidden rounded-[1.8rem] border border-[rgba(20,20,20,0.06)] bg-[var(--ember-bg)]">
+            <div className="overflow-hidden ember-photo-shell border border-[rgba(20,20,20,0.06)] bg-[var(--ember-bg)]">
               <Image
                 src={`/api/uploads/${currentPanel.filename}`}
                 alt={currentPanel.title}

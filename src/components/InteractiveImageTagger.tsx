@@ -712,8 +712,8 @@ export default function InteractiveImageTagger({
       </div>
 
       <div className="ember-card overflow-hidden rounded-[2rem] p-4">
-        {mediaType === 'VIDEO' && videoUrl && (
-          <div className="mb-4 overflow-hidden rounded-[1.6rem] border border-[var(--ember-line)] bg-[var(--ember-charcoal)]">
+          {mediaType === 'VIDEO' && videoUrl && (
+            <div className="mb-4 overflow-hidden ember-photo-shell border border-[var(--ember-line)] bg-[var(--ember-charcoal)]">
             <video
               src={videoUrl}
               controls
@@ -740,9 +740,9 @@ export default function InteractiveImageTagger({
               tabIndex={canManage && isPickingTag ? 0 : -1}
               onClick={handleSurfaceClick}
               aria-disabled={!canManage || !isPickingTag}
-              className={`relative inline-block max-w-full overflow-hidden rounded-[1.6rem] ${
-                isPickingTag ? 'cursor-crosshair' : 'cursor-default'
-              }`}
+                className={`ember-photo-shell relative inline-block max-w-full overflow-hidden ${
+                  isPickingTag ? 'cursor-crosshair' : 'cursor-default'
+                }`}
             >
               <img
                 ref={imageRef}

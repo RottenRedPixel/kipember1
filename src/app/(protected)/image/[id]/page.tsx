@@ -946,11 +946,11 @@ export default function ImagePage() {
 
   return (
     <div className="mx-auto max-w-5xl px-3 pt-3 pb-28 sm:px-4 sm:pt-4 sm:pb-10">
-      <section className="mx-auto w-full max-w-none">
-        <div className="overflow-hidden rounded-[1.05rem] border border-[rgba(20,20,20,0.08)] bg-white shadow-[0_18px_42px_rgba(17,17,17,0.08)] sm:rounded-[2.1rem]">
-          <MediaPreview
-            mediaType={image.mediaType}
-            filename={image.filename}
+        <section className="mx-auto w-full max-w-none">
+          <div className="ember-photo-shell border border-[rgba(20,20,20,0.08)] bg-white shadow-[0_18px_42px_rgba(17,17,17,0.08)]">
+            <MediaPreview
+              mediaType={image.mediaType}
+              filename={image.filename}
             posterFilename={image.posterFilename}
             originalName={emberTitle}
             controls={image.mediaType === 'VIDEO'}
