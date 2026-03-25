@@ -15,10 +15,10 @@ export default function AuthTopNav({
   userEmail = null,
 }: AuthTopNavProps) {
   return (
-    <header className="relative z-10 px-4 pt-2 sm:px-6 sm:pt-3">
-      <div className="mx-auto max-w-6xl">
+    <header className="sticky top-0 z-40 bg-white/96 backdrop-blur-md">
+      <div className="mx-auto hidden max-w-6xl px-6 pt-3 sm:block">
         {signedIn ? (
-          <div className="hidden items-center justify-between px-1 py-1 sm:flex">
+          <div className="items-center justify-between px-1 py-1 sm:flex">
             <div className="flex items-center gap-4">
               <EmberBrand href="/create" subtitle="account access" compact />
               <nav className="hidden items-center gap-2 text-sm font-medium text-[var(--ember-muted)] sm:flex">
@@ -48,7 +48,7 @@ export default function AuthTopNav({
             </div>
           </div>
         ) : (
-          <div className="hidden items-center justify-between px-1 py-1 sm:flex">
+          <div className="items-center justify-between px-1 py-1 sm:flex">
             <EmberBrand subtitle="account access" />
             <div className="flex items-center gap-3">
               <Link href="/login" className="ember-button-secondary px-5">
@@ -60,14 +60,14 @@ export default function AuthTopNav({
             </div>
           </div>
         )}
-
-        <EmberMobileTopBar
-          homeHref={signedIn ? '/create' : '/'}
-          embersHref="/feed"
-          addHref={signedIn ? '/create?openUploader=1' : '/?openGuestUploader=1'}
-          accountHref="/access"
-        />
       </div>
+
+      <EmberMobileTopBar
+        homeHref={signedIn ? '/create' : '/'}
+        embersHref="/feed"
+        addHref={signedIn ? '/create?openUploader=1' : '/?openGuestUploader=1'}
+        accountHref="/access"
+      />
     </header>
   );
 }

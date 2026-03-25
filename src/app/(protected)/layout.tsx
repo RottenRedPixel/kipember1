@@ -13,9 +13,9 @@ export default async function ProtectedLayout({
 
   return (
     <div className="ember-page">
-      <header className="relative z-10 px-4 pt-2 sm:px-6 sm:pt-3">
-        <div className="mx-auto max-w-6xl">
-          <div className="hidden items-center justify-between px-1 py-1 sm:flex">
+      <header className="sticky top-0 z-40 bg-white/96 backdrop-blur-md">
+        <div className="mx-auto hidden max-w-6xl px-6 pt-3 sm:block">
+          <div className="items-center justify-between px-1 py-1 sm:flex">
             <div className="flex items-center gap-4">
               <EmberBrand href="/create" subtitle="owner and contributor workspace" compact />
               <nav className="hidden items-center gap-2 text-sm font-medium text-[var(--ember-muted)] sm:flex">
@@ -50,14 +50,14 @@ export default async function ProtectedLayout({
               <LogoutButton />
             </div>
           </div>
-
-          <EmberMobileTopBar
-            homeHref="/create"
-            embersHref="/feed"
-            addHref="/create?openUploader=1"
-            accountHref="/access"
-          />
         </div>
+
+        <EmberMobileTopBar
+          homeHref="/create"
+          embersHref="/feed"
+          addHref="/create?openUploader=1"
+          accountHref="/access"
+        />
       </header>
 
       <main className="relative z-10">{children}</main>

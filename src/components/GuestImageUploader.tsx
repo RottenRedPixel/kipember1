@@ -286,9 +286,9 @@ export default function GuestImageUploader() {
         fileName={selectedFile?.name || 'Selected media'}
         title="Create an Ember"
         subtitle=""
-        confirmLabel="Create an Ember"
-        confirmBusyLabel={`Uploading ${selectedMediaType || 'media'}...`}
-        cancelLabel="Pick a different Ember"
+        confirmLabel="Create"
+        confirmBusyLabel="Creating..."
+        cancelLabel="Back"
         isSubmitting={isUploading}
         onCancel={clearSelection}
         onConfirm={() => void handleUpload()}

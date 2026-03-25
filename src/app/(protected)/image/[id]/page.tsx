@@ -250,10 +250,10 @@ function ActionButton({
   onClick: () => void;
 }) {
   const className =
-    'flex min-h-[3.1rem] items-center justify-center rounded-[1rem] bg-transparent px-1 py-0.5 text-center text-[var(--ember-orange)] transition hover:text-[var(--ember-orange-deep)]';
+    'flex flex-col items-center gap-1 rounded-[0.85rem] bg-transparent px-1 py-0.5 text-center text-[var(--ember-text)] transition hover:text-[var(--ember-text)]';
 
   const content = (
-    <span className="flex h-10 w-10 items-center justify-center rounded-full">
+    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[rgba(20,20,20,0.34)] bg-white text-[var(--ember-text)] sm:h-14 sm:w-14">
       {icon}
     </span>
   );
@@ -261,6 +261,9 @@ function ActionButton({
   return (
     <button type="button" onClick={onClick} className={className} aria-label={label}>
       {content}
+      <span className="text-[0.82rem] font-medium lowercase tracking-[-0.02em] text-[var(--ember-text)] sm:text-[0.95rem]">
+        {label}
+      </span>
     </button>
   );
 }
@@ -942,61 +945,62 @@ export default function ImagePage() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-0 pt-0 pb-28 sm:px-4 sm:pt-2 sm:pb-10">
-      <section>
-        <div className="relative h-[calc(100svh-4.2rem)] overflow-hidden border-y border-white/90 bg-[var(--ember-charcoal)] shadow-[0_18px_42px_rgba(17,17,17,0.08)] sm:h-[calc(100vh-7.75rem)] sm:rounded-[2.1rem] sm:border">
-          <button
-            type="button"
-            onClick={() => setActivePanel('share')}
-            className="absolute right-3 top-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(255,255,255,0.74)] text-[var(--ember-orange)] backdrop-blur-md transition hover:text-[var(--ember-orange-deep)] sm:right-4 sm:top-4 sm:h-12 sm:w-12"
-            aria-label="Share Ember"
-          >
-            <ShareIcon className="h-7 w-7 sm:h-8 sm:w-8" />
-          </button>
+    <div className="mx-auto max-w-5xl px-3 pt-3 pb-28 sm:px-4 sm:pt-4 sm:pb-10">
+      <section className="mx-auto w-full max-w-none">
+        <div className="overflow-hidden rounded-[1.05rem] border border-[rgba(20,20,20,0.08)] bg-white shadow-[0_18px_42px_rgba(17,17,17,0.08)] sm:rounded-[2.1rem]">
           <MediaPreview
             mediaType={image.mediaType}
             filename={image.filename}
             posterFilename={image.posterFilename}
             originalName={emberTitle}
             controls={image.mediaType === 'VIDEO'}
-            className="absolute inset-0 h-full w-full object-contain bg-[var(--ember-charcoal)]"
+            className={`w-full ${
+              image.mediaType === 'VIDEO'
+                ? 'aspect-[0.84] object-contain bg-[var(--ember-charcoal)]'
+                : 'aspect-[0.84] object-cover bg-[var(--ember-charcoal)]'
+            }`}
           />
+        </div>
 
-          <div className="absolute inset-x-0 bottom-0 z-[1] bg-white px-4 pt-3 pb-[max(0.9rem,env(safe-area-inset-bottom))] shadow-[0_-18px_36px_rgba(17,17,17,0.12)] sm:rounded-t-[1.8rem] sm:px-5 sm:pt-4 sm:pb-5">
-            <h1 className="break-words text-[1.48rem] font-normal leading-[1.01] tracking-[-0.045em] text-[var(--ember-text)] [overflow-wrap:anywhere] sm:text-[2.4rem]">
-              {emberTitle}
-            </h1>
+        <div className="bg-white px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] text-center sm:px-0 sm:pt-4 sm:pb-0">
+          <h1 className="break-words text-[1.55rem] font-semibold leading-[1.02] tracking-[-0.045em] text-[var(--ember-text)] [overflow-wrap:anywhere] sm:text-[2.4rem]">
+            {emberTitle}
+          </h1>
 
-            <div className="mt-0.5 grid grid-cols-3 gap-0.5 sm:mt-2 sm:gap-1.5">
-              <ActionButton
-                icon={<GeminiIcon className="h-7 w-7" />}
-                label="Ask Ember"
-                onClick={() => {
-                  setAskChatExpanded(true);
-                  setActivePanel('ask');
-                }}
-              />
-              <ActionButton
-                icon={<PlayIcon className="h-7 w-7" />}
-                label="Play Ember"
-                onClick={() => setActivePanel('play')}
-              />
-              <ActionButton
-                icon={<CircleIcon className="h-7 w-7" />}
-                label="Tend Ember"
-                onClick={() => {
-                  setShapeView('menu');
-                  setActivePanel('shape');
-                }}
-              />
-            </div>
-
-            {(actionNotice || shareError) && (
-              <div className={`mt-1.5 text-sm ${shareError ? 'text-rose-600' : 'text-[var(--ember-muted)]'}`}>
-                {shareError || actionNotice}
-              </div>
-            )}
+          <div className="mt-3 grid grid-cols-4 gap-1 sm:mt-3 sm:max-w-xl sm:gap-2">
+            <ActionButton
+              icon={<GeminiIcon className="h-7 w-7" />}
+              label="ask"
+              onClick={() => {
+                setAskChatExpanded(true);
+                setActivePanel('ask');
+              }}
+            />
+            <ActionButton
+              icon={<PlayIcon className="h-7 w-7" />}
+              label="play"
+              onClick={() => setActivePanel('play')}
+            />
+            <ActionButton
+              icon={<CircleIcon className="h-7 w-7" />}
+              label="tend"
+              onClick={() => {
+                setShapeView('menu');
+                setActivePanel('shape');
+              }}
+            />
+            <ActionButton
+              icon={<ShareIcon className="h-5 w-5 sm:h-6 sm:w-6" />}
+              label="share"
+              onClick={() => setActivePanel('share')}
+            />
           </div>
+
+          {(actionNotice || shareError) && (
+            <div className={`mt-2 text-sm ${shareError ? 'text-rose-600' : 'text-[var(--ember-muted)]'}`}>
+              {shareError || actionNotice}
+            </div>
+          )}
         </div>
       </section>
 

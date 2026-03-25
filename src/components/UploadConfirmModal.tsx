@@ -39,59 +39,59 @@ export default function UploadConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[65] overflow-y-auto bg-[rgba(15,23,42,0.42)] px-4 py-4 backdrop-blur-md sm:py-6"
+      className="fixed inset-0 z-[65] overflow-y-auto bg-[rgba(17,17,17,0.34)] px-4 py-6 backdrop-blur-sm sm:py-8"
       onClick={onCancel}
     >
-      <div className="mx-auto flex min-h-full w-full max-w-4xl items-start justify-center sm:items-center">
+      <div className="mx-auto flex min-h-full w-full max-w-md items-center justify-center">
         <div
-          className="my-auto w-full overflow-hidden rounded-[2.2rem] border border-white/70 bg-white shadow-[0_28px_70px_rgba(15,23,42,0.18)]"
+          className="my-auto w-full overflow-hidden rounded-[2rem] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.2)]"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="grid gap-0 md:grid-cols-[1.05fr_0.95fr]">
-            <div className="relative min-h-[18rem] overflow-hidden bg-[var(--ember-charcoal)]">
+          <div className="space-y-4">
+            <div className="relative aspect-[0.82] overflow-hidden rounded-[1.7rem] bg-[var(--ember-charcoal)]">
               {mediaType === 'video' ? (
                 <video
                   src={preview || undefined}
                   controls
                   playsInline
                   preload="metadata"
-                  className="h-full w-full object-contain"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 <img
                   src={preview || undefined}
                   alt={fileName}
-                  className="h-full w-full object-contain"
+                  className="h-full w-full object-cover"
                 />
               )}
             </div>
 
-            <div className="relative flex flex-col px-5 py-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:px-7 sm:py-6">
-              <h3 className="text-3xl font-semibold tracking-[-0.04em] text-[var(--ember-text)]">
+            <div className="px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.35rem)]">
+              <h3 className="text-[2rem] font-semibold tracking-[-0.04em] text-[var(--ember-text)]">
                 {title}
               </h3>
               {subtitle ? (
-                <p className="mt-3 text-sm leading-7 text-[var(--ember-muted)]">{subtitle}</p>
+                <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">{subtitle}</p>
               ) : null}
 
-              {children && <div className="mt-5 space-y-4">{children}</div>}
+              {children && <div className="mt-4 space-y-4">{children}</div>}
 
-              <div className="mt-6 flex flex-col gap-3 sm:mt-auto sm:flex-row">
-                <button
-                  type="button"
-                  onClick={onConfirm}
-                  disabled={isSubmitting}
-                  className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isSubmitting ? confirmBusyLabel : confirmLabel}
-                </button>
+              <div className="mt-5 grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={onCancel}
                   disabled={isSubmitting}
-                  className="ember-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex min-h-[3.4rem] w-full items-center justify-center rounded-[1.05rem] border border-[rgba(20,20,20,0.12)] bg-white px-4 text-base font-medium text-[var(--ember-muted)] shadow-[0_6px_14px_rgba(17,17,17,0.04)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {cancelLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  disabled={isSubmitting}
+                  className="inline-flex min-h-[3.4rem] w-full items-center justify-center rounded-[1.05rem] bg-[var(--ember-orange)] px-4 text-base font-semibold text-white shadow-[0_12px_28px_rgba(255,102,33,0.28)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSubmitting ? confirmBusyLabel : confirmLabel}
                 </button>
               </div>
             </div>
