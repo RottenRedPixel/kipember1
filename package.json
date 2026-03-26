@@ -25,6 +25,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
+    "retell-client-js-sdk": "^2.0.7",
     "retell-sdk": "^5.9.0"
   },
   "devDependencies": {

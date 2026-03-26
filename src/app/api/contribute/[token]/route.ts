@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { chat } from '@/lib/claude';
-import { getEmberTitle } from '@/lib/ember-title';
 import { isGuestUserEmail } from '@/lib/guest-embers';
-import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
+import {
+  buildInterviewKnownContextFromImage,
+  getKnownInterviewSteps,
+  getNextInterviewStep,
+  INTERVIEW_QUESTIONS,
+  isInterviewQuestionType,
+  type InterviewKnownContext,
+} from '@/lib/interview-flow';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
@@ -372,18 +378,6 @@ export async function POST(
   }
 }
 
-const INTERVIEW_QUESTIONS: Record<string, string> = {
-  context: "Can you describe what you see or what memory this image captures for you?",
-  who: "Who are the people in this image? What's your relationship to them?",
-  when: "When was this taken? Do you remember the date, year, or occasion?",
-  where: "Where was this? What do you remember about the location?",
-  what: "What was happening at this moment? Any specific events or activities?",
-  why: "Why is this image or memory significant to you?",
-  how: "How did this moment come about? Any backstory?",
-};
-
-const STEP_ORDER = ['context', 'who', 'when', 'where', 'what', 'why', 'how', 'completed'];
-
 type InterviewConversation = {
   currentStep: string;
   messages: Array<{
@@ -395,29 +389,6 @@ type InterviewConversation = {
     answer: string;
   }>;
 };
-
-type InterviewKnownContext = {
-  imageTitle: string;
-  imageDescription: string | null;
-  analysisSummary: string | null;
-  confirmedPeople: string[];
-  knownWhen: string | null;
-  knownWhere: string | null;
-};
-
-function formatCapturedAtForInterview(value: Date | null | undefined) {
-  if (!value) {
-    return null;
-  }
-
-  return value.toLocaleString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
 
 function buildInterviewKnownContext(contributor: {
   image: {
@@ -445,76 +416,7 @@ function buildInterviewKnownContext(contributor: {
     }>;
   };
 }): InterviewKnownContext {
-  const confirmedPeople = Array.from(
-    new Set(
-      contributor.image.tags
-        .map((tag) => tag.user?.name || tag.contributor?.name || tag.label)
-        .map((value) => value?.trim())
-        .filter((value): value is string => Boolean(value))
-    )
-  );
-  const confirmedLocation = parseConfirmedLocationContext(
-    contributor.image.analysis?.metadataJson
-  );
-  const knownWhere = confirmedLocation
-    ? [confirmedLocation.label, confirmedLocation.detail].filter(Boolean).join(', ')
-    : contributor.image.analysis?.latitude != null && contributor.image.analysis?.longitude != null
-      ? `GPS metadata already places this photo near ${contributor.image.analysis.latitude.toFixed(5)}, ${contributor.image.analysis.longitude.toFixed(5)}.`
-      : null;
-
-  return {
-    imageTitle: getEmberTitle(contributor.image),
-    imageDescription: contributor.image.description,
-    analysisSummary:
-      contributor.image.analysis?.visualDescription ||
-      contributor.image.analysis?.summary ||
-      null,
-    confirmedPeople,
-    knownWhen: formatCapturedAtForInterview(contributor.image.analysis?.capturedAt),
-    knownWhere,
-  };
-}
-
-function getKnownInterviewSteps(context: InterviewKnownContext) {
-  const steps = new Set<string>();
-
-  if (context.knownWhen) {
-    steps.add('when');
-  }
-
-  if (context.knownWhere) {
-    steps.add('where');
-  }
-
-  return steps;
-}
-
-function getNextInterviewStep({
-  currentStep,
-  answeredSteps,
-  knownSteps,
-}: {
-  currentStep: string;
-  answeredSteps: Set<string>;
-  knownSteps: Set<string>;
-}) {
-  const currentIndex = STEP_ORDER.indexOf(currentStep);
-
-  for (let index = currentIndex + 1; index < STEP_ORDER.length; index += 1) {
-    const candidate = STEP_ORDER[index];
-
-    if (candidate === 'completed') {
-      return 'completed';
-    }
-
-    if (answeredSteps.has(candidate) || knownSteps.has(candidate)) {
-      continue;
-    }
-
-    return candidate;
-  }
-
-  return 'completed';
+  return buildInterviewKnownContextFromImage(contributor.image);
 }
 
 async function generateInterviewResponse(
@@ -655,7 +557,9 @@ Rephrase it naturally based on the conversation flow and known context.`
   return {
     message: aiResponse,
     questionType: currentStep,
-    question: INTERVIEW_QUESTIONS[currentStep] || currentStep,
+    question: isInterviewQuestionType(currentStep)
+      ? INTERVIEW_QUESTIONS[currentStep]
+      : currentStep,
     answer: userMessage,
     nextStep: nextStep,
   };

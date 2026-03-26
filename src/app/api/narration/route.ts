@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
           content?: string;
           script?: string;
           voicePreference?: NarrationPreference;
+          voiceId?: string;
         }
       | null;
 
@@ -42,6 +43,8 @@ export async function POST(request: NextRequest) {
         : '';
     const voicePreference: NarrationPreference =
       body?.voicePreference === 'male' ? 'male' : 'female';
+    const explicitVoiceId =
+      typeof body?.voiceId === 'string' && body.voiceId.trim() ? body.voiceId.trim() : null;
 
     const narrationText = providedScript || buildNarrationText(content);
     if (!narrationText) {
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
       ? providedScript
       : await cleanNarrationScript(narrationText);
 
-    const { voiceId } = await resolveNarrationVoice(voicePreference);
+    const voiceId = explicitVoiceId || (await resolveNarrationVoice(voicePreference)).voiceId;
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,

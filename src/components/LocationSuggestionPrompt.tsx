@@ -2,6 +2,22 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M6 6 18 18" />
+      <path d="M18 6 6 18" />
+    </svg>
+  );
+}
+
 type LocationSuggestion = {
   id: string;
   label: string;
@@ -137,14 +153,22 @@ export default function LocationSuggestionPrompt({
     >
       <div className="mx-auto flex min-h-full max-w-2xl items-center justify-center">
         <div
-          className="w-full rounded-[2rem] border border-white/70 bg-[rgba(255,255,255,0.98)] p-6 shadow-[0_24px_64px_rgba(17,17,17,0.18)] sm:p-8"
+          className="relative w-full rounded-[2rem] border border-white/70 bg-[rgba(255,255,255,0.98)] p-6 shadow-[0_24px_64px_rgba(17,17,17,0.18)] sm:p-8"
           onClick={(event) => event.stopPropagation()}
         >
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="absolute right-6 top-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)] shadow-[0_8px_22px_rgba(17,17,17,0.08)] hover:border-[rgba(255,102,33,0.24)]"
+            aria-label="Close location suggestions"
+          >
+            <CloseIcon />
+          </button>
           <p className="ember-eyebrow">Location context</p>
-          <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
+          <h2 className="ember-heading mt-3 pr-12 text-3xl text-[var(--ember-text)]">
             Ember found nearby places for this photo.
           </h2>
-          <p className="ember-copy mt-3 text-sm">
+          <p className="ember-copy mt-3 pr-12 text-sm">
             Pick the place that feels right for{' '}
             <span className="font-medium text-[var(--ember-text)]">{imageName}</span> and Ember
             will fold it into the story.

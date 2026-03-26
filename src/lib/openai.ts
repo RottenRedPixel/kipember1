@@ -39,3 +39,7 @@ export function getWikiStructureModel(): string {
 export function getNarrationCleanupModel(): string {
   return process.env.OPENAI_NARRATION_MODEL || 'gpt-5-mini';
 }
+
+export function getStoryCutsModel(): string {
+  return process.env.OPENAI_STORY_CUTS_MODEL || 'gpt-5.4-mini';
+}

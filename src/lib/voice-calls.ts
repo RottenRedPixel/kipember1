@@ -2,7 +2,7 @@ import type Retell from 'retell-sdk';
 import { chat } from '@/lib/claude';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
-import { createRetellPhoneCall, retrieveRetellCall } from '@/lib/retell';
+import { createRetellPhoneCall, createRetellWebCall, retrieveRetellCall } from '@/lib/retell';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 
 const QUESTION_PROMPTS = {
@@ -34,6 +34,8 @@ type RetellWebhookPayload = {
     call?: unknown;
   };
 };
+
+type RetellCallResponse = Retell.PhoneCallResponse | Retell.WebCallResponse;
 
 const ACTIVE_CALL_STATUSES = new Set(['registered', 'ongoing']);
 const ACTIVE_CALL_WINDOW_MS = 30 * 60 * 1000;
@@ -75,13 +77,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function asPhoneCallResponse(value: unknown): Retell.PhoneCallResponse | null {
+function asRetellCallResponse(value: unknown): RetellCallResponse | null {
   const record = asRecord(value);
-  if (!record || record.call_type !== 'phone_call' || typeof record.call_id !== 'string') {
+  if (
+    !record ||
+    (record.call_type !== 'phone_call' && record.call_type !== 'web_call') ||
+    typeof record.call_id !== 'string'
+  ) {
     return null;
   }
 
-  return value as Retell.PhoneCallResponse;
+  return value as RetellCallResponse;
 }
 
 function getEventType(payload: RetellWebhookPayload): string {
@@ -96,21 +102,21 @@ function getEventType(payload: RetellWebhookPayload): string {
   throw new Error('Retell webhook did not include an event type');
 }
 
-function getPhoneCallFromPayload(payload: RetellWebhookPayload): Retell.PhoneCallResponse {
-  const directCall = asPhoneCallResponse(payload.call);
+function getCallFromPayload(payload: RetellWebhookPayload): RetellCallResponse {
+  const directCall = asRetellCallResponse(payload.call);
   if (directCall) {
     return directCall;
   }
 
-  const nestedCall = asPhoneCallResponse(payload.data?.call);
+  const nestedCall = asRetellCallResponse(payload.data?.call);
   if (nestedCall) {
     return nestedCall;
   }
 
-  throw new Error('Retell webhook did not include a phone call payload');
+  throw new Error('Retell webhook did not include a call payload');
 }
 
-function getStringMetadata(call: Retell.PhoneCallResponse): Record<string, string> {
+function getStringMetadata(call: RetellCallResponse): Record<string, string> {
   const metadata = asRecord(call.metadata);
   if (!metadata) {
     return {};
@@ -433,7 +439,7 @@ Rules:
 }
 
 async function upsertVoiceCallRecord(
-  call: Retell.PhoneCallResponse,
+  call: RetellCallResponse,
   eventType: string,
   rawPayload: unknown
 ) {
@@ -450,22 +456,25 @@ async function upsertVoiceCallRecord(
     where: { retellCallId: call.call_id },
   });
 
+  const callRecord = call as unknown as Record<string, unknown>;
   const baseData = {
     contributorId,
     conversationId: conversationId || null,
     initiatedBy,
     retellCallId: call.call_id,
     callType: call.call_type,
-    direction: call.direction,
-    fromNumber: call.from_number,
-    toNumber: call.to_number,
+    direction: typeof callRecord.direction === 'string' ? callRecord.direction : null,
+    fromNumber: typeof callRecord.from_number === 'string' ? callRecord.from_number : null,
+    toNumber: typeof callRecord.to_number === 'string' ? callRecord.to_number : null,
     agentId: call.agent_id,
     agentVersion: call.agent_version,
     status: call.call_status,
     lastEventType: eventType,
     disconnectionReason: call.disconnection_reason ?? null,
-    recordingUrl: call.recording_url ?? null,
-    publicLogUrl: call.public_log_url ?? null,
+    recordingUrl:
+      typeof callRecord.recording_url === 'string' ? callRecord.recording_url : null,
+    publicLogUrl:
+      typeof callRecord.public_log_url === 'string' ? callRecord.public_log_url : null,
     transcript: call.transcript ?? null,
     transcriptObjectJson: stringifyJson(call.transcript_object),
     transcriptWithToolCallsJson: stringifyJson(call.transcript_with_tool_calls),
@@ -580,22 +589,22 @@ export async function refreshVoiceCallFromProvider(voiceCallId: string) {
   }
 
   const latestCallResponse = await retrieveRetellCall(existing.retellCallId);
-  const phoneCall = asPhoneCallResponse(latestCallResponse);
-  if (!phoneCall) {
-    throw new Error('Retell provider did not return a phone call');
+  const call = asRetellCallResponse(latestCallResponse);
+  if (!call) {
+    throw new Error('Retell provider did not return a valid call');
   }
 
   const shouldTreatAsAnalyzed =
-    Boolean(phoneCall.call_analysis) || Boolean(phoneCall.transcript?.trim());
+    Boolean(call.call_analysis) || Boolean(call.transcript?.trim());
   const eventType = shouldTreatAsAnalyzed
     ? 'call_analyzed'
-    : phoneCall.call_status === 'ended'
+    : call.call_status === 'ended'
       ? 'call_ended'
       : 'provider_refresh';
 
-  const updated = await upsertVoiceCallRecord(phoneCall, eventType, {
+  const updated = await upsertVoiceCallRecord(call, eventType, {
     source: 'provider_refresh',
-    call: phoneCall,
+    call,
   });
 
   if (shouldTreatAsAnalyzed) {
@@ -607,13 +616,7 @@ export async function refreshVoiceCallFromProvider(voiceCallId: string) {
   });
 }
 
-export async function startVoiceCallForContributor({
-  contributorId,
-  initiatedBy,
-}: {
-  contributorId: string;
-  initiatedBy: 'owner' | 'contributor';
-}) {
+async function prepareVoiceCallContext(contributorId: string) {
   const contributor = await prisma.contributor.findUnique({
     where: { id: contributorId },
     include: {
@@ -669,6 +672,27 @@ export async function startVoiceCallForContributor({
     follow_up_focus: priorMemoryContext.followUpFocus,
   });
 
+  return {
+    contributor,
+    conversation,
+    dynamicVariables,
+  };
+}
+
+export async function startVoiceCallForContributor({
+  contributorId,
+  initiatedBy,
+}: {
+  contributorId: string;
+  initiatedBy: 'owner' | 'contributor';
+}) {
+  const { contributor, conversation, dynamicVariables } =
+    await prepareVoiceCallContext(contributorId);
+
+  if (!contributor.phoneNumber) {
+    throw new Error('Contributor does not have a phone number for voice calls');
+  }
+
   const call = await createRetellPhoneCall({
     toNumber: contributor.phoneNumber,
     metadata: {
@@ -706,22 +730,66 @@ export async function startVoiceCallForContributor({
   };
 }
 
+export async function startWebVoiceCallForContributor({
+  contributorId,
+  initiatedBy,
+}: {
+  contributorId: string;
+  initiatedBy: 'owner' | 'contributor';
+}) {
+  const { contributor, conversation, dynamicVariables } =
+    await prepareVoiceCallContext(contributorId);
+
+  const call = await createRetellWebCall({
+    metadata: {
+      contributorId: contributor.id,
+      conversationId: conversation.id,
+      imageId: contributor.imageId,
+      initiatedBy,
+    },
+    dynamicVariables,
+  });
+
+  const voiceCall = await prisma.voiceCall.create({
+    data: {
+      contributorId: contributor.id,
+      conversationId: conversation.id,
+      initiatedBy,
+      retellCallId: call.call_id,
+      callType: call.call_type,
+      agentId: call.agent_id,
+      agentVersion: call.agent_version,
+      status: call.call_status,
+      metadataJson: stringifyJson(call.metadata),
+      dynamicVariablesJson: stringifyJson(call.retell_llm_dynamic_variables),
+      startedAt: toDate(call.start_timestamp),
+    },
+  });
+
+  return {
+    voiceCallId: voiceCall.id,
+    retellCallId: voiceCall.retellCallId,
+    status: voiceCall.status,
+    accessToken: call.access_token,
+  };
+}
+
 export async function processRetellWebhook(rawPayload: unknown) {
   const payload = rawPayload as RetellWebhookPayload;
   const eventType = getEventType(payload);
-  const webhookCall = getPhoneCallFromPayload(payload);
+  const webhookCall = getCallFromPayload(payload);
 
   const latestCallResponse =
     eventType === 'call_ended' || eventType === 'call_analyzed'
       ? await retrieveRetellCall(webhookCall.call_id).catch(() => webhookCall)
       : webhookCall;
 
-  const phoneCall = asPhoneCallResponse(latestCallResponse);
-  if (!phoneCall) {
-    throw new Error('Retell webhook did not resolve to a phone call');
+  const call = asRetellCallResponse(latestCallResponse);
+  if (!call) {
+    throw new Error('Retell webhook did not resolve to a valid call');
   }
 
-  const voiceCall = await upsertVoiceCallRecord(phoneCall, eventType, rawPayload);
+  const voiceCall = await upsertVoiceCallRecord(call, eventType, rawPayload);
 
   if (eventType === 'call_analyzed') {
     await syncVoiceCallToConversation(voiceCall.id);

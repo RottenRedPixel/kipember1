@@ -29,6 +29,7 @@ model Image {
   wiki         Wiki?
   kidsStory    KidsStory?
   sportsMode   SportsMode?
+  storyCut     StoryCut?
   chatSessions ChatSession[]
   tags         ImageTag[]
   attachments  ImageAttachment[]
@@ -197,6 +198,31 @@ model SportsMode {
   parsedAt       DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model StoryCut {
+  id                      String   @id @default(cuid())
+  imageId                 String   @unique
+  image                   Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  title                   String
+  style                   String
+  focus                   String?
+  durationSeconds         Int
+  wordCount               Int
+  script                  String
+  blocksJson              String
+  metadataJson            String?
+  selectedMediaJson       String?
+  selectedContributorJson String?
+  includeOwner            Boolean  @default(true)
+  includeEmberVoice       Boolean  @default(true)
+  includeNarratorVoice    Boolean  @default(true)
+  emberVoiceId            String?
+  emberVoiceLabel         String?
+  narratorVoiceId         String?
+  narratorVoiceLabel      String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }
 
 enum Visibility {

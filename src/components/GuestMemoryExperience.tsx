@@ -6,6 +6,22 @@ import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 import WikiView from '@/components/WikiView';
 
+function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M6 6 18 18" />
+      <path d="M18 6 6 18" />
+    </svg>
+  );
+}
+
 type GuestMemoryResponse = {
   guestFlow: true;
   contributor: {
@@ -230,7 +246,7 @@ export default function GuestMemoryExperience({ token }: { token: string }) {
                   className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)]"
                   aria-label="Close"
                 >
-                  ×
+                  <CloseIcon />
                 </button>
               </div>
 

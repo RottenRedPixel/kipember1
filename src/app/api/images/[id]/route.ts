@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess, getAcceptedFriends, getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
+import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
@@ -68,6 +69,17 @@ export async function GET(
                       createdAt: true,
                     },
                   },
+                  responses: {
+                    orderBy: { createdAt: 'asc' },
+                    select: {
+                      id: true,
+                      questionType: true,
+                      question: true,
+                      answer: true,
+                      source: true,
+                      createdAt: true,
+                    },
+                  },
                 },
               },
               voiceCalls: {
@@ -100,6 +112,7 @@ export async function GET(
               cameraMake: true,
               cameraModel: true,
               lensModel: true,
+              metadataJson: true,
               updatedAt: true,
             },
           },
@@ -144,6 +157,29 @@ export async function GET(
               id: true,
               content: true,
               version: true,
+              updatedAt: true,
+            },
+          },
+          storyCut: {
+            select: {
+              id: true,
+              title: true,
+              style: true,
+              focus: true,
+              durationSeconds: true,
+              wordCount: true,
+              script: true,
+              blocksJson: true,
+              metadataJson: true,
+              selectedMediaJson: true,
+              selectedContributorJson: true,
+              includeOwner: true,
+              includeEmberVoice: true,
+              includeNarratorVoice: true,
+              emberVoiceId: true,
+              emberVoiceLabel: true,
+              narratorVoiceId: true,
+              narratorVoiceLabel: true,
               updatedAt: true,
             },
           },
@@ -298,8 +334,26 @@ export async function GET(
       tags: image.tags,
       friends,
       tagIdentities: Array.from(tagIdentityMap.values()).slice(0, 12),
-      analysis: image.analysis,
+      analysis: image.analysis
+        ? {
+            ...image.analysis,
+            confirmedLocation: parseConfirmedLocationContext(image.analysis.metadataJson),
+          }
+        : null,
       wiki: image.wiki,
+      storyCut: image.storyCut
+        ? {
+            ...image.storyCut,
+            blocks: image.storyCut.blocksJson ? JSON.parse(image.storyCut.blocksJson) : [],
+            metadata: image.storyCut.metadataJson ? JSON.parse(image.storyCut.metadataJson) : null,
+            selectedMediaIds: image.storyCut.selectedMediaJson
+              ? JSON.parse(image.storyCut.selectedMediaJson)
+              : [],
+            selectedContributorIds: image.storyCut.selectedContributorJson
+              ? JSON.parse(image.storyCut.selectedContributorJson)
+              : [],
+          }
+        : null,
       sportsMode: image.sportsMode,
     });
   } catch (error) {
@@ -369,6 +423,7 @@ export async function PATCH(
       title?: string | null;
       description?: string | null;
     } = {};
+    let capturedAtValue: Date | null | undefined;
 
     if (typeof body?.shareToNetwork === 'boolean') {
       updateData.shareToNetwork = body.shareToNetwork;
@@ -397,7 +452,30 @@ export async function PATCH(
         typeof body.description === 'string' ? body.description.trim() || null : null;
     }
 
-    if (Object.keys(updateData).length === 0) {
+    if (Object.prototype.hasOwnProperty.call(body ?? {}, 'capturedAt')) {
+      if (body.capturedAt !== null && typeof body.capturedAt !== 'string') {
+        return NextResponse.json(
+          { error: 'capturedAt must be a string or null' },
+          { status: 400 }
+        );
+      }
+
+      if (typeof body.capturedAt === 'string') {
+        const parsedDate = new Date(body.capturedAt);
+        if (Number.isNaN(parsedDate.getTime())) {
+          return NextResponse.json(
+            { error: 'capturedAt must be a valid ISO date string' },
+            { status: 400 }
+          );
+        }
+
+        capturedAtValue = parsedDate;
+      } else {
+        capturedAtValue = null;
+      }
+    }
+
+    if (Object.keys(updateData).length === 0 && capturedAtValue === undefined) {
       return NextResponse.json(
         { error: 'No valid image fields were provided' },
         { status: 400 }
@@ -414,6 +492,20 @@ export async function PATCH(
         description: true,
       },
     });
+
+    if (capturedAtValue !== undefined) {
+      await prisma.imageAnalysis.upsert({
+        where: { imageId: id },
+        update: {
+          capturedAt: capturedAtValue,
+        },
+        create: {
+          imageId: id,
+          status: 'partial',
+          capturedAt: capturedAtValue,
+        },
+      });
+    }
 
     return NextResponse.json(image);
   } catch (error) {

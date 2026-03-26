@@ -109,6 +109,22 @@ function formatQuestionLabel(question: string, questionType: string) {
   }
 }
 
+function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M6 6 18 18" />
+      <path d="M18 6 6 18" />
+    </svg>
+  );
+}
+
 export default function ContributorList({
   imageId,
   ownerUserId,
@@ -369,7 +385,7 @@ export default function ContributorList({
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="ember-eyebrow">Contributor</p>
-                    <h3 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
+                    <h3 className="ember-heading mt-3 pr-12 text-2xl text-[var(--ember-text)]">
                       Details and outreach
                     </h3>
                   </div>
@@ -377,9 +393,10 @@ export default function ContributorList({
                   <button
                     type="button"
                     onClick={() => setSelectedContributorId(null)}
-                    className="rounded-full border border-[var(--ember-line-strong)] px-3 py-2 text-sm font-medium text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line-strong)] bg-white text-[var(--ember-text)] hover:border-[rgba(255,102,33,0.24)]"
+                    aria-label="Close contributor details"
                   >
-                    Close
+                    <CloseIcon />
                   </button>
                 </div>
               </div>

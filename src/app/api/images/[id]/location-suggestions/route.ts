@@ -93,13 +93,6 @@ export async function POST(
       },
     });
 
-    if (!analysis || analysis.latitude == null || analysis.longitude == null) {
-      return NextResponse.json(
-        { error: 'No GPS-based location suggestions are available for this Ember' },
-        { status: 400 }
-      );
-    }
-
     const body = (await request.json()) as Record<string, unknown>;
     const label =
       typeof body.label === 'string' && body.label.trim() ? body.label.trim() : null;
@@ -116,16 +109,24 @@ export async function POST(
       label,
       detail,
       kind,
-      latitude: analysis.latitude,
-      longitude: analysis.longitude,
+      latitude: analysis?.latitude ?? null,
+      longitude: analysis?.longitude ?? null,
       confirmedAt: new Date().toISOString(),
     };
 
-    await prisma.imageAnalysis.update({
-      where: { id: analysis.id },
-      data: {
+    await prisma.imageAnalysis.upsert({
+      where: { imageId: id },
+      update: {
         metadataJson: mergeConfirmedLocationContext({
-          metadataJson: analysis.metadataJson,
+          metadataJson: analysis?.metadataJson,
+          context: confirmedLocation,
+        }),
+      },
+      create: {
+        imageId: id,
+        status: 'partial',
+        metadataJson: mergeConfirmedLocationContext({
+          metadataJson: null,
           context: confirmedLocation,
         }),
       },

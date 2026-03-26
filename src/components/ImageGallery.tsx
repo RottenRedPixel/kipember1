@@ -200,8 +200,14 @@ export default function ImageGallery() {
                     }`}
                   />
 
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(17,17,17,0.84)] via-[rgba(17,17,17,0.34)] to-transparent px-2 py-2 sm:px-4 sm:py-4">
-                    <h2 className="line-clamp-2 text-[0.62rem] font-semibold leading-[1.05] tracking-[-0.03em] text-white sm:text-lg">
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(17,17,17,0.94)] via-[rgba(17,17,17,0.58)] to-transparent px-1.5 py-1.5 sm:px-4 sm:py-4">
+                    <h2
+                      className={`rounded-[0.75rem] bg-[rgba(17,17,17,0.38)] px-1.5 py-1 text-[0.8rem] font-semibold leading-[1.12] tracking-[-0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] sm:rounded-[1rem] sm:px-3 sm:py-2 ${
+                        layoutMode === 'list'
+                          ? 'line-clamp-none text-base sm:text-xl'
+                          : 'line-clamp-3 sm:line-clamp-2 sm:text-lg'
+                      }`}
+                    >
                       {title}
                     </h2>
                   </div>

@@ -7,6 +7,12 @@ type ElevenLabsVoice = {
 };
 
 type VoicePreference = 'male' | 'female';
+export type ElevenLabsVoiceOption = {
+  voiceId: string;
+  name: string;
+  label: string;
+  category: string | null;
+};
 
 const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io/v1';
 const DEFAULT_MODEL_ID = 'eleven_multilingual_v2';
@@ -85,6 +91,21 @@ async function fetchVoices(apiKey: string) {
   return voices;
 }
 
+function buildVoiceOptionLabel(voice: ElevenLabsVoice) {
+  const parts = [
+    voice.name?.trim() || 'Voice',
+    voice.labels?.age,
+    voice.labels?.accent,
+    voice.labels?.description,
+    voice.description,
+    voice.labels?.gender,
+  ]
+    .map((value) => value?.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(parts)).slice(0, 4).join(' - ');
+}
+
 function getVoiceScore(voice: ElevenLabsVoice, preference: VoicePreference) {
   const normalizedName = normalizeText(voice.name);
   const normalizedDescription = normalizeText(voice.description);
@@ -153,3 +174,22 @@ export async function resolveNarrationVoice(preference: VoicePreference) {
 }
 
 export type NarrationPreference = VoicePreference;
+
+export async function listNarrationVoices() {
+  const apiKey = getElevenLabsApiKey();
+  if (!apiKey) {
+    throw new Error('ElevenLabs API key is not configured');
+  }
+
+  const voices = await fetchVoices(apiKey);
+
+  return voices
+    .filter((voice) => Boolean(voice.voice_id))
+    .map<ElevenLabsVoiceOption>((voice) => ({
+      voiceId: voice.voice_id,
+      name: voice.name?.trim() || 'Voice',
+      label: buildVoiceOptionLabel(voice),
+      category: voice.category,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}

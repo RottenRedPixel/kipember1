@@ -2,6 +2,22 @@
 
 import type { ReactNode } from 'react';
 
+function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M6 6 18 18" />
+      <path d="M18 6 6 18" />
+    </svg>
+  );
+}
+
 type UploadConfirmModalProps = {
   open: boolean;
   preview: string | null;
@@ -44,9 +60,17 @@ export default function UploadConfirmModal({
     >
       <div className="mx-auto flex min-h-full w-full max-w-md items-center justify-center">
         <div
-          className="my-auto w-full overflow-hidden rounded-[2rem] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.2)]"
+          className="relative my-auto w-full overflow-hidden rounded-[2rem] bg-white p-4 shadow-[0_28px_70px_rgba(15,23,42,0.2)]"
           onClick={(event) => event.stopPropagation()}
         >
+            <button
+              type="button"
+              onClick={onCancel}
+              className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white/96 text-[var(--ember-text)] shadow-[0_8px_22px_rgba(17,17,17,0.08)] hover:border-[rgba(255,102,33,0.24)]"
+              aria-label="Close create confirmation"
+            >
+              <CloseIcon />
+            </button>
             <div className="space-y-4">
               <div className="ember-photo-shell relative aspect-[0.82] bg-[var(--ember-charcoal)]">
                 {mediaType === 'video' ? (

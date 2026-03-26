@@ -98,6 +98,29 @@ export async function createRetellPhoneCall({
   });
 }
 
+export async function createRetellWebCall({
+  metadata,
+  dynamicVariables,
+}: {
+  metadata: Record<string, string>;
+  dynamicVariables: Record<string, string>;
+}): Promise<Retell.WebCallResponse> {
+  const client = getRetellClient();
+
+  return client.call.createWebCall({
+    agent_id: requiredEnv('RETELL_AGENT_ID'),
+    metadata,
+    retell_llm_dynamic_variables: dynamicVariables,
+    agent_override: {
+      agent: {
+        webhook_events: [...DEFAULT_WEBHOOK_EVENTS],
+        webhook_timeout_ms: 10000,
+        webhook_url: getRetellWebhookUrl(),
+      },
+    },
+  });
+}
+
 export async function retrieveRetellCall(callId: string): Promise<Retell.CallResponse> {
   return getRetellClient().call.retrieve(callId);
 }
