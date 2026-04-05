@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db';
 import { getAppBaseUrl } from '@/lib/app-url';
-import { getOrCreateShortLink } from '@/lib/short-links';
 import { sendSMS } from '@/lib/twilio';
 
 const BASE_URL = getAppBaseUrl();
@@ -52,11 +51,9 @@ export async function sendContributorSmsInvite(
   }
 
   const inviteUrl = buildContributorInviteUrl(contributor.token);
-  const shortLink = await getOrCreateShortLink(inviteUrl);
-  const shortInviteUrl = shortLink.shortUrl;
   const ownerName = contributor.image.owner.name?.trim() || 'Someone';
   const intro = `${ownerName} needs your help to complete a memory shared with you.`;
-  const linkMessage = `Go to ${shortInviteUrl} to start!`;
+  const linkMessage = `Go to ${inviteUrl} to start!`;
   const emberMessage =
     'Ember is a memory app that helps preserve moments through guided conversations.';
   const combinedMessage = `${intro} ${linkMessage} ${emberMessage}`;
@@ -76,12 +73,12 @@ export async function sendContributorSmsInvite(
       data: { inviteSent: true },
     });
 
-    return { success: true, inviteUrl: shortInviteUrl };
+    return { success: true, inviteUrl };
   } catch (error) {
     console.error(`Failed to send SMS to ${phone}:`, error);
     return {
       success: false,
-      inviteUrl: shortInviteUrl,
+      inviteUrl,
       error: error instanceof Error ? error.message : 'Failed to send SMS invite',
     };
   }
