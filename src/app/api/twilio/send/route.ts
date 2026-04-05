@@ -21,7 +21,14 @@ export async function POST(request: NextRequest) {
       }
 
       const result = await sendInvite(contributorId);
-      return NextResponse.json({ success: result.success, sent: result.success ? 1 : 0 });
+      if (!result.success) {
+        return NextResponse.json(
+          { error: result.error || 'Failed to send SMS invite' },
+          { status: 502 }
+        );
+      }
+
+      return NextResponse.json({ success: true, sent: 1 });
     }
 
     if (imageId) {
@@ -48,6 +55,13 @@ export async function POST(request: NextRequest) {
       const sent = results.filter((r) => r.status === 'fulfilled' && r.value.success).length;
       const failed = results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)).length;
 
+      if (sent === 0 && failed > 0) {
+        return NextResponse.json(
+          { error: 'Failed to send SMS invites', sent, failed },
+          { status: 502 }
+        );
+      }
+
       return NextResponse.json({ success: true, sent, failed });
     }
 
@@ -64,7 +78,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function sendInvite(contributorId: string): Promise<{ success: boolean }> {
+async function sendInvite(contributorId: string): Promise<{ success: boolean; error?: string }> {
   const result = await sendContributorSmsInvite(contributorId);
-  return { success: result.success };
+  return { success: result.success, error: result.error };
 }

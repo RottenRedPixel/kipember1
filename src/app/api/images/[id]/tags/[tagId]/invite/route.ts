@@ -151,8 +151,8 @@ export async function POST(
 
       if (!inviteResult.success) {
         return NextResponse.json(
-          { error: 'Failed to send the text invite' },
-          { status: 500 }
+          { error: inviteResult.error || 'Failed to send the text invite' },
+          { status: 502 }
         );
       }
 

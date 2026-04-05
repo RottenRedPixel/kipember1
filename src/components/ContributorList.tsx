@@ -381,10 +381,10 @@ export default function ContributorList({
         body: JSON.stringify({ contributorId }),
       });
 
-      const payload = await response.json();
+      const payload = await response.json().catch(() => null);
 
-      if (!response.ok) {
-        throw new Error(payload.error || 'Failed to send invite');
+      if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || 'Failed to send invite');
       }
 
       setNotice('Invite sent.');

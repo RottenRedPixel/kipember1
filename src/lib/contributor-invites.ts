@@ -23,7 +23,7 @@ function formatPhoneNumber(phoneNumber: string): string {
 
 export async function sendContributorSmsInvite(
   contributorId: string
-): Promise<{ success: boolean; inviteUrl: string }> {
+): Promise<{ success: boolean; inviteUrl: string; error?: string }> {
   const contributor = await prisma.contributor.findUnique({
     where: { id: contributorId },
     select: {
@@ -79,6 +79,10 @@ export async function sendContributorSmsInvite(
     return { success: true, inviteUrl: shortInviteUrl };
   } catch (error) {
     console.error(`Failed to send SMS to ${phone}:`, error);
-    return { success: false, inviteUrl: shortInviteUrl };
+    return {
+      success: false,
+      inviteUrl: shortInviteUrl,
+      error: error instanceof Error ? error.message : 'Failed to send SMS invite',
+    };
   }
 }
