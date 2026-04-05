@@ -23,6 +23,20 @@ function tryParseUrl(url?: string | null): URL | null {
   }
 }
 
+function getEmailAddressDomain(value?: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const atIndex = value.lastIndexOf('@');
+  if (atIndex === -1 || atIndex === value.length - 1) {
+    return null;
+  }
+
+  const domain = value.slice(atIndex + 1).trim().toLowerCase();
+  return domain || null;
+}
+
 function getRenderBaseUrl(): string | null {
   const explicitRenderUrl = process.env.RENDER_EXTERNAL_URL;
   if (explicitRenderUrl) {
@@ -58,6 +72,29 @@ export function getAppBaseUrl(): string {
   }
 
   return 'http://localhost:3000';
+}
+
+export function getShortLinkBaseUrl(): string {
+  const explicitShortBaseUrl = process.env.SHORT_LINK_BASE_URL;
+  const parsedExplicitShortBaseUrl = tryParseUrl(explicitShortBaseUrl);
+
+  if (parsedExplicitShortBaseUrl) {
+    return normalizeBaseUrl(parsedExplicitShortBaseUrl.toString());
+  }
+
+  if (explicitShortBaseUrl) {
+    return normalizeBaseUrl(explicitShortBaseUrl);
+  }
+
+  const emailDomain = getEmailAddressDomain(
+    process.env.SMTP_FROM_EMAIL || process.env.MAILGUN_FROM_EMAIL
+  );
+
+  if (emailDomain) {
+    return `https://${emailDomain}`;
+  }
+
+  return getAppBaseUrl();
 }
 
 export function getRequestBaseUrl(request: { headers: Headers }): string {

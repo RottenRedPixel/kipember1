@@ -59,7 +59,7 @@ export default function ResetPasswordForm() {
   };
 
   return (
-    <div className="ember-panel-strong w-full max-w-md rounded-[2rem] p-8">
+    <div className="ember-auth-card p-8">
       <EmberBrand subtitle="password reset" compact />
       <h1 className="ember-heading mt-6 text-4xl text-[var(--ember-text)]">
         Choose a new password

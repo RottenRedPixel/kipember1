@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import MediaPreview from '@/components/MediaPreview';
 
-type MediaType = 'IMAGE' | 'VIDEO';
+type MediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
 type ActivityTab = 'wiki' | 'media';
 
 type ContributorRecord = {
@@ -301,12 +301,19 @@ export default function EmberActivityView({
                       <MediaPreview
                         mediaType={attachment.mediaType}
                         filename={attachment.filename}
-                      posterFilename={attachment.posterFilename}
-                      originalName={attachment.originalName}
-                      usePosterForVideo
-                      className="h-24 w-full object-cover"
-                    />
+                        posterFilename={attachment.posterFilename}
+                        originalName={attachment.originalName}
+                        usePosterForVideo
+                        className="h-24 w-full object-cover"
+                      />
                     <div className="px-3 py-3 text-xs text-[var(--ember-muted)]">
+                      <div className="mb-1 font-semibold uppercase tracking-[0.16em]">
+                        {attachment.mediaType === 'VIDEO'
+                          ? 'Video'
+                          : attachment.mediaType === 'AUDIO'
+                            ? 'Audio'
+                            : 'Photo'}
+                      </div>
                       {attachment.description?.trim() || 'No note added yet.'}
                     </div>
                   </div>

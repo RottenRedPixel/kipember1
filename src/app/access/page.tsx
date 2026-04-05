@@ -13,7 +13,7 @@ export default async function AccessPage() {
         userName={auth?.user.name || null}
         userEmail={auth?.user.email || null}
       />
-      <div className="flex min-h-[calc(100vh-6rem)] items-start justify-center px-3 pt-3 pb-6 sm:px-4 sm:pt-4 sm:pb-8">
+      <div className="ember-auth-shell min-h-[calc(100vh-4.5rem)] items-start">
         <div className="w-full max-w-xl">
           <div className="ember-panel rounded-[2.25rem] p-6 sm:p-8">
             <div className="mt-2 text-center">

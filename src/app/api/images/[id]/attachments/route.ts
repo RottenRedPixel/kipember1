@@ -22,11 +22,21 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    const file = formData.get('file');
+    const singleFile = formData.get('file');
+    const files = formData
+      .getAll('files')
+      .filter((entry): entry is File => entry instanceof File);
     const rawDescription = formData.get('description');
 
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    const uploadFiles =
+      files.length > 0
+        ? files
+        : singleFile instanceof File
+          ? [singleFile]
+          : [];
+
+    if (uploadFiles.length === 0) {
+      return NextResponse.json({ error: 'No files provided' }, { status: 400 });
     }
 
     const description =
@@ -34,47 +44,60 @@ export async function POST(
         ? rawDescription.trim()
         : null;
 
-    let persistedMedia;
-    try {
-      persistedMedia = await persistUploadedMedia(file);
-    } catch (error) {
-      return NextResponse.json(
-        {
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Only images and MP4, MOV, WEBM, or M4V videos are supported',
+    const attachments = [];
+    const warnings: string[] = [];
+
+    for (const file of uploadFiles) {
+      let persistedMedia;
+      try {
+        persistedMedia = await persistUploadedMedia(file);
+      } catch (error) {
+        return NextResponse.json(
+          {
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Only images, videos, and common audio files are supported',
+          },
+          { status: 400 }
+        );
+      }
+
+      const attachment = await prisma.imageAttachment.create({
+        data: {
+          imageId: image.id,
+          filename: persistedMedia.filename,
+          mediaType: persistedMedia.mediaType,
+          posterFilename: persistedMedia.posterFilename,
+          durationSeconds: persistedMedia.durationSeconds,
+          originalName: file.name,
+          description,
         },
-        { status: 400 }
-      );
+        select: {
+          id: true,
+          filename: true,
+          mediaType: true,
+          posterFilename: true,
+          durationSeconds: true,
+          originalName: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      attachments.push(attachment);
+
+      if (persistedMedia.warning) {
+        warnings.push(`${file.name}: ${persistedMedia.warning}`);
+      }
     }
 
-    const attachment = await prisma.imageAttachment.create({
-      data: {
-        imageId: image.id,
-        filename: persistedMedia.filename,
-        mediaType: persistedMedia.mediaType,
-        posterFilename: persistedMedia.posterFilename,
-        durationSeconds: persistedMedia.durationSeconds,
-        originalName: file.name,
-        description,
-      },
-      select: {
-        id: true,
-        filename: true,
-        mediaType: true,
-        posterFilename: true,
-        durationSeconds: true,
-        originalName: true,
-        description: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-
     return NextResponse.json({
-      attachment,
-      warning: persistedMedia.warning,
+      attachment: attachments[0] || null,
+      attachments,
+      warning: warnings[0] || null,
+      warnings,
     });
   } catch (error) {
     console.error('Attachment upload error:', error);

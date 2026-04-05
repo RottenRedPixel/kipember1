@@ -5,7 +5,7 @@ import MediaPreview from '@/components/MediaPreview';
 export type ImageAttachmentRecord = {
   id: string;
   filename: string;
-  mediaType: 'IMAGE' | 'VIDEO';
+  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
   posterFilename: string | null;
   durationSeconds: number | null;
   originalName: string;
@@ -62,11 +62,15 @@ export default function ImageAttachmentViewer({
                 <MediaPreview
                   mediaType={attachment.mediaType}
                   filename={attachment.filename}
-                posterFilename={attachment.posterFilename}
-                originalName={attachment.originalName}
-                controls={attachment.mediaType === 'VIDEO'}
-                className="h-full max-h-[78vh] w-full object-contain"
-              />
+                  posterFilename={attachment.posterFilename}
+                  originalName={attachment.originalName}
+                  controls={attachment.mediaType !== 'IMAGE'}
+                  className={`w-full ${
+                    attachment.mediaType === 'AUDIO'
+                      ? 'mx-auto max-w-xl self-center'
+                      : 'h-full max-h-[78vh] object-contain'
+                  }`}
+                />
             </div>
 
             <div className="relative flex flex-col px-5 py-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] sm:px-7 sm:py-6">
@@ -86,7 +90,12 @@ export default function ImageAttachmentViewer({
                 {attachment.originalName}
               </h3>
               <p className="mt-3 text-sm leading-7 text-[var(--ember-muted)]">
-                {attachment.mediaType === 'VIDEO' ? 'Video' : 'Photo'} added{' '}
+                {attachment.mediaType === 'VIDEO'
+                  ? 'Video'
+                  : attachment.mediaType === 'AUDIO'
+                    ? 'Audio'
+                    : 'Photo'}{' '}
+                added{' '}
                 {new Date(attachment.createdAt).toLocaleDateString()}.
               </p>
 
@@ -94,12 +103,12 @@ export default function ImageAttachmentViewer({
                 <div className="mt-5 flex flex-1 flex-col gap-4">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
-                      Note for this photo or video
+                      Note for this media
                     </label>
                     <textarea
                       value={draftDescription}
                       onChange={(event) => onDraftChange(event.target.value)}
-                      placeholder="What should Ember remember from this extra photo or video?"
+                      placeholder="What should Ember remember from this added media?"
                       className="ember-textarea"
                       rows={7}
                     />

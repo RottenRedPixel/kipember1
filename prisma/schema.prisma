@@ -234,6 +234,7 @@ enum Visibility {
 enum MediaType {
   IMAGE
   VIDEO
+  AUDIO
 }
 
 model AccessPass {
@@ -305,6 +306,16 @@ model AuthChallenge {
   @@index([type, email, createdAt])
   @@index([type, phoneNumber, createdAt])
   @@index([userId, createdAt])
+}
+
+model ShortLink {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  targetUrl    String   @unique
+  visitCount   Int      @default(0)
+  lastVisitedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Friendship {

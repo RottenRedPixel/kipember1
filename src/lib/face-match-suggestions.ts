@@ -712,6 +712,16 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
   const grouped = new Map<string, CandidateGroup>();
 
   for (const tag of tags) {
+    if (tag.image.mediaType === 'AUDIO') {
+      continue;
+    }
+
+    const referenceImage = {
+      filename: tag.image.filename,
+      mediaType: tag.image.mediaType,
+      posterFilename: tag.image.posterFilename,
+    } as const;
+
     const personKey = buildIdentityKey(tag);
     if (!personKey) {
       continue;
@@ -721,7 +731,7 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
     if (existing) {
       if (existing.references.length < MAX_REFERENCES_PER_PERSON) {
         existing.references.push({
-          image: tag.image,
+          image: referenceImage,
           box: {
             leftPct: tag.leftPct!,
             topPct: tag.topPct!,
@@ -742,7 +752,7 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
       phoneNumber: tag.phoneNumber,
       references: [
         {
-          image: tag.image,
+          image: referenceImage,
           box: {
             leftPct: tag.leftPct!,
             topPct: tag.topPct!,
@@ -937,9 +947,15 @@ export async function suggestFaceMatchesForImage({
     },
   });
 
-  if (!image) {
+  if (!image || image.mediaType === 'AUDIO') {
     throw new Error('Image not found');
   }
+
+  const visualImage = {
+    filename: image.filename,
+    mediaType: image.mediaType,
+    posterFilename: image.posterFilename,
+  } as const;
 
   const referenceCandidates = await getReferenceCandidates(ownerId, imageId);
   if (referenceCandidates.length === 0) {
@@ -956,8 +972,8 @@ export async function suggestFaceMatchesForImage({
 
   for (const [faceIndex, face] of normalizedFaces.entries()) {
     const targetFaces = await Promise.all([
-      cropFaceBuffer(image, face, 'tight'),
-      cropFaceBuffer(image, face, 'expanded'),
+      cropFaceBuffer(visualImage, face, 'tight'),
+      cropFaceBuffer(visualImage, face, 'expanded'),
     ]);
     let match: (typeof loadedCandidates)[number] | undefined;
     let verification:
@@ -1058,16 +1074,22 @@ export async function suggestAutoTagMatchesForImage({
     },
   });
 
-  if (!image) {
+  if (!image || image.mediaType === 'AUDIO') {
     throw new Error('Image not found');
   }
+
+  const visualImage = {
+    filename: image.filename,
+    mediaType: image.mediaType,
+    posterFilename: image.posterFilename,
+  } as const;
 
   const referenceCandidates = await getReferenceCandidates(ownerId, imageId);
   if (referenceCandidates.length === 0) {
     return [];
   }
 
-  const targetImage = await loadTargetImageBuffer(image);
+  const targetImage = await loadTargetImageBuffer(visualImage);
   const validCandidates = await loadCandidatesWithReferences(referenceCandidates);
 
   if (validCandidates.length === 0) {

@@ -1,6 +1,6 @@
 import { join } from 'path';
 
-type MediaType = 'IMAGE' | 'VIDEO';
+type MediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
 
 export function getUploadsDir(): string {
   return process.env.UPLOADS_DIR || join(process.cwd(), 'public', 'uploads');
@@ -36,6 +36,10 @@ export function inferMediaType(filename: string, mimeType?: string | null): Medi
     return 'VIDEO';
   }
 
+  if (normalizedMimeType.startsWith('audio/')) {
+    return 'AUDIO';
+  }
+
   const ext = filename.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'jpg':
@@ -52,6 +56,15 @@ export function inferMediaType(filename: string, mimeType?: string | null): Medi
     case 'webm':
     case 'm4v':
       return 'VIDEO';
+    case 'mp3':
+    case 'wav':
+    case 'm4a':
+    case 'aac':
+    case 'ogg':
+    case 'oga':
+    case 'mpga':
+    case 'mpeg':
+      return 'AUDIO';
     default:
       return null;
   }
@@ -98,6 +111,20 @@ export function inferUploadMimeType(filename: string): string | null {
       return 'video/webm';
     case 'm4v':
       return 'video/x-m4v';
+    case 'mp3':
+      return 'audio/mpeg';
+    case 'wav':
+      return 'audio/wav';
+    case 'm4a':
+      return 'audio/mp4';
+    case 'aac':
+      return 'audio/aac';
+    case 'ogg':
+    case 'oga':
+      return 'audio/ogg';
+    case 'mpga':
+    case 'mpeg':
+      return 'audio/mpeg';
     default:
       return null;
   }

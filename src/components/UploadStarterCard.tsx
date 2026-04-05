@@ -59,11 +59,11 @@ export default function UploadStarterCard({
   onDrop,
 }: UploadStarterCardProps) {
   return (
-    <div className="px-2 py-2 text-center sm:px-4 sm:py-4">
-      <h2 className="ember-heading text-4xl text-[var(--ember-text)] sm:text-5xl">
+    <div className="px-1 pt-1 pb-1 text-center">
+      <h2 className="ember-heading text-[2.45rem] font-semibold leading-[1.02] text-[var(--ember-text)]">
         {title}
       </h2>
-      <p className="ember-copy mx-auto mt-3 max-w-2xl text-base leading-8 text-[var(--ember-muted)]">
+      <p className="ember-copy mx-auto mt-2 max-w-[18rem] text-[0.98rem] leading-7 text-[var(--ember-muted)]">
         {subtitle}
       </p>
 
@@ -73,21 +73,21 @@ export default function UploadStarterCard({
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        className={`mt-6 flex w-full flex-col items-center rounded-[2rem] border border-dashed px-6 py-10 text-center transition sm:mt-7 sm:px-10 sm:py-14 ${
+        className={`mt-9 flex w-full flex-col items-center rounded-[2.2rem] border border-dashed px-6 py-[4.25rem] text-center transition ${
           isDragging
             ? 'border-[rgba(255,102,33,0.35)] bg-[rgba(255,102,33,0.05)]'
-            : 'border-[rgba(20,20,20,0.16)] bg-[var(--ember-surface-strong)]'
+            : 'border-[rgba(20,20,20,0.12)] bg-white'
         }`}
       >
-        <span className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-[rgba(20,20,20,0.04)]">
+        <span className="inline-flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full bg-[rgba(20,20,20,0.03)]">
           <UploadArrowIcon />
         </span>
 
-        <p className="mt-6 whitespace-nowrap text-[1.02rem] font-semibold tracking-[-0.04em] text-[var(--ember-text)] sm:mt-7 sm:text-[2.1rem]">
+        <p className="mt-6 whitespace-nowrap text-[1.08rem] font-normal tracking-[-0.02em] text-[var(--ember-text)]">
           Drop your photo here, or{' '}
-          <span className="text-[var(--ember-orange-deep)]">browse</span>
+          <span className="font-medium text-[var(--ember-orange-deep)]">browse</span>
         </p>
-        <p className="mt-4 text-sm leading-7 text-[var(--ember-muted)]">{supportText}</p>
+        <p className="mt-4 text-[0.92rem] leading-6 text-[var(--ember-muted)]">{supportText}</p>
       </button>
     </div>
   );

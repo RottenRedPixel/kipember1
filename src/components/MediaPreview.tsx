@@ -45,6 +45,27 @@ export default function MediaPreview({
     );
   }
 
+  if (mediaType === 'AUDIO') {
+    if (controls) {
+      return (
+        <audio
+          src={getUploadUrl(filename)}
+          controls
+          preload={preload}
+          className={className}
+        />
+      );
+    }
+
+    return (
+      <img
+        src={getPreviewMediaUrl({ mediaType, filename, posterFilename })}
+        alt={originalName}
+        className={className}
+      />
+    );
+  }
+
   return (
     <img
       src={getPreviewMediaUrl({ mediaType, filename, posterFilename })}

@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
+import HeaderMenu from '@/components/HeaderMenu';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -43,6 +44,149 @@ interface ContributorData {
   } | null;
 }
 
+type ContributeMode = 'choice' | 'askChoice' | 'text' | 'voice' | 'calling';
+
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+};
+
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<{
+    isFinal?: boolean;
+    0: {
+      transcript: string;
+    };
+  }>;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => BrowserSpeechRecognition;
+    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+  }
+}
+
+function InviteHeader() {
+  return (
+    <header className="flex h-[2.65rem] items-center justify-between bg-[#9e9e9e] px-4 text-[0.95rem] font-medium uppercase tracking-[-0.03em] text-white">
+      <Link href="/" className="hover:opacity-80">
+        Home
+      </Link>
+      <HeaderMenu
+        authMode="detect"
+        className="text-white hover:opacity-80"
+        panelClassName="right-0 top-[calc(100%+0.35rem)] min-w-[8.75rem] rounded-[0.9rem] border border-white/12 bg-[#6e6e6e] p-1.5 shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
+        iconClassName="h-4.5 w-4.5"
+        logoutRedirectTo="/"
+      />
+    </header>
+  );
+}
+
+function HeroStage({
+  image,
+  title,
+}: {
+  image: ContributorData['image'];
+  title: string;
+}) {
+  return (
+    <div className="relative h-[44vh] overflow-hidden border-t-2 border-white bg-[#9cc9ca]">
+      <MediaPreview
+        mediaType={image.mediaType}
+        filename={image.filename}
+        posterFilename={image.posterFilename}
+        originalName={title}
+        controls={false}
+        className={`h-full w-full ${
+          image.mediaType === 'VIDEO'
+            ? 'object-cover bg-[#9cc9ca]'
+            : 'object-cover bg-[#9cc9ca]'
+        }`}
+      />
+      <div className="absolute inset-0 bg-[#9cc9ca]/72" />
+      <div className="absolute left-3 top-5 right-3 text-[2rem] font-semibold uppercase tracking-[-0.05em] text-white">
+        {title}
+      </div>
+    </div>
+  );
+}
+
+function PanelCloseButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-9 w-9 items-center justify-center text-white"
+      aria-label="Close"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
+        <path d="M6 6 18 18" />
+        <path d="M18 6 6 18" />
+      </svg>
+    </button>
+  );
+}
+
+function VoiceWaveform() {
+  const bars = [12, 24, 16, 32, 20, 38, 24, 42, 28, 36, 22, 40, 26, 34, 18];
+
+  return (
+    <div className="flex items-end justify-center gap-[0.22rem] py-3">
+      {bars.map((height, index) => (
+        <span
+          key={`${height}-${index}`}
+          className="inline-block w-[0.22rem] animate-pulse rounded-full bg-white"
+          style={{
+            height: `${height}px`,
+            animationDelay: `${index * 80}ms`,
+            animationDuration: '1200ms',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ActionButton({
+  label,
+  onClick,
+  disabled = false,
+  tone = 'pink',
+}: {
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  tone?: 'pink' | 'rose' | 'purple' | 'pale';
+}) {
+  const toneClass =
+    tone === 'pink'
+      ? 'bg-[#e25588] text-white'
+      : tone === 'rose'
+        ? 'bg-[#d75a89] text-white'
+        : tone === 'purple'
+          ? 'bg-[#7f63a7] text-white'
+          : 'bg-[#f1d8e5] text-[#e25588]';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`min-h-[4.9rem] px-2 text-[0.97rem] font-semibold uppercase leading-5 tracking-[-0.02em] ${toneClass} disabled:opacity-55`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function ContributePage() {
   const params = useParams();
   const [data, setData] = useState<ContributorData | null>(null);
@@ -54,32 +198,47 @@ export default function ContributePage() {
   const [isComplete, setIsComplete] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [mode, setMode] = useState<ContributeMode>('choice');
+  const [initializedMode, setInitializedMode] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [voiceError, setVoiceError] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [siriEnabled, setSiriEnabled] = useState(false);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const fetchContributorData = useCallback(async () => {
+    const response = await fetch(`/api/contribute/${params.token}`, {
+      cache: 'no-store',
+    });
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (!response.ok) {
+      throw new Error('Invalid or expired link');
+    }
+
+    const result = (await response.json()) as ContributorData;
+    setData(result);
+    setMessages(result.conversation?.messages || []);
+    setIsComplete(result.conversation?.status === 'completed');
+    return result;
+  }, [params.token]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/contribute/${params.token}`, {
-          cache: 'no-store',
-        });
-        if (!response.ok) {
-          throw new Error('Invalid or expired link');
-        }
+        const result = await fetchContributorData();
 
-        const result = await response.json();
-        setData(result);
-
-        if (result.conversation?.messages) {
-          setMessages(result.conversation.messages);
-          setIsComplete(result.conversation.status === 'completed');
+        if (!initializedMode) {
+          if (
+            result.latestVoiceCall &&
+            ['registered', 'ongoing'].includes(result.latestVoiceCall.status)
+          ) {
+            setMode('calling');
+          } else if (result.conversation?.messages?.length) {
+            setMode('text');
+          } else {
+            setMode('choice');
+          }
+          setInitializedMode(true);
         }
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load');
@@ -88,25 +247,8 @@ export default function ContributePage() {
       }
     };
 
-    fetchData();
-  }, [params.token]);
-
-  const refreshContributorData = useCallback(async () => {
-    const response = await fetch(`/api/contribute/${params.token}`, {
-      cache: 'no-store',
-    });
-    if (!response.ok) {
-      return;
-    }
-
-    const result = await response.json();
-    setData(result);
-
-    if (result.conversation?.messages) {
-      setMessages(result.conversation.messages);
-      setIsComplete(result.conversation.status === 'completed');
-    }
-  }, [params.token]);
+    void fetchData();
+  }, [fetchContributorData, initializedMode]);
 
   useEffect(() => {
     if (!data?.latestVoiceCall) {
@@ -121,47 +263,39 @@ export default function ContributePage() {
     }
 
     const intervalId = window.setInterval(() => {
-      void refreshContributorData();
+      void fetchContributorData().catch(() => null);
     }, 4000);
 
     return () => window.clearInterval(intervalId);
-  }, [data?.latestVoiceCall, refreshContributorData]);
+  }, [data?.latestVoiceCall, fetchContributorData]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!input.trim() || isSending || isComplete) return;
+  useEffect(() => {
+    const status = data?.latestVoiceCall?.status;
 
-    const userMessage = input.trim();
-    setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
-    setIsSending(true);
-    setActionError('');
-
-    try {
-      const response = await fetch(`/api/contribute/${params.token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-
-      const result = await response.json();
-      setMessages((prev) => [...prev, { role: 'assistant', content: result.response }]);
-      setIsComplete(result.isComplete);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' },
-      ]);
-    } finally {
-      setIsSending(false);
+    if (status === 'registered' || status === 'ongoing') {
+      setMode('calling');
+      return;
     }
-  };
 
-  const startConversation = async () => {
+    if (mode === 'calling' && status && status !== 'registered' && status !== 'ongoing') {
+      setMode(messages.length > 0 ? 'text' : 'choice');
+    }
+  }, [data?.latestVoiceCall?.status, messages.length, mode]);
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
+
+  const ensureConversationStarted = useCallback(async () => {
+    if (messages.length > 0 || isComplete) {
+      return true;
+    }
+
     setIsSending(true);
     setActionError('');
 
@@ -172,18 +306,70 @@ export default function ContributePage() {
         body: JSON.stringify({ message: '__START__' }),
       });
 
-      if (response.ok) {
-        await refreshContributorData();
+      if (!response.ok) {
+        throw new Error('Failed to start chatting with Ember');
       }
+
+      await fetchContributorData();
+      return true;
     } catch (err) {
-      console.error('Failed to start:', err);
-      setActionError('Failed to start texting with Ember');
+      setActionError(err instanceof Error ? err.message : 'Failed to start chatting with Ember');
+      return false;
     } finally {
       setIsSending(false);
     }
+  }, [fetchContributorData, isComplete, messages.length, params.token]);
+
+  const sendUserMessage = useCallback(
+    async (userMessage: string) => {
+      if (!userMessage.trim() || isSending) {
+        return false;
+      }
+
+      const trimmed = userMessage.trim();
+      setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
+      setIsSending(true);
+      setActionError('');
+
+      try {
+        const response = await fetch(`/api/contribute/${params.token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: trimmed }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to send message');
+        }
+
+        const result = await response.json();
+        setMessages((prev) => [...prev, { role: 'assistant', content: result.response }]);
+        setIsComplete(result.isComplete);
+        return true;
+      } catch (err) {
+        const fallback =
+          err instanceof Error ? err.message : 'Sorry, something went wrong. Please try again.';
+        setActionError(fallback);
+        return false;
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [isSending, params.token]
+  );
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!input.trim() || isComplete) {
+      return;
+    }
+
+    const userMessage = input.trim();
+    setInput('');
+    await sendUserMessage(userMessage);
   };
 
-  const startVoiceCall = async () => {
+  const startPhoneCall = async () => {
     setIsCalling(true);
     setActionError('');
 
@@ -193,11 +379,12 @@ export default function ContributePage() {
       });
 
       if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to start voice call');
+        const result = await response.json().catch(() => null);
+        throw new Error(result?.error || 'Failed to start voice call');
       }
 
-      await refreshContributorData();
+      await fetchContributorData();
+      setMode('calling');
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Failed to start voice call');
     } finally {
@@ -205,315 +392,314 @@ export default function ContributePage() {
     }
   };
 
-  const voiceStatusLabel = (status: string) => {
-    if (data?.latestVoiceCall?.memorySyncedAt) {
-      return 'Your call finished and Ember added it to the memory.';
-    }
-
-    switch (status) {
-      case 'registered':
-        return 'Ember is dialing your phone now.';
-      case 'ongoing':
-        return 'Your conversation with Ember is in progress.';
-      case 'ended':
-        return data?.latestVoiceCall?.callSummary
-          ? 'Your call with Ember finished. We will sync it shortly.'
-          : 'Your last call with Ember ended.';
-      case 'not_connected':
-        return 'We could not connect your call with Ember.';
-      case 'error':
-        return 'Your call with Ember hit an error.';
-      default:
-        return `Speak with Ember status: ${status}`;
+  const openTextMode = async () => {
+    const started = await ensureConversationStarted();
+    if (started) {
+      setMode('text');
     }
   };
 
+  const openVoiceMode = async () => {
+    const started = await ensureConversationStarted();
+    if (started) {
+      setMode('voice');
+    }
+  };
+
+  const startVoiceRecording = () => {
+    setVoiceError('');
+    const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!RecognitionCtor) {
+      setVoiceError('Voice recording is not available in this browser.');
+      return;
+    }
+
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+
+      const recognition = new RecognitionCtor();
+      recognition.lang = 'en-US';
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let index = 0; index < event.results.length; index += 1) {
+          transcript += event.results[index][0]?.transcript || '';
+        }
+        setVoiceTranscript(transcript.trim());
+      };
+
+      recognition.onerror = (event) => {
+        setVoiceError(event.error || 'Voice recording failed.');
+        setIsRecording(false);
+        recognitionRef.current = null;
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+        recognitionRef.current = null;
+      };
+
+      recognitionRef.current = recognition;
+      setIsRecording(true);
+      recognition.start();
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : 'Unable to start recording.');
+      setIsRecording(false);
+      recognitionRef.current = null;
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsRecording(false);
+  };
+
+  const submitVoiceRecording = async () => {
+    if (!voiceTranscript.trim() || isComplete) {
+      return;
+    }
+
+    const transcript = voiceTranscript.trim();
+    setVoiceTranscript('');
+    await sendUserMessage(transcript);
+  };
+
+  const contributorFirstName = useMemo(() => {
+    const fullName = data?.contributor.name?.trim();
+    return fullName ? fullName.split(/\s+/)[0] : 'there';
+  }, [data?.contributor.name]);
+
+  const emberTitle = useMemo(() => {
+    if (!data) {
+      return 'PHOTO TITLE';
+    }
+    return getEmberTitle(data.image).toUpperCase();
+  }, [data]);
+
+  const latestAssistantMessage =
+    [...messages].reverse().find((message) => message.role === 'assistant')?.content ||
+    `Hi ${contributorFirstName}! I'm Ember. Thanks for sharing your memory.`;
+
+  const recentMessages = messages.slice(-4);
+
   if (isLoading) {
     return (
-      <main className="ember-page flex items-center justify-center px-4">
-        <div className="text-[var(--ember-muted)]">Loading...</div>
+      <main className="mx-auto min-h-screen w-full max-w-[26rem] bg-white">
+        <InviteHeader />
+        <div className="flex min-h-[calc(100vh-2.65rem)] items-center justify-center text-[#2f2f2f]">
+          Loading...
+        </div>
       </main>
     );
   }
 
   if (loadError || !data) {
     return (
-      <main className="ember-page flex items-center justify-center px-4">
-        <div className="ember-panel rounded-[2rem] p-8 text-center">
-          <h1 className="ember-heading text-3xl text-[var(--ember-text)]">Link not found</h1>
-          <p className="ember-copy mt-3 text-sm">
-            {loadError || 'This link may have expired or is invalid.'}
-          </p>
+      <main className="mx-auto min-h-screen w-full max-w-[26rem] bg-white">
+        <InviteHeader />
+        <div className="px-5 py-10 text-[#1f1f1f]">
+          <h1 className="text-[2rem] font-semibold tracking-[-0.04em]">Link not found</h1>
+          <p className="mt-3 text-base">{loadError || 'This link may have expired or is invalid.'}</p>
         </div>
       </main>
     );
   }
 
-  const emberTitle = getEmberTitle(data.image);
-
   return (
-    <main className="ember-page">
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="grid gap-6 lg:grid-cols-[0.88fr_1.12fr]">
-          <section className="ember-panel min-w-0 rounded-[2rem] p-5">
-            {data.guestFlow ? (
-              <Link
-                href={`/guest/${params.token}`}
-                className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
-              >
-                {'<- Back to your memory'}
-              </Link>
-            ) : (
-              <Link
-                href={`/image/${data.image.id}`}
-                className="text-sm font-medium text-[var(--ember-muted)] hover:text-[var(--ember-text)]"
-              >
-                {'<- Back to Ember'}
-              </Link>
-            )}
-            <p className="ember-eyebrow">Contributor invite</p>
-            <h1 className="ember-heading mt-3 break-words text-4xl text-[var(--ember-text)] [overflow-wrap:anywhere]">
-              Help tell the story behind this Ember.
-            </h1>
-            <p className="ember-copy mt-3 text-sm">
-              Add what happened before, during, or after this moment. Ember will fold your
-              memories into the same living archive.
-            </p>
+    <main className="mx-auto min-h-screen w-full max-w-[26rem] bg-white">
+      <InviteHeader />
+      <HeroStage image={data.image} title={emberTitle} />
 
-              <div className="ember-card mt-5 ember-photo-shell">
-                <MediaPreview
-                  mediaType={data.image.mediaType}
-                  filename={data.image.filename}
-                posterFilename={data.image.posterFilename}
-                originalName={emberTitle}
-                controls={data.image.mediaType === 'VIDEO'}
-                className="max-h-[28rem] w-full object-contain bg-[var(--ember-charcoal)]"
-              />
+      {(mode === 'choice' || mode === 'askChoice' || mode === 'calling') && (
+        <section className="min-h-[calc(100vh-2.65rem-44vh)] border-t-2 border-white bg-[#3f8ab0] px-4 py-6 text-white">
+          {actionError && (
+            <div className="mb-5 bg-white/18 px-4 py-3 text-sm font-medium text-white">
+              {actionError}
             </div>
+          )}
 
-            <div className="mt-5 min-w-0">
-              <h2
-                title={emberTitle}
-                className="ember-heading overflow-hidden text-ellipsis whitespace-nowrap text-lg leading-tight text-[var(--ember-text)] sm:text-2xl"
-              >
-                {emberTitle}
-              </h2>
-              {data.image.description && (
-                <p className="ember-copy mt-2 text-sm">{data.image.description}</p>
-              )}
+          {mode === 'choice' && (
+            <>
+              <p className="mx-auto max-w-[18.5rem] text-center text-[1.25rem] font-medium leading-[1.28] tracking-[-0.03em]">
+                Hello {contributorFirstName}! How would you like to conduct this interview?
+              </p>
+              <div className="mx-auto mt-8 grid max-w-[21rem] grid-cols-3 gap-[0.18rem]">
+                <ActionButton
+                  label="PHONE CALL"
+                  onClick={() => void startPhoneCall()}
+                  disabled={isCalling}
+                  tone="rose"
+                />
+                <ActionButton label="ASK EMBER" onClick={() => setMode('askChoice')} tone="pink" />
+                <div className="flex flex-col items-center">
+                  <ActionButton label="VIDEO CALL" disabled tone="purple" />
+                  <span className="mt-2 text-[0.95rem] text-[#bed8e2]">coming soon</span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {mode === 'askChoice' && (
+            <>
+              <p className="mx-auto max-w-[18.5rem] text-center text-[1.25rem] font-medium leading-[1.28] tracking-[-0.03em]">
+                {contributorFirstName}, choose how you would like to chat with ember.
+              </p>
+              <div className="mx-auto mt-8 grid max-w-[21rem] grid-cols-3 gap-[0.18rem]">
+                <ActionButton label="BACK" onClick={() => setMode('choice')} tone="pale" />
+                <ActionButton
+                  label="TEXT"
+                  onClick={() => void openTextMode()}
+                  disabled={isSending}
+                  tone="pink"
+                />
+                <ActionButton
+                  label="VOICE"
+                  onClick={() => void openVoiceMode()}
+                  disabled={isSending}
+                  tone="rose"
+                />
+              </div>
+            </>
+          )}
+
+          {mode === 'calling' && (
+            <div className="flex min-h-[calc(100vh-2.65rem-44vh-3rem)] items-center justify-center text-center">
+              <div>
+                <p className="mx-auto max-w-[16rem] text-[1.42rem] font-medium leading-[1.25] tracking-[-0.04em]">
+                  Ember is calling you now! Thank you!
+                </p>
+                {data.latestVoiceCall && (
+                  <p className="mt-4 text-[1rem] text-white/82">
+                    {data.latestVoiceCall.status === 'ongoing'
+                      ? 'Your phone conversation is in progress.'
+                      : 'Stay on this page while the call connects.'}
+                  </p>
+                )}
+              </div>
             </div>
-          </section>
+          )}
+        </section>
+      )}
 
-          <section className="ember-panel min-w-0 overflow-hidden rounded-[2rem]">
-            {actionError && <div className="ember-status ember-status-error m-4">{actionError}</div>}
+      {mode === 'text' && (
+        <section className="flex min-h-[calc(100vh-2.65rem-44vh)] flex-col border-t-2 border-white bg-[#3f8ab0] px-3 pt-4 pb-5 text-white">
+          <div className="flex items-start justify-between">
+            <div className="text-[1.05rem] font-semibold tracking-[-0.03em]">Text Ember</div>
+            <PanelCloseButton onClick={() => setMode('askChoice')} />
+          </div>
 
-            {data.latestVoiceCall && (
-              <div className="ember-status ember-status-success m-4 mb-0">
-                {voiceStatusLabel(data.latestVoiceCall.status)}
+          {actionError && (
+            <div className="mt-4 bg-white/18 px-4 py-3 text-sm font-medium text-white">
+              {actionError}
+            </div>
+          )}
+
+          <div className="mt-2 text-[1.05rem] leading-[1.22] text-white">
+            {latestAssistantMessage}
+          </div>
+
+          <div className="mt-4 flex-1">
+            {recentMessages.length > 1 && (
+              <div className="max-h-[28vh] overflow-y-auto pr-1 text-[0.98rem] leading-7 text-white/82">
+                {recentMessages.map((message, index) => (
+                  <p key={`${message.role}-${index}`} className={index === 0 ? '' : 'mt-3'}>
+                    {message.content}
+                  </p>
+                ))}
               </div>
             )}
+          </div>
 
-            <div className="px-5 py-5">
-              {messages.length === 0 && !isComplete ? (
-                <div className="space-y-5">
-                  {!data.guestFlow && (
-                    <div className="ember-card rounded-[1.75rem] p-5">
-                      <div className="ember-eyebrow">Start here</div>
-                      <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
-                        Talk Via Phone
-                      </h2>
-                      <p className="ember-copy mt-3 text-sm">
-                        Tap the phone button and tell Ember the story out loud. Voice gives the
-                        richest context and is the best way to capture what happened, how it felt,
-                        and the small details that matter most.
-                      </p>
-                      <button
-                        onClick={startVoiceCall}
-                        disabled={
-                          isSending ||
-                          isCalling ||
-                          data.latestVoiceCall?.status === 'registered' ||
-                          data.latestVoiceCall?.status === 'ongoing'
-                        }
-                        className="ember-button-primary mt-5 w-full justify-center disabled:opacity-60"
-                      >
-                        {isCalling ? 'Calling...' : 'Start phone interview'}
-                      </button>
-                    </div>
-                  )}
+          <form onSubmit={handleSubmit} className="mt-5">
+            <input
+              type="text"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder=""
+              enterKeyHint="send"
+              autoFocus
+              className="h-13 w-full border-none bg-white px-4 text-[1.05rem] text-[#1d1d1d] outline-none"
+              disabled={isSending || isComplete}
+            />
+          </form>
 
-                  <div className="rounded-[1.5rem] border border-[var(--ember-line)] bg-white/70 px-5 py-5">
-                    <div className="ember-eyebrow">Other options</div>
-                    <p className="mt-3 text-sm text-[var(--ember-muted)]">
-                      Prefer typing instead? You can still share the memory with Ember by text.
-                    </p>
-                    <button
-                      onClick={startConversation}
-                      disabled={isSending || isCalling}
-                      className="mt-4 flex w-full items-center justify-between gap-4 rounded-[1.25rem] border border-[var(--ember-line)] bg-white px-4 py-4 text-left disabled:opacity-60"
-                    >
-                      <div>
-                        <h3 className="text-base font-semibold text-[var(--ember-text)]">
-                          Chat Via Text
-                        </h3>
-                        <p className="mt-1 text-sm text-[var(--ember-muted)]">
-                          Best if you want to add details slowly or send a few short memories.
-                        </p>
-                      </div>
-                      <span className="text-sm font-semibold text-[var(--ember-orange)]">
-                        {isSending ? 'Starting...' : 'Open'}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="space-y-4 border-b ember-divider pb-4">
-                    {!data.guestFlow && !isComplete && (
-                      <div className="rounded-[1.5rem] border border-[rgba(255,102,33,0.16)] bg-[rgba(255,102,33,0.06)] px-4 py-4">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)]">
-                          Richer option
-                        </div>
-                        <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
-                          Talk Via Phone
-                        </h2>
-                        <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
-                          Want to add more detail faster? Voice gives Ember richer context than
-                          text alone, and it can pull more memory from a short conversation.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={startVoiceCall}
-                          disabled={
-                            isSending ||
-                            isCalling ||
-                            data.latestVoiceCall?.status === 'registered' ||
-                            data.latestVoiceCall?.status === 'ongoing'
-                          }
-                          className="ember-button-primary mt-4 w-full justify-center disabled:opacity-60"
-                        >
-                          {isCalling
-                            ? 'Calling...'
-                            : data.latestVoiceCall?.status === 'registered' ||
-                                data.latestVoiceCall?.status === 'ongoing'
-                              ? 'Call in progress'
-                              : 'Start phone interview'}
-                        </button>
-                      </div>
-                    )}
-
-                    <div>
-                      <h2 className="ember-heading text-3xl text-[var(--ember-text)]">
-                        Talk with Ember
-                      </h2>
-                      <p className="ember-copy mt-2 text-sm">
-                        Share what you remember. Ember will guide you with follow-up questions.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 rounded-[1.75rem] bg-white/40 p-1">
-                    {messages.map((message, index) => (
-                      <div
-                        key={index}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[88%] rounded-[1.4rem] px-4 py-3 text-sm leading-7 ${
-                            message.role === 'user'
-                              ? 'bg-[var(--ember-orange)] text-white'
-                              : 'ember-card text-[var(--ember-text)]'
-                          }`}
-                        >
-                          <p className="font-semibold">
-                            {message.role === 'user' ? (data.contributor.name || 'You') : 'Ember'}
-                          </p>
-                          <p className={message.role === 'user' ? 'mt-1 text-white/90' : 'mt-1 text-[var(--ember-muted)]'}>
-                            {message.content}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    {isSending && (
-                      <div className="flex justify-start">
-                        <div className="ember-card rounded-[1.4rem] px-4 py-3">
-                          <div className="flex gap-1">
-                            <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--ember-muted)]" />
-                            <span
-                              className="h-2 w-2 animate-bounce rounded-full bg-[var(--ember-muted)]"
-                              style={{ animationDelay: '0.1s' }}
-                            />
-                            <span
-                              className="h-2 w-2 animate-bounce rounded-full bg-[var(--ember-muted)]"
-                              style={{ animationDelay: '0.2s' }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-
-                  {!isComplete && (
-                    <form onSubmit={handleSubmit} className="mt-4 flex gap-2 border-t ember-divider pt-4">
-                      <input
-                        type="text"
-                        value={input}
-                        onChange={(event) => setInput(event.target.value)}
-                        placeholder="Type your response..."
-                        className="ember-input flex-1"
-                        disabled={isSending}
-                      />
-                      <button
-                        type="submit"
-                        disabled={isSending || !input.trim()}
-                        className="ember-button-primary disabled:opacity-60"
-                      >
-                        Send
-                      </button>
-                    </form>
-                  )}
-                </>
-              )}
-
-              {isComplete && (
-                <div className="ember-card mt-5 rounded-[1.75rem] px-5 py-6">
-                  <p className="ember-eyebrow">Contribution saved</p>
-                  <h3 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">Thank you.</h3>
-                  <p className="ember-copy mt-2 text-sm">
-                    {data.guestFlow
-                      ? 'Your memory has been created from this interview. Go back to see the updated Ember.'
-                      : 'Your memory is now part of this Ember. You can close this page whenever you are ready.'}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="ember-chip">Owner notified</span>
-                    <span className="ember-chip">Story updated</span>
-                    <span className="ember-chip">Memory saved</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={startConversation}
-                    disabled={isSending || isCalling}
-                    className="ember-button-secondary mt-5 inline-flex px-5 disabled:opacity-60"
-                  >
-                    {isSending ? 'Opening...' : 'Add more by text'}
-                  </button>
-                  {data.guestFlow && (
-                    <Link href={`/guest/${params.token}`} className="ember-button-primary mt-5 inline-flex px-5">
-                      View your memory
-                    </Link>
-                  )}
-                  {!data.guestFlow && (
-                    <Link href={`/image/${data.image.id}`} className="ember-button-primary mt-5 inline-flex px-5">
-                      View updated memory
-                    </Link>
-                  )}
-                </div>
-              )}
+          {isComplete && (
+            <div className="mt-4 bg-white/14 px-4 py-4 text-center text-[1rem] leading-7 text-white">
+              Thanks. Ember saved your contribution and updated the memory.
             </div>
-          </section>
-        </div>
-      </div>
+          )}
+        </section>
+      )}
+
+      {mode === 'voice' && (
+        <section className="flex min-h-[calc(100vh-2.65rem-44vh)] flex-col border-t-2 border-white bg-[#3f8ab0] px-3 pt-4 pb-5 text-white">
+          <div className="flex items-start justify-between">
+            <div className="text-[1.05rem] font-semibold tracking-[-0.03em]">
+              Talk with Ember
+              {data.contributor.name ? ` | ${data.contributor.name}` : ''}
+            </div>
+            <PanelCloseButton onClick={() => setMode('askChoice')} />
+          </div>
+
+          <VoiceWaveform />
+
+          <div className="mt-1 text-[1.02rem] leading-[1.24] text-white">
+            {latestAssistantMessage}
+          </div>
+
+          <div className="mt-4 flex-1">
+            {voiceTranscript && (
+              <div className="bg-white/14 px-4 py-3 text-left text-sm leading-6 text-white">
+                {voiceTranscript}
+              </div>
+            )}
+            {voiceError && (
+              <div className="mt-4 bg-white/14 px-4 py-3 text-left text-sm leading-6 text-white">
+                {voiceError}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-[0.18rem]">
+            <ActionButton
+              label={siriEnabled ? 'SIRI ON' : 'SIRI OFF'}
+              onClick={() => setSiriEnabled((current) => !current)}
+              tone="purple"
+            />
+            <ActionButton
+              label={isRecording ? 'STOP' : 'RECORD'}
+              onClick={() => {
+                if (isRecording) {
+                  stopVoiceRecording();
+                } else {
+                  startVoiceRecording();
+                }
+              }}
+              tone="pink"
+            />
+            <ActionButton
+              label="SUBMIT"
+              onClick={() => void submitVoiceRecording()}
+              disabled={!voiceTranscript.trim() || isSending || isComplete}
+              tone="rose"
+            />
+          </div>
+
+          {isComplete && (
+            <div className="mt-4 bg-white/14 px-4 py-4 text-center text-[1rem] leading-7 text-white">
+              Thanks. Ember saved your contribution and updated the memory.
+            </div>
+          )}
+        </section>
+      )}
     </main>
   );
 }

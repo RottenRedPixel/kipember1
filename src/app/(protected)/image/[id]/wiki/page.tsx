@@ -228,7 +228,7 @@ export default function WikiPage() {
             <section className="ember-panel rounded-[2.25rem] p-6">
               <p className="ember-eyebrow">Added content</p>
               <p className="ember-copy mt-3 text-sm">
-                Click a thumbnail to open the full photo or video and its note.
+                Click a thumbnail to open the full photo, video, or audio item and its note.
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3">

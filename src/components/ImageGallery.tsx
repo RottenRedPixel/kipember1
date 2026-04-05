@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 
 type FeedImage = {
@@ -10,44 +9,34 @@ type FeedImage = {
   filename: string;
   mediaType: 'IMAGE' | 'VIDEO';
   posterFilename: string | null;
-  durationSeconds: number | null;
   originalName: string;
-  title: string | null;
-  description: string | null;
   createdAt: string;
-  shareToNetwork: boolean;
-  accessType: 'owner' | 'contributor' | 'network';
-  owner: {
-    id: string;
-    name: string | null;
-    email: string;
-  };
-  _count: {
-    contributors: number;
-    tags: number;
-  };
-  wiki: { id: string } | null;
 };
 
 const LOAD_BATCH_SIZE = 15;
 
-function GridViewIcon({ className = 'h-5 w-5' }: { className?: string }) {
+function GridViewIcon({ className = 'h-6 w-6' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="3" width="5" height="5" />
+      <rect x="10" y="3" width="5" height="5" />
+      <rect x="17" y="3" width="5" height="5" />
+      <rect x="3" y="10" width="5" height="5" />
+      <rect x="10" y="10" width="5" height="5" />
+      <rect x="17" y="10" width="5" height="5" />
+      <rect x="3" y="17" width="5" height="5" />
+      <rect x="10" y="17" width="5" height="5" />
+      <rect x="17" y="17" width="5" height="5" />
     </svg>
   );
 }
 
-function ListViewIcon({ className = 'h-5 w-5' }: { className?: string }) {
+function ListViewIcon({ className = 'h-6 w-6' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <rect x="3" y="5" width="18" height="2" rx="1" />
-      <rect x="3" y="11" width="18" height="2" rx="1" />
-      <rect x="3" y="17" width="18" height="2" rx="1" />
+      <rect x="2" y="4" width="20" height="3.2" rx="0.8" />
+      <rect x="2" y="10.4" width="20" height="3.2" rx="0.8" />
+      <rect x="2" y="16.8" width="20" height="3.2" rx="0.8" />
     </svg>
   );
 }
@@ -102,13 +91,10 @@ export default function ImageGallery() {
           Math.min(current + LOAD_BATCH_SIZE, sortedImages.length)
         );
       },
-      {
-        rootMargin: '240px 0px',
-      }
+      { rootMargin: '260px 0px' }
     );
 
     observer.observe(loadMoreRef.current);
-
     return () => observer.disconnect();
   }, [effectiveVisibleCount, sortedImages.length]);
 
@@ -117,111 +103,64 @@ export default function ImageGallery() {
     [effectiveVisibleCount, sortedImages]
   );
 
-  if (loading) {
-    return <div className="py-12 text-center text-[var(--ember-muted)]">Loading your Embers...</div>;
-  }
-
-  if (error) {
-    return <div className="ember-status ember-status-error">{error}</div>;
-  }
-
-  if (!sortedImages.length) {
-    return (
-      <section className="pb-6">
-        <div className="mb-3 inline-flex items-center rounded-full border border-[var(--ember-line)] px-4 py-2 text-sm font-medium text-[var(--ember-text)]">
-          Your Embers
-        </div>
-        <div className="ember-panel rounded-[1.6rem] px-6 py-14 text-center text-[var(--ember-muted)] sm:rounded-[2rem] sm:px-8">
-          Your feed is empty. Create your first Ember to see it here.
-        </div>
-      </section>
-    );
-  }
-
   return (
-    <section className="pb-6">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="inline-flex items-center rounded-full border border-[var(--ember-line)] px-4 py-2 text-sm font-medium text-[var(--ember-text)]">
-          Your Embers
-        </div>
-
-        <div className="inline-flex items-center gap-1 rounded-full border border-[var(--ember-line)] p-1 text-[var(--ember-muted)]">
-          <button
-            type="button"
-            onClick={() => setLayoutMode('grid')}
-            aria-label="Grid view"
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
-              layoutMode === 'grid'
-                ? 'bg-[var(--ember-orange-soft)] text-[var(--ember-orange)]'
-                : 'text-[var(--ember-muted)] hover:text-[var(--ember-text)]'
-            }`}
-          >
-            <GridViewIcon />
-          </button>
+    <section className="bg-white px-5 pt-7 pb-7">
+      <div className="mb-5 flex items-center justify-between">
+        <h1 className="text-[1.08rem] font-semibold tracking-[-0.03em] text-black">My Embers</h1>
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setLayoutMode('list')}
             aria-label="List view"
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
-              layoutMode === 'list'
-                ? 'bg-[var(--ember-orange-soft)] text-[var(--ember-orange)]'
-                : 'text-[var(--ember-muted)] hover:text-[var(--ember-text)]'
-            }`}
+            className={layoutMode === 'list' ? 'text-black' : 'text-[#c9c9c9]'}
           >
             <ListViewIcon />
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayoutMode('grid')}
+            aria-label="Grid view"
+            className={layoutMode === 'grid' ? 'text-black' : 'text-[#c9c9c9]'}
+          >
+            <GridViewIcon />
           </button>
         </div>
       </div>
 
-      <div className={layoutMode === 'grid' ? 'grid grid-cols-3 gap-2 sm:gap-3' : 'grid gap-3'}>
-        {visibleImages.map((image) => {
-          const title = getEmberTitle(image);
-
-          return (
-              <article
-                key={image.id}
-                className={`overflow-hidden ember-photo-shell transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(17,17,17,0.08)] ${
-                  layoutMode === 'list' ? 'ember-panel p-2 sm:p-3' : ''
-                }`}
-              >
-                <Link
-                  href={`/image/${image.id}`}
-                  className="group block overflow-hidden ember-photo-shell"
-                >
-                  <div className="relative overflow-hidden ember-photo-shell">
-                    <MediaPreview
-                      mediaType={image.mediaType}
-                      filename={image.filename}
-                    posterFilename={image.posterFilename}
-                    originalName={title}
-                    usePosterForVideo
-                    className={`w-full object-cover ${
-                      layoutMode === 'list' ? 'h-[15rem] sm:h-[21rem]' : 'aspect-[0.82] h-auto'
-                    }`}
-                  />
-
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-[rgba(17,17,17,0.94)] via-[rgba(17,17,17,0.58)] to-transparent px-1.5 py-1.5 sm:px-4 sm:py-4">
-                    <h2
-                      className={`rounded-[0.75rem] bg-[rgba(17,17,17,0.38)] px-1.5 py-1 text-[0.8rem] font-semibold leading-[1.12] tracking-[-0.02em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)] sm:rounded-[1rem] sm:px-3 sm:py-2 ${
-                        layoutMode === 'list'
-                          ? 'line-clamp-none text-base sm:text-xl'
-                          : 'line-clamp-3 sm:line-clamp-2 sm:text-lg'
-                      }`}
-                    >
-                      {title}
-                    </h2>
-                  </div>
-                </div>
-              </Link>
-            </article>
-          );
-        })}
-      </div>
-
-      {effectiveVisibleCount < sortedImages.length && (
-        <div ref={loadMoreRef} className="mt-3 py-3 text-center text-sm text-[var(--ember-muted)]">
-          Loading more Embers...
+      {loading ? (
+        <div className={layoutMode === 'grid' ? 'grid grid-cols-3 gap-2.5' : 'grid gap-2.5'}>
+          {Array.from({ length: layoutMode === 'grid' ? 12 : 3 }).map((_, index) => (
+            <div
+              key={index}
+              className={layoutMode === 'grid' ? 'aspect-square bg-[#d3d3d3]' : 'aspect-[1.22] bg-[#d3d3d3]'}
+            />
+          ))}
         </div>
+      ) : error ? (
+        <div className="text-sm text-[#8f8f8f]">{error}</div>
+      ) : !visibleImages.length ? (
+        <div className="text-sm text-[#8f8f8f]">No embers yet.</div>
+      ) : (
+        <>
+          <div className={layoutMode === 'grid' ? 'grid grid-cols-3 gap-2.5' : 'grid gap-2.5'}>
+            {visibleImages.map((image) => (
+              <Link key={image.id} href={`/image/${image.id}`} className="block overflow-hidden bg-[#d3d3d3]">
+                <MediaPreview
+                  mediaType={image.mediaType}
+                  filename={image.filename}
+                  posterFilename={image.posterFilename}
+                  originalName={image.originalName}
+                  usePosterForVideo
+                  className={layoutMode === 'grid' ? 'aspect-square w-full object-cover' : 'aspect-[1.22] w-full object-cover'}
+                />
+              </Link>
+            ))}
+          </div>
+
+          {effectiveVisibleCount < sortedImages.length && (
+            <div ref={loadMoreRef} className="h-12" aria-hidden="true" />
+          )}
+        </>
       )}
     </section>
   );

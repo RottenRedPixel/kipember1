@@ -21,7 +21,7 @@ function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
 type UploadConfirmModalProps = {
   open: boolean;
   preview: string | null;
-  mediaType: 'image' | 'video' | null;
+  mediaType: 'image' | 'video' | 'audio' | null;
   fileName: string;
   title: string;
   subtitle: string;
@@ -32,6 +32,7 @@ type UploadConfirmModalProps = {
   onCancel: () => void;
   onConfirm: () => void;
   children?: ReactNode;
+  layout?: 'card' | 'create-screen';
 };
 
 export default function UploadConfirmModal({
@@ -48,9 +49,73 @@ export default function UploadConfirmModal({
   onCancel,
   onConfirm,
   children,
+  layout = 'card',
 }: UploadConfirmModalProps) {
   if (!open) {
     return null;
+  }
+
+  if (layout === 'create-screen') {
+    const promptLabel =
+      mediaType === 'video'
+        ? 'Would you like to create an ember from this video?'
+        : 'Would you like to create an ember from this photo?';
+
+    return (
+      <div className="fixed inset-x-0 top-[2.7rem] bottom-0 z-[65]">
+        <div className="mx-auto flex h-full w-full max-w-[26rem] flex-col">
+          <div className="relative flex-1 overflow-hidden bg-[#a6b78f]">
+            {mediaType === 'video' ? (
+              <video
+                src={preview || undefined}
+                controls
+                playsInline
+                preload="metadata"
+                className="h-full w-full object-cover"
+              />
+            ) : mediaType === 'audio' ? (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-5 px-8 text-center text-white">
+                <div className="text-[1.75rem] font-medium tracking-[-0.03em]">{fileName}</div>
+                {preview ? (
+                  <audio src={preview} controls preload="metadata" className="w-full max-w-[18rem]" />
+                ) : null}
+              </div>
+            ) : (
+              <img
+                src={preview || undefined}
+                alt={fileName}
+                className="h-full w-full object-cover"
+              />
+            )}
+          </div>
+
+          <div className="bg-[var(--ember-orange)] px-10 py-8 text-white">
+            <p className="max-w-[15rem] text-[1.12rem] leading-[1.28] tracking-[-0.03em]">
+              {promptLabel}
+            </p>
+
+            <div className="mt-7 grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSubmitting}
+                className="inline-flex min-h-[3.15rem] w-full items-center justify-center bg-[#efb39b] px-4 text-[1.02rem] font-semibold uppercase tracking-[-0.01em] text-[var(--ember-orange-deep)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cancelLabel}
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={isSubmitting}
+                className="inline-flex min-h-[3.15rem] w-full items-center justify-center bg-white px-4 text-[1.02rem] font-semibold uppercase tracking-[-0.01em] text-[var(--ember-orange-deep)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSubmitting ? confirmBusyLabel : confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -81,6 +146,26 @@ export default function UploadConfirmModal({
                   preload="metadata"
                   className="h-full w-full object-cover"
                 />
+              ) : mediaType === 'audio' ? (
+                <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-[var(--ember-soft)] px-6 text-center">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[rgba(255,102,33,0.12)] text-[var(--ember-orange)]">
+                    <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10" aria-hidden="true">
+                      <path d="M12 3a1 1 0 0 1 1 1v9.55A4 4 0 1 1 11 17V7.82l6-1.34V14a4 4 0 1 1-2-3.46V7.91l-4 .9V17a4 4 0 1 1-2-3.46V4a1 1 0 0 1 1-1h2Z" />
+                    </svg>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-[var(--ember-text)]">Audio clip</div>
+                    <div className="text-xs leading-6 text-[var(--ember-muted)]">{fileName}</div>
+                  </div>
+                  {preview ? (
+                    <audio
+                      src={preview}
+                      controls
+                      preload="metadata"
+                      className="w-full"
+                    />
+                  ) : null}
+                </div>
               ) : (
                 <img
                   src={preview || undefined}

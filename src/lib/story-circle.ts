@@ -28,7 +28,7 @@ export type StoryCircleData = {
   image: {
     id: string;
     filename: string;
-    mediaType: 'IMAGE' | 'VIDEO';
+    mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
     posterFilename: string | null;
     originalName: string;
     description: string | null;

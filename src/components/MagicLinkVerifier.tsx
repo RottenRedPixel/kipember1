@@ -50,7 +50,7 @@ export default function MagicLinkVerifier() {
   }, [router, token]);
 
   return (
-    <div className="ember-panel-strong w-full max-w-md rounded-[2rem] p-8 text-center">
+    <div className="ember-auth-card p-8 text-center">
       <EmberBrand subtitle="magic link" compact />
       <h1 className="ember-heading mt-6 text-4xl text-[var(--ember-text)]">
         Opening Ember

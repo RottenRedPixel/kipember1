@@ -14,6 +14,7 @@ type StoryCutMediaBlock = {
   mediaId: string | null;
   mediaName: string | null;
   mediaUrl: string | null;
+  mediaType: string | null;
   order: number;
 };
 
@@ -121,6 +122,9 @@ const STORY_CUT_SCHEMA = {
             anyOf: [{ type: 'string' }, { type: 'null' }],
           },
           mediaUrl: {
+            anyOf: [{ type: 'string' }, { type: 'null' }],
+          },
+          mediaType: {
             anyOf: [{ type: 'string' }, { type: 'null' }],
           },
         },
@@ -396,6 +400,7 @@ export async function generateStoryCut(
     {
       mediaId: context.image.id,
       mediaName: context.imageTitle,
+      mediaType: context.image.mediaType,
       mediaUrl:
         context.image.mediaType === 'VIDEO' && context.image.posterFilename
           ? `/api/uploads/${context.image.posterFilename}`
@@ -405,6 +410,7 @@ export async function generateStoryCut(
     ...context.image.attachments.map((attachment) => ({
       mediaId: attachment.id,
       mediaName: attachment.originalName,
+      mediaType: attachment.mediaType,
       mediaUrl:
         attachment.mediaType === 'VIDEO' && attachment.posterFilename
           ? `/api/uploads/${attachment.posterFilename}`
@@ -473,7 +479,10 @@ export async function generateStoryCut(
           .join('\n')}`
       : null,
     `SELECTED MEDIA FOR STORY\n${selectedMedia
-      .map((media, index) => `${index + 1}. ${media.mediaName} (${media.kind})`)
+      .map(
+        (media, index) =>
+          `${index + 1}. ${media.mediaName} (${media.kind}, ${media.mediaType})`
+      )
       .join('\n')}`,
     contributorQuotes.length > 0
       ? `DIRECT QUOTES AVAILABLE\n${contributorQuotes
@@ -508,6 +517,7 @@ Rules:
 - If context is thin, stay emotionally grounded without inventing specifics.
 - Always include the cover photo as the first media block.
 - Use supporting media blocks only when they help the flow.
+- Audio media may be used as ambient or supporting sound moments in the story plan when relevant.
 - Build a clear emotional arc that matches the selected style.
 - The script should read like a polished story cut, not like a wiki section list.
 - Respect the requested voice casting. If Ember voice is disabled, do not create EMBER VOICE lines. If Narrator is disabled, do not create NARRATOR lines.

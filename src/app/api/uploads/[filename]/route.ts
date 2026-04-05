@@ -13,6 +13,14 @@ const CONTENT_TYPES: Record<string, string> = {
   '.mov': 'video/quicktime',
   '.webm': 'video/webm',
   '.m4v': 'video/x-m4v',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.ogg': 'audio/ogg',
+  '.oga': 'audio/ogg',
+  '.mpga': 'audio/mpeg',
+  '.mpeg': 'audio/mpeg',
 };
 
 export async function GET(

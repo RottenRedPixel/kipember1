@@ -1,58 +1,54 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import EmberBrand from '@/components/EmberBrand';
-import EmberExplainerPanel from '@/components/EmberExplainerPanel';
-import GuestImageUploader from '@/components/GuestImageUploader';
-import EmberMobileTopBar from '@/components/EmberMobileTopBar';
+import HeaderMenu from '@/components/HeaderMenu';
 import { getCurrentAuth } from '@/lib/auth-server';
 
-const memoryPrinciples = [
-  {
-    eyebrow: 'What happened',
-    title: 'Shared reflection',
-    copy:
-      'Ember gathers multiple voices around one photo, one place, or one piece of family history so the record feels fuller than a caption.',
-  },
-  {
-    eyebrow: 'How it felt',
-    title: 'Real voices',
-    copy:
-      'Stories can come in by text or call, so the emotional tone of the memory stays intact instead of getting flattened into a note.',
-  },
-  {
-    eyebrow: 'Why it mattered',
-    title: 'Living archive',
-    copy:
-      'Every response stays connected to the same Ember, giving the memory more depth as new people and details are added over time.',
-  },
-];
+function EmberSparkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-14 w-14 text-[var(--ember-orange)]" fill="currentColor" aria-hidden="true">
+      <circle cx="12" cy="12" r="2.15" />
+      <path d="M12 1.85c.56 0 1.02.46 1.02 1.02v3.43a1.02 1.02 0 1 1-2.04 0V2.87c0-.56.46-1.02 1.02-1.02Z" />
+      <path d="M12 17.7c.56 0 1.02.46 1.02 1.02v3.43a1.02 1.02 0 0 1-2.04 0v-3.43c0-.56.46-1.02 1.02-1.02Z" />
+      <path d="M1.85 12c0-.56.46-1.02 1.02-1.02H6.3a1.02 1.02 0 1 1 0 2.04H2.87c-.56 0-1.02-.46-1.02-1.02Z" />
+      <path d="M17.7 12c0-.56.46-1.02 1.02-1.02h3.43a1.02 1.02 0 1 1 0 2.04h-3.43c-.56 0-1.02-.46-1.02-1.02Z" />
+      <path d="M4.36 4.36a1.02 1.02 0 0 1 1.44 0l2.43 2.43a1.02 1.02 0 1 1-1.44 1.44L4.36 5.8a1.02 1.02 0 0 1 0-1.44Z" />
+      <path d="M15.77 15.77a1.02 1.02 0 0 1 1.44 0l2.43 2.43a1.02 1.02 0 0 1-1.44 1.44l-2.43-2.43a1.02 1.02 0 0 1 0-1.44Z" />
+      <path d="M19.64 4.36a1.02 1.02 0 0 1 0 1.44l-2.43 2.43a1.02 1.02 0 1 1-1.44-1.44l2.43-2.43a1.02 1.02 0 0 1 1.44 0Z" />
+      <path d="M8.23 15.77a1.02 1.02 0 0 1 0 1.44L5.8 19.64a1.02 1.02 0 0 1-1.44-1.44l2.43-2.43a1.02 1.02 0 0 1 1.44 0Z" />
+    </svg>
+  );
+}
 
-const archiveSteps = [
-  {
-    step: '01',
-    title: 'Start with a moment',
-    copy:
-      'A photo, a video, a place, or a story prompt becomes the Ember people gather around.',
-  },
-  {
-    step: '02',
-    title: 'Open the Story Circle',
-    copy:
-      'Invite friends and family to reflect together so Ember can preserve not just facts, but reactions, voices, and perspective.',
-  },
-  {
-    step: '03',
-    title: 'Keep it alive',
-    copy:
-      'The memory keeps evolving as more voices, follow-ups, and context are added back into the same archive.',
-  },
-];
+function MicIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-14 w-14 text-[#4d61ff]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M6.5 11.5a5.5 5.5 0 0 0 11 0" />
+      <path d="M12 17v4" />
+      <path d="M8.5 21h7" />
+    </svg>
+  );
+}
 
-const archiveSignals = [
-  'Photos and videos become shared memory spaces.',
-  'Contributors reply by text or by voice.',
-  'Ember turns scattered recollection into one living record.',
-];
+function StoryCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-12 w-12" aria-hidden="true">
+      <circle cx="12" cy="6.2" r="4.1" fill="#f7b733" />
+      <circle cx="17.6" cy="12" r="4.1" fill="#5c7cff" />
+      <circle cx="12" cy="17.8" r="4.1" fill="#65c466" />
+      <circle cx="6.4" cy="12" r="4.1" fill="#f2799b" />
+      <circle cx="12" cy="12" r="2.5" fill="#ffffff" />
+    </svg>
+  );
+}
+
+function KeepAliveIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-12 w-12 text-[#5c7cff]" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 19.2c-4.35-3.16-6.75-5.64-6.75-8.57 0-2.15 1.67-3.88 3.76-3.88 1.37 0 2.67.67 3.49 1.77.82-1.1 2.12-1.77 3.49-1.77 2.09 0 3.76 1.73 3.76 3.88 0 2.93-2.4 5.41-6.75 8.57Z" />
+    </svg>
+  );
+}
 
 export default async function LandingPage() {
   const auth = await getCurrentAuth();
@@ -62,272 +58,76 @@ export default async function LandingPage() {
   }
 
   return (
-    <main className="ember-page">
-      <div className="relative z-10 mx-auto max-w-6xl px-3 pt-1 pb-4 sm:px-4 sm:pt-2 sm:pb-6">
-        <header>
-          <div className="hidden items-center justify-between px-1 py-1 sm:flex">
-            <EmberBrand subtitle="living memory companion" />
-            <div className="flex items-center gap-3">
-              <Link href="/login" className="ember-button-secondary px-5">
-                Login
+    <main className="min-h-screen bg-[#f3f3f3]">
+      <div className="mx-auto min-h-screen max-w-[26rem] overflow-hidden bg-white shadow-[0_0_0_1px_rgba(32,32,32,0.18)]">
+        <header className="bg-[#202020]">
+          <div className="flex h-[2.75rem] items-center justify-between px-4 text-[0.72rem] font-semibold tracking-[0.02em] text-white">
+            <div className="flex items-center gap-5">
+              <Link href="/" className="text-white/62">
+                HOME
               </Link>
-              <Link href="/signup" className="ember-button-primary px-5">
-                Create account
-              </Link>
+              <span className="text-white/62">EMBERS</span>
             </div>
-          </div>
 
-          <EmberMobileTopBar
-            homeHref="/"
-            embersHref="/feed"
-            addHref="/?openGuestUploader=1"
-            accountHref="/access"
-          />
+            <HeaderMenu
+              authMode="signed-out"
+              className="text-white/52 hover:text-white"
+              iconClassName="h-[0.95rem] w-[0.95rem]"
+              panelClassName="right-0 top-[calc(100%+0.35rem)] min-w-[8.5rem] rounded-none border border-[#2d2d2d] bg-[#202020] p-1 shadow-[0_12px_28px_rgba(0,0,0,0.24)]"
+            />
+          </div>
         </header>
 
-        <section className="py-8">
-          <div id="add-ember">
-            <GuestImageUploader />
-          </div>
+        <section className="px-7 pt-11 pb-14 text-center">
+          <div className="flex flex-col items-center">
+            <EmberSparkIcon />
 
-          <div className="mt-5">
-            <EmberExplainerPanel learnMoreHref="#learn-more" />
-          </div>
-        </section>
-
-        <section
-          id="learn-more"
-          className="grid gap-8 py-12 lg:grid-cols-[1.02fr_0.98fr] lg:items-center lg:py-16"
-        >
-          <div>
-          <div className="inline-flex rounded-[0.85rem] border border-[var(--ember-line)] bg-white px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)]">
-            Hi, this is Ember
-          </div>
-
-            <h1 className="ember-heading mt-7 max-w-4xl text-5xl leading-[0.96] text-[var(--ember-text)] sm:text-6xl lg:text-7xl">
-              Preserve the memory with the people who lived it.
+            <h1 className="mt-5 text-[2.15rem] font-black leading-[1.03] tracking-[-0.045em] text-[#111111]">
+              Hi, this is ember
             </h1>
 
-            <p className="ember-copy mt-6 max-w-2xl text-lg leading-8">
-              Ember is an AI-guided companion that helps you preserve memories
-              through shared, thoughtful conversations with friends and family.
+            <p className="mt-3 max-w-[18rem] text-[0.97rem] leading-[1.65] text-[#8d8d8d]">
+              An AI-guided companion that helps you preserve memories through shared,
+              thoughtful conversations with friends and family.
             </p>
 
-            <p className="ember-copy mt-4 max-w-2xl text-base leading-8">
-              It records the real voices of the people who gather to reflect on a
-              moment, capturing what happened, how it felt, and what it meant to
-              everyone.
-            </p>
-
-            <div className="mt-9 flex flex-col gap-4 sm:flex-row">
-              <Link href="/signup" className="ember-button-primary px-6">
-                Start your first Ember
-              </Link>
-              <Link href="/login" className="ember-button-secondary px-6">
-                I already have an account
-              </Link>
+            <div className="mt-10 flex flex-col items-center">
+              <MicIcon />
+              <p className="mt-4 max-w-[19rem] text-[0.97rem] leading-[1.7] text-[#8d8d8d]">
+                Ember records real voices of the people who gather to reflect on a
+                moment-capturing what happened, how it felt, and what it meant to
+                everyone.
+              </p>
             </div>
 
-            <div className="mt-10 grid gap-3 text-sm text-[var(--ember-muted)] sm:grid-cols-3">
-              {archiveSignals.map((signal) => (
-                <div key={signal} className="ember-card rounded-[1.5rem] px-4 py-4 leading-7">
-                  {signal}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="ember-panel relative overflow-hidden rounded-[2rem] p-5 sm:p-6">
-            <div className="relative grid gap-4">
-              <div className="ember-card rounded-[1.6rem] px-5 py-5">
-                <div className="flex items-center justify-between text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                  <span>The Story Circle</span>
-                  <span>Shared conversation</span>
-                </div>
-
-                <div className="mt-5 space-y-3">
-                  <div className="max-w-[88%] rounded-[1.2rem] border border-[var(--ember-line)] bg-white px-4 py-3">
-                    <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--ember-muted)]">
-                      Owner prompt
-                    </div>
-                    <p className="mt-2 text-sm leading-7 text-[var(--ember-text)]">
-                      Tell me what everybody remembers about that night by the lake.
-                    </p>
-                  </div>
-
-                  <div className="ml-auto max-w-[85%] rounded-[1.2rem] border border-[var(--ember-line)] bg-white px-4 py-3 text-[var(--ember-text)]">
-                    <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--ember-muted)]">
-                      Family response
-                    </div>
-                    <p className="mt-2 text-sm leading-7">
-                      Dad remembers the storm rolling in. Your sister remembers laughing
-                      through it. Ember keeps both.
-                    </p>
-                  </div>
-
-                  <div className="max-w-[80%] rounded-[1.2rem] border border-[rgba(255,102,33,0.22)] bg-[rgba(255,102,33,0.08)] px-4 py-3 text-[var(--ember-text)]">
-                    <div className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--ember-orange-deep)]">
-                      Ember thread
-                    </div>
-                    <p className="mt-2 text-sm leading-7 text-[var(--ember-text)]">
-                      What happened. How it felt. Why it still matters.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-[0.95fr_1.05fr]">
-                <div className="ember-card rounded-[1.8rem] px-5 py-5">
-                  <p className="ember-eyebrow">Keep It Alive</p>
-                  <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
-                    One memory, still growing
-                  </h2>
-                  <p className="ember-copy mt-4 text-sm leading-7">
-                    Ember connects every story into a living archive, evolving as new
-                    memories, voices, and perspectives are added over time.
-                  </p>
-                </div>
-
-                <div className="ember-card rounded-[1.8rem] px-5 py-5">
-                  <div className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-orange-deep)]">
-                    Archive view
-                  </div>
-                  <div className="mt-4 space-y-3">
-                    <div className="rounded-[1.25rem] border border-[var(--ember-line)] bg-white px-4 py-3">
-                      <div className="text-sm font-semibold text-[var(--ember-text)]">
-                        Photo
-                      </div>
-                      <div className="mt-1 text-sm text-[var(--ember-muted)]">
-                        The porch after dinner
-                      </div>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-[var(--ember-line)] bg-white px-4 py-3">
-                      <div className="text-sm font-semibold text-[var(--ember-text)]">
-                        Voices
-                      </div>
-                      <div className="mt-1 text-sm text-[var(--ember-muted)]">
-                        Mom, Theo, Ava, Grandpa
-                      </div>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-[var(--ember-line)] bg-white px-4 py-3">
-                      <div className="text-sm font-semibold text-[var(--ember-text)]">
-                        Meaning
-                      </div>
-                      <div className="mt-1 text-sm text-[var(--ember-muted)]">
-                        The last summer before everyone moved away
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-5 pb-5 md:grid-cols-3">
-          {memoryPrinciples.map((principle) => (
-            <article key={principle.title} className="ember-panel rounded-[2rem] p-6">
-              <p className="ember-eyebrow">{principle.eyebrow}</p>
-              <h2 className="ember-heading mt-3 text-3xl text-[var(--ember-text)]">
-                {principle.title}
+            <div className="mt-12 flex flex-col items-center">
+              <h2 className="text-[2rem] font-black leading-none tracking-[-0.045em] text-[#111111]">
+                The Story Circle
               </h2>
-              <p className="ember-copy mt-4 text-sm leading-7">{principle.copy}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="grid gap-5 py-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-          <div className="ember-panel rounded-[2.2rem] p-6 sm:p-7">
-            <p className="ember-eyebrow">The Story Circle</p>
-            <h2 className="ember-heading mt-4 max-w-xl text-4xl text-[var(--ember-text)] sm:text-5xl">
-              Invite people into a memory without losing the thread.
-            </h2>
-            <p className="ember-copy mt-5 max-w-xl text-base leading-8">
-              Invite others to join a group conversation about a time or place,
-              preserving not just the stories, but the voices and reactions around
-              them.
-            </p>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              <div className="ember-card rounded-[1.5rem] px-5 py-4">
-                <div className="text-sm font-semibold text-[var(--ember-text)]">
-                  Friends and family
-                </div>
-                <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
-                  The people closest to the moment add context the camera cannot hold.
-                </p>
+              <div className="mt-3">
+                <StoryCircleIcon />
               </div>
-              <div className="ember-card rounded-[1.5rem] px-5 py-4">
-                <div className="text-sm font-semibold text-[var(--ember-text)]">
-                  Voice and text
-                </div>
-                <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
-                  Contributors can respond in the way that feels most natural to them.
-                </p>
-              </div>
+              <p className="mt-4 max-w-[18.8rem] text-[0.97rem] leading-[1.7] text-[#8d8d8d]">
+                Invite others to join a group conversation about a time or place
+                {' '}preserving not just the stories, but the voices and reactions
+                around them.
+              </p>
             </div>
-          </div>
 
-          <div className="grid gap-4">
-            {archiveSteps.map((item) => (
-              <article
-                key={item.step}
-                className="ember-card grid gap-4 rounded-[2rem] px-5 py-5 sm:grid-cols-[4.5rem_1fr] sm:items-start"
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-[1.3rem] bg-[rgba(255,102,33,0.1)] text-lg font-semibold text-[var(--ember-orange-deep)]">
-                  {item.step}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
-                    {item.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-7 text-[var(--ember-muted)]">
-                    {item.copy}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="pb-12 pt-6">
-          <div className="ember-panel overflow-hidden rounded-[2rem] px-6 py-8 sm:px-8 sm:py-10">
-            <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-              <div>
-                <p className="text-[0.74rem] font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                  Start preserving the memory now
-                </p>
-                <h2 className="ember-heading mt-4 max-w-3xl text-4xl text-[var(--ember-text)] sm:text-5xl">
-                  Build an archive that feels more human every time someone adds to it.
-                </h2>
-                <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--ember-muted)]">
-                  Create an Ember, invite the people who were there, and let the story
-                  keep unfolding in one place.
-                </p>
+            <div className="mt-12 flex flex-col items-center">
+              <h2 className="text-[2rem] font-black leading-none tracking-[-0.045em] text-[#111111]">
+                Keep It Alive
+              </h2>
+              <div className="mt-3">
+                <KeepAliveIcon />
               </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Link href="/signup" className="ember-button-primary px-6">
-                  Create account
-                </Link>
-                <Link href="/login" className="ember-button-secondary px-6">
-                  Login
-                </Link>
-              </div>
+              <p className="mt-4 max-w-[18.6rem] text-[0.97rem] leading-[1.7] text-[#8d8d8d]">
+                Ember connects every story into a living archive. Evolving as new
+                memories, voices, and perspectives are added over time.
+              </p>
             </div>
           </div>
         </section>
-
-        <footer className="pb-10 text-sm text-[var(--ember-muted)]">
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href="/privacy" className="ember-button-secondary px-4">
-              Privacy
-            </Link>
-            <Link href="/support" className="ember-button-secondary px-4">
-              Support
-            </Link>
-          </div>
-        </footer>
       </div>
     </main>
   );

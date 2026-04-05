@@ -4,13 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import UploadStarterCard from '@/components/UploadStarterCard';
 import UploadConfirmModal from '@/components/UploadConfirmModal';
+import UploadProcessingOverlay from '@/components/UploadProcessingOverlay';
 
-const UPLOAD_STEPS = [
-  'Uploading your media',
-  'Reading the scene',
-  'Writing a quick first memory',
-  'Preparing Ember to talk with you',
-];
+const PROCESSING_STAGE_DELAY_MS = 1100;
 
 function detectSelectedMediaType(file: File | null): 'image' | 'video' | null {
   if (!file) {
@@ -51,16 +47,7 @@ export default function GuestImageUploader() {
   useEffect(() => {
     if (!isUploading) {
       setUploadStepIndex(0);
-      return;
     }
-
-    const intervalId = window.setInterval(() => {
-      setUploadStepIndex((current) =>
-        current < UPLOAD_STEPS.length - 1 ? current + 1 : current
-      );
-    }, 1500);
-
-    return () => window.clearInterval(intervalId);
   }, [isUploading]);
 
   useEffect(() => {
@@ -121,15 +108,23 @@ export default function GuestImageUploader() {
     }
 
     setIsUploading(true);
+    setUploadStepIndex(0);
 
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const response = await fetch('/api/guest/upload', {
+      const uploadPromise = fetch('/api/guest/upload', {
         method: 'POST',
         body: formData,
       });
+
+      await new Promise((resolve) => window.setTimeout(resolve, PROCESSING_STAGE_DELAY_MS));
+      setUploadStepIndex(1);
+      await new Promise((resolve) => window.setTimeout(resolve, PROCESSING_STAGE_DELAY_MS));
+      setUploadStepIndex(2);
+
+      const response = await uploadPromise;
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -142,6 +137,7 @@ export default function GuestImageUploader() {
         alert(warning);
       }
 
+      await new Promise((resolve) => window.setTimeout(resolve, 500));
       router.push(`/guest/${token}`);
     } catch (error) {
       console.error('Guest upload error:', error);
@@ -155,96 +151,11 @@ export default function GuestImageUploader() {
 
   return (
     <div className="w-full">
-      {isUploading && (
-        <div className="fixed inset-0 z-[70] bg-[rgba(17,17,17,0.72)] px-4 py-6 backdrop-blur-md">
-          <div className="mx-auto flex min-h-full w-full max-w-2xl items-center justify-center">
-            <div className="w-full overflow-hidden rounded-[2.2rem] border border-white/10 bg-[rgba(20,20,20,0.88)] shadow-[0_32px_80px_rgba(0,0,0,0.35)]">
-              <div className="grid gap-0 md:grid-cols-[1.05fr_0.95fr]">
-                <div className="relative min-h-[18rem] overflow-hidden bg-black">
-                  {selectedMediaType === 'video' ? (
-                    <video
-                      src={preview || undefined}
-                      muted
-                      playsInline
-                      loop
-                      autoPlay
-                      className="h-full w-full object-cover opacity-45"
-                    />
-                  ) : (
-                    <img
-                      src={preview || undefined}
-                      alt="Uploading preview"
-                      className="h-full w-full object-cover opacity-45"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,17,17,0.08),rgba(17,17,17,0.84))]" />
-                  <div className="absolute inset-x-0 bottom-0 p-6">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/72">
-                      Guest demo
-                    </p>
-                    <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
-                      {selectedFile?.name || 'Preparing upload'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col justify-center px-6 py-7 sm:px-8">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(255,102,33,0.16)] text-[var(--ember-orange)]">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />
-                    </span>
-                    <div>
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/52">
-                        Ember is working
-                      </p>
-                      <div className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-white">
-                        {UPLOAD_STEPS[uploadStepIndex]}
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="mt-5 text-sm leading-6 text-white/72">
-                    Ember is building a quick visual read first, then setting up the interview that brings the memory to life.
-                  </p>
-
-                  <div className="mt-6 space-y-3">
-                    {UPLOAD_STEPS.map((step, index) => {
-                      const isActive = index === uploadStepIndex;
-                      const isDone = index < uploadStepIndex;
-
-                      return (
-                        <div
-                          key={step}
-                          className={`flex items-center gap-3 rounded-[1rem] px-3 py-3 text-sm transition ${
-                            isActive
-                              ? 'bg-white/10 text-white'
-                              : isDone
-                                ? 'bg-white/6 text-white/74'
-                                : 'bg-transparent text-white/42'
-                          }`}
-                        >
-                          <span
-                            className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold ${
-                              isActive
-                                ? 'bg-[var(--ember-orange)] text-white'
-                                : isDone
-                                  ? 'bg-white/18 text-white'
-                                  : 'bg-white/10 text-white/60'
-                            }`}
-                          >
-                            {isDone ? '✓' : index + 1}
-                          </span>
-                          <span>{step}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <UploadProcessingOverlay
+        open={isUploading}
+        stageIndex={uploadStepIndex}
+        mediaType={selectedMediaType}
+      />
 
       <input
         ref={fileInputRef}
@@ -254,6 +165,7 @@ export default function GuestImageUploader() {
         className="hidden"
         id="guest-file-input"
       />
+
       <UploadStarterCard
         title="Create an Ember"
         subtitle="Upload a photo to create your first ember."

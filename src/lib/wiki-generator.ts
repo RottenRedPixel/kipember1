@@ -234,7 +234,7 @@ function appendAttachmentNotes(
   wikiContent: string,
   attachments: Array<{
     originalName: string;
-    mediaType: 'IMAGE' | 'VIDEO';
+    mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
     description: string | null;
   }>
 ) {
@@ -247,7 +247,12 @@ function appendAttachmentNotes(
   }
 
   const sectionLines = describedAttachments.map((attachment, index) => {
-    const mediaLabel = attachment.mediaType === 'VIDEO' ? 'Video' : 'Photo';
+    const mediaLabel =
+      attachment.mediaType === 'VIDEO'
+        ? 'Video'
+        : attachment.mediaType === 'AUDIO'
+          ? 'Audio'
+          : 'Photo';
     return `${index + 1}. **${mediaLabel} ${index + 1}** (${attachment.originalName})\n   ${attachment.description?.trim()}`;
   });
 

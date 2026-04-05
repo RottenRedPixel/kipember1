@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { getAppBaseUrl } from '@/lib/app-url';
+import { getOrCreateShortLink } from '@/lib/short-links';
 import { sendSMS } from '@/lib/twilio';
 
 const BASE_URL = getAppBaseUrl();
@@ -30,6 +31,15 @@ export async function sendContributorSmsInvite(
       name: true,
       phoneNumber: true,
       token: true,
+      image: {
+        select: {
+          owner: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -42,10 +52,14 @@ export async function sendContributorSmsInvite(
   }
 
   const inviteUrl = buildContributorInviteUrl(contributor.token);
-  const greeting = contributor.name ? `Hi ${contributor.name}!` : 'Hi!';
-  const intro = `${greeting} You're invited to share your memories about a special photo with Ember.`;
-  const linkMessage = `Tap here to text with Ember or speak with Ember: ${inviteUrl}`;
-  const combinedMessage = `${intro} ${linkMessage}`;
+  const shortLink = await getOrCreateShortLink(inviteUrl);
+  const shortInviteUrl = shortLink.shortUrl;
+  const ownerName = contributor.image.owner.name?.trim() || 'Someone';
+  const intro = `${ownerName} needs your help to complete a memory shared with you.`;
+  const linkMessage = `Go to ${shortInviteUrl} to start!`;
+  const emberMessage =
+    'Ember is a memory app that helps preserve moments through guided conversations.';
+  const combinedMessage = `${intro} ${linkMessage} ${emberMessage}`;
   const phone = formatPhoneNumber(contributor.phoneNumber);
 
   try {
@@ -54,6 +68,7 @@ export async function sendContributorSmsInvite(
     } else {
       await sendSMS(phone, intro);
       await sendSMS(phone, linkMessage);
+      await sendSMS(phone, emberMessage);
     }
 
     await prisma.contributor.update({
@@ -61,9 +76,9 @@ export async function sendContributorSmsInvite(
       data: { inviteSent: true },
     });
 
-    return { success: true, inviteUrl };
+    return { success: true, inviteUrl: shortInviteUrl };
   } catch (error) {
     console.error(`Failed to send SMS to ${phone}:`, error);
-    return { success: false, inviteUrl };
+    return { success: false, inviteUrl: shortInviteUrl };
   }
 }

@@ -2,12 +2,26 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MediaPreview from '@/components/MediaPreview';
-import ImageAttachmentViewer, { type ImageAttachmentRecord } from '@/components/ImageAttachmentViewer';
+import ImageAttachmentViewer, {
+  type ImageAttachmentRecord,
+} from '@/components/ImageAttachmentViewer';
 import UploadConfirmModal from '@/components/UploadConfirmModal';
 
-function detectSelectedMediaType(file: File | null): 'image' | 'video' | null {
+type SelectedAttachment = {
+  file: File;
+  mediaType: 'image' | 'video' | 'audio';
+  previewUrl: string | null;
+};
+
+function detectSelectedMediaType(
+  file: File | null
+): 'image' | 'video' | 'audio' | null {
   if (!file) {
     return null;
+  }
+
+  if (file.type.startsWith('audio/')) {
+    return 'audio';
   }
 
   if (file.type.startsWith('video/')) {
@@ -33,21 +47,29 @@ export default function ImageAttachmentGallery({
   onUpdate: () => Promise<void>;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedAttachments, setSelectedAttachments] = useState<
+    SelectedAttachment[]
+  >([]);
   const [selectionError, setSelectionError] = useState('');
   const [newAttachmentDescription, setNewAttachmentDescription] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [activeAttachmentId, setActiveAttachmentId] = useState<string | null>(null);
-  const [draftDescriptions, setDraftDescriptions] = useState<Record<string, string>>({});
+  const [activeAttachmentId, setActiveAttachmentId] = useState<string | null>(
+    null
+  );
+  const [draftDescriptions, setDraftDescriptions] = useState<
+    Record<string, string>
+  >({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
   const activeAttachment =
-    attachments.find((attachment) => attachment.id === activeAttachmentId) || null;
-  const selectedMediaType = detectSelectedMediaType(selectedFile);
+    attachments.find((attachment) => attachment.id === activeAttachmentId) ||
+    null;
+  const selectedFiles = selectedAttachments.map((attachment) => attachment.file);
+  const selectedPreviewUrl = selectedAttachments[0]?.previewUrl || null;
+  const selectedMediaType = selectedAttachments[0]?.mediaType || null;
 
   useEffect(() => {
     setDraftDescriptions((current) => {
@@ -81,11 +103,13 @@ export default function ImageAttachmentGallery({
 
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
+      for (const attachment of selectedAttachments) {
+        if (attachment.previewUrl) {
+          URL.revokeObjectURL(attachment.previewUrl);
+        }
       }
     };
-  }, [previewUrl]);
+  }, [selectedAttachments]);
 
   useEffect(() => {
     if (!canManage) {
@@ -97,50 +121,76 @@ export default function ImageAttachmentGallery({
     };
 
     window.addEventListener('ember:open-attachment-picker', openPicker);
-    return () => window.removeEventListener('ember:open-attachment-picker', openPicker);
+    return () =>
+      window.removeEventListener('ember:open-attachment-picker', openPicker);
   }, [canManage]);
 
   const attachmentCountLabel = useMemo(() => {
     if (attachments.length === 0) {
-      return 'No extra photos or videos yet.';
+      return 'No extra photos, videos, or audio yet.';
     }
 
-    return `${attachments.length} added ${attachments.length === 1 ? 'item' : 'items'}`;
+    return `${attachments.length} added ${
+      attachments.length === 1 ? 'item' : 'items'
+    }`;
   }, [attachments.length]);
 
   const clearSelection = () => {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+    for (const attachment of selectedAttachments) {
+      if (attachment.previewUrl) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
     }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
 
-    setSelectedFile(null);
-    setPreviewUrl(null);
+    setSelectedAttachments([]);
     setNewAttachmentDescription('');
     setSelectionError('');
   };
 
-  const handleFileSelection = (file: File | null) => {
-    const nextMediaType = detectSelectedMediaType(file);
-    if (!file || !nextMediaType) {
-      setSelectionError('Only photos and MP4, MOV, WEBM, or M4V videos are supported.');
+  const handleFileSelection = (files: FileList | null) => {
+    const nextFiles = Array.from(files || []);
+
+    if (nextFiles.length === 0) {
+      setSelectionError('No files were selected.');
       return;
     }
 
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+    const nextSelectedAttachments: SelectedAttachment[] = [];
+
+    for (const file of nextFiles) {
+      const mediaType = detectSelectedMediaType(file);
+
+      if (!mediaType) {
+        setSelectionError(
+          'Only photos, videos, and common audio files are supported.'
+        );
+        return;
+      }
+
+      nextSelectedAttachments.push({
+        file,
+        mediaType,
+        previewUrl:
+          mediaType === 'audio' ? null : URL.createObjectURL(file),
+      });
+    }
+
+    for (const attachment of selectedAttachments) {
+      if (attachment.previewUrl) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
     }
 
     setSelectionError('');
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    setSelectedAttachments(nextSelectedAttachments);
   };
 
   const handleAddAttachment = async () => {
-    if (!selectedFile) {
+    if (selectedFiles.length === 0) {
       return;
     }
 
@@ -149,8 +199,13 @@ export default function ImageAttachmentGallery({
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('description', newAttachmentDescription);
+      for (const file of selectedFiles) {
+        formData.append('files', file);
+      }
+
+      if (newAttachmentDescription.trim()) {
+        formData.append('description', newAttachmentDescription.trim());
+      }
 
       const response = await fetch(`/api/images/${imageId}/attachments`, {
         method: 'POST',
@@ -163,14 +218,29 @@ export default function ImageAttachmentGallery({
       }
 
       await onUpdate();
+      const uploadedCount = selectedFiles.length;
       clearSelection();
+
+      const warnings = Array.isArray(payload?.warnings)
+        ? payload.warnings.filter(
+            (warning: unknown): warning is string =>
+              typeof warning === 'string' && warning.trim().length > 0
+          )
+        : [];
+
       setNotice(
-        payload?.warning
-          ? `Added content. ${payload.warning}`
-          : 'Added content to this Ember. Regenerate the wiki when you are ready.'
+        warnings.length > 0
+          ? `Added ${uploadedCount} item${
+              uploadedCount === 1 ? '' : 's'
+            }. ${warnings[0]}`
+          : `Added ${uploadedCount} item${
+              uploadedCount === 1 ? '' : 's'
+            } to this Ember. Regenerate the wiki when you are ready.`
       );
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Failed to add content');
+      setError(
+        uploadError instanceof Error ? uploadError.message : 'Failed to add content'
+      );
     } finally {
       setIsUploading(false);
     }
@@ -181,15 +251,18 @@ export default function ImageAttachmentGallery({
     setError('');
 
     try {
-      const response = await fetch(`/api/images/${imageId}/attachments/${attachmentId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          description: draftDescriptions[attachmentId] ?? '',
-        }),
-      });
+      const response = await fetch(
+        `/api/images/${imageId}/attachments/${attachmentId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            description: draftDescriptions[attachmentId] ?? '',
+          }),
+        }
+      );
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -197,7 +270,7 @@ export default function ImageAttachmentGallery({
       }
 
       await onUpdate();
-      setNotice('Saved the note for this added photo.');
+      setNotice('Saved the note for this added media.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Failed to save note');
     } finally {
@@ -206,7 +279,7 @@ export default function ImageAttachmentGallery({
   };
 
   const handleDeleteAttachment = async (attachmentId: string) => {
-    const confirmed = window.confirm('Remove this added photo or video from the Ember?');
+    const confirmed = window.confirm('Remove this added media from the Ember?');
     if (!confirmed) {
       return;
     }
@@ -215,9 +288,12 @@ export default function ImageAttachmentGallery({
     setError('');
 
     try {
-      const response = await fetch(`/api/images/${imageId}/attachments/${attachmentId}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `/api/images/${imageId}/attachments/${attachmentId}`,
+        {
+          method: 'DELETE',
+        }
+      );
 
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -228,9 +304,11 @@ export default function ImageAttachmentGallery({
       if (activeAttachmentId === attachmentId) {
         setActiveAttachmentId(null);
       }
-      setNotice('Removed the added content from this Ember.');
+      setNotice('Removed the added media from this Ember.');
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Failed to remove content');
+      setError(
+        deleteError instanceof Error ? deleteError.message : 'Failed to remove content'
+      );
     } finally {
       setDeletingId(null);
     }
@@ -242,10 +320,11 @@ export default function ImageAttachmentGallery({
         <div>
           <p className="ember-eyebrow">Added content</p>
           <h2 className="ember-heading mt-3 text-2xl text-[var(--ember-text)]">
-            Extra photos and videos
+            Extra photos, videos, and audio
           </h2>
           <p className="ember-copy mt-2 text-sm">
-            Click a thumbnail to open it full size and add detail. These notes will appear in the wiki the next time you regenerate it.
+            Click a media tile to open it and add detail. These notes will appear
+            in the wiki the next time you regenerate it.
           </p>
         </div>
 
@@ -255,7 +334,7 @@ export default function ImageAttachmentGallery({
             onClick={() => fileInputRef.current?.click()}
             className="ember-button-primary shrink-0"
           >
-            Add photo or video
+            Add media
           </button>
         )}
       </div>
@@ -266,7 +345,11 @@ export default function ImageAttachmentGallery({
       </div>
 
       {(notice || error || selectionError) && (
-        <div className={`mt-4 ember-status ${error || selectionError ? 'ember-status-error' : 'ember-status-success'}`}>
+        <div
+          className={`mt-4 ember-status ${
+            error || selectionError ? 'ember-status-error' : 'ember-status-success'
+          }`}
+        >
           {error || selectionError || notice}
         </div>
       )}
@@ -274,7 +357,7 @@ export default function ImageAttachmentGallery({
       <div className="mt-6 rounded-[1.8rem] border border-[rgba(20,20,20,0.08)] bg-white p-4 sm:p-5">
         {attachments.length === 0 ? (
           <div className="rounded-[1.4rem] border border-dashed border-[rgba(20,20,20,0.12)] bg-[var(--ember-soft)] px-5 py-10 text-center text-sm text-[var(--ember-muted)]">
-            No extra photos or videos have been added to this Ember yet.
+            No extra photos, videos, or audio have been added to this Ember yet.
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -297,7 +380,11 @@ export default function ImageAttachmentGallery({
                 </div>
                 <div className="space-y-1 px-3 py-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--ember-muted)]">
-                    {attachment.mediaType === 'VIDEO' ? 'Video' : 'Photo'}
+                    {attachment.mediaType === 'VIDEO'
+                      ? 'Video'
+                      : attachment.mediaType === 'AUDIO'
+                        ? 'Audio'
+                        : 'Photo'}
                   </div>
                   <div className="line-clamp-2 text-xs leading-5 text-[var(--ember-muted)]">
                     {attachment.description?.trim() || 'Open to add a note.'}
@@ -312,18 +399,23 @@ export default function ImageAttachmentGallery({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,.mp4,.mov,.webm,.m4v"
-        onChange={(event) => handleFileSelection(event.target.files?.[0] || null)}
+        accept="image/*,video/mp4,video/quicktime,video/webm,video/x-m4v,audio/*,.mp4,.mov,.webm,.m4v,.mp3,.wav,.m4a,.aac,.ogg,.oga,.mpga,.mpeg"
+        multiple
+        onChange={(event) => handleFileSelection(event.target.files)}
         className="hidden"
       />
 
       <UploadConfirmModal
-        open={Boolean(selectedFile && previewUrl && !isUploading)}
-        preview={previewUrl}
+        open={selectedAttachments.length > 0}
+        preview={selectedPreviewUrl}
         mediaType={selectedMediaType}
-        fileName={selectedFile?.name || 'Selected media'}
+        fileName={
+          selectedAttachments.length === 1
+            ? selectedFiles[0]?.name || 'Selected media'
+            : `${selectedAttachments.length} files selected`
+        }
         title="Add this to the Ember?"
-        subtitle="This extra photo or video stays attached to the current Ember. It will not start a new interview, but its note can be pulled into the wiki later."
+        subtitle="These extra files stay attached to the current Ember. They will not start a new interview, but their notes can be pulled into the wiki later."
         confirmLabel="Add to Ember"
         confirmBusyLabel="Adding to Ember..."
         isSubmitting={isUploading}
@@ -331,13 +423,29 @@ export default function ImageAttachmentGallery({
         onConfirm={() => void handleAddAttachment()}
       >
         <div>
-          <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
-            Note for this photo or video
+          <div className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
+            Selected media
+          </div>
+          <div className="max-h-48 space-y-2 overflow-y-auto rounded-[1.2rem] border border-[var(--ember-line)] bg-[var(--ember-soft)] px-3 py-3 text-sm text-[var(--ember-text)]">
+            {selectedAttachments.map((attachment) => (
+              <div
+                key={`${attachment.file.name}-${attachment.file.lastModified}`}
+                className="flex items-center justify-between gap-3"
+              >
+                <span className="truncate">{attachment.file.name}</span>
+                <span className="shrink-0 text-xs font-medium uppercase tracking-[0.16em] text-[var(--ember-muted)]">
+                  {attachment.mediaType}
+                </span>
+              </div>
+            ))}
+          </div>
+          <label className="mt-4 mb-2 block text-sm font-medium text-[var(--ember-text)]">
+            Optional starter note
           </label>
           <textarea
             value={newAttachmentDescription}
             onChange={(event) => setNewAttachmentDescription(event.target.value)}
-            placeholder="What should Ember remember from this extra photo or video?"
+            placeholder="Add one note for this batch now, or open each item afterward and add details there."
             className="ember-textarea"
             rows={4}
           />

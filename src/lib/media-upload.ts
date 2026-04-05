@@ -3,7 +3,7 @@ import { mkdir, unlink, writeFile } from 'fs/promises';
 import { getUploadPath, getUploadsDir, inferMediaType } from '@/lib/uploads';
 import { generatePosterFrame, probeVideo } from '@/lib/video-processing';
 
-export type PersistedMediaType = 'IMAGE' | 'VIDEO';
+export type PersistedMediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
 
 function describeVideoProcessingError(error: unknown): string {
   if (error instanceof Error) {
@@ -31,7 +31,7 @@ export async function persistUploadedMedia(file: File): Promise<{
 }> {
   const mediaType = inferMediaType(file.name, file.type);
   if (!mediaType) {
-    throw new Error('Only images and MP4, MOV, WEBM, or M4V videos are supported');
+    throw new Error('Only images, videos, and common audio files are supported');
   }
 
   const ext = file.name.split('.').pop()?.toLowerCase();

@@ -6,16 +6,22 @@ export default function EmberExplainerPanel({
   learnMoreHref: string;
 }) {
   return (
-    <section className="p-6 sm:p-7">
-      <h2 className="ember-heading text-3xl text-[var(--ember-text)] sm:text-4xl">
+    <section className="rounded-[1.9rem] bg-[#f5efeb] px-6 py-6 text-left">
+      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[var(--ember-orange-deep)]">
+        The Vision
+      </p>
+      <h2 className="ember-heading mt-4 text-[2.05rem] font-semibold leading-[1.08] text-[var(--ember-text)]">
         Capture life&apos;s moments together and relive them anytime.
       </h2>
-      <p className="ember-copy mt-4 max-w-2xl text-sm">
+      <p className="ember-copy mt-3 text-[0.98rem] leading-7">
         Through simple, AI-guided conversations, Ember creates interactive memories
         that grow over time.
       </p>
       <div className="mt-6">
-        <Link href={learnMoreHref} className="ember-button-primary px-5">
+        <Link
+          href={learnMoreHref}
+          className="ember-button-primary min-h-[3rem] rounded-[1rem] px-5"
+        >
           Learn more
         </Link>
       </div>

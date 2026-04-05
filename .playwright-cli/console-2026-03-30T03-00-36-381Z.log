@@ -1,0 +1,13 @@
+[  710157ms] [WARNING] [HMR] Invalid message: {"isTrusted":true}
+TypeError: Cannot convert undefined or null to object
+    at Object.keys (<anonymous>)
+    at extractModulesFromTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11210:39)
+    at TurbopackHmr.onTurbopackMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11157:32)
+    at processMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:11589:30)
+    at WebSocket.handleMessage (http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10914:52) @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 6002031ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=INvRGnZgSmsTVVjiKB1AZ' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 6005391ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=INvRGnZgSmsTVVjiKB1AZ' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 6246421ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=INvRGnZgSmsTVVjiKB1AZ' failed: WebSocket opening handshake timed out @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 6379513ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=INvRGnZgSmsTVVjiKB1AZ' failed: Error during WebSocket handshake: net::ERR_CONNECTION_RESET @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 6382865ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=INvRGnZgSmsTVVjiKB1AZ' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 6627876ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=INvRGnZgSmsTVVjiKB1AZ' failed: WebSocket opening handshake timed out @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878

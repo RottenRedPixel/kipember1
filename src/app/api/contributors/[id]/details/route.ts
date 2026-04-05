@@ -30,6 +30,7 @@ export async function GET(
         email: true,
         phoneNumber: true,
         inviteSent: true,
+        createdAt: true,
         user: {
           select: {
             id: true,
