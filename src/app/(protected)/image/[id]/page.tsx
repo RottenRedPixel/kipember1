@@ -590,20 +590,16 @@ function HeroRailButton({
   onClick: () => void;
   tone: 'light' | 'dark';
 }) {
-  const colorClass = tone === 'dark' ? 'text-black' : 'text-white';
-  const shadowClass =
-    tone === 'dark'
-      ? 'drop-shadow-[0_1px_2px_rgba(255,255,255,0.28)]'
-      : 'drop-shadow-[0_1px_3px_rgba(0,0,0,0.28)]';
+  void tone;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center rounded-[1.1rem] px-2 py-2 transition hover:opacity-75 ${colorClass}`}
+      className="flex w-full items-center justify-center rounded-[0.72rem] px-1 py-1.5 text-white transition hover:bg-white/8"
       aria-label={label}
     >
-      <span className={`flex min-w-[3.55rem] flex-col items-center justify-center gap-1 ${shadowClass}`}>
+      <span className="flex min-w-[3.15rem] flex-col items-center justify-center gap-1">
         <span className="flex h-10 w-10 items-center justify-center">
           {icon}
         </span>
@@ -707,7 +703,10 @@ function AskEmberExperience({
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [savedMemoryNotice, setSavedMemoryNotice] = useState('');
+  const [pendingAttachmentFiles, setPendingAttachmentFiles] = useState<File[]>([]);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<unknown>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -716,7 +715,7 @@ function AskEmberExperience({
   const pendingFocusRef = useRef(false);
   const listeningTranscriptRef = useRef('');
 
-  const shouldShowExpanded = expanded || messages.length > 0 || isListening;
+  const shouldShowExpanded = expanded || isListening;
   const featuredVoiceClips = importantVoiceClips.slice(0, 3);
 
   useEffect(() => {
@@ -791,6 +790,122 @@ function AskEmberExperience({
     };
   }, []);
 
+  const resetPendingAttachments = useCallback(() => {
+    setPendingAttachmentFiles([]);
+    if (attachmentInputRef.current) {
+      attachmentInputRef.current.value = '';
+    }
+  }, []);
+
+  const describePendingAttachments = useCallback((files: File[]) => {
+    if (files.length === 0) {
+      return 'this media';
+    }
+
+    if (files.length > 1) {
+      return `these ${files.length} files`;
+    }
+
+    const file = files[0];
+    const mimeType = file.type.toLowerCase();
+
+    if (mimeType.startsWith('image/')) {
+      return 'this photo';
+    }
+
+    if (mimeType.startsWith('video/')) {
+      return 'this clip';
+    }
+
+    if (mimeType.startsWith('audio/')) {
+      return 'this audio clip';
+    }
+
+    return 'this file';
+  }, []);
+
+  const uploadPendingAttachments = useCallback(async () => {
+    if (pendingAttachmentFiles.length === 0 || uploadingAttachments) {
+      return;
+    }
+
+    setUploadingAttachments(true);
+    setVoiceError('');
+
+    const filesToUpload = [...pendingAttachmentFiles];
+    const filesLabel = describePendingAttachments(filesToUpload);
+    const formData = new FormData();
+    filesToUpload.forEach((file) => {
+      formData.append('files', file);
+    });
+
+    try {
+      const response = await fetch(`/api/images/${imageId}/attachments`, {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to add supporting media');
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `I added ${filesLabel} to your ember as supporting media.`,
+        },
+      ]);
+      setSavedMemoryNotice(`Added ${filesLabel} to this ember.`);
+
+      const warnings = Array.isArray(payload?.warnings)
+        ? payload.warnings.filter((warning: unknown): warning is string => typeof warning === 'string')
+        : [];
+
+      if (warnings.length > 0) {
+        setVoiceError(warnings.join(' '));
+      }
+
+      resetPendingAttachments();
+      onStoredMemory();
+    } catch (error) {
+      setVoiceError(error instanceof Error ? error.message : 'Failed to add supporting media');
+    } finally {
+      setUploadingAttachments(false);
+    }
+  }, [
+    describePendingAttachments,
+    imageId,
+    onStoredMemory,
+    pendingAttachmentFiles,
+    resetPendingAttachments,
+    uploadingAttachments,
+  ]);
+
+  const handleAttachmentSelection = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = Array.from(event.target.files || []).filter((file) => file.size > 0);
+
+      if (selectedFiles.length === 0) {
+        return;
+      }
+
+      setPendingAttachmentFiles(selectedFiles);
+      setSavedMemoryNotice('');
+      pendingFocusRef.current = false;
+      onExpandedChange(true);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `Do you want to add ${describePendingAttachments(selectedFiles)} to your ember?`,
+        },
+      ]);
+    },
+    [describePendingAttachments, onExpandedChange]
+  );
+
   const persistVoiceNote = useCallback(
     async (audioBlob: Blob, transcript: string) => {
       const mimeType = audioBlob.type || 'audio/webm';
@@ -835,6 +950,36 @@ function AskEmberExperience({
       const userMessage = rawMessage.trim();
       if ((!userMessage && !audioBlob) || isLoading) {
         return;
+      }
+
+      if (pendingAttachmentFiles.length > 0 && userMessage) {
+        const normalized = userMessage.trim().toLowerCase();
+        const confirmsUpload = /^(yes|yep|yeah|sure|ok|okay|add|upload|save|include|do it)\b/.test(
+          normalized
+        );
+        const cancelsUpload = /^(no|nope|cancel|skip|not now|don't|do not)\b/.test(normalized);
+
+        if (confirmsUpload) {
+          setInput('');
+          setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+          await uploadPendingAttachments();
+          return;
+        }
+
+        if (cancelsUpload) {
+          const filesLabel = describePendingAttachments(pendingAttachmentFiles);
+          setInput('');
+          setMessages((prev) => [
+            ...prev,
+            { role: 'user', content: userMessage },
+            {
+              role: 'assistant',
+              content: `Okay, I won't add ${filesLabel} right now.`,
+            },
+          ]);
+          resetPendingAttachments();
+          return;
+        }
       }
 
       setInput('');
@@ -913,7 +1058,18 @@ function AskEmberExperience({
         setIsLoading(false);
       }
     },
-    [imageId, isLoading, onExpandedChange, onStoredMemory, persistVoiceNote, subjectNoun]
+    [
+      describePendingAttachments,
+      imageId,
+      isLoading,
+      onExpandedChange,
+      onStoredMemory,
+      pendingAttachmentFiles,
+      persistVoiceNote,
+      resetPendingAttachments,
+      subjectNoun,
+      uploadPendingAttachments,
+    ]
   );
 
   const handleVoiceToggle = useCallback(() => {
@@ -1057,9 +1213,13 @@ function AskEmberExperience({
     [...messages].reverse().find((message) => message.role === 'assistant') || null;
 
   return (
-    <div className="ember-overlay-shell z-50 bg-white" onClick={onClose}>
-      <div className="relative h-full w-full overflow-hidden" onClick={(event) => event.stopPropagation()}>
-        <div className="relative h-[70%] overflow-hidden bg-[#a8ba91]">
+    <div className="ember-overlay-shell z-50 overflow-y-auto bg-white" onClick={onClose}>
+      <div className="relative min-h-full w-full bg-white" onClick={(event) => event.stopPropagation()}>
+        <div
+          className={`relative overflow-hidden bg-[#a8ba91] ${
+            shouldShowExpanded ? 'h-[42dvh] min-h-[18rem]' : 'h-[70dvh] min-h-[24rem]'
+          }`}
+        >
           <MediaPreview
             mediaType={mediaType}
             filename={filename}
@@ -1083,7 +1243,7 @@ function AskEmberExperience({
           </div>
 
           {!shouldShowExpanded && (
-            <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-5 pr-1">
+            <div className="absolute right-2 top-1/2 z-10 flex w-[4.75rem] -translate-y-1/2 flex-col gap-2 rounded-[1rem] bg-black/25 px-1.5 py-3 backdrop-blur-[1px] transition-colors hover:bg-black">
               <HeroRailButton
                 icon={<ShareIcon className="h-full w-full" />}
                 label="Share"
@@ -1106,15 +1266,21 @@ function AskEmberExperience({
                 icon={<GeminiIcon className="h-full w-full" />}
                 label="Ask"
                 tone="light"
-                onClick={() => onExpandedChange(false)}
+                onClick={() => onExpandedChange(true)}
               />
             </div>
           )}
         </div>
 
-          <div className="absolute inset-x-0 bottom-0 top-[70%] bg-[var(--ember-orange)] text-white">
+        <div
+          className={`bg-[var(--ember-orange)] text-white ${
+            shouldShowExpanded
+              ? 'min-h-[58dvh] px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+1.1rem)]'
+              : 'min-h-[30dvh] px-4 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]'
+          }`}
+        >
           {!shouldShowExpanded ? (
-            <div className="flex h-full flex-col px-4 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+            <div className="flex flex-col">
               <div className="mx-auto mt-4 max-w-[18rem] text-center text-[1.05rem] font-medium leading-[1.28] tracking-[-0.02em]">
                 Ask ember anything or add more details about this memory.
               </div>
@@ -1172,22 +1338,32 @@ function AskEmberExperience({
               )}
             </div>
           ) : (
-            <div className="flex h-full flex-col px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+0.8rem)]">
+            <div className="flex flex-col">
               <div className="flex items-start justify-between gap-4">
                 <div className="text-[1rem] font-semibold leading-none tracking-[-0.02em] text-white">
                   Ask Ember <span className="font-normal text-white/88">| {ownerLabel}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="inline-flex h-8 w-8 items-center justify-center text-white"
-                  aria-label="Close Ask Ember"
-                >
-                  <CloseIcon className="h-5 w-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onExpandedChange(false)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-white/35 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white"
+                  >
+                    <ExpandIcon className="h-3.5 w-3.5" />
+                    Collapse
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex h-8 w-8 items-center justify-center text-white"
+                    aria-label="Close Ask Ember"
+                  >
+                    <CloseIcon className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-4 flex-1 overflow-y-auto pr-1">
+              <div className="mt-4 pr-1">
                 {messages.length === 0 && !isLoading && featuredVoiceClips.length === 0 ? (
                   <div className="pt-8 text-center text-[1rem] font-medium leading-[1.3] text-white/96">
                     Start asking ember about this {subjectNoun}, or add new details so they get saved.
@@ -1261,14 +1437,14 @@ function AskEmberExperience({
                 className="mt-4"
               >
                 <div className="flex h-14 items-center bg-white px-3 text-black">
-                  <button
-                    type="button"
-                    onClick={() => void submitMessage(input, 'text')}
-                    className="mr-2 inline-flex h-9 w-9 items-center justify-center text-black/88"
-                    aria-label="Send Ask Ember message"
-                  >
-                    <AskPlusIcon className="h-5 w-5" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => attachmentInputRef.current?.click()}
+                      className="mr-2 inline-flex h-9 w-9 items-center justify-center text-black/88"
+                      aria-label="Add supporting media"
+                    >
+                      <AskPlusIcon className="h-5 w-5" />
+                    </button>
                   <input
                     ref={inputRef}
                     type="text"
@@ -1287,7 +1463,46 @@ function AskEmberExperience({
                     <AskMicIcon className="h-5 w-5" />
                   </button>
                 </div>
+                <input
+                  ref={attachmentInputRef}
+                  type="file"
+                  accept="image/*,video/*,audio/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleAttachmentSelection}
+                />
               </form>
+
+              {pendingAttachmentFiles.length > 0 && (
+                <div className="mt-4 rounded-[1rem] bg-white/12 px-3 py-3 text-left">
+                  <div className="text-[0.98rem] font-medium leading-[1.25] text-white">
+                    Do you want to add {describePendingAttachments(pendingAttachmentFiles)} to your ember?
+                  </div>
+                  <div className="mt-3 space-y-1.5 text-sm text-white/88">
+                    {pendingAttachmentFiles.map((file) => (
+                      <div key={`${file.name}-${file.size}-${file.lastModified}`}>{file.name}</div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void uploadPendingAttachments()}
+                      disabled={uploadingAttachments}
+                      className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[var(--ember-orange)] disabled:opacity-60"
+                    >
+                      {uploadingAttachments ? 'Adding...' : 'Add to ember'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resetPendingAttachments}
+                      disabled={uploadingAttachments}
+                      className="rounded-full border border-white/35 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {isListening && (
                 <div className="mt-5">
@@ -1388,7 +1603,7 @@ function PlayNarrationExperience({
             </h1>
           </div>
 
-          <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-5 pr-1">
+          <div className="absolute right-2 top-1/2 z-10 flex w-[4.75rem] -translate-y-1/2 flex-col gap-2 rounded-[1rem] bg-black/25 px-1.5 py-3 backdrop-blur-[1px] transition-colors hover:bg-black">
             <HeroRailButton
               icon={<ShareIcon className="h-full w-full" />}
               label="Share"
@@ -1889,26 +2104,6 @@ function TendSettingsIcon({ className = 'h-8 w-8' }: IconProps) {
   );
 }
 
-function TendAddContentIcon({ className = 'h-8 w-8' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={className} aria-hidden="true">
-      <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="2.2" strokeDasharray="3.5 2.5" />
-      <path d="M12 8v8" />
-      <path d="M8 12h8" />
-    </svg>
-  );
-}
-
-function TendViewFeedIcon({ className = 'h-8 w-8' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={className} aria-hidden="true">
-      <path d="M5 18.5a13.5 13.5 0 0 1 13.5-13.5" />
-      <path d="M5 12.8A6.8 6.8 0 0 1 11.8 6" />
-      <path d="M5 7.6A1.1 1.1 0 1 0 5 9.8 1.1 1.1 0 0 0 5 7.6Z" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
 function TendWikiIcon({ className = 'h-8 w-8' }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.45" className={className} aria-hidden="true">
@@ -1952,17 +2147,6 @@ function TendEditTitleIcon({ className = 'h-8 w-8' }: IconProps) {
       <path d="m15.2 9.2 4.4 4.4" />
       <path d="m14.2 18.5 5.8-5.8" />
       <path d="m13.6 19.1 2.4-.5-.5 2.4-2 .1Z" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function TendEditCaptionIcon({ className = 'h-8 w-8' }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className={className} aria-hidden="true">
-      <rect x="3.8" y="5" width="16.4" height="11.5" rx="2.1" />
-      <path d="M7 9h10" />
-      <path d="M7 12h7.2" />
-      <path d="m9.2 16.5-2.3 2.2" />
     </svg>
   );
 }
@@ -2017,13 +2201,10 @@ function TendMenuExperience({
   canManage,
   onClose,
   onOpenSettings,
-  onOpenAddContent,
-  onOpenFeed,
   onOpenWiki,
   onOpenStoryCut,
   onOpenTagPeople,
   onOpenEditTitle,
-  onOpenEditCaption,
   onOpenContributors,
 }: {
   emberTitle: string;
@@ -2034,13 +2215,10 @@ function TendMenuExperience({
   canManage: boolean;
   onClose: () => void;
   onOpenSettings: () => void;
-  onOpenAddContent: () => void;
-  onOpenFeed: () => void;
   onOpenWiki: () => void;
   onOpenStoryCut: () => void;
   onOpenTagPeople: () => void;
   onOpenEditTitle: () => void;
-  onOpenEditCaption: () => void;
   onOpenContributors: () => void;
 }) {
   return (
@@ -2091,24 +2269,13 @@ function TendMenuExperience({
               disabled={!canManage}
             />
             <TendMenuButton
-              icon={<TendAddContentIcon className="h-full w-full" />}
-              label="Add Content"
-              onClick={onOpenAddContent}
-              disabled={!canManage}
-            />
-            <TendMenuButton
-              icon={<TendViewFeedIcon className="h-full w-full" />}
-              label="View Feed"
-              onClick={onOpenFeed}
-            />
-            <TendMenuButton
               icon={<TendWikiIcon className="h-full w-full" />}
               label="View Wiki"
               onClick={onOpenWiki}
             />
             <TendMenuButton
               icon={<TendStoryCutIcon className="h-full w-full" />}
-              label="Story Cut"
+              label="Snapshot"
               onClick={onOpenStoryCut}
               disabled={!canManage}
             />
@@ -2120,14 +2287,8 @@ function TendMenuExperience({
             />
             <TendMenuButton
               icon={<TendEditTitleIcon className="h-full w-full" />}
-              label="Edit Title"
+              label="Smart Title"
               onClick={onOpenEditTitle}
-              disabled={!canManage}
-            />
-            <TendMenuButton
-              icon={<TendEditCaptionIcon className="h-full w-full" />}
-              label="Edit Caption"
-              onClick={onOpenEditCaption}
               disabled={!canManage}
             />
             <TendMenuButton
@@ -2871,7 +3032,7 @@ export default function ImagePage() {
   }, [actionNotice, shareError]);
 
   useEffect(() => {
-    const shouldShowSetupCards = Boolean(image?.canManage && (fromUpload || setupRequested));
+    const shouldShowSetupCards = Boolean(image?.canManage && setupRequested && !fromUpload);
 
     if (!image || shouldShowSetupCards) {
       setHeroOverlayTone({ title: 'light', rail: 'dark' });
@@ -3011,7 +3172,7 @@ export default function ImagePage() {
       requestedPanel === 'storyCuts'
     ) {
       if (requestedPanel === 'ask') {
-        setAskChatExpanded(false);
+        setAskChatExpanded(true);
       }
       setActivePanel(requestedPanel);
 
@@ -4679,7 +4840,8 @@ export default function ImagePage() {
   const contributorComplete = image.contributors.length > 1;
   const selectedLocationSuggestion =
     locationSuggestions.find((suggestion) => suggestion.id === selectedLocationId) || null;
-  const showSetupCards = image.canManage && (fromUpload || setupRequested);
+  const showFirstRunGuide = image.canManage && fromUpload;
+  const showSetupCards = image.canManage && setupRequested && !fromUpload;
   const storyCutMediaItems: StoryCutMediaItem[] = [
     {
       id: image.id,
@@ -4953,6 +5115,13 @@ export default function ImagePage() {
     setActivePanel('contributors');
   };
 
+  const replaceImageQuery = (mutate: (nextParams: URLSearchParams) => void) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    mutate(nextParams);
+    const nextQuery = nextParams.toString();
+    router.replace(nextQuery ? `/image/${params.id}?${nextQuery}` : `/image/${params.id}`);
+  };
+
   const handleOpenSetupCards = () => {
     setAskChatExpanded(false);
     setTendTagPromptOpen(false);
@@ -4960,21 +5129,76 @@ export default function ImagePage() {
     setActivePanel(null);
     setShapeView('menu');
 
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set('setup', '1');
-    nextParams.delete('panel');
-    nextParams.delete('view');
-
-    router.replace(`/image/${params.id}?${nextParams.toString()}`);
+    replaceImageQuery((nextParams) => {
+      nextParams.set('setup', '1');
+      nextParams.delete('fromUpload');
+      nextParams.delete('panel');
+      nextParams.delete('view');
+    });
   };
 
   const handleHideSetupCards = () => {
-    const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.delete('setup');
-    nextParams.delete('fromUpload');
+    replaceImageQuery((nextParams) => {
+      nextParams.delete('setup');
+      nextParams.delete('fromUpload');
+      nextParams.delete('panel');
+      nextParams.delete('view');
+    });
+  };
 
-    const nextQuery = nextParams.toString();
-    router.replace(nextQuery ? `/image/${params.id}?${nextQuery}` : `/image/${params.id}`);
+  const handleStartFirstRunAsk = () => {
+    setAskChatExpanded(true);
+    setActivePanel(null);
+    replaceImageQuery((nextParams) => {
+      nextParams.delete('setup');
+      nextParams.delete('fromUpload');
+      nextParams.delete('view');
+      nextParams.set('panel', 'ask');
+    });
+  };
+
+  const handleStartFirstRunContributors = () => {
+    setActivePanel(null);
+    replaceImageQuery((nextParams) => {
+      nextParams.delete('setup');
+      nextParams.delete('fromUpload');
+      nextParams.delete('view');
+      nextParams.set('panel', 'contributors');
+    });
+  };
+
+  const handleDeleteEmber = async () => {
+    if (!image?.canManage) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Delete this Ember permanently? This removes the photo, story, wiki, and related contributions.'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setShareError('');
+    setActionNotice('');
+
+    try {
+      const response = await fetch(`/api/images/${image.id}`, {
+        method: 'DELETE',
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to delete Ember.');
+      }
+
+      router.replace('/feed');
+    } catch (deleteError) {
+      setShareError(
+        deleteError instanceof Error ? deleteError.message : 'Failed to delete Ember.'
+      );
+    }
   };
 
   const toggleStoryCutMediaSelection = (mediaId: string) => {
@@ -5111,120 +5335,181 @@ export default function ImagePage() {
   return (
     <div className="min-h-[calc(100dvh-2.7rem)] bg-white">
       <section className="mx-auto w-full">
-        {showSetupCards ? (
-          <div className="ember-screen-card overflow-hidden">
-            <div className="ember-setup-hero">
+        {showFirstRunGuide ? (
+          <div className="flex min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
+            <div
+              ref={heroStageRef}
+              className="relative h-[70dvh] min-h-[24rem] overflow-hidden bg-[#a8ba91]"
+            >
               <MediaPreview
                 mediaType={image.mediaType}
                 filename={image.filename}
                 posterFilename={image.posterFilename}
                 originalName={emberTitle}
                 controls={image.mediaType === 'VIDEO'}
-                className={`w-full ${
+                className={`h-full w-full ${
                   image.mediaType === 'VIDEO'
-                    ? 'aspect-[0.98] object-contain bg-[var(--ember-charcoal)] sm:aspect-[0.72]'
-                    : 'aspect-[0.98] object-cover bg-[var(--ember-charcoal)] sm:aspect-[0.72]'
+                    ? 'object-contain bg-[#a8ba91]'
+                    : 'object-cover bg-[#a8ba91]'
                 }`}
               />
-              <div className="ember-setup-veil" />
-              <div className="absolute left-4 top-4 right-24 sm:left-6 sm:top-6">
-                <h1 className="max-w-[14rem] text-[1.7rem] font-semibold leading-[1.02] tracking-[-0.045em] text-white sm:max-w-[26rem] sm:text-[2.7rem]">
+
+              <div className="pointer-events-none absolute inset-0 bg-white/18" />
+
+              <div className="absolute left-5 top-4 right-24 sm:left-6 sm:top-5">
+                <div className="inline-flex rounded-full bg-white/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ember-text)]">
+                  New Ember
+                </div>
+                <h1
+                  className={`mt-3 max-w-[14rem] break-words text-[2rem] font-semibold leading-[1.04] tracking-[-0.05em] [overflow-wrap:anywhere] sm:max-w-[18rem] sm:text-[2.45rem] ${
+                    heroOverlayTone.title === 'dark'
+                      ? 'text-black drop-shadow-[0_1px_2px_rgba(255,255,255,0.28)]'
+                      : 'text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.12)]'
+                  }`}
+                >
                   {emberTitle}
                 </h1>
               </div>
 
-              <div className="absolute right-3 top-3 flex flex-col gap-2 sm:right-5 sm:top-5">
-                <button
-                  type="button"
-                  onClick={() => router.push('/feed')}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-[1.15rem] bg-[rgba(238,240,246,0.9)] text-[#667084] shadow-[0_14px_30px_rgba(15,21,36,0.18)] backdrop-blur-md"
-                  aria-label="Back to feed"
-                >
-                  <HomeIcon className="h-5 w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleHideSetupCards}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-[1.15rem] bg-[rgba(238,240,246,0.9)] text-[#667084] shadow-[0_14px_30px_rgba(15,21,36,0.18)] backdrop-blur-md"
-                  aria-label="Hide setup cards"
-                >
-                  <ExpandIcon className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="ember-setup-rail">
-                {setupRailCards.map((card) => (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={card.onClick}
-                    className={`ember-setup-rail-button ${
-                      card.selected ? 'ember-setup-rail-button-active' : ''
-                    }`}
-                    aria-label={card.title}
-                  >
-                    <SetupCardIcon name={card.icon} className="h-[1.125rem] w-[1.125rem]" />
-                  </button>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={handleHideSetupCards}
+                className="absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ember-text)] shadow-[0_10px_24px_rgba(17,17,17,0.12)]"
+              >
+                Skip
+              </button>
             </div>
 
-            <div className="bg-white pt-3 pb-1">
-              <div className="relative px-4 sm:px-5">
-                <h2 className="mx-auto max-w-[18rem] text-center text-[1.1rem] font-semibold tracking-[-0.035em] text-[var(--ember-text)] sm:max-w-none sm:text-[1.15rem]">
-                  User, lets complete these cards...
-                </h2>
-                {setupRequested && !fromUpload && (
-                  <button
-                    type="button"
-                    onClick={handleHideSetupCards}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-[var(--ember-line-strong)] px-3 py-1.5 text-xs font-medium text-[var(--ember-muted)] hover:border-[rgba(255,102,33,0.24)] hover:text-[var(--ember-text)]"
-                  >
-                    Hide
-                  </button>
-                )}
+            <div className="flex min-h-[30dvh] flex-col items-center bg-[var(--ember-orange)] px-6 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] text-center text-white">
+              <p className="max-w-[16rem] text-[1.2rem] font-semibold leading-[1.18] tracking-[-0.03em] sm:max-w-[19rem] sm:text-[1.5rem]">
+                Your Ember is ready.
+              </p>
+              <p className="mt-2 max-w-[17rem] text-sm leading-6 text-white/92 sm:max-w-[20rem] sm:text-[0.98rem]">
+                Add to this memory while it&apos;s fresh, invite people who were there, or finish the setup details.
+              </p>
+
+              <div className="mt-5 flex w-full max-w-[18rem] flex-col gap-2.5 sm:max-w-[19rem]">
+                <button
+                  type="button"
+                  onClick={handleStartFirstRunAsk}
+                  className="rounded-[1rem] bg-white px-4 py-3 text-sm font-semibold tracking-[-0.01em] text-[var(--ember-text)] shadow-[0_12px_24px_rgba(17,17,17,0.14)]"
+                >
+                  Add to this memory
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartFirstRunContributors}
+                  className="rounded-[1rem] border border-white/70 bg-white/12 px-4 py-3 text-sm font-semibold tracking-[-0.01em] text-white"
+                >
+                  Invite contributors
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenSetupCards}
+                  className="rounded-[1rem] px-4 py-2.5 text-sm font-medium text-white/92 underline decoration-white/60 underline-offset-4"
+                >
+                  Complete setup
+                </button>
               </div>
 
-              <div className="ember-setup-stack mt-3">
+              {(actionNotice || shareError) && (
+                <div className="mt-3 max-w-[17rem] text-sm text-white/92 sm:max-w-[20rem]">
+                  {shareError || actionNotice}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : showSetupCards ? (
+          <div className="flex min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
+            <div
+              ref={heroStageRef}
+              className="relative h-[70dvh] min-h-[24rem] overflow-hidden bg-[#a8ba91]"
+            >
+              <MediaPreview
+                mediaType={image.mediaType}
+                filename={image.filename}
+                posterFilename={image.posterFilename}
+                originalName={emberTitle}
+                controls={image.mediaType === 'VIDEO'}
+                className={`h-full w-full ${
+                  image.mediaType === 'VIDEO'
+                    ? 'object-contain bg-[#a8ba91]'
+                    : 'object-cover bg-[#a8ba91]'
+                }`}
+              />
+
+              <div className="pointer-events-none absolute inset-0 bg-white/18" />
+
+              <div className="absolute left-5 top-4 right-24 sm:left-6 sm:top-5">
+                <div className="inline-flex rounded-full bg-white/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ember-text)]">
+                  Settings
+                </div>
+                <h1
+                  className={`mt-3 max-w-[14rem] break-words text-[2rem] font-semibold leading-[1.04] tracking-[-0.05em] [overflow-wrap:anywhere] sm:max-w-[18rem] sm:text-[2.45rem] ${
+                    heroOverlayTone.title === 'dark'
+                      ? 'text-black drop-shadow-[0_1px_2px_rgba(255,255,255,0.28)]'
+                      : 'text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.12)]'
+                  }`}
+                >
+                  {emberTitle}
+                </h1>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleHideSetupCards}
+                className="absolute right-4 top-4 rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--ember-text)] shadow-[0_10px_24px_rgba(17,17,17,0.12)]"
+              >
+                Done
+              </button>
+            </div>
+
+            <div className="flex min-h-[30dvh] flex-col bg-[var(--ember-orange)] px-5 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] text-white">
+              <div className="text-center">
+                <p className="text-[1.2rem] font-semibold leading-[1.18] tracking-[-0.03em] sm:text-[1.45rem]">
+                  Complete this Ember.
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/90">
+                  Fine tune the memory, invite people in, or remove it entirely.
+                </p>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-2.5">
                 {setupCards.map((card) => (
                   <button
                     key={card.id}
                     type="button"
                     onClick={card.onClick}
-                    className={`ember-setup-card ${card.selected ? 'ember-setup-card-active' : ''}`}
+                    className="rounded-[1rem] bg-white/14 px-3 py-3 text-left text-white shadow-[0_10px_24px_rgba(17,17,17,0.1)]"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <span
-                        className={`inline-flex h-10 w-10 items-center justify-center rounded-[1rem] ${
-                          card.selected
-                            ? 'bg-white/18 text-white'
-                            : 'bg-[var(--ember-blue-soft)] text-[var(--ember-blue)]'
-                        }`}
-                      >
-                        <SetupCardIcon name={card.icon} className="h-5 w-5" />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-[0.9rem] bg-white/16 text-white">
+                        <SetupCardIcon name={card.icon} className="h-4.5 w-4.5" />
                       </span>
-                      <span className="ember-setup-badge">{card.status}</span>
+                      <span className="rounded-full bg-white/16 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/92">
+                        {card.status}
+                      </span>
                     </div>
-                    <div className="mt-4 text-[1rem] font-semibold tracking-[-0.02em]">
+                    <div className="mt-3 text-[0.98rem] font-semibold tracking-[-0.02em]">
                       {card.title}
                     </div>
-                    <p
-                      className={`mt-2 text-sm leading-6 ${
-                        card.selected ? 'text-white/84' : 'text-[var(--ember-muted)]'
-                      }`}
-                    >
+                    <p className="mt-1.5 text-xs leading-5 text-white/82">
                       {card.subtitle}
                     </p>
                   </button>
                 ))}
               </div>
 
+              <button
+                type="button"
+                onClick={() => void handleDeleteEmber()}
+                className="mt-4 rounded-[1rem] border border-white/35 bg-[rgba(127,29,29,0.22)] px-4 py-3 text-sm font-semibold tracking-[-0.01em] text-white"
+              >
+                Delete Ember
+              </button>
+
               {(actionNotice || shareError) && (
-                <div
-                  className={`px-4 pb-3 text-center text-sm ${
-                    shareError ? 'text-rose-600' : 'text-[var(--ember-muted)]'
-                  }`}
-                >
+                <div className="mt-3 text-center text-sm text-white/92">
                   {shareError || actionNotice}
                 </div>
               )}
@@ -5263,7 +5548,7 @@ export default function ImagePage() {
                 </h1>
               </div>
 
-              <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-5 pr-1 sm:right-4 sm:gap-6">
+              <div className="absolute right-2 top-1/2 z-10 flex w-[4.75rem] -translate-y-1/2 flex-col gap-2 rounded-[1rem] bg-black/25 px-1.5 py-3 backdrop-blur-[1px] transition-colors hover:bg-black sm:right-4">
                 <HeroRailButton
                   icon={<ShareIcon className="h-full w-full" />}
                   label="Share"
@@ -5290,7 +5575,7 @@ export default function ImagePage() {
                   label="Ask"
                   tone={heroOverlayTone.rail}
                   onClick={() => {
-                    setAskChatExpanded(false);
+                    setAskChatExpanded(true);
                     setActivePanel('ask');
                   }}
                 />
@@ -5989,7 +6274,7 @@ export default function ImagePage() {
           }}
           onOpenAsk={() => {
             stopPlayOverlayAudio();
-            setAskChatExpanded(false);
+            setAskChatExpanded(true);
             setActivePanel('ask');
           }}
         />
@@ -6016,18 +6301,12 @@ export default function ImagePage() {
           canManage={image.canManage}
           onClose={closePanel}
           onOpenSettings={handleOpenSetupCards}
-          onOpenAddContent={() => openTendView('addContent')}
-          onOpenFeed={() => {
-            closePanel();
-            router.push('/feed');
-          }}
           onOpenWiki={() => {
             setActivePanel('wiki');
           }}
           onOpenStoryCut={() => setActivePanel('storyCuts')}
           onOpenTagPeople={() => openTendView('tag')}
           onOpenEditTitle={() => openTendView('editTitle')}
-          onOpenEditCaption={() => openTendView('editCaption')}
           onOpenContributors={handleOpenContributors}
         />
       )}
@@ -6726,6 +7005,7 @@ export default function ImagePage() {
         enabled={
           fromUpload &&
           image.canManage &&
+          !showFirstRunGuide &&
           image.tags.length === 0 &&
           !autoTagPromptDismissed &&
           !activePanel
@@ -6742,6 +7022,7 @@ export default function ImagePage() {
         enabled={
           fromUpload &&
           image.canManage &&
+          !showFirstRunGuide &&
           autoTagStepComplete &&
           !locationPromptDismissed &&
           !activePanel
