@@ -254,7 +254,16 @@ type IconProps = {
   className?: string;
 };
 
-type ActivePanel = 'ask' | 'contributors' | 'shape' | 'share' | 'play' | 'storyCuts' | 'wiki' | null;
+type ActivePanel =
+  | 'ask'
+  | 'contributors'
+  | 'memoryEntry'
+  | 'shape'
+  | 'share'
+  | 'play'
+  | 'storyCuts'
+  | 'wiki'
+  | null;
 type ShapeView =
   | 'menu'
   | 'storyCircle'
@@ -670,9 +679,12 @@ function AskEmberExperience({
   posterFilename,
   titleTone,
   railTone,
+  hasRecordedContributions,
   importantVoiceClips,
+  phoneCallAvailable,
   expanded,
   onExpandedChange,
+  onRequestPhoneCall,
   onStoredMemory,
   onClose,
   onOpenShare,
@@ -688,9 +700,12 @@ function AskEmberExperience({
   posterFilename: string | null;
   titleTone: 'light' | 'dark';
   railTone: 'light' | 'dark';
+  hasRecordedContributions: boolean;
   importantVoiceClips: AskVoiceClip[];
+  phoneCallAvailable: boolean;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  onRequestPhoneCall: () => Promise<void>;
   onStoredMemory: () => void;
   onClose: () => void;
   onOpenShare: () => void;
@@ -716,6 +731,7 @@ function AskEmberExperience({
   const listeningTranscriptRef = useRef('');
 
   const shouldShowExpanded = expanded || isListening;
+  const shouldShowStarterPrompt = !hasRecordedContributions && messages.length === 0;
   const featuredVoiceClips = importantVoiceClips.slice(0, 3);
 
   useEffect(() => {
@@ -982,6 +998,42 @@ function AskEmberExperience({
         }
       }
 
+      if (!hasRecordedContributions && messages.length === 0 && userMessage) {
+        const normalized = userMessage.trim().toLowerCase();
+        const confirmsPhoneCall =
+          /^(yes|yeah|yep|sure|ok|okay)\b/.test(normalized) ||
+          /\b(call me|phone call|call my phone|have ember call|have ember call me)\b/.test(
+            normalized
+          );
+
+        if (confirmsPhoneCall) {
+          setInput('');
+          setVoiceError('');
+          setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+          setIsLoading(true);
+
+          try {
+            await onRequestPhoneCall();
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: 'assistant',
+                content:
+                  'Ember is calling your phone now. If you want, you can also keep adding details here by chat.',
+              },
+            ]);
+          } catch (error) {
+            setVoiceError(
+              error instanceof Error ? error.message : 'Failed to start the phone call'
+            );
+          } finally {
+            setIsLoading(false);
+          }
+
+          return;
+        }
+      }
+
       setInput('');
       setVoiceError('');
       if (userMessage) {
@@ -1068,6 +1120,9 @@ function AskEmberExperience({
       persistVoiceNote,
       resetPendingAttachments,
       subjectNoun,
+      hasRecordedContributions,
+      messages.length,
+      onRequestPhoneCall,
       uploadPendingAttachments,
     ]
   );
@@ -1209,6 +1264,32 @@ function AskEmberExperience({
     onExpandedChange(true);
   };
 
+  const handleStarterPhoneCall = useCallback(async () => {
+    if (!phoneCallAvailable) {
+      setVoiceError('Add a phone number to your profile so Ember can call you.');
+      return;
+    }
+
+    setVoiceError('');
+    setIsLoading(true);
+
+    try {
+      await onRequestPhoneCall();
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content:
+            'Ember is calling your phone now. You can stay here or keep adding details in chat.',
+        },
+      ]);
+    } catch (error) {
+      setVoiceError(error instanceof Error ? error.message : 'Failed to start the phone call');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onRequestPhoneCall, phoneCallAvailable]);
+
   const lastAssistantMessage =
     [...messages].reverse().find((message) => message.role === 'assistant') || null;
 
@@ -1282,7 +1363,9 @@ function AskEmberExperience({
           {!shouldShowExpanded ? (
             <div className="flex flex-col">
               <div className="mx-auto mt-4 max-w-[18rem] text-center text-[1.05rem] font-medium leading-[1.28] tracking-[-0.02em]">
-                Ask ember anything or add more details about this memory.
+                {hasRecordedContributions
+                  ? 'Ask ember anything or add more details about this memory.'
+                  : 'Start this memory by chatting with Ember or having Ember call your phone.'}
               </div>
 
               <button
@@ -1364,7 +1447,31 @@ function AskEmberExperience({
               </div>
 
               <div className="mt-4 pr-1">
-                {messages.length === 0 && !isLoading && featuredVoiceClips.length === 0 ? (
+                {shouldShowStarterPrompt && !isLoading ? (
+                  <div className="space-y-4 pt-4 text-center">
+                    <div className="text-[1.2rem] font-semibold leading-[1.18] tracking-[-0.03em] text-white">
+                      Hi, I&apos;m Ember.
+                    </div>
+                    <div className="text-[1rem] font-medium leading-[1.3] text-white/94">
+                      Tell me what was happening in this {subjectNoun}, who was there, or any detail you
+                      want to preserve.
+                    </div>
+                    <div className="text-sm leading-6 text-white/88">
+                      If you&apos;d rather talk, I can have the Ember agent call your phone. Just say yes, or
+                      tap below.
+                    </div>
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => void handleStarterPhoneCall()}
+                        disabled={!phoneCallAvailable || isLoading}
+                        className="rounded-[1rem] border border-white/60 bg-white/12 px-4 py-3 text-sm font-semibold tracking-[-0.01em] text-white disabled:opacity-55"
+                      >
+                        {phoneCallAvailable ? 'Have Ember call me' : 'Phone call unavailable'}
+                      </button>
+                    </div>
+                  </div>
+                ) : messages.length === 0 && !isLoading && featuredVoiceClips.length === 0 ? (
                   <div className="pt-8 text-center text-[1rem] font-medium leading-[1.3] text-white/96">
                     Start asking ember about this {subjectNoun}, or add new details so they get saved.
                   </div>
@@ -1515,6 +1622,103 @@ function AskEmberExperience({
               )}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AddToMemoryChoiceExperience({
+  emberTitle,
+  mediaType,
+  filename,
+  posterFilename,
+  titleTone,
+  phoneCallAvailable,
+  isCalling,
+  errorMessage,
+  onClose,
+  onStartChat,
+  onRequestPhoneCall,
+}: {
+  emberTitle: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  filename: string;
+  posterFilename: string | null;
+  titleTone: 'light' | 'dark';
+  phoneCallAvailable: boolean;
+  isCalling: boolean;
+  errorMessage: string;
+  onClose: () => void;
+  onStartChat: () => void;
+  onRequestPhoneCall: () => Promise<void>;
+}) {
+  return (
+    <div className="ember-overlay-shell z-50 overflow-y-auto bg-white" onClick={onClose}>
+      <div className="relative min-h-full w-full bg-white" onClick={(event) => event.stopPropagation()}>
+        <div className="relative h-[70dvh] min-h-[24rem] overflow-hidden bg-[#a8ba91]">
+          <MediaPreview
+            mediaType={mediaType}
+            filename={filename}
+            posterFilename={posterFilename}
+            originalName={emberTitle}
+            usePosterForVideo
+            controls={mediaType === 'VIDEO'}
+            className={`h-full w-full ${
+              mediaType === 'VIDEO' ? 'object-contain bg-[#a8ba91]' : 'object-cover bg-[#a8ba91]'
+            }`}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-white/28" />
+          <div className="absolute left-5 top-3.5 right-20">
+            <h1
+              className={`max-w-[14rem] break-words text-[2rem] font-semibold leading-[1.04] tracking-[-0.05em] [overflow-wrap:anywhere] ${
+                titleTone === 'dark'
+                  ? 'text-black drop-shadow-[0_1px_2px_rgba(255,255,255,0.28)]'
+                  : 'text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.12)]'
+              }`}
+            >
+              {emberTitle}
+            </h1>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center text-white"
+            aria-label="Close add to this memory"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="min-h-[30dvh] bg-[var(--ember-orange)] px-6 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] text-center text-white">
+          <p className="text-[1.2rem] font-semibold leading-[1.18] tracking-[-0.03em]">
+            How would you like to add to this memory?
+          </p>
+          <p className="mt-2 text-sm leading-6 text-white/90">
+            Chat with Ember here, or have the Ember agent call your phone and collect the story by voice.
+          </p>
+
+          <div className="mt-5 flex flex-col gap-2.5">
+            <button
+              type="button"
+              onClick={onStartChat}
+              className="rounded-[1rem] bg-white px-4 py-3 text-sm font-semibold tracking-[-0.01em] text-[var(--ember-text)] shadow-[0_12px_24px_rgba(17,17,17,0.14)]"
+            >
+              Chat with Ember
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void onRequestPhoneCall().catch(() => {});
+              }}
+              disabled={!phoneCallAvailable || isCalling}
+              className="rounded-[1rem] border border-white/70 bg-white/12 px-4 py-3 text-sm font-semibold tracking-[-0.01em] text-white disabled:opacity-55"
+            >
+              {isCalling ? 'Calling...' : phoneCallAvailable ? 'Receive a phone call' : 'Phone call unavailable'}
+            </button>
+          </div>
+
+          {errorMessage && <div className="mt-3 text-sm text-white/92">{errorMessage}</div>}
         </div>
       </div>
     </div>
@@ -2104,6 +2308,16 @@ function TendSettingsIcon({ className = 'h-8 w-8' }: IconProps) {
   );
 }
 
+function TendAddContentIcon({ className = 'h-8 w-8' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className={className} aria-hidden="true">
+      <rect x="4.2" y="4.2" width="15.6" height="15.6" rx="2.2" strokeDasharray="3.5 2.5" />
+      <path d="M12 8v8" />
+      <path d="M8 12h8" />
+    </svg>
+  );
+}
+
 function TendWikiIcon({ className = 'h-8 w-8' }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.45" className={className} aria-hidden="true">
@@ -2201,6 +2415,7 @@ function TendMenuExperience({
   canManage,
   onClose,
   onOpenSettings,
+  onOpenAddContent,
   onOpenWiki,
   onOpenStoryCut,
   onOpenTagPeople,
@@ -2215,6 +2430,7 @@ function TendMenuExperience({
   canManage: boolean;
   onClose: () => void;
   onOpenSettings: () => void;
+  onOpenAddContent: () => void;
   onOpenWiki: () => void;
   onOpenStoryCut: () => void;
   onOpenTagPeople: () => void;
@@ -2266,6 +2482,12 @@ function TendMenuExperience({
               icon={<TendSettingsIcon className="h-full w-full" />}
               label="Settings"
               onClick={onOpenSettings}
+              disabled={!canManage}
+            />
+            <TendMenuButton
+              icon={<TendAddContentIcon className="h-full w-full" />}
+              label="Add Content"
+              onClick={onOpenAddContent}
               disabled={!canManage}
             />
             <TendMenuButton
@@ -2629,6 +2851,8 @@ export default function ImagePage() {
   const [savingShareState, setSavingShareState] = useState(false);
   const [shareError, setShareError] = useState('');
   const [actionNotice, setActionNotice] = useState('');
+  const [memoryEntryError, setMemoryEntryError] = useState('');
+  const [startingMemoryCall, setStartingMemoryCall] = useState(false);
   const [generatingWiki, setGeneratingWiki] = useState(false);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [shapeView, setShapeView] = useState<ShapeView>('menu');
@@ -3259,6 +3483,7 @@ export default function ImagePage() {
     setAskChatExpanded(false);
     setTendTagPromptOpen(false);
     setShapeOrigin('tend');
+    setMemoryEntryError('');
     setEditingSmartTitle(false);
     setEditingSmartCaption(false);
     setActivePanel(null);
@@ -4799,10 +5024,29 @@ export default function ImagePage() {
         content: message.content,
         createdAt: message.createdAt,
       }))
-    )
+  )
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
   const ownerContributorRecord =
     image.contributors.find((contributor) => contributor.userId === image.currentUserId) || null;
+  const currentConversationTarget = image.canManage
+    ? image.ownerConversationTarget
+    : ownerContributorRecord;
+  const currentConversationPhoneAvailable = Boolean(
+    currentConversationTarget?.phoneNumber || currentConversationTarget?.user?.phoneNumber
+  );
+  const hasRecordedContributions = image.contributors.some((contributor) => {
+    const hasUserMessages = (contributor.conversation?.messages || []).some(
+      (message) => message.role === 'user' && message.content.trim().length > 0
+    );
+    const hasResponses = (contributor.conversation?.responses || []).some(
+      (response) => response.answer.trim().length > 0
+    );
+    const hasVoiceMemory = contributor.voiceCalls.some(
+      (voiceCall) => Boolean(voiceCall.memorySyncedAt || voiceCall.callSummary?.trim())
+    );
+
+    return hasUserMessages || hasResponses || hasVoiceMemory;
+  });
   const storyCircleKnownSteps = new Set<string>();
   if (image.analysis?.capturedAt) {
     storyCircleKnownSteps.add('when');
@@ -5146,14 +5390,76 @@ export default function ImagePage() {
     });
   };
 
-  const handleStartFirstRunAsk = () => {
+  const openAskPanel = () => {
+    setMemoryEntryError('');
     setAskChatExpanded(true);
-    setActivePanel(null);
+    setActivePanel('ask');
+  };
+
+  const openMemoryEntryPanel = () => {
+    setMemoryEntryError('');
+    setActivePanel('memoryEntry');
+  };
+
+  const handleRequestMemoryPhoneCall = async () => {
+    if (!currentConversationTarget) {
+      throw new Error('Ember could not find your memory thread for this photo yet.');
+    }
+
+    if (!currentConversationPhoneAvailable) {
+      throw new Error('Add a phone number to your profile so Ember can call you.');
+    }
+
+    if (startingMemoryCall) {
+      return;
+    }
+
+    setStartingMemoryCall(true);
+    setMemoryEntryError('');
+    setShareError('');
+    setActionNotice('');
+
+    try {
+      const response = await fetch(
+        image.canManage
+          ? '/api/voice/call'
+          : `/api/contribute/${encodeURIComponent(currentConversationTarget.token)}/call`,
+        image.canManage
+          ? {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contributorId: currentConversationTarget.id }),
+            }
+          : {
+              method: 'POST',
+            }
+      );
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to start the phone call.');
+      }
+
+      setActionNotice('Ember is calling your phone now.');
+      setActivePanel(null);
+      await fetchImage();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to start the phone call.';
+      setMemoryEntryError(message);
+      throw error instanceof Error ? error : new Error(message);
+    } finally {
+      setStartingMemoryCall(false);
+    }
+  };
+
+  const handleStartFirstRunAsk = () => {
+    setActivePanel('memoryEntry');
     replaceImageQuery((nextParams) => {
       nextParams.delete('setup');
       nextParams.delete('fromUpload');
       nextParams.delete('view');
-      nextParams.set('panel', 'ask');
+      nextParams.delete('panel');
     });
   };
 
@@ -5587,6 +5893,16 @@ export default function ImagePage() {
                 Explore this ember and invite friends &amp; family to add to the memory.
               </p>
 
+              {!hasRecordedContributions && (
+                <button
+                  type="button"
+                  onClick={openMemoryEntryPanel}
+                  className="mt-4 rounded-[1rem] bg-white px-4 py-3 text-sm font-semibold tracking-[-0.01em] text-[var(--ember-text)] shadow-[0_12px_24px_rgba(17,17,17,0.14)]"
+                >
+                  Add to this memory
+                </button>
+              )}
+
               {(actionNotice || shareError) && (
                 <div className="mt-4 max-w-[16rem] text-sm text-white/92 sm:max-w-[20rem]">
                   {shareError || actionNotice}
@@ -5596,6 +5912,22 @@ export default function ImagePage() {
           </div>
         )}
       </section>
+
+      {activePanel === 'memoryEntry' && (
+        <AddToMemoryChoiceExperience
+          emberTitle={emberTitle}
+          mediaType={image.mediaType}
+          filename={image.filename}
+          posterFilename={image.posterFilename}
+          titleTone={heroOverlayTone.title}
+          phoneCallAvailable={currentConversationPhoneAvailable}
+          isCalling={startingMemoryCall}
+          errorMessage={memoryEntryError}
+          onClose={closePanel}
+          onStartChat={openAskPanel}
+          onRequestPhoneCall={handleRequestMemoryPhoneCall}
+        />
+      )}
 
       {activePanel === 'ask' && (
         <AskEmberExperience
@@ -5608,6 +5940,7 @@ export default function ImagePage() {
           posterFilename={image.posterFilename}
           titleTone={heroOverlayTone.title}
           railTone={heroOverlayTone.rail}
+          hasRecordedContributions={hasRecordedContributions}
           importantVoiceClips={image.voiceCallClips.map((clip) => ({
             id: clip.id,
             contributorName: clip.contributorName,
@@ -5618,8 +5951,10 @@ export default function ImagePage() {
             startMs: clip.startMs,
             endMs: clip.endMs,
           }))}
+          phoneCallAvailable={currentConversationPhoneAvailable}
           expanded={askChatExpanded}
           onExpandedChange={setAskChatExpanded}
+          onRequestPhoneCall={handleRequestMemoryPhoneCall}
           onStoredMemory={() => {
             void fetchImage();
           }}
@@ -6301,6 +6636,7 @@ export default function ImagePage() {
           canManage={image.canManage}
           onClose={closePanel}
           onOpenSettings={handleOpenSetupCards}
+          onOpenAddContent={() => openTendView('addContent')}
           onOpenWiki={() => {
             setActivePanel('wiki');
           }}
