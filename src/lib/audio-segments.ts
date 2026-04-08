@@ -5,6 +5,8 @@ import { extractAudioClipToM4a, transcodeAudioToM4a } from '@/lib/audio-processi
 import { prisma } from '@/lib/db';
 import { getUploadPath, getUploadsDir } from '@/lib/uploads';
 
+const AUDIO_SEGMENT_VERSION = 'v2';
+
 export type ResolvedAudioSource = {
   source: string;
   fallbackStartMs: number | null;
@@ -97,7 +99,7 @@ export async function getOrCreateAudioSegmentPath({
   }
 
   const cacheKey = createHash('sha1')
-    .update(`${mediaId}:${sourceInfo.source}:${startMs}:${endMs}`)
+    .update(`${AUDIO_SEGMENT_VERSION}:${mediaId}:${sourceInfo.source}:${startMs}:${endMs}`)
     .digest('hex');
   const segmentsDir = join(getUploadsDir(), '.segments');
   const outputPath = join(segmentsDir, `${cacheKey}.m4a`);
@@ -130,7 +132,9 @@ export async function getOrCreateNormalizedAudioPath({
     throw new Error('Audio source not found');
   }
 
-  const cacheKey = createHash('sha1').update(`${mediaId}:${sourceInfo.source}:full`).digest('hex');
+  const cacheKey = createHash('sha1')
+    .update(`${AUDIO_SEGMENT_VERSION}:${mediaId}:${sourceInfo.source}:full`)
+    .digest('hex');
   const normalizedDir = join(getUploadsDir(), '.normalized-audio');
   const outputPath = join(normalizedDir, `${cacheKey}.m4a`);
 

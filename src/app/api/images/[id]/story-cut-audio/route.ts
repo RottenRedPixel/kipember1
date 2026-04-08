@@ -14,6 +14,8 @@ import { prisma } from '@/lib/db';
 import { normalizeTextForSpeech } from '@/lib/narration';
 import { getUploadsDir } from '@/lib/uploads';
 
+const STORY_CUT_AUDIO_RENDER_VERSION = 'v2';
+
 type StoryCutBlock =
   | {
       type: 'voice';
@@ -264,6 +266,7 @@ export async function GET(
       voiceId,
       fallbackScript: storyCut.script,
       cachePayload: {
+        version: STORY_CUT_AUDIO_RENDER_VERSION,
         imageId: id,
         storyCutId: storyCut.id,
         updatedAt: storyCut.updatedAt.toISOString(),
@@ -331,6 +334,7 @@ export async function POST(
       voiceId,
       fallbackScript: script,
       cachePayload: {
+        version: STORY_CUT_AUDIO_RENDER_VERSION,
         imageId: id,
         draft: true,
         voiceId,
