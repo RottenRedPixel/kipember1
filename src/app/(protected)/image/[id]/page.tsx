@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ContributorList from '@/components/ContributorList';
@@ -1045,18 +1045,22 @@ function AskEmberExperience({
       try {
         let savedAudio = false;
         let audioSaveWarning = '';
+        let resolvedMessage = userMessage;
 
         if (source === 'voice' && audioBlob && audioBlob.size > 0) {
           try {
-            await persistVoiceNote(audioBlob, userMessage);
+            const persistedAudio = await persistVoiceNote(audioBlob, userMessage);
             savedAudio = true;
+            if (!resolvedMessage && typeof persistedAudio?.transcript === 'string') {
+              resolvedMessage = persistedAudio.transcript.trim();
+            }
           } catch (audioError) {
             audioSaveWarning =
               audioError instanceof Error ? audioError.message : 'Failed to save voice note.';
           }
         }
 
-        if (!userMessage) {
+        if (!resolvedMessage) {
           if (savedAudio) {
             setSavedMemoryNotice('Saved voice note to this ember.');
             onStoredMemory();
@@ -1072,7 +1076,7 @@ function AskEmberExperience({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             imageId,
-            message: userMessage,
+            message: resolvedMessage,
             inputMode: source,
           }),
         });
@@ -1127,6 +1131,23 @@ function AskEmberExperience({
     ]
   );
 
+  const prefersServerSideVoiceTranscription = useMemo(() => {
+    if (typeof navigator === 'undefined') {
+      return false;
+    }
+
+    const ua = navigator.userAgent || '';
+    const platform = navigator.platform || '';
+    const maxTouchPoints = navigator.maxTouchPoints || 0;
+    const isIOS =
+      /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && maxTouchPoints > 1);
+    const isSafari =
+      /Safari/i.test(ua) &&
+      !/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|DuckDuckGo|SamsungBrowser/i.test(ua);
+
+    return isIOS || isSafari;
+  }, []);
+
   const handleVoiceToggle = useCallback(() => {
     const recognition = recognitionRef.current as
       | {
@@ -1135,7 +1156,11 @@ function AskEmberExperience({
       | null;
 
     if (isListening) {
-      recognition?.stop?.();
+      if (recognition?.stop) {
+        recognition.stop();
+      } else if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
       return;
     }
 
@@ -1162,6 +1187,66 @@ function AskEmberExperience({
 
     const SpeechRecognitionCtor =
       browserWindow?.SpeechRecognition || browserWindow?.webkitSpeechRecognition || null;
+    const canRecordAudio =
+      typeof MediaRecorder !== 'undefined' && typeof navigator?.mediaDevices?.getUserMedia === 'function';
+    const shouldUseRecorderOnly =
+      canRecordAudio && (prefersServerSideVoiceTranscription || !SpeechRecognitionCtor);
+
+    if (shouldUseRecorderOnly) {
+      void (async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaStreamRef.current = stream;
+          recordedChunksRef.current = [];
+          listeningTranscriptRef.current = '';
+          setInput('');
+          setVoiceError('');
+          setIsListening(true);
+          onExpandedChange(true);
+
+          const recorder = new MediaRecorder(stream);
+          recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              recordedChunksRef.current.push(event.data);
+            }
+          };
+          recorder.onerror = () => {
+            setVoiceError('Voice input failed.');
+            setIsListening(false);
+          };
+          recorder.onstop = () => {
+            const chunks = [...recordedChunksRef.current];
+            recordedChunksRef.current = [];
+            mediaRecorderRef.current = null;
+            mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+            mediaStreamRef.current = null;
+            setIsListening(false);
+
+            const audioBlob =
+              chunks.length > 0
+                ? new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
+                : null;
+
+            if (audioBlob && audioBlob.size > 0) {
+              void submitMessage('', 'voice', audioBlob);
+              return;
+            }
+
+            setVoiceError('Voice input failed.');
+          };
+
+          mediaRecorderRef.current = recorder;
+          recorder.start();
+        } catch (error) {
+          setVoiceError(
+            error instanceof Error ? error.message : 'Microphone access was denied.'
+          );
+          setIsListening(false);
+        }
+      })();
+
+      return;
+    }
 
     if (!SpeechRecognitionCtor) {
       setVoiceError('Voice input is not available in this browser.');
@@ -1257,7 +1342,7 @@ function AskEmberExperience({
         setIsListening(false);
       }
     })();
-  }, [isListening, onExpandedChange, submitMessage]);
+  }, [isListening, onExpandedChange, prefersServerSideVoiceTranscription, submitMessage]);
 
   const handleCompactComposerClick = () => {
     pendingFocusRef.current = true;

@@ -47,3 +47,7 @@ export function getStoryCutsModel(): string {
 export function getAskCaptureModel(): string {
   return process.env.OPENAI_ASK_CAPTURE_MODEL || 'gpt-5-mini';
 }
+
+export function getAudioTranscriptionModel(): string {
+  return process.env.OPENAI_AUDIO_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
+}

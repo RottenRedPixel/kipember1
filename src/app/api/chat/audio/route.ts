@@ -4,6 +4,7 @@ import { getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { persistUploadedMedia } from '@/lib/media-upload';
 import { ensureUserContributorForImage } from '@/lib/owner-contributor';
+import { getAudioTranscriptionModel, getOpenAIClient } from '@/lib/openai';
 
 function buildAttachmentDescription(transcript: string | null) {
   const prefix = 'Ask Ember voice note';
@@ -24,6 +25,22 @@ function trimStoredTranscript(value: string | null | undefined) {
   }
 
   return cleaned.length > 360 ? `${cleaned.slice(0, 357).trimEnd()}...` : cleaned;
+}
+
+async function transcribeUploadedAudio(file: File) {
+  try {
+    const client = getOpenAIClient();
+    const transcription = await client.audio.transcriptions.create({
+      file,
+      model: getAudioTranscriptionModel(),
+    });
+
+    const text = transcription.text?.replace(/\s+/g, ' ').trim() || '';
+    return text || null;
+  } catch (error) {
+    console.error('Ask audio transcription error:', error);
+    return null;
+  }
 }
 
 async function ensureContributorConversation(contributorId: string) {
@@ -77,6 +94,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const resolvedTranscript = transcript || (persistedMedia.mediaType === 'AUDIO'
+      ? await transcribeUploadedAudio(file)
+      : null) || '';
+
     const attachment = await prisma.imageAttachment.create({
       data: {
         imageId,
@@ -85,7 +106,7 @@ export async function POST(request: NextRequest) {
         posterFilename: persistedMedia.posterFilename,
         durationSeconds: persistedMedia.durationSeconds,
         originalName: file.name,
-        description: buildAttachmentDescription(transcript || null),
+        description: buildAttachmentDescription(resolvedTranscript || null),
       },
       select: {
         id: true,
@@ -100,7 +121,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const storedTranscript = trimStoredTranscript(transcript || null);
+    const storedTranscript = trimStoredTranscript(resolvedTranscript || null);
     if (storedTranscript) {
       try {
         const contributor = await ensureUserContributorForImage(imageId, auth.user.id);
@@ -133,6 +154,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       attachment,
+      transcript: storedTranscript,
       warning: persistedMedia.warning,
     });
   } catch (error) {
