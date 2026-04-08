@@ -11,12 +11,11 @@ function stripInlineMarkdown(value: string) {
 export function normalizeNarrationText(value: string) {
   return stripInlineMarkdown(value)
     .normalize('NFKC')
-    .replace(/[â€œâ€]/g, '"')
-    .replace(/[â€˜â€™]/g, "'")
-    .replace(/[â€“â€”âˆ’]/g, '-')
-    .replace(/[â€¦]/g, '...')
-    .replace(/[â€¢]/g, ' ')
-    .replace(/Ã¢â‚¬â„¢|Ã¢â‚¬Å“|Ã¢â‚¬Â|Ã¢â‚¬â€œ|Ã¢â‚¬â€/g, ' ')
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[–—−]/g, '-')
+    .replace(/[…]/g, '...')
+    .replace(/[•]/g, ' ')
     .replace(/\b(?:vs\.?|v\.)\b/gi, ' versus ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -24,10 +23,13 @@ export function normalizeNarrationText(value: string) {
 
 export function normalizeTextForSpeech(value: string) {
   return normalizeNarrationText(value)
-    .replace(/([A-Za-z])\s+['’]\s*(s|d|ll|re|ve|m|t)\b/g, "$1'$2")
-    .replace(/([A-Za-z])['’]\s+(s|d|ll|re|ve|m|t)\b/g, "$1'$2")
-    .replace(/\b([A-Za-z]+)['’]s\b/g, '$1’s')
-    .replace(/\b([A-Za-z]+)['’](d|ll|re|ve|m|t)\b/g, '$1’$2')
+    .replace(/([A-Za-z])\s+['\u2019]\s*([A-Za-z])/g, "$1'$2")
+    .replace(/([A-Za-z])['\u2019]\s+([A-Za-z])/g, "$1'$2")
+    .replace(/([A-Za-z])'([A-Za-z])/g, '$1\u2019$2')
+    .replace(/([A-Za-z])\s+['\u2019]\s*(s|d|ll|re|ve|m|t)\b/g, "$1'$2")
+    .replace(/([A-Za-z])['\u2019]\s+(s|d|ll|re|ve|m|t)\b/g, "$1'$2")
+    .replace(/\b([A-Za-z]+)['\u2019]s\b/g, '$1\u2019s')
+    .replace(/\b([A-Za-z]+)['\u2019](d|ll|re|ve|m|t)\b/g, '$1\u2019$2')
     .replace(/\s+/g, ' ')
     .trim();
 }

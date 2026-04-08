@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createReadStream, promises as fs } from 'fs';
-import { join, extname } from 'path';
+import { extname, basename } from 'path';
+import { prisma } from '@/lib/db';
+import { getUploadPath } from '@/lib/uploads';
+import { shouldNormalizeAudioForIos, transcodeAudioToM4a } from '@/lib/audio-processing';
 
 const CONTENT_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -23,22 +26,80 @@ const CONTENT_TYPES: Record<string, string> = {
   '.mpeg': 'audio/mpeg',
 };
 
+async function resolvePlayableUpload(filename: string) {
+  const ext = extname(filename).toLowerCase();
+  const originalPath = getUploadPath(filename);
+
+  if (!shouldNormalizeAudioForIos(filename)) {
+    return {
+      filePath: originalPath,
+      contentType: CONTENT_TYPES[ext] || 'application/octet-stream',
+    };
+  }
+
+  const [attachment, image] = await Promise.all([
+    prisma.imageAttachment.findFirst({
+      where: {
+        filename,
+        mediaType: 'AUDIO',
+      },
+      select: { id: true },
+    }),
+    prisma.image.findFirst({
+      where: {
+        filename,
+        mediaType: 'AUDIO',
+      },
+      select: { id: true },
+    }),
+  ]);
+
+  if (!attachment && !image) {
+    return {
+      filePath: originalPath,
+      contentType: CONTENT_TYPES[ext] || 'application/octet-stream',
+    };
+  }
+
+  const derivedFilename = `${basename(filename, ext)}.ios.m4a`;
+  const derivedPath = getUploadPath(derivedFilename);
+
+  try {
+    await fs.access(derivedPath);
+    return {
+      filePath: derivedPath,
+      contentType: 'audio/mp4',
+    };
+  } catch {
+    try {
+      await transcodeAudioToM4a({
+        inputPath: originalPath,
+        outputPath: derivedPath,
+      });
+      return {
+        filePath: derivedPath,
+        contentType: 'audio/mp4',
+      };
+    } catch {
+      return {
+        filePath: originalPath,
+        contentType: CONTENT_TYPES[ext] || 'application/octet-stream',
+      };
+    }
+  }
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
     const { filename } = await params;
-    const uploadsDir =
-      process.env.UPLOADS_DIR || join(process.cwd(), 'public', 'uploads');
-    const filePath = join(uploadsDir, filename);
+    const { filePath, contentType } = await resolvePlayableUpload(filename);
 
     await fs.access(filePath);
     const stat = await fs.stat(filePath);
     const range = request.headers.get('range');
-
-    const contentType =
-      CONTENT_TYPES[extname(filename).toLowerCase()] || 'application/octet-stream';
 
     if (range) {
       const [startText, endText] = range.replace(/bytes=/, '').split('-');

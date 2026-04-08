@@ -46,6 +46,7 @@ interface WikiRecord {
 
 export default function WikiPage() {
   const params = useParams();
+  const imageId = typeof params.id === 'string' ? params.id : params.id?.[0] || null;
   const [wiki, setWiki] = useState<WikiRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -186,7 +187,7 @@ export default function WikiPage() {
 
               <div className="mt-8 min-w-0 border-t ember-divider pt-8">
                 <WikiView content={wiki.content} />
-                <WikiVoiceClipSection clips={wiki.voiceCallClips} />
+                <WikiVoiceClipSection clips={wiki.voiceCallClips} imageId={imageId} />
 
                 {audioAttachments.length > 0 && (
                   <section className="mt-10 border-t ember-divider pt-8">

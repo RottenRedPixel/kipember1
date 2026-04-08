@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 type ClipAudioPlayerProps = {
   src: string;
+  imageId?: string | null;
+  mediaId?: string | null;
   startMs?: number | null;
   endMs?: number | null;
   className?: string;
@@ -22,6 +24,8 @@ function formatTime(valueMs?: number | null) {
 
 export default function ClipAudioPlayer({
   src,
+  imageId,
+  mediaId,
   startMs,
   endMs,
   className = '',
@@ -30,11 +34,26 @@ export default function ClipAudioPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
+  const usesServerSegment = Boolean(
+    imageId &&
+      mediaId &&
+      typeof startMs === 'number' &&
+      Number.isFinite(startMs) &&
+      typeof endMs === 'number' &&
+      Number.isFinite(endMs) &&
+      endMs > startMs
+  );
 
-  const clipStartSeconds =
-    typeof startMs === 'number' && Number.isFinite(startMs) ? Math.max(0, startMs / 1000) : 0;
-  const clipEndSeconds =
-    typeof endMs === 'number' && Number.isFinite(endMs) ? Math.max(0, endMs / 1000) : null;
+  const clipStartSeconds = usesServerSegment
+    ? 0
+    : typeof startMs === 'number' && Number.isFinite(startMs)
+      ? Math.max(0, startMs / 1000)
+      : 0;
+  const clipEndSeconds = usesServerSegment
+    ? null
+    : typeof endMs === 'number' && Number.isFinite(endMs)
+      ? Math.max(0, endMs / 1000)
+      : null;
   const clipRangeLabel = useMemo(() => {
     const start = formatTime(startMs);
     const end = formatTime(endMs);
@@ -45,9 +64,21 @@ export default function ClipAudioPlayer({
 
     return start || end || 'Audio clip';
   }, [endMs, startMs]);
+  const resolvedSrc = useMemo(() => {
+    if (usesServerSegment) {
+      const params = new URLSearchParams({
+        mediaId: mediaId as string,
+        startMs: String(startMs),
+        endMs: String(endMs),
+      });
+      return `/api/images/${imageId}/audio-segment?${params.toString()}`;
+    }
+
+    return src;
+  }, [endMs, imageId, mediaId, src, startMs, usesServerSegment]);
 
   useEffect(() => {
-    const audio = new Audio(src);
+    const audio = new Audio(resolvedSrc);
     audio.preload = 'none';
     audioRef.current = audio;
 
@@ -113,7 +144,7 @@ export default function ClipAudioPlayer({
       audio.removeEventListener('error', handleError);
       audioRef.current = null;
     };
-  }, [clipEndSeconds, clipStartSeconds, src]);
+  }, [clipEndSeconds, clipStartSeconds, resolvedSrc]);
 
   const handleToggle = async () => {
     const audio = audioRef.current;

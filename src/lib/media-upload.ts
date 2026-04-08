@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import { getUploadPath, getUploadsDir, inferMediaType } from '@/lib/uploads';
+import { shouldNormalizeAudioForIos, transcodeAudioToM4a } from '@/lib/audio-processing';
 import { generatePosterFrame, probeVideo } from '@/lib/video-processing';
 
 export type PersistedMediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
@@ -22,6 +23,19 @@ function describeVideoProcessingError(error: unknown): string {
   return 'Video uploaded, but poster-frame processing failed';
 }
 
+function describeAudioProcessingError(error: unknown): string {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    if (message.includes('ffmpeg') || message.includes('enoent')) {
+      return 'Audio uploaded, but iPhone-safe conversion failed because ffmpeg is not available on the server';
+    }
+
+    return `Audio uploaded, but iPhone-safe conversion failed: ${error.message}`;
+  }
+
+  return 'Audio uploaded, but iPhone-safe conversion failed';
+}
+
 export async function persistUploadedMedia(file: File): Promise<{
   filename: string;
   mediaType: PersistedMediaType;
@@ -39,8 +53,8 @@ export async function persistUploadedMedia(file: File): Promise<{
     throw new Error('File extension is required');
   }
 
-  const filename = `${randomUUID()}.${ext}`;
-  const filePath = getUploadPath(filename);
+  let filename = `${randomUUID()}.${ext}`;
+  let filePath = getUploadPath(filename);
   let posterFilename: string | null = null;
   let durationSeconds: number | null = null;
   let warning: string | null = null;
@@ -51,7 +65,19 @@ export async function persistUploadedMedia(file: File): Promise<{
   await writeFile(filePath, Buffer.from(bytes));
 
   try {
-    if (mediaType === 'VIDEO') {
+    if (mediaType === 'AUDIO' && shouldNormalizeAudioForIos(file.name)) {
+      const transcodedFilename = `${randomUUID()}.m4a`;
+      const transcodedPath = getUploadPath(transcodedFilename);
+
+      await transcodeAudioToM4a({
+        inputPath: filePath,
+        outputPath: transcodedPath,
+      });
+
+      await unlink(filePath).catch(() => undefined);
+      filename = transcodedFilename;
+      filePath = transcodedPath;
+    } else if (mediaType === 'VIDEO') {
       const nextPosterFilename = `${randomUUID()}.jpg`;
       const posterPath = getUploadPath(nextPosterFilename);
       const videoMetadata = await probeVideo(filePath);
@@ -72,7 +98,10 @@ export async function persistUploadedMedia(file: File): Promise<{
     }
 
     durationSeconds = null;
-    warning = describeVideoProcessingError(error);
+    warning =
+      mediaType === 'AUDIO'
+        ? describeAudioProcessingError(error)
+        : describeVideoProcessingError(error);
   }
 
   return {

@@ -2248,6 +2248,7 @@ function ShareEmberExperience({
 }
 
 function WikiOverlayExperience({
+  imageId,
   wikiContent,
   wikiUpdatedAt,
   voiceCallClips,
@@ -2257,6 +2258,7 @@ function WikiOverlayExperience({
   onGenerate,
   onClose,
 }: {
+  imageId: string;
   wikiContent: string | null;
   wikiUpdatedAt: string | null;
   voiceCallClips: Array<{
@@ -2311,7 +2313,7 @@ function WikiOverlayExperience({
                 <WikiView content={wikiContent} variant="overlay" />
               </div>
 
-              <WikiVoiceClipSection clips={voiceCallClips} variant="overlay" />
+              <WikiVoiceClipSection clips={voiceCallClips} imageId={imageId} variant="overlay" />
 
               {audioAttachments.length > 0 && (
                 <section className="rounded-[1.8rem] bg-white/34 px-5 py-6 shadow-[0_12px_26px_rgba(0,0,0,0.06)]">
@@ -4100,6 +4102,39 @@ export default function ImagePage() {
         : storyCutEmberVoiceId || null;
 
     try {
+      if (image?.id && Array.isArray(storyCut.blocks) && storyCut.blocks.length > 0) {
+        try {
+          const renderedStoryCutResponse = await fetch(`/api/images/${image.id}/story-cut-audio`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              script: effectiveScript,
+              blocks: storyCut.blocks,
+              voiceId: requestedVoiceId,
+            }),
+          });
+
+          if (!renderedStoryCutResponse.ok) {
+            const payload = await renderedStoryCutResponse.json().catch(() => null);
+            throw new Error(payload?.error || 'Snapshot audio could not be prepared on this device.');
+          }
+
+          const renderedStoryCutBlob = await renderedStoryCutResponse.blob();
+          const renderedStoryCutUrl = URL.createObjectURL(renderedStoryCutBlob);
+
+          await playStoryCutAudioSegment({
+            src: renderedStoryCutUrl,
+            objectUrl: renderedStoryCutUrl,
+            playbackRequestId,
+            errorMessage: 'Snapshot audio could not be prepared on this device.',
+          });
+          stopStoryCutPlayback();
+          return;
+        } catch (renderedPlaybackError) {
+          console.error('Falling back to block playback for Snapshot:', renderedPlaybackError);
+        }
+      }
+
       const mediaLookup = new Map<string, StoryCutMediaItem>(
         storyCutMediaItems.map((media) => [media.id, media])
       );
@@ -4254,13 +4289,34 @@ export default function ImagePage() {
           continue;
         }
 
-        await playStoryCutAudioSegment({
-          src: block.mediaUrl,
-          startMs: block.clipStartMs ?? null,
-          endMs: block.clipEndMs ?? null,
-          playbackRequestId,
-          errorMessage: 'A selected audio clip could not be played on this device.',
-        });
+        try {
+          const clipSegmentSrc =
+            image?.id &&
+            block.mediaId &&
+            typeof block.clipStartMs === 'number' &&
+            Number.isFinite(block.clipStartMs) &&
+            typeof block.clipEndMs === 'number' &&
+            Number.isFinite(block.clipEndMs) &&
+            block.clipEndMs > block.clipStartMs
+              ? `/api/images/${image.id}/audio-segment?${new URLSearchParams({
+                  mediaId: block.mediaId,
+                  startMs: String(block.clipStartMs),
+                  endMs: String(block.clipEndMs),
+                }).toString()}`
+              : null;
+
+          await playStoryCutAudioSegment({
+            src: clipSegmentSrc || block.mediaUrl,
+            startMs: clipSegmentSrc ? null : block.clipStartMs ?? null,
+            endMs: clipSegmentSrc ? null : block.clipEndMs ?? null,
+            playbackRequestId,
+            errorMessage: 'A selected audio clip could not be played on this device.',
+          });
+        } catch (clipPlaybackError) {
+          console.error('Skipping unsupported Snapshot clip:', clipPlaybackError);
+          setStoryCutPlaybackError('One audio clip was skipped because this device could not play it.');
+          continue;
+        }
       }
 
       stopStoryCutPlayback();
@@ -6633,6 +6689,7 @@ export default function ImagePage() {
 
       {activePanel === 'wiki' && (
         <WikiOverlayExperience
+          imageId={image.id}
           wikiContent={image.wiki?.content || null}
           wikiUpdatedAt={image.wiki?.updatedAt || null}
           voiceCallClips={image.voiceCallClips}

@@ -14,6 +14,7 @@ type WikiVoiceClip = {
 
 interface WikiVoiceClipSectionProps {
   clips: WikiVoiceClip[];
+  imageId?: string | null;
   variant?: 'default' | 'overlay';
 }
 
@@ -44,6 +45,7 @@ function formatClipRange(startMs?: number | null, endMs?: number | null) {
 
 export default function WikiVoiceClipSection({
   clips,
+  imageId = null,
   variant = 'default',
 }: WikiVoiceClipSectionProps) {
   if (!clips.length) {
@@ -109,6 +111,8 @@ export default function WikiVoiceClipSection({
               {clip.audioUrl ? (
                 <ClipAudioPlayer
                   src={clip.audioUrl}
+                  imageId={imageId}
+                  mediaId={clip.id}
                   startMs={clip.startMs}
                   endMs={clip.endMs}
                   className="mt-4"
