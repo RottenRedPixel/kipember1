@@ -2,12 +2,12 @@ import ImageUploader from '@/components/ImageUploader';
 
 export default function CreatePage() {
   return (
-    <div className="flex min-h-[calc(100vh-2.7rem)] flex-col bg-white">
-      <section id="add-ember" className="flex-1 bg-white px-6 pt-8 pb-12">
+    <div className="flex h-[calc(100dvh-2.7rem)] min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
+      <section id="add-ember" className="min-h-0 basis-[70%] bg-white px-6 pt-8 pb-10">
         <ImageUploader />
       </section>
 
-      <section className="bg-[var(--ember-orange)] px-11 py-8 text-white">
+      <section className="min-h-0 basis-[30%] bg-[var(--ember-orange)] px-11 py-8 text-white">
         <p className="max-w-[15rem] text-[1.08rem] font-medium leading-[1.28] tracking-[-0.03em]">
           Ember is a new way to collect and preserve your precious memories.
         </p>

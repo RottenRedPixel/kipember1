@@ -133,10 +133,10 @@ export default function UploadProcessingOverlay({
         <ProcessingHeader />
 
         <div
-          className="flex flex-1 flex-col"
+          className="flex h-[calc(100%-2.65rem)] min-h-0 flex-col"
           style={{ backgroundColor: stage.topBackground }}
         >
-          <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
+          <div className="flex min-h-0 basis-[70%] flex-col items-center justify-center px-8 text-center">
             <SpinnerCycleIcon color={stage.topText} />
 
             <div
@@ -154,7 +154,7 @@ export default function UploadProcessingOverlay({
           </div>
 
           <div
-            className="min-h-[12.4rem] px-8 py-8 text-center"
+            className="flex min-h-0 basis-[30%] items-start justify-center px-8 py-8 text-center"
             style={{ backgroundColor: stage.bottomBackground, color: stage.bottomText }}
           >
             <p className="text-[1.02rem] font-medium tracking-[-0.02em]">

@@ -32,6 +32,39 @@ export async function loadEmberSetupContext(imageId: string) {
         },
       },
       analysis: true,
+      voiceCallClips: {
+        orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
+        select: {
+          id: true,
+          contributorId: true,
+          voiceCallId: true,
+          title: true,
+          quote: true,
+          significance: true,
+          speaker: true,
+          audioUrl: true,
+          startMs: true,
+          endMs: true,
+          canUseForTitle: true,
+          createdAt: true,
+          contributor: {
+            select: {
+              id: true,
+              userId: true,
+              name: true,
+              email: true,
+              phoneNumber: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      },
       attachments: {
         orderBy: { createdAt: 'asc' },
         select: {
@@ -153,6 +186,28 @@ export async function loadEmberSetupContext(imageId: string) {
         summary,
       }))
   );
+  const callHighlights = image.voiceCallClips.map((clip) => ({
+    id: clip.id,
+    voiceCallId: clip.voiceCallId,
+    contributorId: clip.contributorId,
+    contributorUserId:
+      clip.contributor.user?.id || clip.contributor.userId || null,
+    contributorName:
+      clip.contributor.name ||
+      clip.contributor.user?.name ||
+      clip.contributor.email ||
+      clip.contributor.phoneNumber ||
+      'Contributor',
+    title: clip.title,
+    quote: clip.quote,
+    significance: clip.significance,
+    speaker: clip.speaker,
+    audioUrl: clip.audioUrl,
+    startMs: clip.startMs,
+    endMs: clip.endMs,
+    canUseForTitle: clip.canUseForTitle,
+    createdAt: toIsoString(clip.createdAt),
+  }));
 
   const promptContext = compactLines([
     `EMBER TITLE\n${imageTitle}`,
@@ -191,6 +246,19 @@ export async function loadEmberSetupContext(imageId: string) {
           .map((call) => `${call.contributorName}: ${call.summary}`)
           .join('\n')}`
       : null,
+    callHighlights.length > 0
+      ? `VOICE CALL HIGHLIGHTS\n${callHighlights
+          .map((clip) =>
+            [
+              `${clip.contributorName} - ${clip.title}: "${clip.quote}"`,
+              clip.significance ? `Why it matters: ${clip.significance}` : null,
+              clip.canUseForTitle ? 'Usable for smart title ideas.' : null,
+            ]
+              .filter(Boolean)
+              .join(' ')
+          )
+          .join('\n')}`
+      : null,
     image.attachments.length > 0
       ? `SUPPORTING MEDIA NOTES\n${image.attachments
           .filter((attachment) => attachment.description?.trim())
@@ -212,6 +280,7 @@ export async function loadEmberSetupContext(imageId: string) {
     confirmedLocation,
     contributorMemories,
     callSummaries,
+    callHighlights,
     promptContext,
   };
 }

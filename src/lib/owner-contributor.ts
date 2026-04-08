@@ -19,10 +19,10 @@ async function getOwnerProfile(userId: string): Promise<OwnerProfile | null> {
   });
 }
 
-export async function ensureOwnerContributorForImage(imageId: string, userId: string) {
-  const owner = await getOwnerProfile(userId);
+export async function ensureUserContributorForImage(imageId: string, userId: string) {
+  const user = await getOwnerProfile(userId);
 
-  if (!owner) {
+  if (!user) {
     return null;
   }
 
@@ -34,18 +34,22 @@ export async function ensureOwnerContributorForImage(imageId: string, userId: st
       },
     },
     update: {
-      name: owner.name,
-      email: owner.email,
-      phoneNumber: owner.phoneNumber,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
     },
     create: {
       imageId,
       userId,
-      name: owner.name,
-      email: owner.email,
-      phoneNumber: owner.phoneNumber,
+      name: user.name,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
     },
   });
+}
+
+export async function ensureOwnerContributorForImage(imageId: string, userId: string) {
+  return ensureUserContributorForImage(imageId, userId);
 }
 
 export async function ensureOwnerContributorsForOwnedImages(userId: string) {

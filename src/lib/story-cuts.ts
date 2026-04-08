@@ -15,6 +15,9 @@ type StoryCutMediaBlock = {
   mediaName: string | null;
   mediaUrl: string | null;
   mediaType: string | null;
+  clipStartMs?: number | null;
+  clipEndMs?: number | null;
+  clipQuote?: string | null;
   order: number;
 };
 
@@ -125,6 +128,15 @@ const STORY_CUT_SCHEMA = {
             anyOf: [{ type: 'string' }, { type: 'null' }],
           },
           mediaType: {
+            anyOf: [{ type: 'string' }, { type: 'null' }],
+          },
+          clipStartMs: {
+            anyOf: [{ type: 'number' }, { type: 'null' }],
+          },
+          clipEndMs: {
+            anyOf: [{ type: 'number' }, { type: 'null' }],
+          },
+          clipQuote: {
             anyOf: [{ type: 'string' }, { type: 'null' }],
           },
         },
@@ -291,6 +303,87 @@ function parseJson<T>(value: string): T {
   return JSON.parse(value) as T;
 }
 
+function normalizeMediaToken(value: string | null | undefined) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function resolveStoryCutMediaBlock(
+  block: StoryCutMediaBlock,
+  mediaChoices: Array<{
+    mediaId: string;
+    mediaName: string;
+    mediaType: string;
+    mediaUrl: string | null;
+    clipStartMs?: number | null;
+    clipEndMs?: number | null;
+    clipQuote?: string | null;
+  }>
+): StoryCutMediaBlock {
+  const exactId = block.mediaId
+    ? mediaChoices.find((media) => media.mediaId === block.mediaId) || null
+    : null;
+  const exactUrl = !exactId && block.mediaUrl
+    ? mediaChoices.find((media) => media.mediaUrl === block.mediaUrl) || null
+    : null;
+  const blockName = normalizeMediaToken(block.mediaName);
+  const blockQuote = normalizeMediaToken(block.clipQuote);
+  const matchingTypeChoices = mediaChoices.filter(
+    (media) => !block.mediaType || media.mediaType === block.mediaType
+  );
+  const nameMatch =
+    !exactId && !exactUrl && blockName
+      ? matchingTypeChoices.find((media) => normalizeMediaToken(media.mediaName) === blockName) ||
+        matchingTypeChoices.find((media) => {
+          const mediaName = normalizeMediaToken(media.mediaName);
+          return mediaName.includes(blockName) || blockName.includes(mediaName);
+        }) ||
+        null
+      : null;
+  const quoteMatch =
+    !exactId && !exactUrl && !nameMatch && blockQuote
+      ? matchingTypeChoices.find((media) => {
+          const mediaQuote = normalizeMediaToken(media.clipQuote);
+          if (!mediaQuote) {
+            return false;
+          }
+          return (
+            mediaQuote === blockQuote ||
+            mediaQuote.includes(blockQuote) ||
+            blockQuote.includes(mediaQuote)
+          );
+        }) || null
+      : null;
+  const resolved = exactId || exactUrl || nameMatch || quoteMatch;
+
+  if (!resolved) {
+    return block;
+  }
+
+  return {
+    ...block,
+    mediaId: block.mediaId || resolved.mediaId,
+    mediaName: block.mediaName || resolved.mediaName,
+    mediaUrl: block.mediaUrl || resolved.mediaUrl,
+    mediaType: block.mediaType || resolved.mediaType,
+    clipStartMs:
+      typeof resolved.clipStartMs === 'number'
+        ? resolved.clipStartMs
+        : typeof block.clipStartMs === 'number'
+          ? block.clipStartMs
+          : null,
+    clipEndMs:
+      typeof resolved.clipEndMs === 'number'
+        ? resolved.clipEndMs
+        : typeof block.clipEndMs === 'number'
+          ? block.clipEndMs
+          : null,
+    clipQuote: block.clipQuote || resolved.clipQuote || null,
+  };
+}
+
 function sanitizeStoryCutResult(
   payload: StoryCutResult,
   fallback: {
@@ -301,11 +394,25 @@ function sanitizeStoryCutResult(
     storyFocus: string;
     contributorCount: number;
     hasDirectQuotes: boolean;
-  }
+  },
+  mediaChoices: Array<{
+    mediaId: string;
+    mediaName: string;
+    mediaType: string;
+    mediaUrl: string | null;
+    clipStartMs?: number | null;
+    clipEndMs?: number | null;
+    clipQuote?: string | null;
+  }>
 ): StoryCutResult {
   const blocks = Array.isArray(payload.blocks)
     ? payload.blocks
         .filter((block) => block && typeof block === 'object' && typeof block.order === 'number')
+        .map((block) =>
+          !isVoiceBlock(block as StoryCutMediaBlock | StoryCutVoiceBlock)
+            ? resolveStoryCutMediaBlock(block as StoryCutMediaBlock, mediaChoices)
+            : (block as StoryCutVoiceBlock)
+        )
         .sort((left, right) => left.order - right.order)
     : [];
 
@@ -392,9 +499,7 @@ export async function generateStoryCut(
   const selectedContributorIds = new Set(options.selectedContributorIds || []);
   const includeOwner = options.includeOwner !== false;
   const includeEmberVoice = options.includeEmberVoice !== false;
-  const includeNarratorVoice = options.includeNarratorVoice !== false;
   const emberVoiceLabel = options.emberVoiceLabel?.trim() || 'Ember';
-  const narratorVoiceLabel = options.narratorVoiceLabel?.trim() || 'Narrator';
 
   const mediaPool = [
     {
@@ -417,6 +522,19 @@ export async function generateStoryCut(
           : `/api/uploads/${attachment.filename}`,
       kind: 'supporting',
     })),
+    ...context.callHighlights
+      .filter((clip) => clip.audioUrl)
+      .map((clip) => ({
+        mediaId: clip.id,
+        mediaName: `${clip.contributorName}: ${clip.title}`,
+        mediaType: 'AUDIO',
+        mediaUrl: clip.audioUrl,
+        kind: 'voice_clip',
+        clipStartMs: clip.startMs,
+        clipEndMs: clip.endMs,
+        clipQuote: clip.quote,
+        contributorId: clip.contributorId,
+      })),
   ];
   const selectedMediaIds = new Set(
     (options.selectedMediaIds || []).filter((mediaId) =>
@@ -478,10 +596,27 @@ export async function generateStoryCut(
           .map((call) => `${call.contributorName}: ${call.summary}`)
           .join('\n')}`
       : null,
+    context.callHighlights.length > 0
+      ? `VOICE CALL HIGHLIGHTS\n${context.callHighlights
+          .filter((clip) => isSelectedContributor(clip.contributorId, clip.contributorUserId))
+          .map(
+            (clip) =>
+              `${clip.contributorName} - ${clip.title}: "${clip.quote}"${
+                clip.significance ? ` (${clip.significance})` : ''
+              }${clip.canUseForTitle ? ' [title-worthy]' : ''}`
+          )
+          .join('\n')}`
+      : null,
     `SELECTED MEDIA FOR STORY\n${selectedMedia
       .map(
         (media, index) =>
-          `${index + 1}. ${media.mediaName} (${media.kind}, ${media.mediaType})`
+          `${index + 1}. ${media.mediaName} (${media.kind}, ${media.mediaType})${
+            'clipQuote' in media && media.clipQuote ? ` - clip: "${media.clipQuote}"` : ''
+          }${
+            media.mediaType === 'AUDIO'
+              ? ' [recorded audio available for inline playback]'
+              : ''
+          }`
       )
       .join('\n')}`,
     contributorQuotes.length > 0
@@ -504,23 +639,33 @@ export async function generateStoryCut(
         content: [
           {
             type: 'input_text',
-            text: `You generate Story Cuts for Ember.
+            text: `You generate Snapshot scripts for Ember.
 
-Story Cuts are NOT generic wiki narration. They are purpose-built, audio-ready story segments.
+Snapshots are NOT generic wiki narration. They are short trailer-like memory playbacks.
 
 ${styleConfig.prompt}
 
 Rules:
 - Use only the provided Ember context, Story Circle conversations, contributor quotes, media, and call summaries.
 - Keep contributor quotes exact when you use them. Do not rewrite, paraphrase, summarize, or improve a contributor quote.
-- Only Ember voice and Narrator voice may contain AI-written lines.
+- Use VOICE blocks only for Ember AI connective lines.
+- Use MEDIA blocks with mediaType AUDIO whenever you want a real recorded clip to be heard.
+- Treat this as a short memory trailer: concise, vivid, emotionally grounded.
+- Prefer real contributor quotes and voice clips whenever they add color or specificity.
+- If direct contributor material exists, weave it in instead of over-explaining with Ember.
 - If context is thin, stay emotionally grounded without inventing specifics.
 - Always include the cover photo as the first media block.
 - Use supporting media blocks only when they help the flow.
-- Audio media may be used as ambient or supporting sound moments in the story plan when relevant.
+- Selected audio clips are for inline story moments, not constant background ambience.
+- If selected audio clips exist and they add meaning, place them at the best emotional beat in the block order.
+- When multiple selected audio clips are relevant, weave them through the Snapshot instead of bunching them all at the end.
+- If a selected media item is a voice clip, preserve its clipStartMs and clipEndMs when you emit that media block.
 - Build a clear emotional arc that matches the selected style.
-- The script should read like a polished story cut, not like a wiki section list.
-- Respect the requested voice casting. If Ember voice is disabled, do not create EMBER VOICE lines. If Narrator is disabled, do not create NARRATOR lines.
+- The script should read like a polished snapshot, not like a wiki section list.
+- Respect the requested voice casting. If Ember voice is disabled, do not create EMBER VOICE lines.
+- Do not create NARRATOR lines.
+- Keep narratorVoiceLines empty.
+- Do not create contributor VOICE blocks unless there is no recorded clip to use and the user explicitly has no audio for that beat.
 - Return JSON only matching the schema exactly.`,
           },
         ],
@@ -531,7 +676,7 @@ Rules:
         content: [
           {
             type: 'input_text',
-            text: `Create a Story Cut for this Ember.
+            text: `Create a Snapshot for this Ember.
 
 STORY MATERIAL
 ${storyContext}
@@ -545,11 +690,9 @@ STORY CONFIGURATION
 - Selected Contributors: ${Array.from(contributorNameSet).join(', ') || 'None'}
 - Ember Voice enabled: ${includeEmberVoice ? 'yes' : 'no'}
 - Ember Voice label: ${emberVoiceLabel}
-- Narrator enabled: ${includeNarratorVoice ? 'yes' : 'no'}
-- Narrator Voice label: ${narratorVoiceLabel}
-- Voice casting info: Use Ember and Narrator only when enabled. Use contributor names only for exact contributor quotes.
+- Voice casting info: Use Ember only for AI-written lines. Use media AUDIO blocks for real recorded clips whenever possible. Contributor names should appear in exact quotes and clip references only.
 
-Build the JSON blocks in order so this cut could be rendered later as audio plus media.`,
+Build the JSON blocks in order so this snapshot could be rendered later as audio plus media.`,
           },
         ],
       },
@@ -566,13 +709,17 @@ Build the JSON blocks in order so this cut could be rendered later as audio plus
     },
   });
 
-  return sanitizeStoryCutResult(parseJson<StoryCutResult>(response.output_text || '{}'), {
-    styleLabel: styleConfig.label,
-    durationSeconds,
-    wordCount,
-    emberTitle: storyTitle,
-    storyFocus,
-    contributorCount: contributorNameSet.size,
-    hasDirectQuotes: contributorQuotes.length > 0,
-  });
+  return sanitizeStoryCutResult(
+    parseJson<StoryCutResult>(response.output_text || '{}'),
+    {
+      styleLabel: styleConfig.label,
+      durationSeconds,
+      wordCount,
+      emberTitle: storyTitle,
+      storyFocus,
+      contributorCount: contributorNameSet.size,
+      hasDirectQuotes: contributorQuotes.length > 0,
+    },
+    selectedMedia
+  );
 }

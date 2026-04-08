@@ -43,3 +43,7 @@ export function getNarrationCleanupModel(): string {
 export function getStoryCutsModel(): string {
   return process.env.OPENAI_STORY_CUTS_MODEL || 'gpt-5.4-mini';
 }
+
+export function getAskCaptureModel(): string {
+  return process.env.OPENAI_ASK_CAPTURE_MODEL || 'gpt-5-mini';
+}

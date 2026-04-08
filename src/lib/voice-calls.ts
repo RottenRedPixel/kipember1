@@ -3,6 +3,10 @@ import { chat } from '@/lib/claude';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
 import { createRetellPhoneCall, createRetellWebCall, retrieveRetellCall } from '@/lib/retell';
+import {
+  extractImportantVoiceCallClips,
+  parseVoiceCallTranscriptSegments,
+} from '@/lib/voice-call-clips';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 
 const QUESTION_PROMPTS = {
@@ -522,7 +526,11 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
   const voiceCall = await prisma.voiceCall.findUnique({
     where: { id: voiceCallId },
     include: {
-      contributor: true,
+      contributor: {
+        include: {
+          image: true,
+        },
+      },
     },
   });
 
@@ -536,6 +544,22 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
   );
 
   const extracted = await extractInterviewFromTranscript(voiceCall.transcript);
+  const contributorLabel =
+    voiceCall.contributor.name?.trim() ||
+    voiceCall.contributor.email?.trim() ||
+    voiceCall.contributor.phoneNumber?.trim() ||
+    'Contributor';
+  const transcriptSegments = parseVoiceCallTranscriptSegments({
+    transcript: voiceCall.transcript,
+    transcriptObjectJson: voiceCall.transcriptObjectJson,
+    contributorName: contributorLabel,
+  });
+  const extractedClips = await extractImportantVoiceCallClips({
+    imageTitle: getEmberTitle(voiceCall.contributor.image),
+    contributorName: contributorLabel,
+    transcript: voiceCall.transcript,
+    segments: transcriptSegments,
+  });
   const hasInterviewResponses = extracted.responses.length > 0;
   const hasInterviewSummary = extracted.summary.trim().length > 0;
   const shouldMarkCompleted =
@@ -569,6 +593,29 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
       memorySyncedAt: new Date(),
     },
   });
+
+  await prisma.voiceCallClip.deleteMany({
+    where: { voiceCallId: voiceCall.id },
+  });
+
+  if (extractedClips.length > 0) {
+    await prisma.voiceCallClip.createMany({
+      data: extractedClips.map((clip) => ({
+        imageId: voiceCall.contributor.imageId,
+        contributorId: voiceCall.contributorId,
+        voiceCallId: voiceCall.id,
+        sortOrder: clip.sortOrder,
+        title: clip.title,
+        quote: clip.quote,
+        significance: clip.significance,
+        speaker: clip.speaker,
+        audioUrl: voiceCall.recordingUrl,
+        startMs: clip.startMs,
+        endMs: clip.endMs,
+        canUseForTitle: clip.canUseForTitle,
+      })),
+    });
+  }
 
   if (hasInterviewResponses || hasInterviewSummary) {
     try {

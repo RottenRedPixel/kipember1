@@ -8,6 +8,7 @@ import ImageAttachmentViewer, { type ImageAttachmentRecord } from '@/components/
 import MediaPreview from '@/components/MediaPreview';
 import MemoryTellMoreActions from '@/components/MemoryTellMoreActions';
 import WikiView from '@/components/WikiView';
+import WikiVoiceClipSection, { type WikiVoiceClip } from '@/components/WikiVoiceClipSection';
 
 interface WikiRecord {
   id: string;
@@ -40,6 +41,7 @@ interface WikiRecord {
       memorySyncedAt: string | null;
     } | null;
   } | null;
+  voiceCallClips: WikiVoiceClip[];
 }
 
 export default function WikiPage() {
@@ -112,6 +114,10 @@ export default function WikiPage() {
     : '';
   const activeAttachment =
     wiki?.image.attachments.find((attachment) => attachment.id === activeAttachmentId) || null;
+  const audioAttachments =
+    wiki?.image.attachments.filter((attachment) => attachment.mediaType === 'AUDIO') || [];
+  const visualAttachments =
+    wiki?.image.attachments.filter((attachment) => attachment.mediaType !== 'AUDIO') || [];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -180,6 +186,50 @@ export default function WikiPage() {
 
               <div className="mt-8 min-w-0 border-t ember-divider pt-8">
                 <WikiView content={wiki.content} />
+                <WikiVoiceClipSection clips={wiki.voiceCallClips} />
+
+                {audioAttachments.length > 0 && (
+                  <section className="mt-10 border-t ember-divider pt-8">
+                    <h3 className="ember-heading text-center text-2xl text-[var(--ember-text)]">
+                      Recorded Audio
+                    </h3>
+                    <div className="mt-5 space-y-4">
+                      {audioAttachments.map((attachment) => (
+                        <article
+                          key={attachment.id}
+                          className="rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white/84 px-5 py-5 shadow-[0_10px_24px_rgba(17,17,17,0.04)]"
+                        >
+                          <div className="text-sm font-semibold text-[var(--ember-text)]">
+                            {attachment.originalName}
+                          </div>
+                          <div className="mt-2 text-sm leading-6 text-[var(--ember-muted)]">
+                            {attachment.description?.trim() || 'Recorded voice note'}
+                          </div>
+                          <MediaPreview
+                            mediaType={attachment.mediaType}
+                            filename={attachment.filename}
+                            posterFilename={attachment.posterFilename}
+                            originalName={attachment.originalName}
+                            controls
+                            className="mt-4 w-full"
+                          />
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {wiki.canManage && (
+                  <div className="mt-10 border-t ember-divider pt-8">
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      className="ember-button-primary w-full justify-center disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {generating ? 'Generating...' : 'Regenerate wiki'}
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           ) : (
@@ -224,7 +274,7 @@ export default function WikiPage() {
             </button>
           </section>
 
-          {wiki && wiki.image.attachments.length > 0 && (
+          {wiki && visualAttachments.length > 0 && (
             <section className="ember-panel rounded-[2.25rem] p-6">
               <p className="ember-eyebrow">Added content</p>
               <p className="ember-copy mt-3 text-sm">
@@ -232,7 +282,7 @@ export default function WikiPage() {
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
-                {wiki.image.attachments.map((attachment) => (
+                {visualAttachments.map((attachment) => (
                   <button
                     key={attachment.id}
                     type="button"

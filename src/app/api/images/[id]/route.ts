@@ -10,6 +10,18 @@ function normalizeLabelKey(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+function safeParseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -196,6 +208,48 @@ export async function GET(
         },
       });
 
+    const loadVoiceCallClips = async () => {
+      try {
+        return await prisma.voiceCallClip.findMany({
+          where: { imageId: id },
+          orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
+          select: {
+            id: true,
+            voiceCallId: true,
+            contributorId: true,
+            title: true,
+            quote: true,
+            significance: true,
+            speaker: true,
+            audioUrl: true,
+            startMs: true,
+            endMs: true,
+            canUseForTitle: true,
+            createdAt: true,
+            contributor: {
+              select: {
+                id: true,
+                userId: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+      } catch (voiceClipError) {
+        console.error('Failed to load voice call clips for image payload:', voiceClipError);
+        return [];
+      }
+    };
+
     let image = await loadImage();
 
     if (!image) {
@@ -308,6 +362,8 @@ export async function GET(
       }
     }
 
+    const voiceCallClips = await loadVoiceCallClips();
+
     return NextResponse.json({
       id: image.id,
       filename: image.filename,
@@ -340,18 +396,35 @@ export async function GET(
             confirmedLocation: parseConfirmedLocationContext(image.analysis.metadataJson),
           }
         : null,
+      voiceCallClips: voiceCallClips.map((clip) => ({
+        id: clip.id,
+        voiceCallId: clip.voiceCallId,
+        contributorId: clip.contributorId,
+        contributorUserId: clip.contributor.user?.id || clip.contributor.userId || null,
+        contributorName:
+          clip.contributor.name ||
+          clip.contributor.user?.name ||
+          clip.contributor.email ||
+          clip.contributor.phoneNumber ||
+          'Contributor',
+        title: clip.title,
+        quote: clip.quote,
+        significance: clip.significance,
+        speaker: clip.speaker,
+        audioUrl: clip.audioUrl,
+        startMs: clip.startMs,
+        endMs: clip.endMs,
+        canUseForTitle: clip.canUseForTitle,
+        createdAt: clip.createdAt,
+      })),
       wiki: image.wiki,
       storyCut: image.storyCut
         ? {
             ...image.storyCut,
-            blocks: image.storyCut.blocksJson ? JSON.parse(image.storyCut.blocksJson) : [],
-            metadata: image.storyCut.metadataJson ? JSON.parse(image.storyCut.metadataJson) : null,
-            selectedMediaIds: image.storyCut.selectedMediaJson
-              ? JSON.parse(image.storyCut.selectedMediaJson)
-              : [],
-            selectedContributorIds: image.storyCut.selectedContributorJson
-              ? JSON.parse(image.storyCut.selectedContributorJson)
-              : [],
+            blocks: safeParseJson(image.storyCut.blocksJson, []),
+            metadata: safeParseJson(image.storyCut.metadataJson, null),
+            selectedMediaIds: safeParseJson(image.storyCut.selectedMediaJson, []),
+            selectedContributorIds: safeParseJson(image.storyCut.selectedContributorJson, []),
           }
         : null,
       sportsMode: image.sportsMode,

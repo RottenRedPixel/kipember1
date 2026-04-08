@@ -18,6 +18,15 @@ type WikiContributorCallSummary = {
   summary: string;
 };
 
+type WikiContributorCallHighlight = {
+  contributorName: string;
+  title: string;
+  quote: string;
+  significance: string | null;
+  speaker: string | null;
+  canUseForTitle: boolean;
+};
+
 type WikiAnalysisEntity = {
   label: string;
   details: string;
@@ -169,6 +178,13 @@ type ContributorMemoryDigest = {
   answeredTopics: ContributorMemoryTopic[];
   storyHighlights: string[];
   voiceCallSummaries: string[];
+  voiceCallHighlights: Array<{
+    title: string;
+    quote: string;
+    significance: string | null;
+    speaker: string | null;
+    canUseForTitle: boolean;
+  }>;
 };
 
 const STRUCTURED_MEMORY_SCHEMA = {
@@ -327,7 +343,8 @@ function isUsefulVoiceSummary(summary: string) {
 
 function buildContributorMemoryDigest(
   responses: WikiContributorResponse[],
-  callSummaries: WikiContributorCallSummary[]
+  callSummaries: WikiContributorCallSummary[],
+  callHighlights: WikiContributorCallHighlight[]
 ): ContributorMemoryDigest[] {
   const grouped = new Map<
     string,
@@ -336,6 +353,13 @@ function buildContributorMemoryDigest(
       answeredTopics: Map<string, ContributorMemoryTopic>;
       followUps: ContributorMemoryTopic[];
       voiceCallSummaries: string[];
+      voiceCallHighlights: Array<{
+        title: string;
+        quote: string;
+        significance: string | null;
+        speaker: string | null;
+        canUseForTitle: boolean;
+      }>;
     }
   >();
 
@@ -351,6 +375,7 @@ function buildContributorMemoryDigest(
       answeredTopics: new Map<string, ContributorMemoryTopic>(),
       followUps: [],
       voiceCallSummaries: [],
+      voiceCallHighlights: [],
     };
     grouped.set(key, created);
     return created;
@@ -389,6 +414,22 @@ function buildContributorMemoryDigest(
     ensureGroup(contributorName).voiceCallSummaries.push(summary);
   }
 
+  for (const callHighlight of callHighlights) {
+    const quote = callHighlight.quote?.trim();
+    if (!quote) {
+      continue;
+    }
+
+    const contributorName = callHighlight.contributorName?.trim() || 'Anonymous';
+    ensureGroup(contributorName).voiceCallHighlights.push({
+      title: callHighlight.title?.trim() || 'Voice Highlight',
+      quote,
+      significance: callHighlight.significance?.trim() || null,
+      speaker: callHighlight.speaker?.trim() || null,
+      canUseForTitle: callHighlight.canUseForTitle,
+    });
+  }
+
   return Array.from(grouped.values()).map((group) => {
     const answeredTopics = [
       ...CONTRIBUTOR_TOPIC_ORDER.flatMap((questionType) => {
@@ -411,8 +452,11 @@ function buildContributorMemoryDigest(
         group.answeredTopics.get('where')?.answer,
         group.answeredTopics.get('when')?.answer,
         ...group.voiceCallSummaries,
+        ...group.voiceCallHighlights.map((item) => item.quote),
+        ...group.voiceCallHighlights.map((item) => item.significance),
       ]).slice(0, 8),
       voiceCallSummaries: uniqueStrings(group.voiceCallSummaries).slice(0, 3),
+      voiceCallHighlights: group.voiceCallHighlights.slice(0, 3),
     };
   });
 }
@@ -583,6 +627,7 @@ export async function generateWiki({
   analysis,
   responses,
   callSummaries,
+  callHighlights,
   sportsMode,
 }: {
   imageTitle: string;
@@ -597,6 +642,7 @@ export async function generateWiki({
   analysis: WikiImageAnalysis | null;
   responses: WikiContributorResponse[];
   callSummaries: WikiContributorCallSummary[];
+  callHighlights: WikiContributorCallHighlight[];
   sportsMode: WikiSportsMode | null;
 }): Promise<string> {
   const hasMeaningfulAutoAnalysis = Boolean(
@@ -616,9 +662,10 @@ export async function generateWiki({
     confirmedPeople,
     confirmedTags,
     confirmedLocation,
-    contributorMemories: buildContributorMemoryDigest(responses, callSummaries),
+    contributorMemories: buildContributorMemoryDigest(responses, callSummaries, callHighlights),
     rawContributorResponses: responses,
     recentVoiceCallSummaries: callSummaries,
+    voiceCallHighlights: callHighlights,
     analysis:
       analysis && hasMeaningfulAutoAnalysis
         ? {
@@ -680,6 +727,7 @@ export async function generateWiki({
 Rules:
 - Use only supported evidence.
 - Contributor memories, confirmed tags, and confirmed location are strongest.
+- Voice-call highlights are direct evidence from the recorded memory conversation and should be treated as especially valuable when they contain vivid or emotionally specific wording.
 - If contributor memories exist, let them drive the overview and story instead of metadata or visual-analysis filler.
 - The memory should feel like the moment people described, not like a camera report.
 - Do not invent identities, relationships, motives, or backstory.
@@ -699,6 +747,7 @@ Rules:
 - story.main should be 2-4 sentences and should include the strongest human memory details when available.
 - story.significance should explain why the moment mattered in human terms when the evidence supports it.
 - quotes must only contain direct contributor wording worth preserving; otherwise [].
+- Prefer direct contributor wording from voice-call highlights when it is more vivid than the typed responses.
 - metadata should contain at most 4 high-value items and should stay secondary to the memory itself.
 - sportsSnapshot should be null when not relevant.
 - Return JSON only that matches the schema exactly.`,
@@ -739,7 +788,7 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
     analysis,
   });
 
-  const systemPrompt = `You are Ember's memory writer. Rewrite a structured memory object into a warm, readable markdown page.
+  const systemPrompt = `You are Ember's memory writer. Rewrite a structured memory object into a warm, readable story snapshot.
 
 Rules:
 - Use only the structured memory object below.
@@ -751,24 +800,12 @@ Rules:
 - Do not reintroduce weaker visual ambiguity if the structured memory already resolved it from tags or contributor memories.
 - Do not turn obvious corrections into standalone lines. If a clarification matters, weave it into the story naturally and positively.
 - Do not include low-value observations that do not deepen the memory, such as ordinary clothing notes, unless the structured memory makes them meaningful.
-- Do not include filler open questions; omit the section entirely when nothing meaningful remains unresolved.
-- Do not repeat the title as a top heading; the page already shows the Ember title outside the markdown.
-- Omit empty sections.
-- Keep the page concise and high-signal.
+- Keep the output to 2-4 short paragraphs.
+- Do not write headings, bullet lists, labels, or markdown sections.
+- Do not repeat the title as a heading.
+- Keep the output concise and high-signal.
 
-Use these sections when supported:
-## Overview
-## What the Photo Shows
-## People
-## When and Where
-## Story
-## Details Worth Keeping
-## Sports Snapshot
-## Quotes
-## Open Questions
-## Metadata
-
-Write markdown only.`;
+Write plain text only.`;
 
   const output = await chat(systemPrompt, [
     {

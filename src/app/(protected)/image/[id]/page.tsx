@@ -11,9 +11,12 @@ import EmberActivityView from '@/components/EmberActivityView';
 import MemoryTellMoreActions from '@/components/MemoryTellMoreActions';
 import AutoTagPrompt from '@/components/AutoTagPrompt';
 import LocationSuggestionPrompt from '@/components/LocationSuggestionPrompt';
+import WikiView from '@/components/WikiView';
+import WikiVoiceClipSection from '@/components/WikiVoiceClipSection';
 import { getEmberTitle } from '@/lib/ember-title';
 import type { RetellWebClient } from 'retell-client-js-sdk';
 import MediaPreview from '@/components/MediaPreview';
+import ClipAudioPlayer from '@/components/ClipAudioPlayer';
 import { getPreviewMediaUrl } from '@/lib/media';
 import type { NarrationPreference } from '@/lib/elevenlabs';
 
@@ -159,6 +162,22 @@ interface ImageRecord {
     } | null;
     updatedAt: string;
   } | null;
+  voiceCallClips: {
+    id: string;
+    voiceCallId: string;
+    contributorId: string;
+    contributorUserId: string | null;
+    contributorName: string;
+    title: string;
+    quote: string;
+    significance: string | null;
+    speaker: string | null;
+    audioUrl: string | null;
+    startMs: number | null;
+    endMs: number | null;
+    canUseForTitle: boolean;
+    createdAt: string;
+  }[];
   friends: {
     id: string;
     name: string | null;
@@ -193,6 +212,9 @@ interface ImageRecord {
       mediaName?: string | null;
       mediaUrl?: string | null;
       mediaType?: 'IMAGE' | 'VIDEO' | 'AUDIO' | null;
+      clipStartMs?: number | null;
+      clipEndMs?: number | null;
+      clipQuote?: string | null;
       speaker?: string | null;
       content?: string | null;
       voicePreference?: string | null;
@@ -252,6 +274,19 @@ type LocationSuggestionOption = {
   kind: string;
 };
 
+type StoryCutMediaItem = {
+  id: string;
+  label: string;
+  kind: 'cover' | 'supporting' | 'voiceClip';
+  previewUrl: string | null;
+  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
+  quote?: string | null;
+  significance?: string | null;
+  contributorName?: string | null;
+  startMs?: number | null;
+  endMs?: number | null;
+};
+
 type StoryCircleAnswer = {
   id: string;
   questionType: string;
@@ -275,6 +310,9 @@ type StoryCutBlock =
       mediaName: string | null;
       mediaUrl: string | null;
       mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO' | null;
+      clipStartMs?: number | null;
+      clipEndMs?: number | null;
+      clipQuote?: string | null;
       order: number;
     }
   | {
@@ -319,6 +357,17 @@ type AskMessage = {
   content: string;
 };
 
+type AskVoiceClip = {
+  id: string;
+  contributorName: string;
+  title: string;
+  quote: string;
+  significance: string | null;
+  audioUrl: string | null;
+  startMs: number | null;
+  endMs: number | null;
+};
+
 const STORY_CIRCLE_STEPS = ['context', 'who', 'when', 'where', 'what', 'why', 'how'] as const;
 const STORY_CUT_STYLE_OPTIONS: Array<{ value: StoryCutStyle; label: string }> = [
   { value: 'documentary', label: 'Documentary' },
@@ -329,6 +378,21 @@ const STORY_CUT_STYLE_OPTIONS: Array<{ value: StoryCutStyle; label: string }> = 
 ];
 const STORY_CUT_DURATION_OPTIONS = [5, 20, 35, 50, 60] as const;
 const SMART_CAPTION_VOICE_OPTIONS = ['Susan', 'Sarah', 'Roger', 'Ember'] as const;
+
+function isStoryCutVoiceBlock(block: StoryCutBlock): block is Extract<StoryCutBlock, { type: 'voice' }> {
+  return block.type === 'voice';
+}
+
+function isStoryCutAudioBlock(block: StoryCutBlock): block is Extract<StoryCutBlock, { type: 'media' }> {
+  return block.type === 'media' && block.mediaType === 'AUDIO';
+}
+
+function normalizeStoryCutMediaToken(value: string | null | undefined) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
 
 function GeminiIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
@@ -610,8 +674,10 @@ function AskEmberExperience({
   posterFilename,
   titleTone,
   railTone,
+  importantVoiceClips,
   expanded,
   onExpandedChange,
+  onStoredMemory,
   onClose,
   onOpenShare,
   onOpenTend,
@@ -626,8 +692,10 @@ function AskEmberExperience({
   posterFilename: string | null;
   titleTone: 'light' | 'dark';
   railTone: 'light' | 'dark';
+  importantVoiceClips: AskVoiceClip[];
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  onStoredMemory: () => void;
   onClose: () => void;
   onOpenShare: () => void;
   onOpenTend: () => void;
@@ -638,13 +706,30 @@ function AskEmberExperience({
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState('');
+  const [savedMemoryNotice, setSavedMemoryNotice] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const recognitionRef = useRef<unknown>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
   const pendingFocusRef = useRef(false);
   const listeningTranscriptRef = useRef('');
 
   const shouldShowExpanded = expanded || messages.length > 0 || isListening;
+  const featuredVoiceClips = importantVoiceClips.slice(0, 3);
+
+  useEffect(() => {
+    if (!savedMemoryNotice) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSavedMemoryNotice('');
+    }, 3200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [savedMemoryNotice]);
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -701,29 +786,97 @@ function AskEmberExperience({
 
       recognition?.stop?.();
       recognition?.abort?.();
+      mediaRecorderRef.current?.stop();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
+  const persistVoiceNote = useCallback(
+    async (audioBlob: Blob, transcript: string) => {
+      const mimeType = audioBlob.type || 'audio/webm';
+      const ext = mimeType.includes('mp4')
+        ? 'm4a'
+        : mimeType.includes('ogg')
+          ? 'ogg'
+          : mimeType.includes('mpeg')
+            ? 'mp3'
+            : 'webm';
+      const file = new File([audioBlob], `ask-ember-${Date.now()}.${ext}`, {
+        type: mimeType,
+      });
+      const formData = new FormData();
+      formData.append('imageId', imageId);
+      formData.append('file', file);
+      if (transcript.trim()) {
+        formData.append('transcript', transcript.trim());
+      }
+
+      const response = await fetch('/api/chat/audio', {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to save Ask voice note');
+      }
+
+      return payload;
+    },
+    [imageId]
+  );
+
   const submitMessage = useCallback(
-    async (rawMessage: string) => {
+    async (
+      rawMessage: string,
+      source: 'text' | 'voice' = 'text',
+      audioBlob?: Blob | null
+    ) => {
       const userMessage = rawMessage.trim();
-      if (!userMessage || isLoading) {
+      if ((!userMessage && !audioBlob) || isLoading) {
         return;
       }
 
       setInput('');
       setVoiceError('');
-      setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+      if (userMessage) {
+        setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+      }
       setIsLoading(true);
       onExpandedChange(true);
 
       try {
+        let savedAudio = false;
+        let audioSaveWarning = '';
+
+        if (source === 'voice' && audioBlob && audioBlob.size > 0) {
+          try {
+            await persistVoiceNote(audioBlob, userMessage);
+            savedAudio = true;
+          } catch (audioError) {
+            audioSaveWarning =
+              audioError instanceof Error ? audioError.message : 'Failed to save voice note.';
+          }
+        }
+
+        if (!userMessage) {
+          if (savedAudio) {
+            setSavedMemoryNotice('Saved voice note to this ember.');
+            onStoredMemory();
+          }
+          if (audioSaveWarning) {
+            setVoiceError(audioSaveWarning);
+          }
+          return;
+        }
+
         const response = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             imageId,
             message: userMessage,
+            inputMode: source,
           }),
         });
 
@@ -733,6 +886,20 @@ function AskEmberExperience({
 
         const data = await response.json();
         setMessages((prev) => [...prev, { role: 'assistant', content: data.response }]);
+
+        if (data?.storedMemory?.saved || savedAudio) {
+          const summary =
+            typeof data.storedMemory.summary === 'string' ? data.storedMemory.summary.trim() : '';
+          const savedParts = [
+            summary ? `Saved to this ember: ${summary}` : data?.storedMemory?.saved ? 'Saved to this ember.' : '',
+            savedAudio ? 'Voice note stored.' : '',
+          ].filter(Boolean);
+          setSavedMemoryNotice(savedParts.join(' '));
+          onStoredMemory();
+        }
+        if (audioSaveWarning) {
+          setVoiceError(audioSaveWarning);
+        }
       } catch (error) {
         console.error('Ask Ember error:', error);
         setMessages((prev) => [
@@ -746,7 +913,7 @@ function AskEmberExperience({
         setIsLoading(false);
       }
     },
-    [imageId, isLoading, onExpandedChange, subjectNoun]
+    [imageId, isLoading, onExpandedChange, onStoredMemory, persistVoiceNote, subjectNoun]
   );
 
   const handleVoiceToggle = useCallback(() => {
@@ -807,6 +974,9 @@ function AskEmberExperience({
     nextRecognition.onerror = (event) => {
       setIsListening(false);
       setVoiceError(event.error === 'not-allowed' ? 'Microphone access was denied.' : 'Voice input failed.');
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
     };
 
     nextRecognition.onresult = (event) => {
@@ -822,14 +992,60 @@ function AskEmberExperience({
       setIsListening(false);
       recognitionRef.current = null;
       const finalTranscript = listeningTranscriptRef.current.trim();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        return;
+      }
       if (finalTranscript) {
-        void submitMessage(finalTranscript);
+        void submitMessage(finalTranscript, 'voice');
       }
       listeningTranscriptRef.current = '';
     };
 
-    recognitionRef.current = nextRecognition;
-    nextRecognition.start();
+    void (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaStreamRef.current = stream;
+        recordedChunksRef.current = [];
+
+        const recorder = new MediaRecorder(stream);
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunksRef.current.push(event.data);
+          }
+        };
+        recorder.onstop = () => {
+          const chunks = [...recordedChunksRef.current];
+          recordedChunksRef.current = [];
+          mediaRecorderRef.current = null;
+          mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+          mediaStreamRef.current = null;
+
+          const finalTranscript = listeningTranscriptRef.current.trim();
+          listeningTranscriptRef.current = '';
+          const audioBlob = chunks.length > 0 ? new Blob(chunks, { type: recorder.mimeType || 'audio/webm' }) : null;
+
+          if (audioBlob && audioBlob.size > 0) {
+            void submitMessage(finalTranscript, 'voice', audioBlob);
+            return;
+          }
+
+          if (finalTranscript) {
+            void submitMessage(finalTranscript, 'voice');
+          }
+        };
+
+        mediaRecorderRef.current = recorder;
+        recognitionRef.current = nextRecognition;
+        recorder.start();
+        nextRecognition.start();
+      } catch (error) {
+        setVoiceError(
+          error instanceof Error ? error.message : 'Microphone access was denied.'
+        );
+        setIsListening(false);
+      }
+    })();
   }, [isListening, onExpandedChange, submitMessage]);
 
   const handleCompactComposerClick = () => {
@@ -843,7 +1059,7 @@ function AskEmberExperience({
   return (
     <div className="ember-overlay-shell z-50 bg-white" onClick={onClose}>
       <div className="relative h-full w-full overflow-hidden" onClick={(event) => event.stopPropagation()}>
-        <div className={`relative overflow-hidden bg-[#a8ba91] ${shouldShowExpanded ? 'h-[40%]' : 'h-[60%]'}`}>
+        <div className="relative h-[70%] overflow-hidden bg-[#a8ba91]">
           <MediaPreview
             mediaType={mediaType}
             filename={filename}
@@ -896,15 +1112,11 @@ function AskEmberExperience({
           )}
         </div>
 
-        <div
-          className={`absolute inset-x-0 bottom-0 bg-[var(--ember-orange)] text-white ${
-            shouldShowExpanded ? 'top-[40%]' : 'top-[60%]'
-          }`}
-        >
+          <div className="absolute inset-x-0 bottom-0 top-[70%] bg-[var(--ember-orange)] text-white">
           {!shouldShowExpanded ? (
             <div className="flex h-full flex-col px-4 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
               <div className="mx-auto mt-4 max-w-[18rem] text-center text-[1.05rem] font-medium leading-[1.28] tracking-[-0.02em]">
-                Have a conversation with ember about this memory.
+                Ask ember anything or add more details about this memory.
               </div>
 
               <button
@@ -912,7 +1124,7 @@ function AskEmberExperience({
                 onClick={handleCompactComposerClick}
                 className="mt-8 flex h-14 w-full items-center justify-between bg-white px-4 text-left text-[0.98rem] text-[#9b9b9b]"
               >
-                <span>Ask Anything</span>
+                <span>Ask or add details</span>
                 <span
                   onClick={(event) => {
                     event.stopPropagation();
@@ -925,6 +1137,39 @@ function AskEmberExperience({
               </button>
 
               {voiceError && <div className="mt-3 text-sm text-white/85">{voiceError}</div>}
+
+              {savedMemoryNotice && (
+                <div className="mt-3 rounded-[0.95rem] bg-white/14 px-3 py-2 text-sm font-medium text-white/96">
+                  {savedMemoryNotice}
+                </div>
+              )}
+
+              {featuredVoiceClips.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  <div className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white/72">
+                    Important voice moments
+                  </div>
+                  {featuredVoiceClips.map((clip) => (
+                    <div key={clip.id} className="rounded-[1rem] bg-white/10 px-3 py-3 text-left">
+                      <div className="text-sm font-semibold text-white">{clip.title}</div>
+                      <div className="mt-1 text-xs font-medium text-white/72">
+                        {clip.contributorName}
+                      </div>
+                      <div className="mt-2 text-sm leading-5 text-white/94">
+                        &quot;{clip.quote}&quot;
+                      </div>
+                      {clip.significance && (
+                        <div className="mt-2 text-xs leading-5 text-white/72">
+                          {clip.significance}
+                        </div>
+                      )}
+                      {clip.audioUrl && (
+                        <audio controls preload="none" className="mt-3 w-full" src={clip.audioUrl} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex h-full flex-col px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+0.8rem)]">
@@ -943,12 +1188,45 @@ function AskEmberExperience({
               </div>
 
               <div className="mt-4 flex-1 overflow-y-auto pr-1">
-                {messages.length === 0 && !isLoading ? (
+                {messages.length === 0 && !isLoading && featuredVoiceClips.length === 0 ? (
                   <div className="pt-8 text-center text-[1rem] font-medium leading-[1.3] text-white/96">
-                    Start asking ember about this {subjectNoun}.
+                    Start asking ember about this {subjectNoun}, or add new details so they get saved.
                   </div>
                 ) : (
                   <div className="space-y-5">
+                    {savedMemoryNotice && (
+                      <div className="rounded-[0.95rem] bg-white/14 px-3 py-2 text-sm font-medium text-white/96">
+                        {savedMemoryNotice}
+                      </div>
+                    )}
+
+                    {featuredVoiceClips.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white/72">
+                          Important voice moments
+                        </div>
+                        {featuredVoiceClips.map((clip) => (
+                          <div key={clip.id} className="rounded-[1rem] bg-white/10 px-3 py-3 text-left">
+                            <div className="text-sm font-semibold text-white">{clip.title}</div>
+                            <div className="mt-1 text-xs font-medium text-white/72">
+                              {clip.contributorName}
+                            </div>
+                            <div className="mt-2 text-sm leading-5 text-white/94">
+                              &quot;{clip.quote}&quot;
+                            </div>
+                            {clip.significance && (
+                              <div className="mt-2 text-xs leading-5 text-white/72">
+                                {clip.significance}
+                              </div>
+                            )}
+                            {clip.audioUrl && (
+                              <audio controls preload="none" className="mt-3 w-full" src={clip.audioUrl} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {messages.map((message, index) => (
                       <div key={`${message.role}-${index}`}>
                         <div
@@ -978,12 +1256,17 @@ function AskEmberExperience({
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void submitMessage(input);
+                  void submitMessage(input, 'text');
                 }}
                 className="mt-4"
               >
                 <div className="flex h-14 items-center bg-white px-3 text-black">
-                  <button type="button" className="mr-2 inline-flex h-9 w-9 items-center justify-center text-black/88">
+                  <button
+                    type="button"
+                    onClick={() => void submitMessage(input, 'text')}
+                    className="mr-2 inline-flex h-9 w-9 items-center justify-center text-black/88"
+                    aria-label="Send Ask Ember message"
+                  >
                     <AskPlusIcon className="h-5 w-5" />
                   </button>
                   <input
@@ -991,7 +1274,7 @@ function AskEmberExperience({
                     type="text"
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="Ask Anything"
+                    placeholder="Ask or add details"
                     className="min-w-0 flex-1 bg-transparent text-[0.98rem] text-black outline-none placeholder:text-[#9b9b9b]"
                     disabled={isLoading}
                   />
@@ -1075,13 +1358,13 @@ function PlayNarrationExperience({
 
   const supportingCopy =
     narrationState === 'loading'
-      ? 'Preparing the narration for this ember...'
-      : narrationScript || 'Ember is getting the story ready.';
+      ? 'Preparing the snapshot for this ember...'
+      : narrationScript || 'Ember is getting the snapshot ready.';
 
   return (
     <div className="ember-overlay-shell z-50 bg-white">
       <div className="relative h-full w-full overflow-hidden">
-        <div className="relative h-[60%] overflow-hidden bg-[#a8ba91]">
+        <div className="relative h-[70%] overflow-hidden bg-[#a8ba91]">
           <MediaPreview
             mediaType={mediaType}
             filename={filename}
@@ -1133,7 +1416,7 @@ function PlayNarrationExperience({
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 top-[60%] flex flex-col bg-[var(--ember-orange)] px-7 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.1rem)] text-white">
+        <div className="absolute inset-x-0 bottom-0 top-[70%] flex flex-col bg-[var(--ember-orange)] px-7 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.1rem)] text-white">
           <div className="text-center">
             <div className="text-[0.95rem] font-medium leading-none tracking-[-0.02em] text-white/92 sm:text-[1.05rem]">
               {dateLabel}
@@ -1153,7 +1436,7 @@ function PlayNarrationExperience({
 
             {!canPlay && (
               <p className="mx-auto mt-4 max-w-[17rem] text-center text-sm leading-6 text-white/88">
-                Generate the story first so Ember has narration to play here.
+                Generate the snapshot first so Ember has something to play here.
               </p>
             )}
           </div>
@@ -1190,12 +1473,16 @@ function SmartTitleExperience({
   titleDraft,
   savedTitle,
   generatedDateLabel,
+  analysisSuggestions,
+  contextSuggestions,
+  contributorQuotes,
   loadingTitleSuggestions,
   savingDetails,
   isEditing,
   errorMessage,
   noticeMessage,
   onTitleChange,
+  onPickSuggestion,
   onEditToggle,
   onSave,
   onCancel,
@@ -1205,18 +1492,43 @@ function SmartTitleExperience({
   titleDraft: string;
   savedTitle: string;
   generatedDateLabel: string;
+  analysisSuggestions: string[];
+  contextSuggestions: string[];
+  contributorQuotes: Array<{
+    title: string;
+    contributorName: string;
+    quote: string;
+    source: 'voice' | 'text';
+  }>;
   loadingTitleSuggestions: boolean;
   savingDetails: boolean;
   isEditing: boolean;
   errorMessage: string;
   noticeMessage: string;
   onTitleChange: (value: string) => void;
+  onPickSuggestion: (value: string) => void;
   onEditToggle: () => void;
   onSave: () => void;
   onCancel: () => void;
   onRegenerate: () => void;
   onClose: () => void;
 }) {
+  const hasUnsavedChanges = (titleDraft.trim() || '') !== (savedTitle.trim() || '');
+  const suggestionGroups = [
+    {
+      id: 'analysis',
+      heading: 'From AI Analysis',
+      subheading: 'Based on what Ember can see in the photo',
+      suggestions: analysisSuggestions,
+    },
+    {
+      id: 'context',
+      heading: 'From Real Context',
+      subheading: 'Based on owner and contributor text or voice details',
+      suggestions: contextSuggestions,
+    },
+  ];
+
   return (
     <div className="ember-overlay-shell z-50 bg-[#bfd8dc]">
       <div className="flex h-full flex-col">
@@ -1279,14 +1591,26 @@ function SmartTitleExperience({
               <span className="font-semibold text-black">Ember Generated Smart Title</span>
               <span className="text-white/92"> | {generatedDateLabel}</span>
             </div>
-            <button
-              type="button"
-              onClick={onRegenerate}
-              disabled={loadingTitleSuggestions}
-              className="min-h-[3rem] min-w-[8.2rem] bg-[#365d61] px-5 py-3 text-[0.95rem] font-semibold text-white disabled:opacity-60"
-            >
-              {loadingTitleSuggestions ? 'GENERATING' : 'REGENERATE'}
-            </button>
+            <div className="flex items-center gap-3">
+              {hasUnsavedChanges && (
+                <button
+                  type="button"
+                  onClick={onSave}
+                  disabled={savingDetails}
+                  className="min-h-[3rem] min-w-[6.6rem] bg-[#365d61] px-5 py-3 text-[0.95rem] font-semibold text-white disabled:opacity-60"
+                >
+                  {savingDetails ? 'SAVING' : 'SAVE'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onRegenerate}
+                disabled={loadingTitleSuggestions}
+                className="min-h-[3rem] min-w-[8.2rem] bg-[#365d61] px-5 py-3 text-[0.95rem] font-semibold text-white disabled:opacity-60"
+              >
+                {loadingTitleSuggestions ? 'GENERATING' : 'REGENERATE'}
+              </button>
+            </div>
           </div>
 
           {(errorMessage || noticeMessage) && (
@@ -1294,6 +1618,111 @@ function SmartTitleExperience({
               {errorMessage || noticeMessage}
             </div>
           )}
+
+          <div className="mt-5 space-y-5">
+            {loadingTitleSuggestions &&
+            analysisSuggestions.length === 0 &&
+            contextSuggestions.length === 0 &&
+            contributorQuotes.length === 0 ? (
+              <div className="rounded-[1.45rem] bg-white px-4 py-8 text-center text-sm text-black/65 shadow-[0_8px_18px_rgba(0,0,0,0.04)]">
+                Generating smart title options...
+              </div>
+            ) : (
+              <>
+                {suggestionGroups.map((group) => (
+                  <div
+                    key={group.id}
+                    className="rounded-[1.45rem] bg-white px-4 py-4 shadow-[0_8px_18px_rgba(0,0,0,0.04)]"
+                  >
+                    <div className="text-[0.9rem] font-semibold tracking-[-0.02em] text-black">
+                      {group.heading}
+                    </div>
+                    <div className="mt-1 text-sm leading-6 text-black/62">
+                      {group.subheading}
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {group.suggestions.length > 0 ? (
+                        group.suggestions.map((suggestion) => {
+                          const selected =
+                            titleDraft.trim().toLowerCase() === suggestion.trim().toLowerCase();
+
+                          return (
+                            <button
+                              key={`${group.id}-${suggestion}`}
+                              type="button"
+                              onClick={() => onPickSuggestion(suggestion)}
+                              className={`w-full rounded-[1.2rem] border px-4 py-3 text-left text-[1rem] font-medium leading-[1.35] tracking-[-0.02em] transition ${
+                                selected
+                                  ? 'border-[rgba(41,98,255,0.26)] bg-[rgba(41,98,255,0.06)] text-[#192124]'
+                                  : 'border-[rgba(20,20,20,0.08)] bg-white text-[#192124]'
+                              }`}
+                            >
+                              {suggestion}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="rounded-[1.2rem] border border-dashed border-[rgba(20,20,20,0.12)] px-4 py-4 text-sm text-black/55">
+                          No suggestions yet in this group.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                <div className="rounded-[1.45rem] bg-white px-4 py-4 shadow-[0_8px_18px_rgba(0,0,0,0.04)]">
+                  <div className="text-[0.9rem] font-semibold tracking-[-0.02em] text-black">
+                    Exact Contributor Quotes
+                  </div>
+                  <div className="mt-1 text-sm leading-6 text-black/62">
+                    AI-shaped title options pulled from real owner and contributor wording
+                  </div>
+
+                  <div className="mt-4 space-y-3">
+                    {contributorQuotes.length > 0 ? (
+                      contributorQuotes.map((quoteItem, index) => {
+                        const selected =
+                          titleDraft.trim().toLowerCase() === quoteItem.title.trim().toLowerCase();
+
+                        return (
+                        <button
+                          key={`${quoteItem.contributorName}-${quoteItem.quote}-${index}`}
+                          type="button"
+                          onClick={() => onPickSuggestion(quoteItem.title)}
+                          className={`w-full rounded-[1.2rem] border px-4 py-4 text-left transition ${
+                            selected
+                              ? 'border-[rgba(41,98,255,0.26)] bg-[rgba(41,98,255,0.06)]'
+                              : 'border-[rgba(20,20,20,0.08)] bg-white'
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold text-black">
+                              {quoteItem.contributorName}
+                            </span>
+                            <span className="rounded-full bg-[rgba(255,102,33,0.08)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--ember-orange-deep)]">
+                              {quoteItem.source === 'voice' ? 'Voice' : 'Text'}
+                            </span>
+                          </div>
+                          <div className="mt-3 text-[1.02rem] font-semibold italic leading-[1.35] tracking-[-0.02em] text-[#192124]">
+                            {quoteItem.title}
+                          </div>
+                          <blockquote className="mt-2 text-[0.92rem] leading-6 text-black/65">
+                            From: &ldquo;{quoteItem.quote}&rdquo;
+                          </blockquote>
+                        </button>
+                      );
+                      })
+                    ) : (
+                      <div className="rounded-[1.2rem] border border-dashed border-[rgba(20,20,20,0.12)] px-4 py-4 text-sm text-black/55">
+                        No quote-based title options yet.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1821,12 +2250,43 @@ function ShareEmberExperience({
 function WikiOverlayExperience({
   wikiContent,
   wikiUpdatedAt,
+  voiceCallClips,
+  attachments,
+  canManage,
+  generating,
+  onGenerate,
   onClose,
 }: {
   wikiContent: string | null;
   wikiUpdatedAt: string | null;
+  voiceCallClips: Array<{
+    id: string;
+    contributorName: string;
+    title: string;
+    quote: string;
+    significance: string | null;
+    audioUrl: string | null;
+    startMs: number | null;
+    endMs: number | null;
+    createdAt: string;
+  }>;
+  attachments: Array<{
+    id: string;
+    filename: string;
+    mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
+    posterFilename: string | null;
+    durationSeconds: number | null;
+    originalName: string;
+    description: string | null;
+  }>;
+  canManage: boolean;
+  generating: boolean;
+  onGenerate: () => void;
   onClose: () => void;
 }) {
+  const audioAttachments = attachments.filter((attachment) => attachment.mediaType === 'AUDIO');
+  const visualAttachments = attachments.filter((attachment) => attachment.mediaType !== 'AUDIO');
+
   return (
     <div className="ember-overlay-shell z-50 bg-[#bfd8dc]">
       <div className="flex h-full flex-col">
@@ -1846,8 +2306,76 @@ function WikiOverlayExperience({
 
         <div className="flex-1 overflow-y-auto px-6 pb-[calc(env(safe-area-inset-bottom)+1.4rem)] pt-10">
           {wikiContent ? (
-            <div className="mx-auto max-w-[20rem] whitespace-pre-wrap text-center text-[1.04rem] font-medium leading-[1.4] tracking-[-0.02em] text-white sm:max-w-[24rem] sm:text-[1.1rem]">
-              {wikiContent}
+            <div className="mx-auto max-w-[22rem] space-y-8 sm:max-w-[24rem]">
+              <div className="rounded-[1.8rem] bg-white/44 px-5 py-6 shadow-[0_12px_26px_rgba(0,0,0,0.08)]">
+                <WikiView content={wikiContent} variant="overlay" />
+              </div>
+
+              <WikiVoiceClipSection clips={voiceCallClips} variant="overlay" />
+
+              {audioAttachments.length > 0 && (
+                <section className="rounded-[1.8rem] bg-white/34 px-5 py-6 shadow-[0_12px_26px_rgba(0,0,0,0.06)]">
+                  <h3 className="text-center text-[1.2rem] font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
+                    Recorded Audio
+                  </h3>
+                  <div className="mt-5 space-y-3">
+                    {audioAttachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="rounded-[1.25rem] bg-white/78 px-4 py-4 text-left shadow-[0_8px_18px_rgba(0,0,0,0.05)]"
+                      >
+                        <div className="text-sm font-semibold text-[var(--ember-text)]">
+                          {attachment.originalName}
+                        </div>
+                        <div className="mt-2 text-[11px] leading-5 text-[var(--ember-muted)]">
+                          {attachment.description?.trim() || 'Recorded voice note'}
+                        </div>
+                        <MediaPreview
+                          mediaType={attachment.mediaType}
+                          filename={attachment.filename}
+                          posterFilename={attachment.posterFilename}
+                          originalName={attachment.originalName}
+                          controls
+                          className="mt-4 w-full"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {visualAttachments.length > 0 && (
+                <section className="rounded-[1.8rem] bg-white/34 px-5 py-6 shadow-[0_12px_26px_rgba(0,0,0,0.06)]">
+                  <h3 className="text-center text-[1.2rem] font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
+                    Supporting Media
+                  </h3>
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    {visualAttachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="overflow-hidden rounded-[1.1rem] bg-white/78 text-left shadow-[0_8px_18px_rgba(0,0,0,0.05)]"
+                      >
+                        <MediaPreview
+                          mediaType={attachment.mediaType}
+                          filename={attachment.filename}
+                          posterFilename={attachment.posterFilename}
+                          originalName={attachment.originalName}
+                          usePosterForVideo
+                          className="h-24 w-full object-cover"
+                        />
+                        <div className="space-y-1 px-3 py-3">
+                          <div className="text-xs font-semibold text-[var(--ember-text)]">
+                            {attachment.originalName}
+                          </div>
+                          <div className="text-[11px] leading-5 text-[var(--ember-muted)]">
+                            {attachment.description?.trim() || 'No note added yet.'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           ) : (
             <div className="mx-auto max-w-[18rem] text-center text-[1.04rem] font-medium leading-[1.35] tracking-[-0.02em] text-white">
@@ -1858,6 +2386,19 @@ function WikiOverlayExperience({
           {wikiUpdatedAt && (
             <div className="mx-auto mt-8 max-w-[18rem] text-center text-xs font-medium uppercase tracking-[0.18em] text-black/52">
               Updated {new Date(wikiUpdatedAt).toLocaleString()}
+            </div>
+          )}
+
+          {canManage && (
+            <div className="mx-auto mt-8 max-w-[18rem]">
+              <button
+                type="button"
+                onClick={onGenerate}
+                disabled={generating}
+                className="min-h-[3.2rem] w-full rounded-[1rem] bg-[rgba(27,75,74,0.9)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-white transition disabled:opacity-60"
+              >
+                {generating ? 'Generating...' : 'Regenerate Wiki'}
+              </button>
             </div>
           )}
         </div>
@@ -1925,6 +2466,7 @@ export default function ImagePage() {
   const [savingShareState, setSavingShareState] = useState(false);
   const [shareError, setShareError] = useState('');
   const [actionNotice, setActionNotice] = useState('');
+  const [generatingWiki, setGeneratingWiki] = useState(false);
   const [activePanel, setActivePanel] = useState<ActivePanel>(null);
   const [shapeView, setShapeView] = useState<ShapeView>('menu');
   const [autoTagPromptDismissed, setAutoTagPromptDismissed] = useState(false);
@@ -1934,6 +2476,21 @@ export default function ImagePage() {
   const [shapeOrigin, setShapeOrigin] = useState<'tend' | 'setup'>('tend');
   const [titleDraft, setTitleDraft] = useState('');
   const [titleSuggestions, setTitleSuggestions] = useState<string[]>([]);
+  const [groupedTitleSuggestions, setGroupedTitleSuggestions] = useState<{
+    analysis: string[];
+    context: string[];
+  }>({
+    analysis: [],
+    context: [],
+  });
+  const [titleContributorQuotes, setTitleContributorQuotes] = useState<
+    Array<{
+      title: string;
+      contributorName: string;
+      quote: string;
+      source: 'voice' | 'text';
+    }>
+  >([]);
   const [loadingTitleSuggestions, setLoadingTitleSuggestions] = useState(false);
   const [editingSmartTitle, setEditingSmartTitle] = useState(false);
   const [captionDraft, setCaptionDraft] = useState('');
@@ -1980,7 +2537,7 @@ export default function ImagePage() {
   const [storyCutSelectedContributorIds, setStoryCutSelectedContributorIds] = useState<string[]>([]);
   const [storyCutIncludeOwner, setStoryCutIncludeOwner] = useState(true);
   const [storyCutIncludeEmberVoice, setStoryCutIncludeEmberVoice] = useState(true);
-  const [storyCutIncludeNarratorVoice, setStoryCutIncludeNarratorVoice] = useState(true);
+  const [storyCutIncludeNarratorVoice, setStoryCutIncludeNarratorVoice] = useState(false);
   const [storyCutVoiceOptions, setStoryCutVoiceOptions] = useState<StoryCutVoiceOption[]>([]);
   const [loadingStoryCutVoices, setLoadingStoryCutVoices] = useState(false);
   const [storyCutEmberVoiceId, setStoryCutEmberVoiceId] = useState('');
@@ -1988,6 +2545,10 @@ export default function ImagePage() {
   const [storyCutLoading, setStoryCutLoading] = useState(false);
   const [storyCutError, setStoryCutError] = useState('');
   const [storyCutData, setStoryCutData] = useState<StoryCutResult | null>(null);
+  const [storyCutScriptDraft, setStoryCutScriptDraft] = useState('');
+  const [storyCutBlocksDraft, setStoryCutBlocksDraft] = useState<StoryCutBlock[]>([]);
+  const [storyCutNewMediaId, setStoryCutNewMediaId] = useState('');
+  const [savingStoryCutScript, setSavingStoryCutScript] = useState(false);
   const [storyCutPlaybackState, setStoryCutPlaybackState] = useState<'idle' | 'loading' | 'playing'>('idle');
   const [storyCutPlaybackError, setStoryCutPlaybackError] = useState('');
   const [setupFocus, setSetupFocus] = useState<
@@ -2039,6 +2600,112 @@ export default function ImagePage() {
     }
   }, [params.id]);
 
+  const normalizeImageStoryCut = useCallback(
+    (
+      source:
+        | StoryCutResult
+        | (NonNullable<ImageRecord['storyCut']> & {
+            metadata?: Partial<StoryCutResult['metadata']> | null;
+            selectedMediaIds?: string[];
+            selectedContributorIds?: string[];
+          })
+    ): NonNullable<ImageRecord['storyCut']> => ({
+      id: 'id' in source && typeof source.id === 'string' ? source.id : image?.storyCut?.id || 'snapshot',
+      title: source.title,
+      style: source.style,
+      focus: source.metadata?.focus || ('focus' in source ? source.focus || null : null),
+      durationSeconds: 'duration' in source ? source.duration : source.durationSeconds,
+      wordCount: source.wordCount,
+      script: source.script,
+      blocks: source.blocks as NonNullable<ImageRecord['storyCut']>['blocks'],
+      metadata: source.metadata || null,
+      selectedMediaIds:
+        'selectedMediaIds' in source && Array.isArray(source.selectedMediaIds)
+          ? source.selectedMediaIds
+          : storyCutSelectedMediaIds,
+      selectedContributorIds:
+        'selectedContributorIds' in source && Array.isArray(source.selectedContributorIds)
+          ? source.selectedContributorIds
+          : storyCutSelectedContributorIds,
+      includeOwner:
+        'includeOwner' in source && typeof source.includeOwner === 'boolean'
+          ? source.includeOwner
+          : storyCutIncludeOwner,
+      includeEmberVoice:
+        'includeEmberVoice' in source && typeof source.includeEmberVoice === 'boolean'
+          ? source.includeEmberVoice
+          : storyCutIncludeEmberVoice,
+      includeNarratorVoice:
+        'includeNarratorVoice' in source && typeof source.includeNarratorVoice === 'boolean'
+          ? source.includeNarratorVoice
+          : false,
+      emberVoiceId:
+        'emberVoiceId' in source && typeof source.emberVoiceId === 'string'
+          ? source.emberVoiceId
+          : storyCutEmberVoiceId || null,
+      emberVoiceLabel:
+        'emberVoiceLabel' in source && typeof source.emberVoiceLabel === 'string'
+          ? source.emberVoiceLabel
+          : storyCutVoiceOptions.find((voice) => voice.voiceId === storyCutEmberVoiceId)?.label || null,
+      narratorVoiceId:
+        'narratorVoiceId' in source && typeof source.narratorVoiceId === 'string'
+          ? source.narratorVoiceId
+          : null,
+      narratorVoiceLabel:
+        'narratorVoiceLabel' in source && typeof source.narratorVoiceLabel === 'string'
+          ? source.narratorVoiceLabel
+          : null,
+      updatedAt:
+        'updatedAt' in source && typeof source.updatedAt === 'string'
+          ? source.updatedAt
+          : new Date().toISOString(),
+    }),
+    [
+      image?.storyCut?.id,
+      storyCutEmberVoiceId,
+      storyCutIncludeEmberVoice,
+      storyCutIncludeOwner,
+      storyCutSelectedContributorIds,
+      storyCutSelectedMediaIds,
+      storyCutVoiceOptions,
+    ]
+  );
+
+  const normalizeStoryCutBlocks = useCallback((blocks: StoryCutBlock[]) => {
+    return blocks.map((block, index) => ({
+      ...block,
+      order: index + 1,
+    }));
+  }, []);
+
+  const handleRegenerateWiki = async () => {
+    if (!image?.canManage || generatingWiki) {
+      return;
+    }
+
+    setGeneratingWiki(true);
+    setShareError('');
+    setActionNotice('');
+
+    try {
+      const response = await fetch(`/api/wiki/${params.id}`, {
+        method: 'POST',
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || 'Failed to regenerate wiki');
+      }
+
+      await fetchImage();
+      setActionNotice('Wiki regenerated.');
+    } catch (err) {
+      setShareError(err instanceof Error ? err.message : 'Failed to regenerate wiki');
+    } finally {
+      setGeneratingWiki(false);
+    }
+  };
+
   useEffect(() => {
     fetchImage();
   }, [fetchImage]);
@@ -2049,6 +2716,11 @@ export default function ImagePage() {
     }
 
     setTitleDraft(image.title?.trim() || getEmberTitle(image));
+    setGroupedTitleSuggestions({
+      analysis: [],
+      context: [],
+    });
+    setTitleContributorQuotes([]);
     setEditingSmartTitle(false);
     setCaptionDraft(image.description || '');
     setEditingSmartCaption(false);
@@ -2076,9 +2748,7 @@ export default function ImagePage() {
     setStoryCutSelectedContributorIds(image.storyCut?.selectedContributorIds || []);
     setStoryCutIncludeOwner(image.storyCut?.includeOwner ?? true);
     setStoryCutIncludeEmberVoice(image.storyCut?.includeEmberVoice ?? true);
-    setStoryCutIncludeNarratorVoice(image.storyCut?.includeNarratorVoice ?? true);
     setStoryCutEmberVoiceId(image.storyCut?.emberVoiceId || '');
-    setStoryCutNarratorVoiceId(image.storyCut?.narratorVoiceId || '');
     setStoryCutData(
       image.storyCut
         ? {
@@ -2094,12 +2764,7 @@ export default function ImagePage() {
                   block.type === 'voice' && block.speaker === 'EMBER VOICE' && Boolean(block.content)
               )
               .map((block) => block.content || ''),
-            narratorVoiceLines: image.storyCut.blocks
-              .filter(
-                (block): block is StoryCutBlock & { type: 'voice'; speaker?: string | null; content?: string | null } =>
-                  block.type === 'voice' && block.speaker === 'NARRATOR' && Boolean(block.content)
-              )
-              .map((block) => block.content || ''),
+            narratorVoiceLines: [],
             ownerLines: [],
             contributorLines: [],
             metadata: {
@@ -2117,8 +2782,44 @@ export default function ImagePage() {
           }
         : null
     );
+    setStoryCutScriptDraft(image.storyCut?.script || '');
+    setStoryCutBlocksDraft(
+      normalizeStoryCutBlocks((image.storyCut?.blocks as StoryCutBlock[] | undefined) || [])
+    );
+    setNarrationScript(image.storyCut?.script || '');
     setStoryCutError('');
-  }, [image]);
+  }, [image, normalizeStoryCutBlocks]);
+
+  useEffect(() => {
+    if (!image) {
+      if (storyCutNewMediaId) {
+        setStoryCutNewMediaId('');
+      }
+      return;
+    }
+
+    const nextMediaIds = [
+      image.id,
+      ...image.attachments.map((attachment) => attachment.id),
+      ...image.voiceCallClips.filter((clip) => Boolean(clip.audioUrl)).map((clip) => clip.id),
+    ];
+
+    if (nextMediaIds.length === 0) {
+      if (storyCutNewMediaId) {
+        setStoryCutNewMediaId('');
+      }
+      return;
+    }
+
+    if (!storyCutNewMediaId || !nextMediaIds.includes(storyCutNewMediaId)) {
+      const preferredMedia =
+        image.voiceCallClips.find((clip) => Boolean(clip.audioUrl))?.id ||
+        image.attachments.find((attachment) => attachment.mediaType === 'AUDIO')?.id ||
+        image.attachments[0]?.id ||
+        image.id;
+      setStoryCutNewMediaId(preferredMedia || '');
+    }
+  }, [image, storyCutNewMediaId]);
 
   useEffect(() => {
     void router.prefetch('/feed');
@@ -2475,7 +3176,7 @@ export default function ImagePage() {
     }
   };
 
-  const loadTitleSuggestions = useCallback(async () => {
+  const loadTitleSuggestions = useCallback(async (forceRefresh = false) => {
     if (!image?.canManage) {
       return;
     }
@@ -2484,16 +3185,48 @@ export default function ImagePage() {
     setShareError('');
 
     try {
-      const response = await fetch(`/api/images/${image.id}/title-suggestions`, {
+      const response = await fetch(
+        `/api/images/${image.id}/title-suggestions${forceRefresh ? '?refresh=1' : ''}`,
+        {
         cache: 'no-store',
-      });
+        }
+      );
       const payload = await response.json().catch(() => null);
 
       if (!response.ok) {
         throw new Error(payload?.error || 'Failed to generate title suggestions');
       }
 
-      setTitleSuggestions(Array.isArray(payload?.suggestions) ? payload.suggestions : []);
+      const analysisSuggestions = Array.isArray(payload?.analysisSuggestions)
+        ? (payload.analysisSuggestions as string[])
+        : [];
+      const contextSuggestions = Array.isArray(payload?.contextSuggestions)
+        ? (payload.contextSuggestions as string[])
+        : [];
+      const contributorQuotes = Array.isArray(payload?.contributorQuotes)
+        ? (payload.contributorQuotes as Array<{
+            title: string;
+            contributorName: string;
+            quote: string;
+            source: 'voice' | 'text';
+          }>)
+        : [];
+      setGroupedTitleSuggestions({
+        analysis: analysisSuggestions,
+        context: contextSuggestions,
+      });
+      setTitleContributorQuotes(contributorQuotes);
+      setTitleSuggestions(
+        Array.isArray(payload?.suggestions)
+          ? payload.suggestions
+          : Array.from(
+              new Set([
+                ...analysisSuggestions,
+                ...contextSuggestions,
+                ...contributorQuotes.map((item) => item.title),
+              ])
+            )
+      );
     } catch (titleError) {
       setShareError(
         titleError instanceof Error
@@ -2525,6 +3258,12 @@ export default function ImagePage() {
 
       if (payload?.title) {
         setTitleDraft(payload.title);
+        setGroupedTitleSuggestions((current) => ({
+          ...current,
+          context: Array.from(
+            new Set([payload.title, ...current.context].map((title) => title.trim()))
+          ).slice(0, 3),
+        }));
         setTitleSuggestions((current) => {
           const next = [payload.title, ...current].filter(Boolean);
           return Array.from(new Set(next.map((title: string) => title.trim()))).slice(0, 4);
@@ -2568,43 +3307,7 @@ export default function ImagePage() {
     }
 
     setEditingSmartTitle(false);
-    setLoadingTitleSuggestions(true);
-    setShareError('');
-
-    try {
-      const response = await fetch(`/api/images/${image.id}/title-suggestions`, {
-        method: 'POST',
-      });
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(payload?.error || 'Failed to generate a title');
-      }
-
-      if (!payload?.title) {
-        throw new Error('Failed to generate a title');
-      }
-
-      setTitleDraft(payload.title);
-      setTitleSuggestions((current) => {
-        const next = [payload.title, ...current].filter(Boolean);
-        return Array.from(new Set(next.map((title: string) => title.trim()))).slice(0, 4);
-      });
-
-      await handleSaveImageDetails(
-        { title: payload.title },
-        {
-          closeAfterSave: false,
-          successMessage: 'Smart title regenerated.',
-        }
-      );
-    } catch (titleError) {
-      setShareError(
-        titleError instanceof Error ? titleError.message : 'Failed to generate a title'
-      );
-    } finally {
-      setLoadingTitleSuggestions(false);
-    }
+    await loadTitleSuggestions(true);
   };
 
   const handleSaveSmartCaption = async () => {
@@ -3128,8 +3831,151 @@ export default function ImagePage() {
     setStoryCutPlaybackState('idle');
   }, []);
 
+  const playStoryCutAudioSegment = useCallback(
+    async ({
+      src,
+      objectUrl,
+      startMs,
+      endMs,
+      playbackRequestId,
+      errorMessage,
+    }: {
+      src: string;
+      objectUrl?: string | null;
+      startMs?: number | null;
+      endMs?: number | null;
+      playbackRequestId: number;
+      errorMessage: string;
+    }) => {
+      const audio = new Audio(src);
+      let settled = false;
+
+      if (objectUrl) {
+        storyCutAudioUrlRef.current = objectUrl;
+      }
+      storyCutAudioRef.current = audio;
+      audio.preload = 'auto';
+
+      const ensureMetadataAndSeek = async () => {
+        const clipStartSeconds =
+          typeof startMs === 'number' && Number.isFinite(startMs) ? Math.max(0, startMs / 1000) : null;
+
+        if (audio.readyState < 1) {
+          await new Promise<void>((resolve, reject) => {
+            const handleLoaded = () => {
+              audio.removeEventListener('loadedmetadata', handleLoaded);
+              audio.removeEventListener('error', handleError);
+              resolve();
+            };
+            const handleError = () => {
+              audio.removeEventListener('loadedmetadata', handleLoaded);
+              audio.removeEventListener('error', handleError);
+              reject(new Error(errorMessage));
+            };
+
+            audio.addEventListener('loadedmetadata', handleLoaded);
+            audio.addEventListener('error', handleError);
+            audio.load();
+          });
+        }
+
+        if (clipStartSeconds != null) {
+          const maxStart =
+            Number.isFinite(audio.duration) && audio.duration > 0
+              ? Math.min(clipStartSeconds, audio.duration)
+              : clipStartSeconds;
+          audio.currentTime = maxStart;
+        }
+      };
+
+      const cleanup = () => {
+        audio.onended = null;
+        audio.onerror = null;
+        audio.onpause = null;
+        audio.ontimeupdate = null;
+
+        if (storyCutAudioRef.current === audio) {
+          storyCutAudioRef.current = null;
+        }
+
+        if (objectUrl && storyCutAudioUrlRef.current === objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          storyCutAudioUrlRef.current = null;
+        }
+      };
+
+      await new Promise<void>((resolve, reject) => {
+        const finish = () => {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          cleanup();
+          resolve();
+        };
+
+        const fail = () => {
+          if (settled) {
+            return;
+          }
+
+          settled = true;
+          cleanup();
+          reject(new Error(errorMessage));
+        };
+
+        audio.onended = () => {
+          finish();
+        };
+
+        audio.onerror = () => {
+          fail();
+        };
+
+        audio.onpause = () => {
+          if (settled) {
+            return;
+          }
+
+          if (storyCutPlaybackRequestRef.current !== playbackRequestId) {
+            finish();
+          }
+        };
+
+        const clipEndSeconds =
+          typeof endMs === 'number' && Number.isFinite(endMs) ? Math.max(0, endMs / 1000) : null;
+
+        if (clipEndSeconds != null) {
+          audio.ontimeupdate = () => {
+            if (audio.currentTime >= clipEndSeconds) {
+              finish();
+              audio.pause();
+            }
+          };
+        }
+
+        void ensureMetadataAndSeek()
+          .then(() => audio.play())
+          .then(() => {
+            if (storyCutPlaybackRequestRef.current !== playbackRequestId) {
+              finish();
+              audio.pause();
+              return;
+            }
+
+            setStoryCutPlaybackState('playing');
+          })
+          .catch(() => {
+            fail();
+          });
+      });
+    },
+    []
+  );
+
   const handleNarrationToggle = async () => {
-    if (!image?.wiki?.content) {
+    if (!image?.storyCut?.script && !image?.wiki?.content) {
       return;
     }
 
@@ -3144,14 +3990,23 @@ export default function ImagePage() {
     narrationRequestRef.current = narrationRequestId;
 
     try {
-      let script = narrationScript;
+      let script =
+        storyCutData?.script?.trim() ||
+        image?.storyCut?.script?.trim() ||
+        storyCutScriptDraft.trim() ||
+        narrationScript;
+      const preferredVoiceId = image?.storyCut?.emberVoiceId || storyCutEmberVoiceId || null;
+
+      if (script) {
+        setNarrationScript(script);
+      }
 
       if (!script) {
         const scriptResponse = await fetch('/api/narration/script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content: image.wiki.content,
+            content: image.wiki?.content || '',
           }),
         });
 
@@ -3174,6 +4029,7 @@ export default function ImagePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           script,
+          voiceId: preferredVoiceId,
           voicePreference,
         }),
       });
@@ -3217,7 +4073,14 @@ export default function ImagePage() {
   };
 
   const handlePlayStoryCut = async (storyCut: StoryCutResult | ImageRecord['storyCut']) => {
-    if (!storyCut?.script) {
+    if (!storyCut) {
+      return;
+    }
+
+    const effectiveScript =
+      ('script' in storyCut ? storyCutScriptDraft.trim() : '') || storyCut?.script || '';
+
+    if (!effectiveScript) {
       return;
     }
 
@@ -3233,109 +4096,180 @@ export default function ImagePage() {
 
     const requestedVoiceId =
       storyCut && 'narratorVoiceId' in storyCut
-        ? storyCut.narratorVoiceId || storyCut.emberVoiceId || null
-        : storyCutNarratorVoiceId || storyCutEmberVoiceId || null;
-    const selectedMediaIds =
-      storyCut && 'selectedMediaIds' in storyCut && Array.isArray(storyCut.selectedMediaIds)
-        ? storyCut.selectedMediaIds
-        : storyCutSelectedMediaIds;
-    const ambientTracks = selectedMediaIds
-      .filter((mediaId) => mediaId !== image?.id)
-      .map((mediaId) => image?.attachments.find((attachment) => attachment.id === mediaId) || null)
-      .filter(
-        (
-          attachment
-        ): attachment is ImageRecord['attachments'][number] =>
-          attachment !== null && attachment.mediaType === 'AUDIO'
-      )
-      .map((attachment) => ({
-        id: attachment.id,
-        url: `/api/uploads/${attachment.filename}`,
-      }));
+        ? storyCut.emberVoiceId || null
+        : storyCutEmberVoiceId || null;
 
     try {
-      const response = await fetch('/api/narration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          script: storyCut.script,
-          voiceId: requestedVoiceId,
-          voicePreference: voicePreference,
-        }),
-      });
+      const mediaLookup = new Map<string, StoryCutMediaItem>(
+        storyCutMediaItems.map((media) => [media.id, media])
+      );
+      const resolveFallbackMedia = (block: Extract<StoryCutBlock, { type: 'media' }>) => {
+        const blockName = normalizeStoryCutMediaToken(block.mediaName);
+        const blockQuote = normalizeStoryCutMediaToken(block.clipQuote);
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || 'Story Cut audio could not be generated.');
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-
-      if (storyCutPlaybackRequestRef.current !== playbackRequestId) {
-        URL.revokeObjectURL(audioUrl);
-        return;
-      }
-
-      storyCutAudioUrlRef.current = audioUrl;
-      storyCutAudioRef.current = audio;
-
-      const ambientAudios = ambientTracks.map((track) => {
-        const ambientAudio = new Audio(track.url);
-        ambientAudio.preload = 'auto';
-        ambientAudio.volume = 0.18;
-        return ambientAudio;
-      });
-      storyCutAmbientAudioRefs.current = ambientAudios;
-
-      if (ambientAudios.length === 1) {
-        ambientAudios[0].loop = true;
-      } else if (ambientAudios.length > 1) {
-        ambientAudios.forEach((ambientAudio, index) => {
-          ambientAudio.onended = () => {
-            if (storyCutPlaybackRequestRef.current !== playbackRequestId) {
-              return;
+        return (
+          (block.mediaId ? mediaLookup.get(block.mediaId) || null : null) ||
+          storyCutMediaItems.find((media) => {
+            if (block.mediaType && media.mediaType !== block.mediaType) {
+              return false;
             }
 
-            const nextAudio = ambientAudios[index + 1] || ambientAudios[0];
-            if (!nextAudio) {
-              return;
+            const mediaName = normalizeStoryCutMediaToken(media.label);
+            if (blockName && (mediaName === blockName || mediaName.includes(blockName) || blockName.includes(mediaName))) {
+              return true;
             }
 
-            nextAudio.currentTime = 0;
-            void nextAudio.play().catch(() => {});
-          };
+            const mediaQuote = normalizeStoryCutMediaToken(media.quote);
+            if (blockQuote && mediaQuote && (mediaQuote === blockQuote || mediaQuote.includes(blockQuote) || blockQuote.includes(mediaQuote))) {
+              return true;
+            }
+
+            return false;
+          }) ||
+          null
+        );
+      };
+      const sortedBlocks: StoryCutBlock[] = Array.isArray(storyCut.blocks)
+        ? [...(storyCut.blocks as StoryCutBlock[])].sort((left, right) => left.order - right.order)
+        : [];
+      const playbackBlocks: StoryCutBlock[] = sortedBlocks.length
+        ? sortedBlocks.reduce<StoryCutBlock[]>((accumulator, block) => {
+            if (isStoryCutVoiceBlock(block)) {
+              const nextContent = block.content?.trim() || '';
+              if (!nextContent) {
+                return accumulator;
+              }
+
+              const lastBlock = accumulator[accumulator.length - 1];
+              if (lastBlock && isStoryCutVoiceBlock(lastBlock)) {
+                accumulator[accumulator.length - 1] = {
+                  ...lastBlock,
+                  content: `${lastBlock.content?.trim() || ''} ${nextContent}`.trim(),
+                };
+                return accumulator;
+              }
+
+              accumulator.push({
+                ...block,
+                content: nextContent,
+              });
+              return accumulator;
+            }
+
+            if (!isStoryCutAudioBlock(block)) {
+              return accumulator;
+            }
+
+            const fallbackMedia = resolveFallbackMedia(block);
+            const attachmentTrack =
+              fallbackMedia?.id && image
+                ? image.attachments.find(
+                    (attachment) => attachment.id === fallbackMedia.id && attachment.mediaType === 'AUDIO'
+                  ) || null
+                : null;
+            const voiceClipTrack =
+              fallbackMedia?.id && image
+                ? image.voiceCallClips.find(
+                    (clip) => clip.id === fallbackMedia.id && Boolean(clip.audioUrl)
+                  ) || null
+                : null;
+            const resolvedUrl =
+              block.mediaUrl ||
+              (attachmentTrack ? `/api/uploads/${attachmentTrack.filename}` : null) ||
+              voiceClipTrack?.audioUrl ||
+              (fallbackMedia?.mediaType === 'AUDIO' ? fallbackMedia.previewUrl || null : null);
+
+            if (!resolvedUrl) {
+              return accumulator;
+            }
+
+            accumulator.push({
+              ...block,
+              mediaUrl: resolvedUrl,
+              clipStartMs:
+                fallbackMedia?.startMs ?? voiceClipTrack?.startMs ??
+                (typeof block.clipStartMs === 'number' ? block.clipStartMs : null),
+              clipEndMs:
+                fallbackMedia?.endMs ?? voiceClipTrack?.endMs ??
+                (typeof block.clipEndMs === 'number' ? block.clipEndMs : null),
+            });
+            return accumulator;
+          }, [])
+        : [
+            {
+              type: 'voice',
+              speaker: 'Ember',
+              content: effectiveScript,
+              voicePreference: 'ember',
+              messageId: null,
+              userId: null,
+              order: 1,
+            },
+          ];
+
+      for (const block of playbackBlocks) {
+        if (storyCutPlaybackRequestRef.current !== playbackRequestId) {
+          return;
+        }
+
+        if (isStoryCutVoiceBlock(block)) {
+          const line = block.content?.trim() || '';
+          if (!line) {
+            continue;
+          }
+
+          const response = await fetch('/api/narration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              script: line,
+              voiceId: requestedVoiceId,
+              voicePreference: voicePreference,
+            }),
+          });
+
+          if (!response.ok) {
+            const payload = await response.json().catch(() => null);
+            throw new Error(payload?.error || 'Snapshot audio could not be generated.');
+          }
+
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+
+          if (storyCutPlaybackRequestRef.current !== playbackRequestId) {
+            URL.revokeObjectURL(audioUrl);
+            return;
+          }
+
+          await playStoryCutAudioSegment({
+            src: audioUrl,
+            objectUrl: audioUrl,
+            playbackRequestId,
+            errorMessage: 'Snapshot audio could not be played on this device.',
+          });
+          continue;
+        }
+
+        if (!isStoryCutAudioBlock(block) || !block.mediaUrl) {
+          continue;
+        }
+
+        await playStoryCutAudioSegment({
+          src: block.mediaUrl,
+          startMs: block.clipStartMs ?? null,
+          endMs: block.clipEndMs ?? null,
+          playbackRequestId,
+          errorMessage: 'A selected audio clip could not be played on this device.',
         });
       }
 
-      audio.onended = () => {
-        stopStoryCutPlayback();
-      };
-
-      audio.onerror = () => {
-        stopStoryCutPlayback();
-        setStoryCutPlaybackError('Story Cut audio could not be played on this device.');
-      };
-
-      await audio.play();
-      if (storyCutPlaybackRequestRef.current !== playbackRequestId) {
-        stopStoryCutPlayback();
-        return;
-      }
-
-      if (ambientAudios.length > 0) {
-        ambientAudios[0].currentTime = 0;
-        void ambientAudios[0].play().catch(() => {});
-      }
-
-      setStoryCutPlaybackState('playing');
+      stopStoryCutPlayback();
     } catch (storyCutPlaybackIssue) {
       stopStoryCutPlayback();
       setStoryCutPlaybackError(
         storyCutPlaybackIssue instanceof Error
           ? storyCutPlaybackIssue.message
-          : 'Story Cut audio could not be generated.'
+          : 'Snapshot audio could not be generated.'
       );
     }
   };
@@ -3361,34 +4295,136 @@ export default function ImagePage() {
           selectedContributorIds: storyCutSelectedContributorIds,
           includeOwner: storyCutIncludeOwner,
           includeEmberVoice: storyCutIncludeEmberVoice,
-          includeNarratorVoice: storyCutIncludeNarratorVoice,
           emberVoiceId: storyCutEmberVoiceId || null,
-          narratorVoiceId: storyCutNarratorVoiceId || null,
           emberVoiceLabel:
             storyCutVoiceOptions.find((voice) => voice.voiceId === storyCutEmberVoiceId)?.label ||
-            null,
-          narratorVoiceLabel:
-            storyCutVoiceOptions.find((voice) => voice.voiceId === storyCutNarratorVoiceId)?.label ||
             null,
         }),
       });
       const payload = await response.json().catch(() => null);
 
       if (!response.ok || !payload?.storyCut) {
-        throw new Error(payload?.error || 'Failed to generate Story Cuts');
+        throw new Error(payload?.error || 'Failed to generate Snapshot');
       }
 
-      setStoryCutData(payload.storyCut as StoryCutResult);
+      const nextStoryCut = payload.storyCut as StoryCutResult;
+      setStoryCutData(nextStoryCut);
+      setStoryCutScriptDraft(nextStoryCut.script || '');
+      setStoryCutBlocksDraft(normalizeStoryCutBlocks((nextStoryCut.blocks as StoryCutBlock[]) || []));
+      setNarrationScript(nextStoryCut.script || '');
+      setImage((current) =>
+        current
+          ? {
+              ...current,
+              storyCut: normalizeImageStoryCut(nextStoryCut),
+            }
+          : current
+      );
       await fetchImage();
-      setActionNotice('Story Cut generated.');
+      setActionNotice('Snapshot generated.');
     } catch (storyCutGenerationError) {
       setStoryCutError(
         storyCutGenerationError instanceof Error
           ? storyCutGenerationError.message
-          : 'Failed to generate Story Cuts'
+          : 'Failed to generate Snapshot'
       );
     } finally {
       setStoryCutLoading(false);
+    }
+  };
+
+  const handleSaveStoryCutScript = async () => {
+    if (!image?.canManage || !storyCutData || savingStoryCutScript) {
+      return;
+    }
+
+    const nextScript = storyCutScriptDraft.trim();
+    const nextBlocks = normalizeStoryCutBlocks(storyCutBlocksDraft);
+    if (!nextScript) {
+      setStoryCutError('Snapshot text cannot be empty.');
+      return;
+    }
+
+    if (nextScript === storyCutData.script.trim() && !storyCutBlocksChanged) {
+      return;
+    }
+
+    setSavingStoryCutScript(true);
+    setStoryCutError('');
+
+    try {
+      const response = await fetch(`/api/images/${image.id}/story-cuts`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: storyCutTitle.trim() || storyCutData.title,
+          script: nextScript,
+          blocks: nextBlocks,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.storyCut) {
+        throw new Error(payload?.error || 'Failed to save Snapshot edits');
+      }
+
+      const updatedStoryCut = payload.storyCut as NonNullable<ImageRecord['storyCut']>;
+      setStoryCutData((current) =>
+        current
+          ? {
+              ...current,
+              title: updatedStoryCut.title,
+              style: updatedStoryCut.style,
+              duration: updatedStoryCut.durationSeconds,
+              wordCount: updatedStoryCut.wordCount,
+              script: updatedStoryCut.script,
+              blocks: updatedStoryCut.blocks as StoryCutBlock[],
+              metadata: {
+                focus:
+                  updatedStoryCut.focus ||
+                  updatedStoryCut.metadata?.focus ||
+                  current.metadata.focus,
+                emberTitle:
+                  updatedStoryCut.metadata?.emberTitle ||
+                  updatedStoryCut.title ||
+                  current.metadata.emberTitle,
+                styleApplied:
+                  updatedStoryCut.metadata?.styleApplied ||
+                  updatedStoryCut.style ||
+                  current.metadata.styleApplied,
+                totalContributors:
+                  updatedStoryCut.metadata?.totalContributors ||
+                  current.metadata.totalContributors,
+                hasDirectQuotes:
+                  updatedStoryCut.metadata?.hasDirectQuotes ??
+                  current.metadata.hasDirectQuotes,
+              },
+            }
+          : current
+      );
+      setStoryCutScriptDraft(updatedStoryCut.script);
+      setStoryCutBlocksDraft(
+        normalizeStoryCutBlocks((updatedStoryCut.blocks as StoryCutBlock[]) || [])
+      );
+      setNarrationScript(updatedStoryCut.script || '');
+      setImage((current) =>
+        current
+          ? {
+              ...current,
+              storyCut: normalizeImageStoryCut(updatedStoryCut),
+            }
+          : current
+      );
+      await fetchImage();
+      setActionNotice('Snapshot edits saved.');
+    } catch (storyCutSaveError) {
+      setStoryCutError(
+        storyCutSaveError instanceof Error
+          ? storyCutSaveError.message
+          : 'Failed to save Snapshot edits'
+      );
+    } finally {
+      setSavingStoryCutScript(false);
     }
   };
 
@@ -3417,16 +4453,6 @@ export default function ImagePage() {
       if (!storyCutEmberVoiceId && nextVoices[0]?.voiceId) {
         setStoryCutEmberVoiceId(nextVoices[0].voiceId);
       }
-
-      if (!storyCutNarratorVoiceId) {
-        const preferredNarrator =
-          nextVoices.find((voice) =>
-            /narrat|story|guide|podcast|radio/i.test(voice.label || voice.name)
-          ) || nextVoices[1] || nextVoices[0];
-        if (preferredNarrator?.voiceId) {
-          setStoryCutNarratorVoiceId(preferredNarrator.voiceId);
-        }
-      }
     } catch (voiceError) {
       setStoryCutError(
         voiceError instanceof Error ? voiceError.message : 'Failed to load voice options'
@@ -3434,12 +4460,7 @@ export default function ImagePage() {
     } finally {
       setLoadingStoryCutVoices(false);
     }
-  }, [
-    loadingStoryCutVoices,
-    storyCutEmberVoiceId,
-    storyCutNarratorVoiceId,
-    storyCutVoiceOptions.length,
-  ]);
+  }, [loadingStoryCutVoices, storyCutEmberVoiceId, storyCutVoiceOptions.length]);
 
   useEffect(() => {
     if (activePanel !== 'shape') {
@@ -3448,8 +4469,8 @@ export default function ImagePage() {
 
     if (
       shapeView === 'editTitle' &&
-      !titleDraft.trim() &&
-      titleSuggestions.length === 0 &&
+      groupedTitleSuggestions.analysis.length === 0 &&
+      groupedTitleSuggestions.context.length === 0 &&
       !loadingTitleSuggestions
     ) {
       void loadTitleSuggestions();
@@ -3465,8 +4486,8 @@ export default function ImagePage() {
   }, [
     activePanel,
     shapeView,
-    titleDraft,
-    titleSuggestions.length,
+    groupedTitleSuggestions.analysis.length,
+    groupedTitleSuggestions.context.length,
     loadingTitleSuggestions,
     loadTitleSuggestions,
     locationSuggestions.length,
@@ -3603,7 +4624,7 @@ export default function ImagePage() {
   const selectedLocationSuggestion =
     locationSuggestions.find((suggestion) => suggestion.id === selectedLocationId) || null;
   const showSetupCards = image.canManage && (fromUpload || setupRequested);
-  const storyCutMediaItems = [
+  const storyCutMediaItems: StoryCutMediaItem[] = [
     {
       id: image.id,
       label: 'Ember Image',
@@ -3623,8 +4644,37 @@ export default function ImagePage() {
           ? `/api/uploads/${attachment.posterFilename}`
           : `/api/uploads/${attachment.filename}`,
       mediaType: attachment.mediaType,
-    })),
+      })),
+    ...image.voiceCallClips
+      .filter((clip) => Boolean(clip.audioUrl))
+      .map((clip) => ({
+        id: clip.id,
+        label: clip.title,
+        kind: 'voiceClip' as const,
+        previewUrl: clip.audioUrl,
+        mediaType: 'AUDIO' as const,
+        quote: clip.quote,
+        significance: clip.significance,
+        contributorName: clip.contributorName,
+        startMs: clip.startMs,
+        endMs: clip.endMs,
+      })),
   ];
+  const getStoryCutMediaItem = (mediaId: string) =>
+    storyCutMediaItems.find((media) => media.id === mediaId) || null;
+  const buildStoryCutMediaBlock = (
+    media: StoryCutMediaItem
+  ): Extract<StoryCutBlock, { type: 'media' }> => ({
+    type: 'media',
+    mediaId: media.id,
+    mediaName: media.label,
+    mediaUrl: media.previewUrl,
+    mediaType: media.mediaType,
+    clipStartMs: media.startMs ?? null,
+    clipEndMs: media.endMs ?? null,
+    clipQuote: media.quote ?? null,
+    order: 0,
+  });
   const selectedStoryCutAmbientAudioCount = storyCutMediaItems.filter(
     (media) =>
       media.mediaType === 'AUDIO' && storyCutSelectedMediaIds.includes(media.id)
@@ -3646,7 +4696,7 @@ export default function ImagePage() {
     {
       id: 'storyCuts' as const,
       icon: 'storyCuts' as const,
-      title: 'Story Cuts',
+      title: 'Snapshot',
       subtitle: 'Creator',
       status: 'Ready',
       selected: setupFocus === 'storyCuts',
@@ -3891,6 +4941,117 @@ export default function ImagePage() {
     );
   };
 
+  const updateStoryCutBlocksDraft = (
+    updater: StoryCutBlock[] | ((current: StoryCutBlock[]) => StoryCutBlock[])
+  ) => {
+    setStoryCutBlocksDraft((current) =>
+      normalizeStoryCutBlocks(typeof updater === 'function' ? updater(current) : updater)
+    );
+  };
+
+  const handleAddStoryCutVoiceBlock = () => {
+    updateStoryCutBlocksDraft((current) => [
+      ...current,
+      {
+        type: 'voice',
+        speaker: 'Ember',
+        content: '',
+        voicePreference: 'Ember',
+        messageId: null,
+        userId: null,
+        order: current.length + 1,
+      },
+    ]);
+  };
+
+  const handleAddStoryCutMediaBlock = () => {
+    const media = storyCutNewMediaId ? getStoryCutMediaItem(storyCutNewMediaId) : null;
+
+    if (!media) {
+      return;
+    }
+
+    updateStoryCutBlocksDraft((current) => [...current, buildStoryCutMediaBlock(media)]);
+  };
+
+  const handleMoveStoryCutBlock = (index: number, direction: -1 | 1) => {
+    updateStoryCutBlocksDraft((current) => {
+      const nextIndex = index + direction;
+      if (nextIndex < 0 || nextIndex >= current.length) {
+        return current;
+      }
+
+      const next = [...current];
+      const [block] = next.splice(index, 1);
+      next.splice(nextIndex, 0, block);
+      return next;
+    });
+  };
+
+  const handleRemoveStoryCutBlock = (index: number) => {
+    updateStoryCutBlocksDraft((current) => current.filter((_, blockIndex) => blockIndex !== index));
+  };
+
+  const handleUpdateStoryCutVoiceBlock = (index: number, content: string) => {
+    updateStoryCutBlocksDraft((current) =>
+      current.map((block, blockIndex) =>
+        blockIndex === index && block.type === 'voice'
+          ? {
+              ...block,
+              content,
+            }
+          : block
+      )
+    );
+  };
+
+  const handleReplaceStoryCutMediaBlock = (index: number, mediaId: string) => {
+    const media = getStoryCutMediaItem(mediaId);
+
+    if (!media) {
+      return;
+    }
+
+    updateStoryCutBlocksDraft((current) =>
+      current.map((block, blockIndex) =>
+        blockIndex === index && block.type === 'media' ? buildStoryCutMediaBlock(media) : block
+      )
+    );
+  };
+
+  const storyCutBlocksChanged = Boolean(
+    storyCutData &&
+      JSON.stringify(normalizeStoryCutBlocks(storyCutBlocksDraft)) !==
+        JSON.stringify(normalizeStoryCutBlocks((storyCutData.blocks as StoryCutBlock[]) || []))
+  );
+  const storyCutEditorPreview = storyCutData
+    ? ({
+        ...storyCutData,
+        script: storyCutScriptDraft.trim() || storyCutData.script,
+        blocks: normalizeStoryCutBlocks(storyCutBlocksDraft),
+      } as StoryCutResult)
+    : null;
+
+  const playOverlayStoryCut = storyCutData || image.storyCut || null;
+  const playOverlayUsesStoryCut = Boolean(playOverlayStoryCut?.script?.trim());
+  const playOverlayCanPlay = Boolean(
+    playOverlayStoryCut?.script?.trim() || image.wiki?.content?.trim()
+  );
+  const playOverlayState = playOverlayUsesStoryCut
+    ? storyCutPlaybackState
+    : narrationState;
+  const playOverlayScript = playOverlayUsesStoryCut
+    ? playOverlayStoryCut?.script?.trim() || ''
+    : narrationScript;
+  const playOverlayError = playOverlayUsesStoryCut
+    ? storyCutPlaybackError
+    : narrationError;
+  const stopPlayOverlayAudio = () => {
+    stopNarration();
+    stopStoryCutPlayback();
+    setStoryCutPlaybackError('');
+  };
+
   return (
     <div className="min-h-[calc(100dvh-2.7rem)] bg-white">
       <section className="mx-auto w-full">
@@ -4014,10 +5175,10 @@ export default function ImagePage() {
             </div>
           </div>
         ) : (
-          <div className="flex min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
+          <div className="flex h-[calc(100dvh-2.7rem)] min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
             <div
               ref={heroStageRef}
-              className="relative min-h-[55vh] flex-[0_0_58vh] overflow-hidden bg-[#a8ba91]"
+              className="relative min-h-0 basis-[70%] overflow-hidden bg-[#a8ba91]"
             >
               <MediaPreview
                 mediaType={image.mediaType}
@@ -4080,7 +5241,7 @@ export default function ImagePage() {
               </div>
             </div>
 
-            <div className="flex flex-1 flex-col items-center bg-[var(--ember-orange)] px-7 py-5 text-center text-white">
+            <div className="flex min-h-0 basis-[30%] flex-col items-center bg-[var(--ember-orange)] px-7 py-5 text-center text-white">
               <p className="max-w-[16rem] text-[1.05rem] font-medium leading-[1.3] tracking-[-0.02em] sm:max-w-[20rem] sm:text-[1.45rem]">
                 Explore this ember and invite friends &amp; family to add to the memory.
               </p>
@@ -4106,8 +5267,21 @@ export default function ImagePage() {
           posterFilename={image.posterFilename}
           titleTone={heroOverlayTone.title}
           railTone={heroOverlayTone.rail}
+          importantVoiceClips={image.voiceCallClips.map((clip) => ({
+            id: clip.id,
+            contributorName: clip.contributorName,
+            title: clip.title,
+            quote: clip.quote,
+            significance: clip.significance,
+            audioUrl: clip.audioUrl,
+            startMs: clip.startMs,
+            endMs: clip.endMs,
+          }))}
           expanded={askChatExpanded}
           onExpandedChange={setAskChatExpanded}
+          onStoredMemory={() => {
+            void fetchImage();
+          }}
           onClose={closePanel}
           onOpenShare={() => setActivePanel('share')}
           onOpenTend={() => {
@@ -4120,15 +5294,15 @@ export default function ImagePage() {
 
       <EmberSheet
         open={activePanel === 'storyCuts'}
-        title="Story Cuts"
-        subtitle="Build a styled, audio-ready version of this memory. Play still handles the simple listen-to-narration experience."
+        title="Snapshot"
+        subtitle="Build the short playable version of this memory that Ember uses in Play."
         onClose={closePanel}
       >
         <div className="space-y-5">
           <div className="ember-panel rounded-[2rem] p-6">
-            <p className="ember-eyebrow">Story Cuts Creator</p>
+            <p className="ember-eyebrow">Snapshot Creator</p>
             <h3 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
-              Compose your own version of this ember
+              Compose the playable snapshot for this ember
             </h3>
 
             <div className="mt-5 rounded-[1.45rem] border border-[rgba(41,98,255,0.14)] bg-[rgba(41,98,255,0.05)] px-4 py-4">
@@ -4207,8 +5381,8 @@ export default function ImagePage() {
               {selectedStoryCutAmbientAudioCount > 0 && (
                 <div className="mt-3 rounded-[1.2rem] border border-[rgba(255,102,33,0.18)] bg-[rgba(255,102,33,0.05)] px-4 py-3 text-sm text-[var(--ember-orange-deep)]">
                   {selectedStoryCutAmbientAudioCount} audio
-                  {selectedStoryCutAmbientAudioCount === 1 ? ' track will' : ' tracks will'} mix
-                  under the narrated Story Cut.
+                  {selectedStoryCutAmbientAudioCount === 1 ? ' clip can' : ' clips can'} be
+                  woven into the Snapshot where Ember thinks they fit best.
                 </div>
               )}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -4226,24 +5400,63 @@ export default function ImagePage() {
                       }`}
                     >
                       <div className="overflow-hidden rounded-[1.15rem]">
-                        <MediaPreview
-                          mediaType={media.mediaType}
-                          filename={media.kind === 'cover' ? image.filename : image.attachments.find((attachment) => attachment.id === media.id)?.filename || image.filename}
-                          posterFilename={
-                            media.kind === 'cover'
-                              ? image.posterFilename
-                              : image.attachments.find((attachment) => attachment.id === media.id)?.posterFilename || null
-                          }
-                          originalName={media.label}
-                          usePosterForVideo
-                          className="aspect-[1.1] w-full object-cover bg-[var(--ember-soft)]"
-                        />
+                        {media.kind === 'voiceClip' ? (
+                          <div className="flex aspect-[1.1] w-full flex-col justify-between bg-[var(--ember-soft)] p-4 text-left">
+                            <div>
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ember-orange)]">
+                                Voice clip
+                              </div>
+                              <div className="mt-2 text-sm font-semibold text-[var(--ember-text)]">
+                                {media.contributorName || 'Contributor'}
+                              </div>
+                              {media.quote && (
+                                <div className="mt-2 line-clamp-4 text-sm leading-6 text-[var(--ember-muted)]">
+                                  &quot;{media.quote}&quot;
+                                </div>
+                              )}
+                            </div>
+                            {media.startMs != null && media.endMs != null && (
+                              <div className="mt-3 text-xs font-medium text-[var(--ember-muted)]">
+                                Clip range: {Math.floor(media.startMs / 1000 / 60)}:
+                                {Math.floor((media.startMs / 1000) % 60)
+                                  .toString()
+                                  .padStart(2, '0')}
+                                -
+                                {Math.floor(media.endMs / 1000 / 60)}:
+                                {Math.floor((media.endMs / 1000) % 60)
+                                  .toString()
+                                  .padStart(2, '0')}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <MediaPreview
+                            mediaType={media.mediaType}
+                            filename={
+                              media.kind === 'cover'
+                                ? image.filename
+                                : image.attachments.find((attachment) => attachment.id === media.id)?.filename || image.filename
+                            }
+                            posterFilename={
+                              media.kind === 'cover'
+                                ? image.posterFilename
+                                : image.attachments.find((attachment) => attachment.id === media.id)?.posterFilename || null
+                            }
+                            originalName={media.label}
+                            usePosterForVideo
+                            className="aspect-[1.1] w-full object-cover bg-[var(--ember-soft)]"
+                          />
+                        )}
                       </div>
                       <div className="mt-3 flex items-center justify-between gap-3">
                         <div>
                           <div className="text-sm font-semibold text-[var(--ember-text)]">{media.label}</div>
                           <div className="mt-1 text-xs text-[var(--ember-muted)]">
-                            {media.kind === 'cover' ? 'Cover media' : 'Supporting media'}
+                            {media.kind === 'cover'
+                              ? 'Cover media'
+                              : media.kind === 'voiceClip'
+                                ? 'Retell call clip'
+                                : 'Supporting media'}
                           </div>
                         </div>
                         <span
@@ -4369,7 +5582,8 @@ export default function ImagePage() {
                   </select>
                 </div>
 
-                <div className="mt-4 rounded-[1.4rem] border border-[var(--ember-line)] bg-white px-4 py-4">
+                {false && (
+                  <div className="mt-4 rounded-[1.4rem] border border-[var(--ember-line)] bg-white px-4 py-4">
                   <button
                     type="button"
                     onClick={() => setStoryCutIncludeNarratorVoice((value) => !value)}
@@ -4403,7 +5617,8 @@ export default function ImagePage() {
                       </option>
                     ))}
                   </select>
-                </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -4427,22 +5642,32 @@ export default function ImagePage() {
                 className="ember-button-primary disabled:opacity-60"
               >
                 {storyCutLoading
-                  ? 'Generating Story Cut...'
+                    ? 'Generating Snapshot...'
                   : storyCutData
-                    ? 'Generate New Story Cut'
-                    : 'Generate New Story Cut'}
+                    ? 'Generate New Snapshot'
+                    : 'Generate New Snapshot'}
               </button>
               {storyCutData && (
                 <button
                   type="button"
-                  onClick={() => void handlePlayStoryCut(storyCutData)}
+                  onClick={() => void (storyCutEditorPreview ? handlePlayStoryCut(storyCutEditorPreview) : null)}
                   className="ember-button-secondary"
                 >
                   {storyCutPlaybackState === 'loading'
                     ? 'Preparing audio...'
                     : storyCutPlaybackState === 'playing'
-                      ? 'Stop Story Cut'
-                      : 'Play Story Cut'}
+                      ? 'Stop Snapshot'
+                      : 'Play Snapshot'}
+                </button>
+              )}
+              {storyCutData && (
+                <button
+                  type="button"
+                  onClick={() => void handleSaveStoryCutScript()}
+                  disabled={savingStoryCutScript}
+                  className="ember-button-secondary disabled:opacity-60"
+                >
+                  {savingStoryCutScript ? 'Saving...' : 'Save Snapshot'}
                 </button>
               )}
               <button
@@ -4478,7 +5703,7 @@ export default function ImagePage() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {selectedStoryCutAmbientAudioCount > 0 && (
                     <span className="rounded-full bg-[rgba(255,102,33,0.1)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ember-orange)]">
-                      {selectedStoryCutAmbientAudioCount} ambient audio
+                      {selectedStoryCutAmbientAudioCount} recorded clips
                     </span>
                   )}
                   {storyCutIncludeOwner && (
@@ -4491,75 +5716,183 @@ export default function ImagePage() {
                       Ember AI
                     </span>
                   )}
-                  {storyCutIncludeNarratorVoice && (
-                    <span className="rounded-full bg-[rgba(41,98,255,0.08)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2962ff]">
-                      Narrator
-                    </span>
-                  )}
                 </div>
 
                 <div className="mt-5 rounded-[1.6rem] border border-[var(--ember-line)] bg-white px-4 py-4">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ember-muted)]">
-                    Story script
+                    Snapshot script
                   </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--ember-text)]">
-                    {storyCutData.script}
-                  </p>
+                  <textarea
+                    value={storyCutScriptDraft}
+                    onChange={(event) => setStoryCutScriptDraft(event.target.value)}
+                    className="ember-input mt-3 min-h-[12rem] whitespace-pre-wrap text-sm leading-7 text-[var(--ember-text)]"
+                  />
                 </div>
               </div>
 
               <div className="ember-panel rounded-[2rem] p-6">
-                <p className="ember-eyebrow">Story blocks</p>
+                <p className="ember-eyebrow">Snapshot blocks</p>
+                <div className="mt-4 rounded-[1.45rem] border border-[var(--ember-line)] bg-white px-4 py-4">
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                    <select
+                      value={storyCutNewMediaId}
+                      onChange={(event) => setStoryCutNewMediaId(event.target.value)}
+                      className="ember-input"
+                    >
+                      {storyCutMediaItems.map((media) => (
+                        <option key={media.id} value={media.id}>
+                          {media.label} {media.kind === 'voiceClip' ? '• voice clip' : media.mediaType === 'AUDIO' ? '• audio' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAddStoryCutMediaBlock}
+                      className="ember-button-secondary"
+                    >
+                      Add Media Block
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddStoryCutVoiceBlock}
+                      className="ember-button-secondary"
+                    >
+                      Add Voice Block
+                    </button>
+                  </div>
+                </div>
                 <div className="mt-4 space-y-3">
-                  {storyCutData.blocks.map((block) =>
+                  {storyCutBlocksDraft.map((block, index) =>
                     block.type === 'voice' ? (
                       <div
-                        key={`voice-${block.order}-${block.messageId || block.speaker || 'generated'}`}
+                        key={`voice-${index}-${block.messageId || block.speaker || 'generated'}`}
                         className="rounded-[1.45rem] border border-[var(--ember-line)] bg-white px-4 py-4"
                       >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ember-muted)]">
-                            Voice {block.order}
-                          </span>
-                          <span className="rounded-full bg-[rgba(41,98,255,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[#2962ff]">
-                            {block.speaker || 'Voice'}
-                          </span>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ember-muted)]">
+                              Voice {index + 1}
+                            </span>
+                            <span className="rounded-full bg-[rgba(41,98,255,0.08)] px-2.5 py-1 text-[11px] font-semibold text-[#2962ff]">
+                              {block.speaker || 'Voice'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveStoryCutBlock(index, -1)}
+                              disabled={index === 0}
+                              className="rounded-full border border-[var(--ember-line)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ember-muted)] disabled:opacity-40"
+                            >
+                              Up
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveStoryCutBlock(index, 1)}
+                              disabled={index === storyCutBlocksDraft.length - 1}
+                              className="rounded-full border border-[var(--ember-line)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ember-muted)] disabled:opacity-40"
+                            >
+                              Down
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveStoryCutBlock(index)}
+                              className="rounded-full border border-rose-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
-                        <p className="mt-3 text-sm leading-7 text-[var(--ember-text)]">
-                          {block.content}
-                        </p>
+                        <textarea
+                          value={block.content || ''}
+                          onChange={(event) => handleUpdateStoryCutVoiceBlock(index, event.target.value)}
+                          className="ember-input mt-3 min-h-[7rem] whitespace-pre-wrap text-sm leading-7 text-[var(--ember-text)]"
+                          placeholder="Add the Ember narration for this block"
+                        />
                       </div>
                     ) : (
                       <div
-                        key={`media-${block.order}-${block.mediaId || block.mediaName || 'media'}`}
+                        key={`media-${index}-${block.mediaId || block.mediaName || 'media'}`}
                         className="rounded-[1.45rem] border border-[rgba(255,102,33,0.18)] bg-[rgba(255,102,33,0.05)] px-4 py-4"
                       >
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ember-orange-deep)]">
-                          Media {block.order}
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ember-orange-deep)]">
+                            Media {index + 1}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveStoryCutBlock(index, -1)}
+                              disabled={index === 0}
+                              className="rounded-full border border-[rgba(255,102,33,0.2)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ember-orange-deep)] disabled:opacity-40"
+                            >
+                              Up
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveStoryCutBlock(index, 1)}
+                              disabled={index === storyCutBlocksDraft.length - 1}
+                              className="rounded-full border border-[rgba(255,102,33,0.2)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ember-orange-deep)] disabled:opacity-40"
+                            >
+                              Down
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveStoryCutBlock(index)}
+                              className="rounded-full border border-rose-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-600"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
+                        <select
+                          value={block.mediaId || ''}
+                          onChange={(event) => handleReplaceStoryCutMediaBlock(index, event.target.value)}
+                          className="ember-input mt-3"
+                        >
+                          {storyCutMediaItems.map((media) => (
+                            <option key={media.id} value={media.id}>
+                              {media.label} {media.kind === 'voiceClip' ? '• voice clip' : media.mediaType === 'AUDIO' ? '• audio' : ''}
+                            </option>
+                          ))}
+                        </select>
                         <div className="mt-2 text-sm font-medium text-[var(--ember-text)]">
                           {block.mediaName || 'Supporting media'}
                         </div>
                         <div className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--ember-muted)]">
                           {block.mediaType || 'MEDIA'}
                         </div>
+                        {block.clipQuote && (
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ember-muted)]">
+                            {block.clipQuote}
+                          </span>
+                        )}
                         {block.mediaUrl && (
                           <div className="mt-3 overflow-hidden rounded-[1rem]">
-                            <MediaPreview
-                              mediaType={block.mediaType || 'IMAGE'}
-                              filename={block.mediaUrl.replace('/api/uploads/', '')}
-                              originalName={block.mediaName || 'Supporting media'}
-                              controls={block.mediaType === 'AUDIO'}
-                              className={`w-full bg-[var(--ember-soft)] ${
-                                block.mediaType === 'AUDIO'
-                                  ? 'rounded-[1rem]'
-                                  : 'aspect-[1.3] object-cover'
-                              }`}
-                            />
+                            {block.mediaType === 'AUDIO' ? (
+                              <ClipAudioPlayer
+                                src={block.mediaUrl}
+                                startMs={block.clipStartMs}
+                                endMs={block.clipEndMs}
+                                className="w-full"
+                              />
+                            ) : (
+                              <MediaPreview
+                                mediaType={block.mediaType || 'IMAGE'}
+                                filename={block.mediaUrl.replace('/api/uploads/', '')}
+                                originalName={block.mediaName || 'Supporting media'}
+                                className="aspect-[1.3] w-full object-cover bg-[var(--ember-soft)]"
+                              />
+                            )}
                           </div>
                         )}
                       </div>
                     )
+                  )}
+                  {storyCutBlocksDraft.length === 0 && (
+                    <div className="rounded-[1.45rem] border border-dashed border-[var(--ember-line)] bg-white px-4 py-5 text-sm text-[var(--ember-muted)]">
+                      Add voice or media blocks to shape the Snapshot sequence manually.
+                    </div>
                   )}
                 </div>
               </div>
@@ -4577,23 +5910,29 @@ export default function ImagePage() {
           titleTone={heroOverlayTone.title}
           railTone={heroOverlayTone.rail}
           dateLabel={playNarrationDateLabel}
-          canPlay={Boolean(image.wiki?.content)}
-          narrationState={narrationState}
-          narrationScript={narrationScript}
-          narrationError={narrationError}
-          onStartOrStop={() => void handleNarrationToggle()}
+          canPlay={playOverlayCanPlay}
+          narrationState={playOverlayState}
+          narrationScript={playOverlayScript}
+          narrationError={playOverlayError}
+          onStartOrStop={() =>
+            void (
+              playOverlayUsesStoryCut && playOverlayStoryCut
+                ? handlePlayStoryCut(playOverlayStoryCut)
+                : handleNarrationToggle()
+            )
+          }
           onStopAndClose={closePanel}
           onOpenShare={() => {
-            stopNarration();
+            stopPlayOverlayAudio();
             setActivePanel('share');
           }}
           onOpenTend={() => {
-            stopNarration();
+            stopPlayOverlayAudio();
             setShapeView('menu');
             setActivePanel('shape');
           }}
           onOpenAsk={() => {
-            stopNarration();
+            stopPlayOverlayAudio();
             setAskChatExpanded(false);
             setActivePanel('ask');
           }}
@@ -4642,12 +5981,19 @@ export default function ImagePage() {
           titleDraft={titleDraft}
           savedTitle={image.title?.trim() || emberTitle}
           generatedDateLabel={smartGeneratedDateLabel}
+          analysisSuggestions={groupedTitleSuggestions.analysis}
+          contextSuggestions={groupedTitleSuggestions.context}
+          contributorQuotes={titleContributorQuotes}
           loadingTitleSuggestions={loadingTitleSuggestions}
           savingDetails={savingDetails}
           isEditing={editingSmartTitle}
           errorMessage={shareError}
           noticeMessage={actionNotice}
           onTitleChange={setTitleDraft}
+          onPickSuggestion={(value) => {
+            setTitleDraft(value);
+            setEditingSmartTitle(false);
+          }}
           onEditToggle={() => {
             if (editingSmartTitle) {
               void handleSaveSmartTitle();
@@ -5289,6 +6635,13 @@ export default function ImagePage() {
         <WikiOverlayExperience
           wikiContent={image.wiki?.content || null}
           wikiUpdatedAt={image.wiki?.updatedAt || null}
+          voiceCallClips={image.voiceCallClips}
+          attachments={image.attachments}
+          canManage={image.canManage}
+          generating={generatingWiki}
+          onGenerate={() => {
+            void handleRegenerateWiki();
+          }}
           onClose={closePanel}
         />
       )}

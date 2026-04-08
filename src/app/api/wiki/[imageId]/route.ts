@@ -138,8 +138,71 @@ export async function GET(
       }
     }
 
+    let voiceCallClips: Array<{
+      id: string;
+      title: string;
+      quote: string;
+      significance: string | null;
+      audioUrl: string | null;
+      startMs: number | null;
+      endMs: number | null;
+      createdAt: Date;
+      contributorName: string;
+    }> = [];
+
+    try {
+      const clips = await prisma.voiceCallClip.findMany({
+        where: { imageId },
+        orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
+        select: {
+          id: true,
+          title: true,
+          quote: true,
+          significance: true,
+          audioUrl: true,
+          startMs: true,
+          endMs: true,
+          createdAt: true,
+          contributor: {
+            select: {
+              name: true,
+              email: true,
+              phoneNumber: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      voiceCallClips = clips.map((clip) => ({
+        id: clip.id,
+        title: clip.title,
+        quote: clip.quote,
+        significance: clip.significance,
+        audioUrl: clip.audioUrl,
+        startMs: clip.startMs,
+        endMs: clip.endMs,
+        createdAt: clip.createdAt,
+        contributorName:
+          clip.contributor.name ||
+          clip.contributor.user?.name ||
+          clip.contributor.email ||
+          clip.contributor.user?.email ||
+          clip.contributor.phoneNumber ||
+          'Contributor',
+      }));
+    } catch (voiceClipError) {
+      console.error('Error loading wiki voice call clips:', voiceClipError);
+    }
+
     return NextResponse.json({
       ...wiki,
+      voiceCallClips,
       canManage: accessType === 'owner',
       ownerConversationTarget: ownerConversationTarget
         ? {

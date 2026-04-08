@@ -22,6 +22,16 @@ export function normalizeNarrationText(value: string) {
     .trim();
 }
 
+export function normalizeTextForSpeech(value: string) {
+  return normalizeNarrationText(value)
+    .replace(/([A-Za-z])\s+['’]\s*(s|d|ll|re|ve|m|t)\b/g, "$1'$2")
+    .replace(/([A-Za-z])['’]\s+(s|d|ll|re|ve|m|t)\b/g, "$1'$2")
+    .replace(/\b([A-Za-z]+)['’]s\b/g, '$1’s')
+    .replace(/\b([A-Za-z]+)['’](d|ll|re|ve|m|t)\b/g, '$1’$2')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function shouldSkipHeading(heading: string) {
   const normalized = heading.trim().toLowerCase();
 

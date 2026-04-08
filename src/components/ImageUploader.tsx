@@ -228,7 +228,7 @@ export default function ImageUploader() {
         id="file-input"
       />
 
-      <section className="flex h-full min-h-[25rem] flex-col items-center text-center">
+      <section className="flex h-full min-h-0 flex-col items-center text-center">
         <h1 className="mx-auto max-w-[18rem] text-[1.35rem] italic leading-[1.35] tracking-[-0.03em] text-black">
           Hi, This is <span className="font-semibold not-italic">ember.</span>
           <br />

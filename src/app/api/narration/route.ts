@@ -10,6 +10,7 @@ import {
   buildNarrationText,
   cleanNarrationScript,
   normalizeNarrationText,
+  normalizeTextForSpeech,
 } from '@/lib/narration';
 
 export async function POST(request: NextRequest) {
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
     const cleanedNarrationText = providedScript
       ? providedScript
       : await cleanNarrationScript(narrationText);
+    const speechReadyNarrationText = normalizeTextForSpeech(cleanedNarrationText);
 
     const voiceId = explicitVoiceId || (await resolveNarrationVoice(voicePreference)).voiceId;
 
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text: cleanedNarrationText,
+          text: speechReadyNarrationText,
           model_id: getElevenLabsModelId(),
           output_format: 'mp3_44100_128',
           voice_settings: {

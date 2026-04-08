@@ -64,7 +64,7 @@ export default function UploadConfirmModal({
     return (
       <div className="fixed inset-x-0 top-[2.7rem] bottom-0 z-[65]">
         <div className="mx-auto flex h-full w-full max-w-[26rem] flex-col">
-          <div className="relative flex-1 overflow-hidden bg-[#a6b78f]">
+          <div className="relative min-h-0 basis-[70%] overflow-hidden bg-[#a6b78f]">
             {mediaType === 'video' ? (
               <video
                 src={preview || undefined}
@@ -89,7 +89,7 @@ export default function UploadConfirmModal({
             )}
           </div>
 
-          <div className="bg-[var(--ember-orange)] px-10 py-8 text-white">
+          <div className="min-h-0 basis-[30%] bg-[var(--ember-orange)] px-10 py-8 text-white">
             <p className="max-w-[15rem] text-[1.12rem] leading-[1.28] tracking-[-0.03em]">
               {promptLabel}
             </p>
