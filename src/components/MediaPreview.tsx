@@ -21,7 +21,6 @@ export default function MediaPreview({
   posterFilename,
   originalName,
   className,
-  usePosterForVideo = false,
   controls = false,
   muted = false,
   loop = false,
@@ -29,7 +28,7 @@ export default function MediaPreview({
   autoPlay = false,
   preload = 'metadata',
 }: MediaPreviewProps) {
-  if (mediaType === 'VIDEO' && (!usePosterForVideo || !posterFilename)) {
+  if (mediaType === 'VIDEO') {
     return (
       <video
         src={getUploadUrl(filename)}
