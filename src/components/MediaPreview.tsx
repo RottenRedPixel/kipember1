@@ -29,15 +29,15 @@ export default function MediaPreview({
   autoPlay = false,
   preload = 'metadata',
 }: MediaPreviewProps) {
-  if (mediaType === 'VIDEO' && !usePosterForVideo) {
+  if (mediaType === 'VIDEO' && (!usePosterForVideo || !posterFilename)) {
     return (
       <video
         src={getUploadUrl(filename)}
         poster={posterFilename ? getUploadUrl(posterFilename) : undefined}
         controls={controls}
-        muted={muted}
+        muted={controls ? muted : true}
         loop={loop}
-        playsInline={playsInline}
+        playsInline={playsInline || !controls}
         autoPlay={autoPlay}
         preload={preload}
         className={className}
