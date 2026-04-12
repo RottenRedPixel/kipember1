@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import KidsFlipbook from '@/components/KidsFlipbook';
-import { getPreviewMediaUrl } from '@/lib/media';
+import MediaPreview from '@/components/MediaPreview';
 
 type KidsStoryPanel = {
   id: string;
@@ -168,19 +167,18 @@ export default function KidsModePage() {
 
             <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
               <div className="overflow-hidden ember-photo-shell border border-[rgba(20,20,20,0.06)] bg-white lg:w-56">
-                <Image
-                  src={getPreviewMediaUrl({
-                  mediaType: image.mediaType,
-                  filename: image.filename,
-                  posterFilename: image.posterFilename,
-                })}
-                alt={image.originalName}
-                width={320}
-                height={320}
-                unoptimized
-                className="h-56 w-full object-cover"
-              />
-            </div>
+                <MediaPreview
+                  mediaType={image.mediaType}
+                  filename={image.filename}
+                  posterFilename={image.posterFilename}
+                  originalName={image.originalName}
+                  usePosterForVideo
+                  controls={image.mediaType === 'VIDEO'}
+                  className={`h-56 w-full ${
+                    image.mediaType === 'VIDEO' ? 'object-contain bg-[#a8ba91]' : 'object-cover'
+                  }`}
+                />
+              </div>
 
             <div className="min-w-0 flex-1">
               <p className="ember-eyebrow">Kids mode</p>

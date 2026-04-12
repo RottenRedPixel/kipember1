@@ -1,10 +1,9 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import MediaPreview from '@/components/MediaPreview';
 import StoryCircleThread from '@/components/StoryCircleThread';
 import { requirePageUser } from '@/lib/auth-server';
 import { getImageAccessType } from '@/lib/ember-access';
-import { getPreviewMediaUrl } from '@/lib/media';
 import { getStoryCircleForImage } from '@/lib/story-circle';
 
 export default async function StoryCirclePage({
@@ -39,16 +38,18 @@ export default async function StoryCirclePage({
 
           <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start">
             <div className="ember-photo-shell relative h-44 w-full border border-[rgba(20,20,20,0.06)] bg-white lg:h-48 lg:w-48">
-              <Image
-                src={getPreviewMediaUrl({
-                  mediaType: storyCircle.image.mediaType,
-                  filename: storyCircle.image.filename,
-                  posterFilename: storyCircle.image.posterFilename,
-                })}
-                alt={storyCircle.image.originalName}
-                fill
-                unoptimized
-                className="object-cover"
+              <MediaPreview
+                mediaType={storyCircle.image.mediaType}
+                filename={storyCircle.image.filename}
+                posterFilename={storyCircle.image.posterFilename}
+                originalName={storyCircle.image.originalName}
+                usePosterForVideo
+                controls={storyCircle.image.mediaType === 'VIDEO'}
+                className={`h-full w-full ${
+                  storyCircle.image.mediaType === 'VIDEO'
+                    ? 'object-contain bg-[#a8ba91]'
+                    : 'object-cover'
+                }`}
               />
             </div>
 
