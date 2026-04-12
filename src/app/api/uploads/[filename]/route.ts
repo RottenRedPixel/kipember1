@@ -4,6 +4,7 @@ import { extname, basename } from 'path';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
 import { shouldNormalizeAudioForIos, transcodeAudioToM4a } from '@/lib/audio-processing';
+import { shouldNormalizeVideoForBrowser, transcodeVideoToMp4 } from '@/lib/video-processing';
 
 const CONTENT_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -29,6 +30,54 @@ const CONTENT_TYPES: Record<string, string> = {
 async function resolvePlayableUpload(filename: string) {
   const ext = extname(filename).toLowerCase();
   const originalPath = getUploadPath(filename);
+
+  if (shouldNormalizeVideoForBrowser(filename)) {
+    const [attachment, image] = await Promise.all([
+      prisma.imageAttachment.findFirst({
+        where: {
+          filename,
+          mediaType: 'VIDEO',
+        },
+        select: { id: true },
+      }),
+      prisma.image.findFirst({
+        where: {
+          filename,
+          mediaType: 'VIDEO',
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (attachment || image) {
+      const derivedFilename = `${basename(filename, ext)}.browser.mp4`;
+      const derivedPath = getUploadPath(derivedFilename);
+
+      try {
+        await fs.access(derivedPath);
+        return {
+          filePath: derivedPath,
+          contentType: 'video/mp4',
+        };
+      } catch {
+        try {
+          await transcodeVideoToMp4({
+            inputPath: originalPath,
+            outputPath: derivedPath,
+          });
+          return {
+            filePath: derivedPath,
+            contentType: 'video/mp4',
+          };
+        } catch {
+          return {
+            filePath: originalPath,
+            contentType: CONTENT_TYPES[ext] || 'application/octet-stream',
+          };
+        }
+      }
+    }
+  }
 
   if (!shouldNormalizeAudioForIos(filename)) {
     return {

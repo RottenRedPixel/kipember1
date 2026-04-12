@@ -87,3 +87,33 @@ export async function generatePosterFrame({
     outputPath,
   ]);
 }
+
+export function shouldNormalizeVideoForBrowser(filename: string): boolean {
+  const normalized = filename.toLowerCase();
+  return normalized.endsWith('.mov') || normalized.endsWith('.m4v');
+}
+
+export async function transcodeVideoToMp4({
+  inputPath,
+  outputPath,
+}: {
+  inputPath: string;
+  outputPath: string;
+}) {
+  await execFileAsync(FFMPEG_BINARY, [
+    '-y',
+    '-i',
+    inputPath,
+    '-c:v',
+    'libx264',
+    '-pix_fmt',
+    'yuv420p',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '128k',
+    '-movflags',
+    '+faststart',
+    outputPath,
+  ]);
+}
