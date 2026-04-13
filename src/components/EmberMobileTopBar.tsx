@@ -59,7 +59,7 @@ function PersonIcon({ className = 'h-5 w-5' }: { className?: string }) {
 }
 
 const iconButtonClass =
-  'inline-flex h-10 w-10 items-center justify-center rounded-full text-white/92';
+  'inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 bg-white/5 text-white/92 backdrop-blur-md';
 
 export default function EmberMobileTopBar({
   homeHref,
@@ -72,17 +72,24 @@ export default function EmberMobileTopBar({
   const pathname = usePathname();
   const router = useRouter();
 
-  const isImagePage = pathname?.startsWith('/image/');
+  const pathSegments = pathname?.split('/').filter(Boolean) ?? [];
+  const isImageRoute = pathSegments[0] === 'image';
+  const isImagePage = isImageRoute && pathSegments.length === 2;
+
+  if (isImagePage) {
+    return null;
+  }
+
   const useTextHeader =
     variant === 'text' ||
-    (variant === 'auto' && (pathname === '/create' || pathname === '/feed' || isImagePage));
+    (variant === 'auto' && (pathname === '/create' || pathname === '/feed' || isImageRoute));
 
   if (useTextHeader) {
     const homeActive = pathname === '/create';
-    const embersActive = pathname === '/feed' || isImagePage;
+    const embersActive = pathname === '/feed' || isImageRoute;
 
     return (
-      <div className="flex h-[2.7rem] w-full items-center justify-between px-4 text-[0.82rem] font-semibold tracking-[0.02em] text-white">
+      <div className="flex h-[2.7rem] w-full items-center justify-between px-4 text-[0.78rem] font-semibold tracking-[0.16em] text-white">
         <div className="flex items-center gap-4">
           <Link href={homeHref} className={homeActive ? 'text-white' : 'text-white/45'}>
             HOME
@@ -115,10 +122,10 @@ export default function EmberMobileTopBar({
   return (
     <div>
       <div className="flex h-[3.65rem] w-full items-center justify-between px-3 py-2 text-white">
-        <div className="flex items-center gap-[0.1rem]">
+        <div className="flex items-center gap-2">
         <Link
           href={homeHref}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-[0.85rem] text-[var(--ember-orange)]"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 bg-white/5 text-[var(--ember-orange)] backdrop-blur-md"
           aria-label="Ember home"
         >
           <EmberSparkIcon className="h-[1.18rem] w-[1.18rem]" />

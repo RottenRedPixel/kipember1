@@ -1,5 +1,13 @@
 import type { Metadata } from 'next';
+import { Ubuntu } from 'next/font/google';
 import './globals.css';
+
+const ubuntu = Ubuntu({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '700'],
+  variable: '--font-ubuntu',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Ember',
@@ -16,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${ubuntu.variable} h-full`}>
       <body className="antialiased">{children}</body>
     </html>
   );

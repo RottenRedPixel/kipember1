@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import UploadConfirmModal from '@/components/UploadConfirmModal';
 import UploadProcessingOverlay from '@/components/UploadProcessingOverlay';
+import UploadStarterCard from '@/components/UploadStarterCard';
 
 const PROCESSING_STAGE_DELAY_MS = 1100;
 
@@ -21,41 +22,6 @@ function detectSelectedMediaType(file: File | null): 'image' | 'video' | null {
   }
 
   return null;
-}
-
-function UploadArrowIcon() {
-  return (
-    <svg
-      width="80"
-      height="80"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className="text-black"
-    >
-      <path
-        d="M12 16V5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7.5 9.5L12 5L16.5 9.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5 15.5V17.5C5 18.6046 5.89543 19.5 7 19.5H17C18.1046 19.5 19 18.6046 19 17.5V15.5"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 export default function ImageUploader() {
@@ -120,25 +86,6 @@ export default function ImageUploader() {
       setPreview(URL.createObjectURL(file));
     },
     [preview]
-  );
-
-  const handleDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(true);
-  }, []);
-
-  const handleDragLeave = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    setIsDragging(false);
-  }, []);
-
-  const handleDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      setIsDragging(false);
-      updateSelection(event.dataTransfer.files[0] || null);
-    },
-    [updateSelection]
   );
 
   const handleFileSelect = useCallback(
@@ -228,29 +175,26 @@ export default function ImageUploader() {
         id="file-input"
       />
 
-      <section className="flex h-full min-h-0 flex-col items-center text-center">
-        <h1 className="mx-auto max-w-[18rem] text-[1.35rem] italic leading-[1.35] tracking-[-0.03em] text-black">
-          Hi, This is <span className="font-semibold not-italic">ember.</span>
-          <br />
-          Let&apos;s start by uploading your photo!
-        </h1>
-
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`mt-16 flex w-full flex-1 flex-col items-center justify-start text-center transition ${
-            isDragging ? 'scale-[1.01]' : ''
-          }`}
-        >
-          <UploadArrowIcon />
-          <p className="mt-4 text-[1rem] font-semibold uppercase tracking-[-0.01em] text-black">
-            Upload Photo Here
-          </p>
-        </button>
-      </section>
+      <UploadStarterCard
+        title="Add an Ember"
+        subtitle="Choose the photo or video that should anchor the memory."
+        supportText="Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V."
+        isDragging={isDragging}
+        onOpenPicker={() => fileInputRef.current?.click()}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          setIsDragging(false);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          setIsDragging(false);
+          updateSelection(event.dataTransfer.files[0] || null);
+        }}
+      />
 
       {selectionError && (
         <div className="ember-status ember-status-error mt-4">{selectionError}</div>
@@ -262,7 +206,7 @@ export default function ImageUploader() {
         mediaType={selectedMediaType}
         fileName={selectedFile?.name || 'Selected media'}
         title="Create an Ember"
-        subtitle=""
+        subtitle="Ember will use this upload as the reference image for the full memory layout."
         confirmLabel="Create"
         confirmBusyLabel="Creating..."
         cancelLabel="Back"

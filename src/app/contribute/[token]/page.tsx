@@ -75,14 +75,17 @@ declare global {
 
 function InviteHeader() {
   return (
-    <header className="flex h-[2.65rem] items-center justify-between bg-[#9e9e9e] px-4 text-[0.95rem] font-medium uppercase tracking-[-0.03em] text-white">
-      <Link href="/" className="hover:opacity-80">
-        Home
-      </Link>
+    <header className="ember-topbar flex h-[2.7rem] items-center justify-between px-4 text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-white">
+      <div className="flex items-center gap-4">
+        <Link href="/" className="text-white">
+          Home
+        </Link>
+        <span className="text-white/45">Invite</span>
+      </div>
       <HeaderMenu
         authMode="detect"
-        className="text-white hover:opacity-80"
-        panelClassName="right-0 top-[calc(100%+0.35rem)] min-w-[8.75rem] rounded-[0.9rem] border border-white/12 bg-[#6e6e6e] p-1.5 shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
+        className="text-white/55 hover:text-white"
+        panelClassName="right-0 top-[calc(100%+0.35rem)] min-w-[8.75rem] rounded-[1.1rem] border border-white/10 bg-[rgba(8,8,8,0.92)] p-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.34)]"
         iconClassName="h-4.5 w-4.5"
         logoutRedirectTo="/"
       />
@@ -98,22 +101,21 @@ function HeroStage({
   title: string;
 }) {
   return (
-    <div className="relative h-[44vh] overflow-hidden border-t-2 border-white bg-[#9cc9ca]">
+    <div className="relative h-[42vh] overflow-hidden bg-[var(--ember-stage-bg)] lg:h-[56vh] lg:min-h-[30rem]">
       <MediaPreview
         mediaType={image.mediaType}
         filename={image.filename}
         posterFilename={image.posterFilename}
         originalName={title}
         controls={false}
-        className={`h-full w-full ${
-          image.mediaType === 'VIDEO'
-            ? 'object-cover bg-[#9cc9ca]'
-            : 'object-cover bg-[#9cc9ca]'
-        }`}
+        className="h-full w-full object-cover"
       />
-      <div className="absolute inset-0 bg-[#9cc9ca]/72" />
-      <div className="absolute left-3 top-5 right-3 text-[2rem] font-semibold uppercase tracking-[-0.05em] text-white">
-        {title}
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.26),transparent_30%,transparent_60%,rgba(0,0,0,0.76))]" />
+      <div className="absolute inset-x-4 bottom-4">
+        <span className="ember-stage-pill">Contributor view</span>
+        <div className="mt-3 text-[2rem] font-semibold uppercase leading-[0.98] tracking-[-0.05em] text-white lg:max-w-[32rem] lg:text-[3rem]">
+          {title}
+        </div>
       </div>
     </div>
   );
@@ -124,7 +126,7 @@ function PanelCloseButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-9 w-9 items-center justify-center text-white"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white"
       aria-label="Close"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
@@ -168,19 +170,19 @@ function ActionButton({
 }) {
   const toneClass =
     tone === 'pink'
-      ? 'bg-[#e25588] text-white'
+      ? 'border border-[rgba(255,166,105,0.18)] bg-[linear-gradient(180deg,#ff9245_0%,var(--ember-orange)_100%)] text-white shadow-[0_18px_36px_rgba(255,122,26,0.22)]'
       : tone === 'rose'
-        ? 'bg-[#d75a89] text-white'
+        ? 'border border-white/10 bg-white/10 text-white'
         : tone === 'purple'
-          ? 'bg-[#7f63a7] text-white'
-          : 'bg-[#f1d8e5] text-[#e25588]';
+          ? 'border border-white/10 bg-white/6 text-white/76'
+          : 'border border-white/10 bg-transparent text-white/62';
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`min-h-[4.9rem] px-2 text-[0.97rem] font-semibold uppercase leading-5 tracking-[-0.02em] ${toneClass} disabled:opacity-55`}
+      className={`min-h-[4.35rem] rounded-[1.25rem] px-3 text-[0.84rem] font-semibold uppercase leading-5 tracking-[0.08em] ${toneClass} disabled:opacity-55`}
     >
       {label}
     </button>
@@ -492,10 +494,12 @@ export default function ContributePage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto min-h-screen w-full max-w-[26rem] bg-white">
-        <InviteHeader />
-        <div className="flex min-h-[calc(100vh-2.65rem)] items-center justify-center text-[#2f2f2f]">
-          Loading...
+      <main className="ember-page">
+        <div className="ember-app-shell">
+          <InviteHeader />
+          <div className="flex min-h-[calc(100vh-2.7rem)] items-center justify-center px-4 text-sm text-white/62">
+            Loading...
+          </div>
         </div>
       </main>
     );
@@ -503,35 +507,45 @@ export default function ContributePage() {
 
   if (loadError || !data) {
     return (
-      <main className="mx-auto min-h-screen w-full max-w-[26rem] bg-white">
-        <InviteHeader />
-        <div className="px-5 py-10 text-[#1f1f1f]">
-          <h1 className="text-[2rem] font-semibold tracking-[-0.04em]">Link not found</h1>
-          <p className="mt-3 text-base">{loadError || 'This link may have expired or is invalid.'}</p>
+      <main className="ember-page">
+        <div className="ember-app-shell">
+          <InviteHeader />
+          <div className="px-4 py-6">
+            <div className="ember-stage-section px-5 py-6 text-white">
+              <span className="ember-stage-pill">Invite expired</span>
+              <h1 className="mt-4 text-[2rem] font-semibold tracking-[-0.05em]">Link not found</h1>
+              <p className="mt-3 text-sm leading-7 text-white/56">
+                {loadError || 'This link may have expired or is invalid.'}
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-[26rem] bg-white">
-      <InviteHeader />
-      <HeroStage image={data.image} title={emberTitle} />
+    <main className="ember-page">
+      <div className="ember-app-shell">
+        <InviteHeader />
+        <HeroStage image={data.image} title={emberTitle} />
 
-      {(mode === 'choice' || mode === 'askChoice' || mode === 'calling') && (
-        <section className="min-h-[calc(100vh-2.65rem-44vh)] border-t-2 border-white bg-[#3f8ab0] px-4 py-6 text-white">
+        {(mode === 'choice' || mode === 'askChoice' || mode === 'calling') && (
+          <section className="min-h-[calc(100vh-2.7rem-42vh)] px-4 py-5 text-white lg:px-6 lg:py-8">
+            <div className="ember-stage-section mx-auto max-w-[58rem] p-5 lg:p-8">
           {actionError && (
-            <div className="mb-5 bg-white/18 px-4 py-3 text-sm font-medium text-white">
+              <div className="mb-5 rounded-[1.2rem] border border-white/10 bg-white/8 px-4 py-3 text-sm font-medium text-white">
               {actionError}
-            </div>
+              </div>
           )}
 
           {mode === 'choice' && (
             <>
-              <p className="mx-auto max-w-[18.5rem] text-center text-[1.25rem] font-medium leading-[1.28] tracking-[-0.03em]">
+              <span className="ember-stage-pill">Choose a mode</span>
+              <p className="mx-auto mt-4 max-w-[18.5rem] text-center text-[1.35rem] font-medium leading-[1.22] tracking-[-0.04em] lg:max-w-[32rem] lg:text-[1.62rem]">
                 Hello {contributorFirstName}! How would you like to conduct this interview?
               </p>
-              <div className="mx-auto mt-8 grid max-w-[21rem] grid-cols-3 gap-[0.18rem]">
+              <div className="mx-auto mt-8 grid max-w-[21rem] grid-cols-3 gap-2 lg:max-w-[34rem] lg:gap-3">
                 <ActionButton
                   label="PHONE CALL"
                   onClick={() => void startPhoneCall()}
@@ -549,10 +563,11 @@ export default function ContributePage() {
 
           {mode === 'askChoice' && (
             <>
-              <p className="mx-auto max-w-[18.5rem] text-center text-[1.25rem] font-medium leading-[1.28] tracking-[-0.03em]">
+              <span className="ember-stage-pill">Ask Ember</span>
+              <p className="mx-auto mt-4 max-w-[18.5rem] text-center text-[1.35rem] font-medium leading-[1.22] tracking-[-0.04em] lg:max-w-[32rem] lg:text-[1.62rem]">
                 {contributorFirstName}, choose how you would like to chat with ember.
               </p>
-              <div className="mx-auto mt-8 grid max-w-[21rem] grid-cols-3 gap-[0.18rem]">
+              <div className="mx-auto mt-8 grid max-w-[21rem] grid-cols-3 gap-2 lg:max-w-[34rem] lg:gap-3">
                 <ActionButton label="BACK" onClick={() => setMode('choice')} tone="pale" />
                 <ActionButton
                   label="TEXT"
@@ -571,13 +586,14 @@ export default function ContributePage() {
           )}
 
           {mode === 'calling' && (
-            <div className="flex min-h-[calc(100vh-2.65rem-44vh-3rem)] items-center justify-center text-center">
+            <div className="flex min-h-[calc(100vh-2.7rem-42vh-4rem)] items-center justify-center text-center">
               <div>
-                <p className="mx-auto max-w-[16rem] text-[1.42rem] font-medium leading-[1.25] tracking-[-0.04em]">
+                <span className="ember-stage-pill">Phone interview</span>
+                <p className="mx-auto mt-4 max-w-[16rem] text-[1.42rem] font-medium leading-[1.25] tracking-[-0.04em] lg:max-w-[24rem] lg:text-[1.68rem]">
                   Ember is calling you now! Thank you!
                 </p>
                 {data.latestVoiceCall && (
-                  <p className="mt-4 text-[1rem] text-white/82">
+                  <p className="mt-4 text-[1rem] text-white/62">
                     {data.latestVoiceCall.status === 'ongoing'
                       ? 'Your phone conversation is in progress.'
                       : 'Stay on this page while the call connects.'}
@@ -586,89 +602,99 @@ export default function ContributePage() {
               </div>
             </div>
           )}
-        </section>
-      )}
+            </div>
+          </section>
+        )}
 
-      {mode === 'text' && (
-        <section className="flex min-h-[calc(100vh-2.65rem-44vh)] flex-col border-t-2 border-white bg-[#3f8ab0] px-3 pt-4 pb-5 text-white">
-          <div className="flex items-start justify-between">
-            <div className="text-[1.05rem] font-semibold tracking-[-0.03em]">Text Ember</div>
-            <PanelCloseButton onClick={() => setMode('askChoice')} />
-          </div>
+        {mode === 'text' && (
+          <section className="flex min-h-[calc(100vh-2.7rem-42vh)] flex-col px-4 pt-4 pb-5 text-white lg:px-6 lg:py-8">
+            <div className="ember-stage-section mx-auto flex min-h-full w-full max-w-[58rem] flex-1 flex-col p-4 lg:p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="ember-stage-pill">Text interview</span>
+                  <div className="mt-4 text-[1.05rem] font-semibold tracking-[-0.03em]">Text Ember</div>
+                </div>
+                <PanelCloseButton onClick={() => setMode('askChoice')} />
+              </div>
 
           {actionError && (
-            <div className="mt-4 bg-white/18 px-4 py-3 text-sm font-medium text-white">
+                <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-white/8 px-4 py-3 text-sm font-medium text-white">
               {actionError}
-            </div>
+                </div>
           )}
 
-          <div className="mt-2 text-[1.05rem] leading-[1.22] text-white">
+              <div className="mt-4 rounded-[1.3rem] border border-white/10 bg-white/6 px-4 py-4 text-[1.05rem] leading-[1.5] text-white">
             {latestAssistantMessage}
-          </div>
+              </div>
 
-          <div className="mt-4 flex-1">
+              <div className="mt-4 flex-1">
             {recentMessages.length > 1 && (
-              <div className="max-h-[28vh] overflow-y-auto pr-1 text-[0.98rem] leading-7 text-white/82">
+                <div className="max-h-[28vh] overflow-y-auto pr-1 text-[0.98rem] leading-7 text-white/72 lg:max-h-[32vh]">
                 {recentMessages.map((message, index) => (
                   <p key={`${message.role}-${index}`} className={index === 0 ? '' : 'mt-3'}>
                     {message.content}
                   </p>
                 ))}
-              </div>
+                </div>
             )}
-          </div>
+              </div>
 
-          <form onSubmit={handleSubmit} className="mt-5">
-            <input
-              type="text"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder=""
-              enterKeyHint="send"
-              autoFocus
-              className="h-13 w-full border-none bg-white px-4 text-[1.05rem] text-[#1d1d1d] outline-none"
-              disabled={isSending || isComplete}
-            />
-          </form>
+              <form onSubmit={handleSubmit} className="mt-5">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  placeholder="Type your answer"
+                  enterKeyHint="send"
+                  autoFocus
+                  className="ember-input min-h-[3.35rem] px-4 text-[1rem] placeholder:text-white/30"
+                  disabled={isSending || isComplete}
+                />
+              </form>
 
-          {isComplete && (
-            <div className="mt-4 bg-white/14 px-4 py-4 text-center text-[1rem] leading-7 text-white">
+              {isComplete && (
+                <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-white/8 px-4 py-4 text-center text-[1rem] leading-7 text-white">
               Thanks. Ember saved your contribution and updated the memory.
+                </div>
+              )}
             </div>
-          )}
-        </section>
-      )}
+          </section>
+        )}
 
-      {mode === 'voice' && (
-        <section className="flex min-h-[calc(100vh-2.65rem-44vh)] flex-col border-t-2 border-white bg-[#3f8ab0] px-3 pt-4 pb-5 text-white">
-          <div className="flex items-start justify-between">
-            <div className="text-[1.05rem] font-semibold tracking-[-0.03em]">
+        {mode === 'voice' && (
+          <section className="flex min-h-[calc(100vh-2.7rem-42vh)] flex-col px-4 pt-4 pb-5 text-white lg:px-6 lg:py-8">
+            <div className="ember-stage-section mx-auto flex min-h-full w-full max-w-[58rem] flex-1 flex-col p-4 lg:p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="ember-stage-pill">Voice interview</span>
+                  <div className="mt-4 text-[1.05rem] font-semibold tracking-[-0.03em]">
               Talk with Ember
               {data.contributor.name ? ` | ${data.contributor.name}` : ''}
-            </div>
-            <PanelCloseButton onClick={() => setMode('askChoice')} />
-          </div>
-
-          <VoiceWaveform />
-
-          <div className="mt-1 text-[1.02rem] leading-[1.24] text-white">
-            {latestAssistantMessage}
-          </div>
-
-          <div className="mt-4 flex-1">
-            {voiceTranscript && (
-              <div className="bg-white/14 px-4 py-3 text-left text-sm leading-6 text-white">
-                {voiceTranscript}
+                  </div>
+                </div>
+                <PanelCloseButton onClick={() => setMode('askChoice')} />
               </div>
+
+              <VoiceWaveform />
+
+              <div className="mt-1 rounded-[1.3rem] border border-white/10 bg-white/6 px-4 py-4 text-[1.02rem] leading-[1.5] text-white">
+            {latestAssistantMessage}
+              </div>
+
+              <div className="mt-4 flex-1">
+            {voiceTranscript && (
+                <div className="rounded-[1.15rem] border border-white/10 bg-white/8 px-4 py-3 text-left text-sm leading-6 text-white">
+                {voiceTranscript}
+                </div>
             )}
             {voiceError && (
-              <div className="mt-4 bg-white/14 px-4 py-3 text-left text-sm leading-6 text-white">
+                <div className="mt-4 rounded-[1.15rem] border border-white/10 bg-white/8 px-4 py-3 text-left text-sm leading-6 text-white">
                 {voiceError}
-              </div>
+                </div>
             )}
-          </div>
+              </div>
 
-          <div className="mt-6 grid grid-cols-3 gap-[0.18rem]">
+              <div className="mt-6 grid grid-cols-3 gap-2">
             <ActionButton
               label={siriEnabled ? 'SIRI ON' : 'SIRI OFF'}
               onClick={() => setSiriEnabled((current) => !current)}
@@ -691,15 +717,17 @@ export default function ContributePage() {
               disabled={!voiceTranscript.trim() || isSending || isComplete}
               tone="rose"
             />
-          </div>
+              </div>
 
-          {isComplete && (
-            <div className="mt-4 bg-white/14 px-4 py-4 text-center text-[1rem] leading-7 text-white">
+              {isComplete && (
+                <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-white/8 px-4 py-4 text-center text-[1rem] leading-7 text-white">
               Thanks. Ember saved your contribution and updated the memory.
+                </div>
+              )}
             </div>
-          )}
-        </section>
-      )}
+          </section>
+        )}
+      </div>
     </main>
   );
 }

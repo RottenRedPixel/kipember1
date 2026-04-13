@@ -94,7 +94,7 @@ function voiceStatusLabel(call: GuestMemoryResponse['latestVoiceCall']) {
     case 'error':
       return 'The phone interview hit an error.';
     default:
-      return `Phone status: ${status}`;
+      return `Phone status: ${call.status}`;
   }
 }
 
@@ -243,7 +243,7 @@ export default function GuestMemoryExperience({ token }: { token: string }) {
                 <button
                   type="button"
                   onClick={() => setShowCallSheet(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)]"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white/8 text-[var(--ember-text)]"
                   aria-label="Close"
                 >
                   <CloseIcon />
@@ -392,7 +392,7 @@ export default function GuestMemoryExperience({ token }: { token: string }) {
             </p>
 
             {data.wiki ? (
-              <div className="mt-6 min-w-0 rounded-[1.6rem] border border-[rgba(20,20,20,0.06)] bg-white/70 px-5 py-5">
+              <div className="mt-6 min-w-0 rounded-[1.6rem] border border-[var(--ember-line)] bg-white/6 px-5 py-5">
                 <WikiView content={data.wiki.content} />
               </div>
             ) : (

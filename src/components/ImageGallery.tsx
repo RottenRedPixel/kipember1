@@ -15,30 +15,41 @@ type FeedImage = {
 
 const LOAD_BATCH_SIZE = 15;
 
-function GridViewIcon({ className = 'h-6 w-6' }: { className?: string }) {
+function GridViewIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <rect x="3" y="3" width="5" height="5" />
-      <rect x="10" y="3" width="5" height="5" />
-      <rect x="17" y="3" width="5" height="5" />
-      <rect x="3" y="10" width="5" height="5" />
-      <rect x="10" y="10" width="5" height="5" />
-      <rect x="17" y="10" width="5" height="5" />
-      <rect x="3" y="17" width="5" height="5" />
-      <rect x="10" y="17" width="5" height="5" />
-      <rect x="17" y="17" width="5" height="5" />
+      <rect x="3" y="3" width="5" height="5" rx="1.2" />
+      <rect x="10" y="3" width="5" height="5" rx="1.2" />
+      <rect x="17" y="3" width="5" height="5" rx="1.2" />
+      <rect x="3" y="10" width="5" height="5" rx="1.2" />
+      <rect x="10" y="10" width="5" height="5" rx="1.2" />
+      <rect x="17" y="10" width="5" height="5" rx="1.2" />
+      <rect x="3" y="17" width="5" height="5" rx="1.2" />
+      <rect x="10" y="17" width="5" height="5" rx="1.2" />
+      <rect x="17" y="17" width="5" height="5" rx="1.2" />
     </svg>
   );
 }
 
-function ListViewIcon({ className = 'h-6 w-6' }: { className?: string }) {
+function ListViewIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <rect x="2" y="4" width="20" height="3.2" rx="0.8" />
-      <rect x="2" y="10.4" width="20" height="3.2" rx="0.8" />
-      <rect x="2" y="16.8" width="20" height="3.2" rx="0.8" />
+      <rect x="2" y="4" width="20" height="3.2" rx="1.4" />
+      <rect x="2" y="10.4" width="20" height="3.2" rx="1.4" />
+      <rect x="2" y="16.8" width="20" height="3.2" rx="1.4" />
     </svg>
   );
+}
+
+function formatCreatedAt(createdAt: string) {
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+    }).format(new Date(createdAt));
+  } catch {
+    return '';
+  }
 }
 
 export default function ImageGallery() {
@@ -104,15 +115,26 @@ export default function ImageGallery() {
   );
 
   return (
-    <section className="bg-white px-5 pt-7 pb-7">
-      <div className="mb-5 flex items-center justify-between">
-        <h1 className="text-[1.08rem] font-semibold tracking-[-0.03em] text-black">My Embers</h1>
-        <div className="flex items-center gap-2">
+    <section className="min-h-[calc(100vh-2.7rem)] px-4 pt-5 pb-6 text-white lg:px-6 lg:pt-6 lg:pb-8">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-[36rem]">
+          <span className="ember-stage-pill">Embers</span>
+          <h1 className="mt-4 text-[2.1rem] font-semibold leading-[0.96] tracking-[-0.06em] lg:text-[3.2rem]">
+            Your memory library
+          </h1>
+          <p className="mt-2 max-w-[18rem] text-sm leading-6 text-white/56 sm:max-w-[26rem] lg:max-w-[33rem] lg:text-[0.98rem]">
+            Open an Ember to continue the conversation, share it, or play it back in the reference layout.
+          </p>
+        </div>
+
+        <div className="inline-flex self-start rounded-full border border-white/8 bg-white/5 p-1 text-white/52 backdrop-blur-xl">
           <button
             type="button"
             onClick={() => setLayoutMode('list')}
             aria-label="List view"
-            className={layoutMode === 'list' ? 'text-black' : 'text-[#c9c9c9]'}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${
+              layoutMode === 'list' ? 'bg-white/10 text-white' : ''
+            }`}
           >
             <ListViewIcon />
           </button>
@@ -120,7 +142,9 @@ export default function ImageGallery() {
             type="button"
             onClick={() => setLayoutMode('grid')}
             aria-label="Grid view"
-            className={layoutMode === 'grid' ? 'text-black' : 'text-[#c9c9c9]'}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full ${
+              layoutMode === 'grid' ? 'bg-white/10 text-white' : ''
+            }`}
           >
             <GridViewIcon />
           </button>
@@ -128,31 +152,55 @@ export default function ImageGallery() {
       </div>
 
       {loading ? (
-        <div className={layoutMode === 'grid' ? 'grid grid-cols-3 gap-2.5' : 'grid gap-2.5'}>
-          {Array.from({ length: layoutMode === 'grid' ? 12 : 3 }).map((_, index) => (
+        <div className={`mt-6 ${layoutMode === 'grid' ? 'grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 lg:gap-3' : 'grid gap-3 lg:grid-cols-2'}`}>
+          {Array.from({ length: layoutMode === 'grid' ? 12 : 4 }).map((_, index) => (
             <div
               key={index}
-              className={layoutMode === 'grid' ? 'aspect-square bg-[#d3d3d3]' : 'aspect-[1.22] bg-[#d3d3d3]'}
+              className={layoutMode === 'grid'
+                ? 'aspect-square rounded-[1.15rem] border border-white/8 bg-white/6'
+                : 'aspect-[1.22] rounded-[1.35rem] border border-white/8 bg-white/6'}
             />
           ))}
         </div>
       ) : error ? (
-        <div className="text-sm text-[#8f8f8f]">{error}</div>
+        <div className="ember-stage-section mt-6 px-4 py-4 text-sm text-white/62">{error}</div>
       ) : !visibleImages.length ? (
-        <div className="text-sm text-[#8f8f8f]">No embers yet.</div>
+        <div className="ember-stage-section mt-6 px-4 py-5 text-sm text-white/62">
+          No Embers yet. Upload one from Create to start the archive.
+        </div>
       ) : (
         <>
-          <div className={layoutMode === 'grid' ? 'grid grid-cols-3 gap-2.5' : 'grid gap-2.5'}>
+          <div className={`mt-6 ${layoutMode === 'grid' ? 'grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 lg:gap-3' : 'grid gap-3 lg:grid-cols-2'}`}>
             {visibleImages.map((image) => (
-              <Link key={image.id} href={`/image/${image.id}`} className="block overflow-hidden bg-[#d3d3d3]">
-                <MediaPreview
-                  mediaType={image.mediaType}
-                  filename={image.filename}
-                  posterFilename={image.posterFilename}
-                  originalName={image.originalName}
-                  usePosterForVideo
-                  className={layoutMode === 'grid' ? 'aspect-square w-full object-cover' : 'aspect-[1.22] w-full object-cover'}
-                />
+              <Link
+                key={image.id}
+                href={`/image/${image.id}`}
+                className="group block overflow-hidden rounded-[1.35rem] border border-white/8 bg-white/5"
+              >
+                <div className="relative">
+                  <MediaPreview
+                    mediaType={image.mediaType}
+                    filename={image.filename}
+                    posterFilename={image.posterFilename}
+                    originalName={image.originalName}
+                    usePosterForVideo
+                    className={layoutMode === 'grid'
+                      ? 'aspect-square w-full object-cover transition duration-300 group-hover:scale-[1.03]'
+                      : 'aspect-[1.22] w-full object-cover transition duration-300 group-hover:scale-[1.02]'}
+                  />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.72))] px-3 py-3">
+                    <div className="flex items-center justify-between gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white/84">
+                      <span>
+                        {image.mediaType === 'VIDEO'
+                          ? 'Video'
+                          : layoutMode === 'list'
+                            ? 'Photo'
+                            : ''}
+                      </span>
+                      <span>{formatCreatedAt(image.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
               </Link>
             ))}
           </div>

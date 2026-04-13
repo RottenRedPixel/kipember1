@@ -168,8 +168,8 @@ export default function GuestImageUploader() {
 
       <UploadStarterCard
         title="Create an Ember"
-        subtitle="Upload a photo to create your first ember."
-        supportText="Supports JPG, PNG, GIF, and WebP."
+        subtitle="Upload the image or video that should become the shared memory."
+        supportText="Supports JPG, PNG, GIF, WebP, MP4, MOV, WEBM, and M4V."
         isDragging={isDragging}
         onOpenPicker={() => fileInputRef.current?.click()}
         onDragOver={(event) => {

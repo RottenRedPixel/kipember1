@@ -660,12 +660,198 @@ function AskVoiceWaveform() {
   );
 }
 
-function StopCircleIcon({ className = 'h-4 w-4' }: IconProps) {
+function StageSparkIcon({ className = 'h-4 w-4' }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.8" />
-      <rect x="9.3" y="9.3" width="5.4" height="5.4" rx="0.8" fill="currentColor" />
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="2.1" className="text-[var(--ember-stage-accent)]" />
+      <path d="M12 2.5c.5 0 .9.4.9.9v3.05a.9.9 0 0 1-1.8 0V3.4c0-.5.4-.9.9-.9Z" />
+      <path d="M12 17.55c.5 0 .9.4.9.9v3.05a.9.9 0 0 1-1.8 0V18.45c0-.5.4-.9.9-.9Z" />
+      <path d="M2.5 12c0-.5.4-.9.9-.9h3.05a.9.9 0 0 1 0 1.8H3.4a.9.9 0 0 1-.9-.9Z" />
+      <path d="M17.55 12c0-.5.4-.9.9-.9h3.05a.9.9 0 0 1 0 1.8H18.45a.9.9 0 0 1-.9-.9Z" />
+      <path d="M5.37 5.37a.9.9 0 0 1 1.27 0L8.8 7.53a.9.9 0 1 1-1.27 1.27L5.37 6.64a.9.9 0 0 1 0-1.27Z" />
+      <path d="M15.2 15.2a.9.9 0 0 1 1.27 0l2.16 2.16a.9.9 0 1 1-1.27 1.27L15.2 16.47a.9.9 0 0 1 0-1.27Z" />
+      <path d="M18.63 5.37a.9.9 0 0 1 0 1.27L16.47 8.8A.9.9 0 1 1 15.2 7.53l2.16-2.16a.9.9 0 0 1 1.27 0Z" />
+      <path d="M8.8 15.2a.9.9 0 0 1 0 1.27l-2.16 2.16a.9.9 0 1 1-1.27-1.27l2.16-2.16a.9.9 0 0 1 1.27 0Z" />
     </svg>
+  );
+}
+
+function LinkChainIcon({ className = 'h-6 w-6' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <path d="M10 13.8 8.3 15.5a3.4 3.4 0 1 1-4.8-4.8l2.9-2.9a3.4 3.4 0 0 1 4.8 0" />
+      <path d="m14 10.2 1.7-1.7a3.4 3.4 0 0 1 4.8 4.8l-2.9 2.9a3.4 3.4 0 0 1-4.8 0" />
+      <path d="m8.5 15.5 7-7" />
+    </svg>
+  );
+}
+
+function MessageBubbleIcon({ className = 'h-6 w-6' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <path d="M6 7.3h12a2 2 0 0 1 2 2v5.9a2 2 0 0 1-2 2H11l-4.2 3v-3H6a2 2 0 0 1-2-2V9.3a2 2 0 0 1 2-2Z" />
+    </svg>
+  );
+}
+
+function MailOutlineIcon({ className = 'h-6 w-6' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+      <rect x="3.8" y="6.1" width="16.4" height="11.8" rx="2" />
+      <path d="m4.6 7 7.4 6 7.4-6" />
+    </svg>
+  );
+}
+
+function FacebookGlyphIcon({ className = 'h-6 w-6' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M13.8 20v-6.3H16l.35-2.55H13.8V9.5c0-.74.2-1.24 1.26-1.24h1.35V5.98A17.4 17.4 0 0 0 14.43 5c-2 0-3.37 1.2-3.37 3.46v1.66H8.8v2.55h2.26V20h2.74Z" />
+    </svg>
+  );
+}
+
+function XBrandIcon({ className = 'h-6 w-6' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M5.1 4.5h3.8l3.63 5.18L17 4.5h1.94l-5.59 6.33 5.88 8.67h-3.8l-3.96-5.8-5.08 5.8H4.5l6.15-7.02Z" />
+    </svg>
+  );
+}
+
+function MoreDotsIcon({ className = 'h-6 w-6' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <circle cx="6" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="18" cy="12" r="1.8" />
+    </svg>
+  );
+}
+
+function BackArrowIcon({ className = 'h-5 w-5' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className} aria-hidden="true">
+      <path d="m14.5 7.5-5 4.5 5 4.5" />
+    </svg>
+  );
+}
+
+function PauseBarsIcon({ className = 'h-5 w-5' }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <rect x="7.2" y="6.2" width="3.4" height="11.6" rx="1.1" />
+      <rect x="13.4" y="6.2" width="3.4" height="11.6" rx="1.1" />
+    </svg>
+  );
+}
+
+function StageBackground({
+  emberTitle,
+  mediaType,
+  filename,
+  posterFilename,
+}: {
+  emberTitle: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  filename: string;
+  posterFilename: string | null;
+}) {
+  return (
+    <>
+      <MediaPreview
+        mediaType={mediaType}
+        filename={filename}
+        posterFilename={posterFilename}
+        originalName={emberTitle}
+        usePosterForVideo
+        className="ember-stage-blur-media"
+      />
+      <MediaPreview
+        mediaType={mediaType}
+        filename={filename}
+        posterFilename={posterFilename}
+        originalName={emberTitle}
+        usePosterForVideo
+        className="ember-stage-main-media"
+      />
+      <div className="ember-stage-gradient" />
+    </>
+  );
+}
+
+function StageHeader({
+  emberTitle,
+  subtitle,
+}: {
+  emberTitle: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="absolute left-0 right-0 top-0 z-20 flex items-center gap-3 px-4 pt-4 pb-4">
+      <Link href="/feed" className="ember-stage-home-button" aria-label="Back to embers">
+        <HomeIcon className="h-5 w-5" />
+      </Link>
+      <div className="pointer-events-none min-w-0 flex-1">
+        <p className="truncate text-base font-bold leading-tight text-white">{emberTitle}</p>
+        <p className="truncate text-xs text-white/55">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function StageDock({
+  label,
+  onPrimaryAction,
+}: {
+  label: string;
+  onPrimaryAction: () => void;
+}) {
+  return (
+    <div className="ember-stage-dock z-30">
+      <button
+        type="button"
+        onClick={onPrimaryAction}
+        className="inline-flex items-center gap-2 text-left text-white"
+      >
+        <StageSparkIcon className="h-[1.05rem] w-[1.05rem] text-white" />
+        <span className="text-[1.02rem] font-semibold tracking-[-0.02em]">{label}</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onPrimaryAction}
+        className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ember-stage-accent)] text-white shadow-[0_16px_30px_rgba(249,115,22,0.3)]"
+        aria-label={label}
+      >
+        <AskPlusIcon className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
+function StageActionTile({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-[5.15rem] flex-col items-center justify-center gap-2 rounded-[1rem] px-2 text-white/78 transition hover:bg-white/10 hover:text-white"
+    >
+      <span className="flex h-9 w-9 items-center justify-center text-white/82">
+        {icon}
+      </span>
+      <span className="text-center text-[0.88rem] font-medium leading-[1.18] tracking-[-0.02em]">
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -1824,6 +2010,7 @@ function PlayNarrationExperience({
   narrationError,
   onStartOrStop,
   onStopAndClose,
+  onOpenAdd,
   onOpenShare,
   onOpenTend,
   onOpenAsk,
@@ -1841,10 +2028,13 @@ function PlayNarrationExperience({
   narrationError: string;
   onStartOrStop: () => void;
   onStopAndClose: () => void;
+  onOpenAdd: () => void;
   onOpenShare: () => void;
   onOpenTend: () => void;
   onOpenAsk: () => void;
 }) {
+  void titleTone;
+  void railTone;
   const autoStartedRef = useRef(false);
 
   useEffect(() => {
@@ -1865,93 +2055,127 @@ function PlayNarrationExperience({
       ? 'Preparing the snapshot for this ember...'
       : narrationScript || 'Ember is getting the snapshot ready.';
 
+  const playerBars = [8, 10, 12, 16, 22, 30, 34, 30, 24, 17, 12, 9];
+
   return (
-    <div className="ember-overlay-shell z-50 bg-white">
-      <div className="relative h-full w-full overflow-hidden">
-        <div className="relative h-[70%] overflow-hidden bg-[#a8ba91]">
-          <MediaPreview
-            mediaType={mediaType}
-            filename={filename}
-            posterFilename={posterFilename}
-            originalName={emberTitle}
-            usePosterForVideo
-            controls={mediaType === 'VIDEO'}
-            className={`h-full w-full ${mediaType === 'VIDEO' ? 'object-contain bg-[#a8ba91]' : 'object-cover bg-[#a8ba91]'}`}
-          />
-          <div className="pointer-events-none absolute inset-0 bg-white/28" />
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--ember-stage-bg)] text-white">
+      <StageBackground
+        emberTitle={emberTitle}
+        mediaType={mediaType}
+        filename={filename}
+        posterFilename={posterFilename}
+      />
+      <StageHeader emberTitle={emberTitle} subtitle={dateLabel} />
 
-          <div className="absolute left-5 top-3.5 right-24">
-            <h1
-              className={`max-w-[14rem] break-words text-[2rem] font-semibold leading-[1.04] tracking-[-0.05em] [overflow-wrap:anywhere] ${
-                titleTone === 'dark'
-                  ? 'text-black drop-shadow-[0_1px_2px_rgba(255,255,255,0.28)]'
-                  : 'text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.12)]'
-              }`}
-            >
-              {emberTitle}
-            </h1>
-          </div>
+      <div className="absolute inset-x-0 bottom-[5.5rem] z-30 px-1.5 lg:px-4">
+        <div className="ember-stage-glass relative mx-auto max-w-[24rem] rounded-[1.5rem] px-6 py-5 lg:max-w-[36rem] lg:px-8 lg:py-6 xl:max-w-[40rem]">
+          <button
+            type="button"
+            onClick={onStopAndClose}
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-white/65 transition hover:bg-white/10 hover:text-white"
+            aria-label="Close player"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
 
-          <div className="absolute right-2 top-1/2 z-10 flex w-[4.75rem] -translate-y-1/2 flex-col gap-2 rounded-[1rem] bg-black/25 px-1.5 py-3 backdrop-blur-[1px] transition-colors hover:bg-black">
-            <HeroRailButton
-              icon={<ShareIcon className="h-full w-full" />}
-              label="Share"
-              tone={railTone}
-              onClick={onOpenShare}
-            />
-            <HeroRailButton
-              icon={<CircleIcon className="h-full w-full" />}
-              label="Tend"
-              tone={railTone}
-              onClick={onOpenTend}
-            />
-            <HeroRailButton
-              icon={<StopCircleIcon className="h-full w-full" />}
-              label={narrationState === 'loading' ? 'Loading' : 'Stop'}
-              tone="light"
-              onClick={onStopAndClose}
-            />
-            <HeroRailButton
-              icon={<GeminiIcon className="h-full w-full" />}
-              label="Ask"
-              tone={railTone}
-              onClick={onOpenAsk}
-            />
-          </div>
-        </div>
-
-        <div className="absolute inset-x-0 bottom-0 top-[70%] flex flex-col bg-[var(--ember-orange)] px-7 pt-5 pb-[calc(env(safe-area-inset-bottom)+1.1rem)] text-white">
-          <div className="text-center">
-            <div className="text-[0.95rem] font-medium leading-none tracking-[-0.02em] text-white/92 sm:text-[1.05rem]">
-              {dateLabel}
+          <div className="flex justify-center">
+            <div className="flex items-end justify-center gap-1 text-[var(--ember-stage-accent)]">
+              {playerBars.map((height, index) => (
+                <span
+                  key={`${height}-${index}`}
+                  className="inline-block w-[0.22rem] rounded-full bg-current"
+                  style={{
+                    height: `${height}px`,
+                    opacity: narrationState === 'loading' || narrationState === 'playing' ? 1 : 0.65,
+                  }}
+                />
+              ))}
             </div>
           </div>
 
-          <div className="mt-5 flex-1 overflow-y-auto">
+          <div className="mt-5 px-5 text-center">
             {narrationError ? (
-              <div className="mx-auto max-w-[18rem] text-center text-[1.05rem] font-medium leading-[1.3] tracking-[-0.02em] text-white">
+              <p className="text-[1.02rem] font-medium leading-[1.3] tracking-[-0.02em] text-white">
                 {narrationError}
-              </div>
+              </p>
             ) : (
-              <p className="mx-auto max-w-[18rem] whitespace-pre-wrap text-center text-[1.05rem] font-medium leading-[1.3] tracking-[-0.02em] text-white sm:max-w-[22rem] sm:text-[1.2rem]">
+              <p className="text-[1.02rem] font-bold leading-[1.25] tracking-[-0.03em] text-white">
                 {supportingCopy}
               </p>
             )}
 
             {!canPlay && (
-              <p className="mx-auto mt-4 max-w-[17rem] text-center text-sm leading-6 text-white/88">
+              <p className="mt-3 text-sm leading-6 text-white/72">
                 Generate the snapshot first so Ember has something to play here.
               </p>
             )}
           </div>
 
-          {(narrationState === 'loading' || narrationState === 'playing') && (
-            <div className="mt-4">
-              <AskVoiceWaveform />
+          <div className="mt-6 border-t border-white/10 pt-4">
+            <div className="flex items-center justify-center gap-7 text-white/72">
+              <button
+                type="button"
+                onClick={onStopAndClose}
+                className="flex flex-col items-center gap-1 text-sm font-medium transition hover:text-white"
+              >
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18">
+                  <BackArrowIcon />
+                </span>
+                <span>back</span>
+              </button>
+              <button
+                type="button"
+                onClick={canPlay ? onStartOrStop : onOpenTend}
+                className="flex flex-col items-center gap-1 text-sm font-medium transition hover:text-white"
+              >
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18">
+                  {narrationState === 'idle' ? <PlayIcon className="h-4 w-4" /> : <PauseBarsIcon />}
+                </span>
+                <span>{narrationState === 'idle' ? 'play' : narrationState === 'loading' ? 'wait' : 'pause'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={onOpenAdd}
+                className="flex flex-col items-center gap-1 text-sm font-medium transition hover:text-white"
+              >
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/18">
+                  <AskPlusIcon className="h-5 w-5" />
+                </span>
+                <span>add</span>
+              </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
+
+      <div className="absolute right-4 top-[5.9rem] z-20 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={onOpenShare}
+          className="ember-stage-home-button h-11 w-11"
+          aria-label="Share"
+        >
+          <ShareIcon className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenTend}
+          className="ember-stage-home-button h-11 w-11"
+          aria-label="Tend"
+        >
+          <CircleIcon className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          onClick={onOpenAsk}
+          className="ember-stage-home-button h-11 w-11"
+          aria-label="Ask Ember"
+        >
+          <GeminiIcon className="h-5 w-5" />
+        </button>
+      </div>
+
+      <StageDock label="Start your journey here" onPrimaryAction={onOpenAdd} />
     </div>
   );
 }
@@ -2478,13 +2702,13 @@ function TendMenuButton({
       onClick={onClick}
       disabled={disabled}
       className={`flex min-h-[6.2rem] flex-col items-center justify-center gap-2 rounded-[1.1rem] px-2 text-center transition ${
-        disabled ? 'cursor-not-allowed opacity-45' : 'hover:bg-white/10'
+        disabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-white/10'
       }`}
     >
-      <span className="flex h-9 w-9 items-center justify-center text-white">
+      <span className="flex h-9 w-9 items-center justify-center text-white/82">
         {icon}
       </span>
-      <span className="text-[0.84rem] font-semibold leading-[1.15] tracking-[-0.02em] text-[#27464a]">
+      <span className="text-[0.84rem] font-medium leading-[1.15] tracking-[-0.02em] text-white/78">
         {label}
       </span>
     </button>
@@ -2522,182 +2746,196 @@ function TendMenuExperience({
   onOpenEditTitle: () => void;
   onOpenContributors: () => void;
 }) {
+  void titleTone;
   return (
-    <div className="ember-overlay-shell z-50 bg-white">
-      <div className="relative h-full w-full overflow-hidden">
-        <div className="relative h-[60%] overflow-hidden bg-[#a8ba91]">
-          <MediaPreview
-            mediaType={mediaType}
-            filename={filename}
-            posterFilename={posterFilename}
-            originalName={emberTitle}
-            usePosterForVideo
-            controls={mediaType === 'VIDEO'}
-            className={`h-full w-full ${mediaType === 'VIDEO' ? 'object-contain bg-[#a8ba91]' : 'object-cover bg-[#a8ba91]'}`}
-          />
-          <div className="pointer-events-none absolute inset-0 bg-white/28" />
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--ember-stage-bg)] text-white">
+      <StageBackground
+        emberTitle={emberTitle}
+        mediaType={mediaType}
+        filename={filename}
+        posterFilename={posterFilename}
+      />
+      <StageHeader emberTitle={emberTitle} subtitle="Keep the memory growing" />
 
-          <div className="absolute left-5 top-3.5 right-24">
-            <h1
-              className={`max-w-[14rem] break-words text-[2rem] font-semibold leading-[1.04] tracking-[-0.05em] [overflow-wrap:anywhere] ${
-                titleTone === 'dark'
-                  ? 'text-black drop-shadow-[0_1px_2px_rgba(255,255,255,0.28)]'
-                  : 'text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.12)]'
-              }`}
-            >
-              {emberTitle}
-            </h1>
-          </div>
-        </div>
+      <div className="absolute inset-x-4 bottom-[5.5rem] z-30 mx-auto max-w-[22.5rem] lg:max-w-[36rem] xl:max-w-[40rem]">
+        <div className="ember-stage-glass relative rounded-[1.5rem] px-5 py-5 lg:px-6 lg:py-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-white/65 transition hover:bg-white/10 hover:text-white"
+            aria-label="Close Tend Ember"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
 
-        <div className="absolute inset-x-0 top-[3rem] bottom-[34%] bg-[#bfd8dc]">
-          <div className="flex justify-end px-4 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center text-white"
-              aria-label="Close Tend Ember"
-            >
-              <CloseIcon className="h-5 w-5" />
-            </button>
+          <div className="flex justify-center">
+            <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/8 text-white/82">
+              <TendSettingsIcon className="h-8 w-8" />
+            </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-y-5 px-5 pt-1">
-            <TendMenuButton
-              icon={<TendSettingsIcon className="h-full w-full" />}
-              label="Settings"
-              onClick={onOpenSettings}
-              disabled={!canManage}
-            />
-            <TendMenuButton
-              icon={<TendAddContentIcon className="h-full w-full" />}
-              label="Add Content"
-              onClick={onOpenAddContent}
-              disabled={!canManage}
-            />
-            <TendMenuButton
-              icon={<TendWikiIcon className="h-full w-full" />}
-              label="View Wiki"
-              onClick={onOpenWiki}
-            />
-            <TendMenuButton
-              icon={<TendStoryCutIcon className="h-full w-full" />}
-              label="Snapshot"
-              onClick={onOpenStoryCut}
-              disabled={!canManage}
-            />
-            <TendMenuButton
-              icon={<TendTagPeopleIcon className="h-full w-full" />}
-              label="Tag People"
-              onClick={onOpenTagPeople}
-              disabled={!canManage}
-            />
-            <TendMenuButton
-              icon={<TendEditTitleIcon className="h-full w-full" />}
-              label="Smart Title"
-              onClick={onOpenEditTitle}
-              disabled={!canManage}
-            />
-            <TendMenuButton
-              icon={<TendContributorsIcon className="h-full w-full" />}
-              label="Contributors"
-              onClick={onOpenContributors}
-            />
-          </div>
-        </div>
+          <h2 className="mt-4 text-center text-[1.28rem] font-bold tracking-[-0.03em] text-white">
+            Tend &amp; grow this ember
+          </h2>
 
-        <div className="absolute inset-x-0 bottom-0 top-[66%] flex items-start justify-center bg-[var(--ember-orange)] px-8 pt-5 text-center text-white">
-          <p className="max-w-[17rem] text-[1.05rem] font-medium leading-[1.28] tracking-[-0.02em] sm:max-w-[20rem] sm:text-[1.25rem]">
-            Tend to your ember&apos;s growth with these options.
-          </p>
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <div className="grid grid-cols-3 gap-y-3">
+              <TendMenuButton
+                icon={<TendAddContentIcon className="h-full w-full" />}
+                label="Add Content"
+                onClick={onOpenAddContent}
+                disabled={!canManage}
+              />
+              <TendMenuButton
+                icon={<TendWikiIcon className="h-full w-full" />}
+                label="View Wiki"
+                onClick={onOpenWiki}
+              />
+              <TendMenuButton
+                icon={<TendStoryCutIcon className="h-full w-full" />}
+                label="Edit Snapshot"
+                onClick={onOpenStoryCut}
+                disabled={!canManage}
+              />
+              <TendMenuButton
+                icon={<TendTagPeopleIcon className="h-full w-full" />}
+                label="Tag People"
+                onClick={onOpenTagPeople}
+                disabled={!canManage}
+              />
+              <TendMenuButton
+                icon={<TendEditTitleIcon className="h-full w-full" />}
+                label="Edit Title"
+                onClick={onOpenEditTitle}
+                disabled={!canManage}
+              />
+              <TendMenuButton
+                icon={<TendContributorsIcon className="h-full w-full" />}
+                label="Contributors"
+                onClick={onOpenContributors}
+              />
+              <TendMenuButton
+                icon={<TendSettingsIcon className="h-full w-full" />}
+                label="Settings"
+                onClick={onOpenSettings}
+                disabled={!canManage}
+              />
+            </div>
+          </div>
         </div>
       </div>
+
+      <StageDock label="Start your journey here" onPrimaryAction={onOpenAddContent} />
     </div>
   );
 }
 
 function ShareEmberExperience({
+  emberTitle,
+  mediaType,
+  filename,
+  posterFilename,
   canManage,
   shareToNetwork,
   savingShareState,
   shareError,
   actionNotice,
   onClose,
+  onOpenAdd,
   onShareNetworkChange,
   onSaveNetworkSharing,
   onShareAction,
 }: {
+  emberTitle: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  filename: string;
+  posterFilename: string | null;
   canManage: boolean;
   shareToNetwork: boolean;
   savingShareState: boolean;
   shareError: string;
   actionNotice: string;
   onClose: () => void;
+  onOpenAdd: () => void;
   onShareNetworkChange: (checked: boolean) => void;
   onSaveNetworkSharing: () => void;
   onShareAction: (
-    target: 'facebook' | 'x' | 'email' | 'instagram' | 'tiktok' | 'copy'
+    target: 'facebook' | 'x' | 'email' | 'message' | 'more' | 'copy'
   ) => void;
 }) {
   const shareMethods: Array<{
-    key: 'copy' | 'email' | 'facebook' | 'x' | 'instagram' | 'tiktok';
+    key: 'copy' | 'message' | 'email' | 'facebook' | 'x' | 'more';
     label: string;
+    icon: ReactNode;
   }> = [
-    { key: 'copy', label: 'Copy Link' },
-    { key: 'email', label: 'Email' },
-    { key: 'facebook', label: 'Facebook' },
-    { key: 'x', label: 'X' },
-    { key: 'instagram', label: 'Instagram' },
-    { key: 'tiktok', label: 'TikTok' },
+    { key: 'copy', label: 'Copy Link', icon: <LinkChainIcon /> },
+    { key: 'message', label: 'Message', icon: <MessageBubbleIcon /> },
+    { key: 'email', label: 'Email', icon: <MailOutlineIcon /> },
+    { key: 'facebook', label: 'Facebook', icon: <FacebookGlyphIcon /> },
+    { key: 'x', label: 'X / Twitter', icon: <XBrandIcon /> },
+    { key: 'more', label: 'More', icon: <MoreDotsIcon /> },
   ];
 
   return (
-    <div className="ember-overlay-shell z-50 bg-[#bfd8dc]">
-      <div className="flex h-full flex-col">
-        <div className="flex items-start justify-between px-5 pt-4">
-          <h2 className="text-[1.05rem] font-semibold tracking-[-0.03em] text-black sm:text-[1.2rem]">
-            Share Ember
-          </h2>
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--ember-stage-bg)] text-white">
+      <StageBackground
+        emberTitle={emberTitle}
+        mediaType={mediaType}
+        filename={filename}
+        posterFilename={posterFilename}
+      />
+      <StageHeader emberTitle={emberTitle} subtitle="Ready to share" />
+
+      <div className="absolute inset-x-4 bottom-[5.5rem] z-30 mx-auto max-w-[22.5rem] lg:max-w-[36rem] xl:max-w-[40rem]">
+        <div className="ember-stage-glass relative rounded-[1.5rem] px-5 py-5 lg:px-6 lg:py-6">
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center text-black"
+            className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full text-white/65 transition hover:bg-white/10 hover:text-white"
             aria-label="Close Share Ember"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
-        </div>
 
-        <div className="flex-1 overflow-y-auto px-7 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-10">
-          <div className="mx-auto flex max-w-[18rem] flex-col items-center justify-center gap-4">
-            {shareMethods.map((method) => (
-              <button
-                key={method.key}
-                type="button"
-                onClick={() => onShareAction(method.key)}
-                className="min-h-[3.35rem] w-full rounded-[1.2rem] border border-white/75 bg-white/35 px-4 py-3 text-center text-[1rem] font-medium tracking-[-0.02em] text-white shadow-[0_10px_24px_rgba(255,255,255,0.08)] transition hover:bg-white/42"
-              >
-                {method.label}
-              </button>
-            ))}
+          <div className="flex justify-center">
+            <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/8 text-white/82">
+              <ShareIcon className="h-7 w-7" />
+            </span>
+          </div>
+
+          <h2 className="mt-4 text-center text-[1.28rem] font-bold tracking-[-0.03em] text-white">
+            Share this ember
+          </h2>
+
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <div className="grid grid-cols-3 gap-y-3">
+              {shareMethods.map((method) => (
+                <StageActionTile
+                  key={method.key}
+                  icon={method.icon}
+                  label={method.label}
+                  onClick={() => onShareAction(method.key)}
+                />
+              ))}
+            </div>
           </div>
 
           {canManage && (
-            <div className="mx-auto mt-8 max-w-[18rem] rounded-[1.25rem] border border-white/60 bg-white/28 px-4 py-4">
-              <label className="flex items-center justify-between gap-3 text-sm font-medium text-black">
+            <div className="mt-4 rounded-[1.15rem] border border-white/10 bg-white/5 px-4 py-3">
+              <label className="flex items-center justify-between gap-3 text-sm font-medium text-white/78">
                 <span>Share to Ember feed</span>
                 <input
                   type="checkbox"
                   checked={shareToNetwork}
                   onChange={(event) => onShareNetworkChange(event.target.checked)}
-                  className="h-4 w-4 rounded border-white/70 text-[var(--ember-orange)]"
+                  className="h-4 w-4 rounded border-white/30 bg-transparent text-[var(--ember-stage-accent)]"
                 />
               </label>
               <button
                 type="button"
                 onClick={onSaveNetworkSharing}
                 disabled={savingShareState}
-                className="mt-4 min-h-[2.8rem] w-full rounded-[1rem] bg-white px-4 py-2 text-sm font-semibold text-[var(--ember-orange)] disabled:opacity-60"
+                className="mt-3 min-h-[2.8rem] w-full rounded-full border border-white/16 bg-white/8 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
               >
                 {savingShareState ? 'Saving...' : 'Save Sharing'}
               </button>
@@ -2705,17 +2943,23 @@ function ShareEmberExperience({
           )}
 
           {(shareError || actionNotice) && (
-            <div className="mx-auto mt-6 max-w-[18rem] text-center text-sm font-medium text-black/76">
+            <div className="mt-4 text-center text-sm font-medium text-white/72">
               {shareError || actionNotice}
             </div>
           )}
         </div>
       </div>
+
+      <StageDock label="Start your journey here" onPrimaryAction={onOpenAdd} />
     </div>
   );
 }
 
 function WikiOverlayExperience({
+  emberTitle,
+  mediaType,
+  filename,
+  posterFilename,
   imageId,
   wikiContent,
   wikiUpdatedAt,
@@ -2726,6 +2970,10 @@ function WikiOverlayExperience({
   onGenerate,
   onClose,
 }: {
+  emberTitle: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  filename: string;
+  posterFilename: string | null;
   imageId: string;
   wikiContent: string | null;
   wikiUpdatedAt: string | null;
@@ -2758,119 +3006,141 @@ function WikiOverlayExperience({
   const visualAttachments = attachments.filter((attachment) => attachment.mediaType !== 'AUDIO');
 
   return (
-    <div className="ember-overlay-shell z-50 bg-[#bfd8dc]">
-      <div className="flex h-full flex-col">
-        <div className="flex items-start justify-between px-5 pt-4">
-          <h2 className="text-[1.05rem] font-semibold tracking-[-0.03em] text-black sm:text-[1.2rem]">
-            Ember Wiki
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center text-black"
-            aria-label="Close Ember Wiki"
-          >
-            <CloseIcon className="h-5 w-5" />
-          </button>
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--ember-stage-bg)] text-white">
+      <StageBackground
+        emberTitle={emberTitle}
+        mediaType={mediaType}
+        filename={filename}
+        posterFilename={posterFilename}
+      />
+
+      <div className="absolute left-0 right-0 top-0 z-20 flex items-center gap-3 px-4 pt-4 pb-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="ember-stage-home-button"
+          aria-label="Close Ember Wiki"
+        >
+          <CloseIcon className="h-4.5 w-4.5" />
+        </button>
+        <div className="pointer-events-none min-w-0 flex-1">
+          <p className="truncate text-base font-bold leading-tight text-white">{emberTitle}</p>
+          <p className="truncate text-xs text-white/55">Read the living memory wiki</p>
         </div>
+      </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-[calc(env(safe-area-inset-bottom)+1.4rem)] pt-10">
-          {wikiContent ? (
-            <div className="mx-auto max-w-[22rem] space-y-8 sm:max-w-[24rem]">
-              <div className="rounded-[1.8rem] bg-white/44 px-5 py-6 shadow-[0_12px_26px_rgba(0,0,0,0.08)]">
-                <WikiView content={wikiContent} variant="overlay" />
-              </div>
+      <div className="absolute inset-x-4 bottom-6 top-24 z-30 mx-auto max-w-[22.5rem] lg:max-w-[48rem] xl:max-w-[54rem]">
+        <div className="ember-stage-glass flex h-full flex-col rounded-[1.6rem] px-5 py-5 lg:px-7 lg:py-6">
+          <div className="shrink-0">
+            <span className="inline-flex rounded-full border border-white/12 bg-white/8 px-3 py-1 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-white/62">
+              Ember wiki
+            </span>
+            <h2 className="mt-4 max-w-[16rem] text-[1.9rem] font-bold leading-[0.96] tracking-[-0.05em] text-white lg:max-w-[28rem] lg:text-[2.35rem]">
+              Shared details, voice moments, and supporting media
+            </h2>
+            <p className="mt-3 max-w-[18rem] text-sm leading-6 text-white/58 lg:max-w-[32rem]">
+              This page keeps the facts, the human context, and the extra media in one place.
+            </p>
+          </div>
 
-              <WikiVoiceClipSection clips={voiceCallClips} imageId={imageId} variant="overlay" />
+          <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+            {wikiContent ? (
+              <div className="space-y-4">
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-5 backdrop-blur-xl">
+                  <WikiView content={wikiContent} variant="overlay" />
+                </div>
 
-              {audioAttachments.length > 0 && (
-                <section className="rounded-[1.8rem] bg-white/34 px-5 py-6 shadow-[0_12px_26px_rgba(0,0,0,0.06)]">
-                  <h3 className="text-center text-[1.2rem] font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
-                    Recorded Audio
-                  </h3>
-                  <div className="mt-5 space-y-3">
-                    {audioAttachments.map((attachment) => (
-                      <div
-                        key={attachment.id}
-                        className="rounded-[1.25rem] bg-white/78 px-4 py-4 text-left shadow-[0_8px_18px_rgba(0,0,0,0.05)]"
-                      >
-                        <div className="text-sm font-semibold text-[var(--ember-text)]">
-                          {attachment.originalName}
-                        </div>
-                        <div className="mt-2 text-[11px] leading-5 text-[var(--ember-muted)]">
-                          {attachment.description?.trim() || 'Recorded voice note'}
-                        </div>
-                        <MediaPreview
-                          mediaType={attachment.mediaType}
-                          filename={attachment.filename}
-                          posterFilename={attachment.posterFilename}
-                          originalName={attachment.originalName}
-                          controls
-                          className="mt-4 w-full"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
+                <WikiVoiceClipSection clips={voiceCallClips} imageId={imageId} variant="overlay" />
 
-              {visualAttachments.length > 0 && (
-                <section className="rounded-[1.8rem] bg-white/34 px-5 py-6 shadow-[0_12px_26px_rgba(0,0,0,0.06)]">
-                  <h3 className="text-center text-[1.2rem] font-semibold tracking-[-0.03em] text-[var(--ember-text)]">
-                    Supporting Media
-                  </h3>
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    {visualAttachments.map((attachment) => (
-                      <div
-                        key={attachment.id}
-                        className="overflow-hidden rounded-[1.1rem] bg-white/78 text-left shadow-[0_8px_18px_rgba(0,0,0,0.05)]"
-                      >
-                        <MediaPreview
-                          mediaType={attachment.mediaType}
-                          filename={attachment.filename}
-                          posterFilename={attachment.posterFilename}
-                          originalName={attachment.originalName}
-                          usePosterForVideo
-                          className="h-24 w-full object-cover"
-                        />
-                        <div className="space-y-1 px-3 py-3">
-                          <div className="text-xs font-semibold text-[var(--ember-text)]">
+                {audioAttachments.length > 0 && (
+                  <section className="rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-6 backdrop-blur-xl">
+                    <h3 className="text-[1.16rem] font-semibold tracking-[-0.03em] text-white">
+                      Recorded Audio
+                    </h3>
+                    <div className="mt-5 space-y-3">
+                      {audioAttachments.map((attachment) => (
+                        <div
+                          key={attachment.id}
+                          className="rounded-[1.15rem] border border-white/10 bg-black/18 px-4 py-4 text-left"
+                        >
+                          <div className="text-sm font-semibold text-white">
                             {attachment.originalName}
                           </div>
-                          <div className="text-[11px] leading-5 text-[var(--ember-muted)]">
-                            {attachment.description?.trim() || 'No note added yet.'}
+                          <div className="mt-2 text-[11px] leading-5 text-white/52">
+                            {attachment.description?.trim() || 'Recorded voice note'}
+                          </div>
+                          <MediaPreview
+                            mediaType={attachment.mediaType}
+                            filename={attachment.filename}
+                            posterFilename={attachment.posterFilename}
+                            originalName={attachment.originalName}
+                            controls
+                            className="mt-4 w-full"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {visualAttachments.length > 0 && (
+                  <section className="rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-6 backdrop-blur-xl">
+                    <h3 className="text-[1.16rem] font-semibold tracking-[-0.03em] text-white">
+                      Supporting Media
+                    </h3>
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      {visualAttachments.map((attachment) => (
+                        <div
+                          key={attachment.id}
+                          className="overflow-hidden rounded-[1.1rem] border border-white/10 bg-black/18 text-left"
+                        >
+                          <MediaPreview
+                            mediaType={attachment.mediaType}
+                            filename={attachment.filename}
+                            posterFilename={attachment.posterFilename}
+                            originalName={attachment.originalName}
+                            usePosterForVideo
+                            className="h-24 w-full object-cover"
+                          />
+                          <div className="space-y-1 px-3 py-3">
+                            <div className="text-xs font-semibold text-white">
+                              {attachment.originalName}
+                            </div>
+                            <div className="text-[11px] leading-5 text-white/52">
+                              {attachment.description?.trim() || 'No note added yet.'}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-            </div>
-          ) : (
-            <div className="mx-auto max-w-[18rem] text-center text-[1.04rem] font-medium leading-[1.35] tracking-[-0.02em] text-white">
-              Generate the story first and the Ember Wiki will show here.
-            </div>
-          )}
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-[1.4rem] border border-white/10 bg-white/8 px-5 py-6 text-[1.02rem] font-medium leading-[1.45] tracking-[-0.02em] text-white/74 backdrop-blur-xl">
+                Generate the story first and the Ember Wiki will show here.
+              </div>
+            )}
+          </div>
 
-          {wikiUpdatedAt && (
-            <div className="mx-auto mt-8 max-w-[18rem] text-center text-xs font-medium uppercase tracking-[0.18em] text-black/52">
-              Updated {new Date(wikiUpdatedAt).toLocaleString()}
-            </div>
-          )}
+          <div className="mt-4 shrink-0">
+            {wikiUpdatedAt && (
+              <div className="text-xs font-medium uppercase tracking-[0.18em] text-white/42">
+                Updated {new Date(wikiUpdatedAt).toLocaleString()}
+              </div>
+            )}
 
-          {canManage && (
-            <div className="mx-auto mt-8 max-w-[18rem]">
+            {canManage && (
               <button
                 type="button"
                 onClick={onGenerate}
                 disabled={generating}
-                className="min-h-[3.2rem] w-full rounded-[1rem] bg-[rgba(27,75,74,0.9)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-white transition disabled:opacity-60"
+                className="mt-3 min-h-[3.15rem] w-full rounded-[1rem] bg-[var(--ember-stage-accent)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.08em] text-white shadow-[0_16px_30px_rgba(249,115,22,0.26)] transition disabled:opacity-60"
               >
                 {generating ? 'Generating...' : 'Regenerate Wiki'}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -2897,7 +3167,7 @@ function EmberSheet({
   return (
     <div className="fixed inset-0 z-50 bg-[rgba(17,17,17,0.42)]" onClick={onClose}>
       <div
-        className="ember-sheet-surface absolute bottom-0 left-1/2 max-h-[88vh] w-full max-w-[26rem] -translate-x-1/2 overflow-hidden animate-[ember-sheet-rise_240ms_ease-out]"
+        className="ember-sheet-surface absolute bottom-0 left-1/2 max-h-[88vh] w-full max-w-[26rem] -translate-x-1/2 overflow-hidden animate-[ember-sheet-rise_240ms_ease-out] lg:max-w-[48rem] xl:max-w-[58rem]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b ember-divider px-4 py-4 sm:px-6 sm:py-5">
@@ -4201,7 +4471,7 @@ export default function ImagePage() {
   };
 
   const handleShareAction = async (
-    target: 'facebook' | 'x' | 'email' | 'instagram' | 'tiktok' | 'copy'
+    target: 'facebook' | 'x' | 'email' | 'message' | 'more' | 'copy'
   ) => {
     if (!image) {
       return;
@@ -4237,21 +4507,25 @@ export default function ImagePage() {
         return;
       }
 
+      if (target === 'message') {
+        window.location.href = `sms:?&body=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`;
+        return;
+      }
+
+      if (target === 'more' && navigator.share) {
+        await navigator.share({
+          title: displayTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      }
+
       if (!navigator.clipboard?.writeText) {
         throw new Error('Copy and social prep are not available on this device.');
       }
 
       await navigator.clipboard.writeText(shareUrl);
-
-      if (target === 'instagram') {
-        setActionNotice('Ember link copied for Instagram sharing.');
-        return;
-      }
-
-      if (target === 'tiktok') {
-        setActionNotice('Ember link copied for TikTok sharing.');
-        return;
-      }
 
       setActionNotice('Ember link copied.');
     } catch (shareActionError) {
@@ -5354,10 +5628,6 @@ export default function ImagePage() {
       },
     },
   ];
-  const setupRailCards = setupCards.filter((card) =>
-    ['storyCuts', 'storyCircle', 'title', 'analysis', 'contributors'].includes(card.id)
-  );
-
   const handleAutoTagDismiss = () => {
     setAutoTagPromptDismissed(true);
   };
@@ -5724,10 +5994,10 @@ export default function ImagePage() {
   };
 
   return (
-    <div className="min-h-[calc(100dvh-2.7rem)] bg-white">
+    <div className="min-h-[100dvh] bg-[var(--ember-stage-bg)]">
       <section className="mx-auto w-full">
         {showFirstRunGuide ? (
-          <div className="flex min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
+          <div className="flex min-h-[100dvh] flex-col bg-white">
             <div
               ref={heroStageRef}
               className="relative h-[70dvh] min-h-[24rem] overflow-hidden bg-[#a8ba91]"
@@ -5811,7 +6081,7 @@ export default function ImagePage() {
             </div>
           </div>
         ) : showSetupCards ? (
-          <div className="flex min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
+          <div className="flex min-h-[100dvh] flex-col bg-white">
             <div
               ref={heroStageRef}
               className="relative h-[70dvh] min-h-[24rem] overflow-hidden bg-[#a8ba91]"
@@ -5907,92 +6177,117 @@ export default function ImagePage() {
             </div>
           </div>
         ) : (
-          <div className="flex h-[calc(100dvh-2.7rem)] min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
-            <div
-              ref={heroStageRef}
-              className="relative min-h-0 basis-[70%] overflow-hidden bg-[#a8ba91]"
-            >
-              <MediaPreview
+          <div className="relative flex min-h-[100dvh] flex-col overflow-hidden bg-[var(--ember-stage-bg)] text-white">
+            <div ref={heroStageRef} className="absolute inset-0">
+              <StageBackground
+                emberTitle={emberTitle}
                 mediaType={image.mediaType}
                 filename={image.filename}
                 posterFilename={image.posterFilename}
-                originalName={emberTitle}
-                controls={image.mediaType === 'VIDEO'}
-                className={`h-full w-full ${
-                  image.mediaType === 'VIDEO'
-                    ? 'object-contain bg-[#a8ba91]'
-                    : 'object-cover bg-[#a8ba91]'
-                }`}
               />
+            </div>
 
-              <div className="pointer-events-none absolute inset-0 bg-white/28" />
+            <StageHeader emberTitle={emberTitle} subtitle={playNarrationDateLabel} />
 
-              <div className="absolute left-5 top-3.5 right-24 sm:left-6 sm:top-5 sm:right-28">
-                <h1
-                  className={`max-w-[14rem] break-words text-[2rem] font-semibold leading-[1.04] tracking-[-0.05em] [overflow-wrap:anywhere] sm:max-w-[18rem] sm:text-[2.45rem] ${
-                    heroOverlayTone.title === 'dark'
-                      ? 'text-black drop-shadow-[0_1px_2px_rgba(255,255,255,0.28)]'
-                      : 'text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.12)]'
-                  }`}
-                >
-                  {emberTitle}
-                </h1>
-              </div>
-
-              <div className="absolute right-2 top-1/2 z-10 flex w-[4.75rem] -translate-y-1/2 flex-col gap-2 rounded-[1rem] bg-black/25 px-1.5 py-3 backdrop-blur-[1px] transition-colors hover:bg-black sm:right-4">
-                <HeroRailButton
-                  icon={<ShareIcon className="h-full w-full" />}
-                  label="Share"
-                  tone={heroOverlayTone.rail}
-                  onClick={() => setActivePanel('share')}
-                />
-                <HeroRailButton
-                  icon={<CircleIcon className="h-full w-full" />}
-                  label="Tend"
-                  tone={heroOverlayTone.rail}
-                  onClick={() => {
-                    setShapeView('menu');
-                    setActivePanel('shape');
-                  }}
-                />
-                <HeroRailButton
-                  icon={<PlayIcon className="h-full w-full" />}
-                  label="Play"
-                  tone={heroOverlayTone.rail}
-                  onClick={() => setActivePanel('play')}
-                />
-                <HeroRailButton
-                  icon={<GeminiIcon className="h-full w-full" />}
-                  label="Ask"
-                  tone={heroOverlayTone.rail}
+            <div className="absolute inset-x-0 bottom-0 z-30 ember-stage-glass border-t border-white/8">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <button
+                  type="button"
                   onClick={() => {
                     setAskChatExpanded(true);
                     setActivePanel('ask');
                   }}
-                />
-              </div>
-            </div>
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                >
+                  <StageSparkIcon className="h-[1.05rem] w-[1.05rem] text-white" />
+                  <span className="text-base font-bold tracking-[-0.03em] text-white">Ember Chat</span>
+                </button>
 
-            <div className="flex min-h-0 basis-[30%] flex-col items-center bg-[var(--ember-orange)] px-7 py-5 text-center text-white">
-              <p className="max-w-[16rem] text-[1.05rem] font-medium leading-[1.3] tracking-[-0.02em] sm:max-w-[20rem] sm:text-[1.45rem]">
-                Explore this ember and invite friends &amp; family to add to the memory.
-              </p>
-
-              {!hasRecordedContributions && (
                 <button
                   type="button"
-                  onClick={openMemoryEntryPanel}
-                  className="mt-4 rounded-[1rem] bg-white px-4 py-3 text-sm font-semibold tracking-[-0.01em] text-[var(--ember-text)] shadow-[0_12px_24px_rgba(17,17,17,0.14)]"
+                  onClick={() => {
+                    setShapeView('menu');
+                    setActivePanel('shape');
+                  }}
+                  className="ember-stage-home-button h-11 w-11"
+                  aria-label="Open memory tools"
                 >
-                  Add to this memory
+                  <ChevronDownIcon className="h-4.5 w-4.5" />
                 </button>
-              )}
+              </div>
 
-              {(actionNotice || shareError) && (
-                <div className="mt-4 max-w-[16rem] text-sm text-white/92 sm:max-w-[20rem]">
-                  {shareError || actionNotice}
+              <div className="px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold lowercase text-white/75">ember</span>
+                    <div className="ember-stage-bubble">
+                      {hasRecordedContributions
+                        ? 'There is already a story forming here. Add more detail, open the memory tools, or invite more people into it.'
+                        : 'Hello there, to get started you can start adding to this memory or you can invite some friends and family to contribute to this memory.'}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={handleOpenContributors}
+                      className="min-h-[3rem] flex-1 rounded-full border border-white/28 bg-transparent px-4 py-3 text-sm font-bold text-white"
+                    >
+                      Invite Others
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openMemoryEntryPanel}
+                      className="min-h-[3rem] flex-1 rounded-full bg-[var(--ember-stage-accent)] px-4 py-3 text-sm font-bold text-white shadow-[0_16px_30px_rgba(249,115,22,0.28)]"
+                    >
+                      Add to Memory
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap justify-center gap-2 text-xs font-medium text-white/68">
+                    <button
+                      type="button"
+                      onClick={() => setActivePanel('share')}
+                      className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.06)] px-3 py-1.5 transition hover:bg-white/10 hover:text-white"
+                    >
+                      Share
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShapeView('menu');
+                        setActivePanel('shape');
+                      }}
+                      className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.06)] px-3 py-1.5 transition hover:bg-white/10 hover:text-white"
+                    >
+                      Tend
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePanel('play')}
+                      className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.06)] px-3 py-1.5 transition hover:bg-white/10 hover:text-white"
+                    >
+                      Play
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAskChatExpanded(true);
+                        setActivePanel('ask');
+                      }}
+                      className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.06)] px-3 py-1.5 transition hover:bg-white/10 hover:text-white"
+                    >
+                      Ask
+                    </button>
+                  </div>
+
+                  {(actionNotice || shareError) && (
+                    <div className="text-center text-sm text-white/72">
+                      {shareError || actionNotice}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         )}
@@ -6683,6 +6978,10 @@ export default function ImagePage() {
             )
           }
           onStopAndClose={closePanel}
+          onOpenAdd={() => {
+            stopPlayOverlayAudio();
+            openMemoryEntryPanel();
+          }}
           onOpenShare={() => {
             stopPlayOverlayAudio();
             setActivePanel('share');
@@ -6704,6 +7003,10 @@ export default function ImagePage() {
         <ContributorList
           imageId={image.id}
           ownerUserId={image.owner.id}
+          emberTitle={emberTitle}
+          mediaType={image.mediaType}
+          filename={image.filename}
+          posterFilename={image.posterFilename}
           contributors={image.contributors}
           canManage={image.canManage}
           onUpdate={fetchImage}
@@ -7389,6 +7692,10 @@ export default function ImagePage() {
 
       {activePanel === 'wiki' && (
         <WikiOverlayExperience
+          emberTitle={emberTitle}
+          mediaType={image.mediaType}
+          filename={image.filename}
+          posterFilename={image.posterFilename}
           imageId={image.id}
           wikiContent={image.wiki?.content || null}
           wikiUpdatedAt={image.wiki?.updatedAt || null}
@@ -7405,12 +7712,17 @@ export default function ImagePage() {
 
       {activePanel === 'share' && (
         <ShareEmberExperience
+          emberTitle={emberTitle}
+          mediaType={image.mediaType}
+          filename={image.filename}
+          posterFilename={image.posterFilename}
           canManage={image.canManage}
           shareToNetwork={shareToNetwork}
           savingShareState={savingShareState}
           shareError={shareError}
           actionNotice={actionNotice}
           onClose={closePanel}
+          onOpenAdd={openMemoryEntryPanel}
           onShareNetworkChange={setShareToNetwork}
           onSaveNetworkSharing={() => void handleShareSave()}
           onShareAction={(target) => {

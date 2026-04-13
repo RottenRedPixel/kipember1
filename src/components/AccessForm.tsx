@@ -41,33 +41,32 @@ export default function AccessForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-950 dark:to-black flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white dark:bg-gray-900 shadow-lg rounded-2xl p-8 border border-gray-200 dark:border-gray-800">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          Enter Access Passcode
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
-          This site is private. Enter your passcode to continue.
-        </p>
+    <div className="ember-auth-card p-8">
+      <span className="ember-stage-pill">Private site</span>
+      <h1 className="mt-5 text-[2.1rem] font-semibold leading-[0.96] tracking-[-0.06em] text-white">
+        Enter the access passcode
+      </h1>
+      <p className="mt-3 text-sm leading-7 text-white/56">
+        This deployment is private. Unlock it with the passcode to continue.
+      </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <input
-            type="password"
-            value={passcode}
-            onChange={(event) => setPasscode(event.target.value)}
-            placeholder="Passcode"
-            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
-          >
-            {isSubmitting ? 'Checking...' : 'Unlock'}
-          </button>
-        </form>
-      </div>
+      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+        <input
+          type="password"
+          value={passcode}
+          onChange={(event) => setPasscode(event.target.value)}
+          placeholder="Passcode"
+          className="ember-input min-h-[3.35rem] px-4 text-[0.98rem] placeholder:text-white/34"
+        />
+        {error ? <div className="ember-status ember-status-error">{error}</div> : null}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isSubmitting ? 'Checking...' : 'Unlock'}
+        </button>
+      </form>
     </div>
   );
 }

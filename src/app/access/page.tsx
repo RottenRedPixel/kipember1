@@ -14,8 +14,8 @@ export default async function AccessPage() {
         userEmail={auth?.user.email || null}
       />
       <div className="ember-auth-shell min-h-[calc(100vh-4.5rem)] items-start">
-        <div className="w-full max-w-xl">
-          <div className="ember-panel rounded-[2.25rem] p-6 sm:p-8">
+        <div className="w-full max-w-xl lg:max-w-2xl">
+          <div className="ember-panel rounded-[2.25rem] p-6 sm:p-8 lg:p-10">
             <div className="mt-2 text-center">
               <p className="ember-eyebrow">Account</p>
               <h1 className="ember-heading mt-4 text-4xl text-[var(--ember-text)]">
@@ -28,7 +28,7 @@ export default async function AccessPage() {
               </p>
             </div>
 
-            <div className="mt-8 grid gap-3">
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
               {auth ? (
                 <>
                   <Link href="/profile" className="ember-button-primary">
@@ -37,7 +37,7 @@ export default async function AccessPage() {
                   <Link href="/feed" className="ember-button-secondary">
                     Go to Embers
                   </Link>
-                  <div className="pt-1">
+                  <div className="pt-1 sm:col-span-2">
                     <LogoutButton />
                   </div>
                 </>

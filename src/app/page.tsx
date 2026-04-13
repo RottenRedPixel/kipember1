@@ -1,54 +1,23 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import GuestImageUploader from '@/components/GuestImageUploader';
 import HeaderMenu from '@/components/HeaderMenu';
 import { getCurrentAuth } from '@/lib/auth-server';
 
-function EmberSparkIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-14 w-14 text-[var(--ember-orange)]" fill="currentColor" aria-hidden="true">
-      <circle cx="12" cy="12" r="2.15" />
-      <path d="M12 1.85c.56 0 1.02.46 1.02 1.02v3.43a1.02 1.02 0 1 1-2.04 0V2.87c0-.56.46-1.02 1.02-1.02Z" />
-      <path d="M12 17.7c.56 0 1.02.46 1.02 1.02v3.43a1.02 1.02 0 0 1-2.04 0v-3.43c0-.56.46-1.02 1.02-1.02Z" />
-      <path d="M1.85 12c0-.56.46-1.02 1.02-1.02H6.3a1.02 1.02 0 1 1 0 2.04H2.87c-.56 0-1.02-.46-1.02-1.02Z" />
-      <path d="M17.7 12c0-.56.46-1.02 1.02-1.02h3.43a1.02 1.02 0 1 1 0 2.04h-3.43c-.56 0-1.02-.46-1.02-1.02Z" />
-      <path d="M4.36 4.36a1.02 1.02 0 0 1 1.44 0l2.43 2.43a1.02 1.02 0 1 1-1.44 1.44L4.36 5.8a1.02 1.02 0 0 1 0-1.44Z" />
-      <path d="M15.77 15.77a1.02 1.02 0 0 1 1.44 0l2.43 2.43a1.02 1.02 0 0 1-1.44 1.44l-2.43-2.43a1.02 1.02 0 0 1 0-1.44Z" />
-      <path d="M19.64 4.36a1.02 1.02 0 0 1 0 1.44l-2.43 2.43a1.02 1.02 0 1 1-1.44-1.44l2.43-2.43a1.02 1.02 0 0 1 1.44 0Z" />
-      <path d="M8.23 15.77a1.02 1.02 0 0 1 0 1.44L5.8 19.64a1.02 1.02 0 0 1-1.44-1.44l2.43-2.43a1.02 1.02 0 0 1 1.44 0Z" />
-    </svg>
-  );
-}
-
-function MicIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-14 w-14 text-[#4d61ff]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="9" y="3" width="6" height="11" rx="3" />
-      <path d="M6.5 11.5a5.5 5.5 0 0 0 11 0" />
-      <path d="M12 17v4" />
-      <path d="M8.5 21h7" />
-    </svg>
-  );
-}
-
-function StoryCircleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-12 w-12" aria-hidden="true">
-      <circle cx="12" cy="6.2" r="4.1" fill="#f7b733" />
-      <circle cx="17.6" cy="12" r="4.1" fill="#5c7cff" />
-      <circle cx="12" cy="17.8" r="4.1" fill="#65c466" />
-      <circle cx="6.4" cy="12" r="4.1" fill="#f2799b" />
-      <circle cx="12" cy="12" r="2.5" fill="#ffffff" />
-    </svg>
-  );
-}
-
-function KeepAliveIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-12 w-12 text-[#5c7cff]" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 19.2c-4.35-3.16-6.75-5.64-6.75-8.57 0-2.15 1.67-3.88 3.76-3.88 1.37 0 2.67.67 3.49 1.77.82-1.1 2.12-1.77 3.49-1.77 2.09 0 3.76 1.73 3.76 3.88 0 2.93-2.4 5.41-6.75 8.57Z" />
-    </svg>
-  );
-}
+const featureRows = [
+  {
+    title: 'Shared by default',
+    body: 'Invite family and friends to add the details, voices, and reactions you would lose in a camera roll.',
+  },
+  {
+    title: 'Guided by Ember',
+    body: 'The conversation flow pulls out what happened, why it mattered, and what each person remembers differently.',
+  },
+  {
+    title: 'Built to keep growing',
+    body: 'Each upload becomes a living memory page you can revisit, tend, share, and expand later.',
+  },
+];
 
 export default async function LandingPage() {
   const auth = await getCurrentAuth();
@@ -58,74 +27,96 @@ export default async function LandingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f3f3f3]">
-      <div className="mx-auto min-h-screen max-w-[26rem] overflow-hidden bg-white shadow-[0_0_0_1px_rgba(32,32,32,0.18)]">
-        <header className="bg-[#202020]">
-          <div className="flex h-[2.75rem] items-center justify-between px-4 text-[0.72rem] font-semibold tracking-[0.02em] text-white">
-            <div className="flex items-center gap-5">
-              <Link href="/" className="text-white/62">
+    <main className="ember-page">
+      <div className="ember-app-shell">
+        <header className="ember-topbar sticky top-0 z-40">
+          <div className="flex h-[2.7rem] items-center justify-between px-4 text-[0.78rem] font-semibold tracking-[0.16em] text-white">
+            <div className="flex items-center gap-4">
+              <Link href="/" className="text-white">
                 HOME
               </Link>
-              <span className="text-white/62">EMBERS</span>
+              <span className="text-white/45">EMBERS</span>
             </div>
 
             <HeaderMenu
               authMode="signed-out"
-              className="text-white/52 hover:text-white"
+              className="text-white/55 hover:text-white"
               iconClassName="h-[0.95rem] w-[0.95rem]"
-              panelClassName="right-0 top-[calc(100%+0.35rem)] min-w-[8.5rem] rounded-none border border-[#2d2d2d] bg-[#202020] p-1 shadow-[0_12px_28px_rgba(0,0,0,0.24)]"
+              panelClassName="right-0 top-[calc(100%+0.35rem)] min-w-[8.5rem] rounded-[1.1rem] border border-white/10 bg-[rgba(8,8,8,0.92)] p-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.34)]"
             />
           </div>
         </header>
 
-        <section className="px-7 pt-11 pb-14 text-center">
-          <div className="flex flex-col items-center">
-            <EmberSparkIcon />
+        <section className="relative min-h-[calc(100vh-2.7rem)] px-4 pt-6 pb-6 lg:px-6 lg:py-8">
+          <div className="flex flex-col gap-6 lg:min-h-[calc(100vh-4.7rem)] lg:justify-between">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(24rem,32rem)] lg:items-start">
+              <div className="space-y-5 lg:max-w-[39rem] lg:pt-3">
+                <span className="ember-stage-pill">Living memory system</span>
 
-            <h1 className="mt-5 text-[2.15rem] font-black leading-[1.03] tracking-[-0.045em] text-[#111111]">
-              Hi, this is ember
-            </h1>
+                <div className="space-y-4">
+                  <h1 className="max-w-[19rem] text-[2.9rem] font-bold leading-[0.94] tracking-[-0.06em] text-white sm:max-w-[24rem] lg:max-w-[38rem] lg:text-[4.4rem]">
+                    Start with the image. Keep the whole memory.
+                  </h1>
+                  <p className="max-w-[20rem] text-[0.98rem] leading-7 text-white/64 sm:max-w-[27rem] lg:max-w-[34rem] lg:text-[1.02rem]">
+                    Ember turns a photo or video into a shared memory space with guided prompts,
+                    contributor interviews, and a living page that keeps evolving.
+                  </p>
+                </div>
 
-            <p className="mt-3 max-w-[18rem] text-[0.97rem] leading-[1.65] text-[#8d8d8d]">
-              An AI-guided companion that helps you preserve memories through shared,
-              thoughtful conversations with friends and family.
-            </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:max-w-[31rem]">
+                  <Link href="/signup" className="ember-button-primary w-full">
+                    Create account
+                  </Link>
+                  <Link href="/login" className="ember-button-secondary w-full">
+                    Log in
+                  </Link>
+                </div>
 
-            <div className="mt-10 flex flex-col items-center">
-              <MicIcon />
-              <p className="mt-4 max-w-[19rem] text-[0.97rem] leading-[1.7] text-[#8d8d8d]">
-                Ember records real voices of the people who gather to reflect on a
-                moment-capturing what happened, how it felt, and what it meant to
-                everyone.
-              </p>
-            </div>
-
-            <div className="mt-12 flex flex-col items-center">
-              <h2 className="text-[2rem] font-black leading-none tracking-[-0.045em] text-[#111111]">
-                The Story Circle
-              </h2>
-              <div className="mt-3">
-                <StoryCircleIcon />
+                <div className="flex flex-wrap items-center gap-3 text-[0.82rem] text-white/46">
+                  <Link href="/support" className="hover:text-white">
+                    Support
+                  </Link>
+                  <Link href="/privacy" className="hover:text-white">
+                    Privacy
+                  </Link>
+                </div>
               </div>
-              <p className="mt-4 max-w-[18.8rem] text-[0.97rem] leading-[1.7] text-[#8d8d8d]">
-                Invite others to join a group conversation about a time or place
-                {' '}preserving not just the stories, but the voices and reactions
-                around them.
-              </p>
+
+              <section className="ember-stage-section overflow-hidden px-4 py-5 lg:sticky lg:top-[4.35rem] lg:px-5 lg:py-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white/44">
+                      Welcome
+                    </p>
+                    <h2 className="mt-2 text-[1.55rem] font-semibold tracking-[-0.05em] text-white">
+                      Upload the first moment
+                    </h2>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/62">
+                    Photo or video
+                  </span>
+                </div>
+
+                <p className="mt-3 max-w-[19rem] text-sm leading-6 text-white/58 sm:max-w-[24rem] lg:max-w-[26rem]">
+                  This starts the same full-screen Ember flow used across the rest of the app.
+                </p>
+
+                <div className="mt-5">
+                  <GuestImageUploader />
+                </div>
+              </section>
             </div>
 
-            <div className="mt-12 flex flex-col items-center">
-              <h2 className="text-[2rem] font-black leading-none tracking-[-0.045em] text-[#111111]">
-                Keep It Alive
-              </h2>
-              <div className="mt-3">
-                <KeepAliveIcon />
-              </div>
-              <p className="mt-4 max-w-[18.6rem] text-[0.97rem] leading-[1.7] text-[#8d8d8d]">
-                Ember connects every story into a living archive. Evolving as new
-                memories, voices, and perspectives are added over time.
-              </p>
-            </div>
+            <section className="grid gap-3 lg:grid-cols-3">
+              {featureRows.map((row) => (
+                <article key={row.title} className="ember-stage-section px-4 py-4 lg:px-5 lg:py-5">
+                  <h3 className="text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
+                    {row.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-white/58">{row.body}</p>
+                </article>
+              ))}
+            </section>
           </div>
         </section>
       </div>

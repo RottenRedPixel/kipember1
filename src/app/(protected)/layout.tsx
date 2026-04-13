@@ -21,7 +21,7 @@ export default async function ProtectedLayout({
           />
         </header>
 
-        <main className="relative z-10">{children}</main>
+        <main className="relative z-10 min-h-[calc(100vh-2.7rem)]">{children}</main>
       </div>
     </div>
   );

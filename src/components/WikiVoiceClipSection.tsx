@@ -58,14 +58,14 @@ export default function WikiVoiceClipSection({
     <section
       className={
         isOverlay
-          ? 'rounded-[1.8rem] bg-white/34 px-5 py-6 shadow-[0_12px_26px_rgba(0,0,0,0.06)]'
+          ? 'rounded-[1.5rem] border border-white/10 bg-white/8 px-5 py-6 backdrop-blur-xl'
           : 'mt-10 border-t ember-divider pt-8'
       }
     >
       <h3
         className={
           isOverlay
-            ? 'text-center text-[1.2rem] font-semibold tracking-[-0.03em] text-[var(--ember-text)]'
+            ? 'text-[1.16rem] font-semibold tracking-[-0.03em] text-[var(--ember-stage-text)]'
             : 'ember-heading text-center text-2xl text-[var(--ember-text)]'
         }
       >
@@ -80,30 +80,48 @@ export default function WikiVoiceClipSection({
               key={clip.id}
               className={
                 isOverlay
-                  ? 'rounded-[1.25rem] bg-white/78 px-4 py-4 text-left shadow-[0_8px_18px_rgba(0,0,0,0.05)]'
+                  ? 'rounded-[1.15rem] border border-white/10 bg-black/18 px-4 py-4 text-left'
                   : 'rounded-[1.5rem] border border-[rgba(20,20,20,0.08)] bg-white/84 px-5 py-5 shadow-[0_10px_24px_rgba(17,17,17,0.04)]'
               }
             >
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <div className="text-sm font-semibold text-[var(--ember-text)]">
+                <div className={`text-sm font-semibold ${isOverlay ? 'text-white' : 'text-[var(--ember-text)]'}`}>
                   {clip.title}
                 </div>
-                <div className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--ember-orange-deep)]">
+                <div
+                  className={`text-xs font-medium uppercase tracking-[0.12em] ${
+                    isOverlay ? 'text-[var(--ember-stage-accent)]' : 'text-[var(--ember-orange-deep)]'
+                  }`}
+                >
                   {clip.contributorName}
                 </div>
                 {clipRange && (
-                  <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--ember-muted)]">
+                  <div
+                    className={`text-[11px] font-medium uppercase tracking-[0.12em] ${
+                      isOverlay ? 'text-white/42' : 'text-[var(--ember-muted)]'
+                    }`}
+                  >
                     {clipRange}
                   </div>
                 )}
               </div>
 
-              <blockquote className="mt-3 border-l-4 border-[var(--ember-orange)] pl-4 text-[0.98rem] italic leading-7 text-[var(--ember-text)]">
-                “{clip.quote}”
+              <blockquote
+                className={`mt-3 border-l-4 pl-4 text-[0.98rem] italic leading-7 ${
+                  isOverlay
+                    ? 'border-[var(--ember-stage-accent)] text-white/88'
+                    : 'border-[var(--ember-orange)] text-[var(--ember-text)]'
+                }`}
+              >
+                &quot;{clip.quote}&quot;
               </blockquote>
 
               {clip.significance && (
-                <p className="mt-3 text-sm leading-6 text-[var(--ember-muted)]">
+                <p
+                  className={`mt-3 text-sm leading-6 ${
+                    isOverlay ? 'text-white/58' : 'text-[var(--ember-muted)]'
+                  }`}
+                >
                   {clip.significance}
                 </p>
               )}
@@ -118,7 +136,11 @@ export default function WikiVoiceClipSection({
                   className="mt-4"
                 />
               ) : (
-                <div className="mt-4 text-xs font-medium uppercase tracking-[0.12em] text-[var(--ember-muted)]">
+                <div
+                  className={`mt-4 text-xs font-medium uppercase tracking-[0.12em] ${
+                    isOverlay ? 'text-white/42' : 'text-[var(--ember-muted)]'
+                  }`}
+                >
                   Audio unavailable for this clip
                 </div>
               )}

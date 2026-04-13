@@ -2,26 +2,33 @@ import ImageUploader from '@/components/ImageUploader';
 
 export default function CreatePage() {
   return (
-    <div className="flex h-[calc(100dvh-2.7rem)] min-h-[calc(100dvh-2.7rem)] flex-col bg-white">
-      <section id="add-ember" className="min-h-0 basis-[70%] bg-white px-6 pt-8 pb-10">
-        <ImageUploader />
-      </section>
+    <div className="min-h-[calc(100dvh-2.7rem)] px-4 pt-5 pb-6 text-white lg:px-6 lg:py-8">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,0.94fr)_minmax(28rem,1.06fr)] lg:items-start">
+        <div className="space-y-4 lg:sticky lg:top-[4.35rem] lg:max-w-[33rem]">
+          <span className="ember-stage-pill">Create</span>
+          <h1 className="max-w-[18rem] text-[2.35rem] font-semibold leading-[0.95] tracking-[-0.06em] sm:max-w-[24rem] lg:max-w-[30rem] lg:text-[4rem]">
+            Turn a photo into a living Ember.
+          </h1>
+          <p className="max-w-[20rem] text-sm leading-7 text-white/58 sm:max-w-[28rem] lg:max-w-[31rem] lg:text-[1rem]">
+            Upload the source image or video, then let Ember build the memory workspace,
+            story circle, and share flow around it.
+          </p>
 
-      <section className="min-h-0 basis-[30%] bg-[var(--ember-orange)] px-11 py-8 text-white">
-        <p className="max-w-[15rem] text-[1.08rem] font-medium leading-[1.28] tracking-[-0.03em]">
-          Ember is a new way to collect and preserve your precious memories.
-        </p>
-
-        <div className="mt-8 flex items-center justify-between">
-          <a href="/support" className="text-[0.98rem] font-semibold underline underline-offset-4">
-            learn more
-          </a>
-
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[rgba(0,0,0,0.9)] text-[0.68rem] font-semibold tracking-[0.04em] text-white">
-            DEMO
-          </span>
+          <section className="ember-stage-section grid gap-3 px-4 py-4 text-sm text-white/58 lg:px-5 lg:py-5">
+            <p>
+              Supports photos and short videos. Ember keeps the full-screen reference layout from
+              upload through playback.
+            </p>
+            <a href="/support" className="font-semibold text-[var(--ember-orange-deep)] hover:text-white">
+              Learn more
+            </a>
+          </section>
         </div>
-      </section>
+
+        <section id="add-ember" className="ember-stage-section px-4 py-5 lg:px-6 lg:py-6">
+          <ImageUploader />
+        </section>
+      </div>
     </div>
   );
 }

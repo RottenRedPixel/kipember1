@@ -1,28 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  --ember-bg: #dde4ef;
-  --ember-bg-deep: #d5ddeb;
-  --ember-app-bg: #ffffff;
-  --ember-surface: #ffffff;
-  --ember-surface-strong: #fbfbfd;
-  --ember-line: rgba(120, 132, 156, 0.18);
-  --ember-line-strong: rgba(120, 132, 156, 0.28);
-  --ember-text: #171c2d;
-  --ember-muted: #7d8497;
-  --ember-orange: #ff6621;
-  --ember-orange-deep: #e25514;
-  --ember-blue: #5d80ff;
-  --ember-blue-deep: #4769f0;
-  --ember-blue-soft: rgba(93, 128, 255, 0.1);
-  --ember-charcoal: #101828;
-  --ember-shadow: 0 14px 28px rgba(33, 42, 64, 0.08);
-  --ember-shadow-soft: 0 8px 18px rgba(33, 42, 64, 0.05);
+  --ember-bg: #050505;
+  --ember-bg-deep: #020202;
+  --ember-app-bg: #070707;
+  --ember-surface: rgba(10, 10, 10, 0.78);
+  --ember-surface-strong: rgba(16, 16, 16, 0.9);
+  --ember-line: rgba(255, 255, 255, 0.08);
+  --ember-line-strong: rgba(255, 255, 255, 0.14);
+  --ember-text: #f7f4ef;
+  --ember-muted: rgba(255, 255, 255, 0.62);
+  --ember-orange: #ff7a1a;
+  --ember-orange-deep: #ff8a3c;
+  --ember-blue: #7ea4ff;
+  --ember-blue-deep: #5a7eff;
+  --ember-blue-soft: rgba(126, 164, 255, 0.14);
+  --ember-charcoal: #090909;
+  --ember-stage-bg: #0a0a0a;
+  --ember-stage-glass: rgba(10, 10, 10, 0.75);
+  --ember-stage-glass-soft: rgba(0, 0, 0, 0.4);
+  --ember-stage-line: rgba(255, 255, 255, 0.08);
+  --ember-stage-line-strong: rgba(255, 255, 255, 0.14);
+  --ember-stage-text: #ffffff;
+  --ember-stage-muted: rgba(255, 255, 255, 0.58);
+  --ember-stage-accent: #ff7a1a;
+  --ember-stage-accent-deep: #f97316;
+  --ember-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+  --ember-shadow-soft: 0 18px 44px rgba(0, 0, 0, 0.24);
   --font-ember-sans:
-    system-ui, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif,
+    var(--font-ubuntu), system-ui, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-ember-display:
-    system-ui, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif,
+    var(--font-ubuntu), system-ui, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-ember-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
@@ -39,13 +48,16 @@
 html {
   scroll-behavior: smooth;
   font-family: var(--font-ember-sans);
-  background: var(--ember-bg) !important;
+  background:
+    radial-gradient(circle at top, rgba(255, 122, 26, 0.18), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, #121212 0%, var(--ember-bg) 34%, var(--ember-bg-deep) 100%) !important;
 }
 
 body {
   min-height: 100vh;
   margin: 0;
-  background: var(--ember-bg) !important;
+  background: transparent !important;
   color: var(--ember-text);
   font-family: var(--font-ember-sans);
   font-weight: 400;
@@ -66,21 +78,53 @@ textarea {
 .ember-page {
   position: relative;
   min-height: 100vh;
-  background: var(--ember-bg) !important;
+  background:
+    radial-gradient(circle at top, rgba(255, 122, 26, 0.18), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.08), transparent 24%),
+    linear-gradient(180deg, #121212 0%, var(--ember-bg) 34%, var(--ember-bg-deep) 100%) !important;
 }
 
 .ember-app-shell {
+  position: relative;
+  overflow: hidden;
   min-height: 100vh;
   width: 100%;
   max-width: 26rem;
   margin: 0 auto;
-  background: var(--ember-app-bg);
-  box-shadow: 0 0 0 1px rgba(120, 132, 156, 0.06);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 122, 26, 0.14), transparent 30%),
+    radial-gradient(circle at 100% 8%, rgba(255, 255, 255, 0.07), transparent 24%),
+    linear-gradient(180deg, rgba(18, 18, 18, 0.98) 0%, rgba(8, 8, 8, 0.99) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 36px 96px rgba(0, 0, 0, 0.44);
+}
+
+.ember-app-shell::before {
+  content: "";
+  position: absolute;
+  inset: auto -35% 28% 34%;
+  height: 18rem;
+  border-radius: 999px;
+  background: rgba(255, 122, 26, 0.12);
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+.ember-app-shell::after {
+  content: "";
+  position: absolute;
+  inset: 8% 56% auto -30%;
+  height: 15rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  filter: blur(80px);
+  pointer-events: none;
 }
 
 .ember-overlay-shell {
   position: fixed;
-  top: 2.7rem;
+  top: 0;
   bottom: 0;
   left: 50%;
   width: 100%;
@@ -91,18 +135,21 @@ textarea {
 .ember-panel {
   border: 1px solid var(--ember-line);
   background: var(--ember-surface);
+  backdrop-filter: blur(22px);
   box-shadow: var(--ember-shadow-soft);
 }
 
 .ember-panel-strong {
   border: 1px solid var(--ember-line-strong);
   background: var(--ember-surface-strong);
-  box-shadow: var(--ember-shadow-soft);
+  backdrop-filter: blur(24px);
+  box-shadow: var(--ember-shadow);
 }
 
 .ember-card {
   border: 1px solid var(--ember-line);
-  background: var(--ember-surface-strong);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
   box-shadow: var(--ember-shadow-soft);
 }
 
@@ -182,7 +229,7 @@ textarea {
   gap: 0.4rem;
   border: 1px solid var(--ember-line);
   border-radius: 999px;
-  background: var(--ember-surface-strong);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--ember-text);
   padding: 0.58rem 0.82rem;
   font-family: var(--font-ember-display);
@@ -205,20 +252,22 @@ textarea {
 }
 
 .ember-button-primary {
-  background: var(--ember-orange);
+  border: 1px solid rgba(255, 166, 105, 0.18);
+  background: linear-gradient(180deg, #ff9245 0%, var(--ember-orange) 100%);
   color: #fff;
-  box-shadow: 0 14px 24px rgba(255, 102, 33, 0.18);
+  box-shadow: 0 18px 36px rgba(255, 122, 26, 0.22);
 }
 
 .ember-button-primary:hover {
   transform: translateY(-1px);
-  background: var(--ember-orange-deep);
+  background: linear-gradient(180deg, #ff9f58 0%, var(--ember-orange-deep) 100%);
 }
 
 .ember-button-secondary {
   border: 1px solid var(--ember-line);
-  background: var(--ember-surface);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--ember-text);
+  backdrop-filter: blur(14px);
   box-shadow: var(--ember-shadow-soft);
 }
 
@@ -231,9 +280,10 @@ textarea {
   width: 100%;
   border: 1px solid var(--ember-line);
   border-radius: 1rem;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.045);
   color: var(--ember-text);
   outline: none;
+  backdrop-filter: blur(12px);
 }
 
 .ember-input {
@@ -248,37 +298,39 @@ textarea {
 
 .ember-input:focus,
 .ember-textarea:focus {
-  border-color: rgba(255, 102, 33, 0.36);
-  box-shadow: 0 0 0 4px rgba(255, 102, 33, 0.1);
+  border-color: rgba(255, 122, 26, 0.36);
+  box-shadow: 0 0 0 4px rgba(255, 122, 26, 0.1);
 }
 
 .ember-status {
+  border: 1px solid transparent;
   border-radius: 1rem;
   padding: 0.85rem 1rem;
   font-size: 0.92rem;
 }
 
 .ember-status-error {
-  border: 1px solid rgba(225, 29, 72, 0.16);
-  background: #fff1f2;
-  color: #be123c;
+  border-color: rgba(251, 113, 133, 0.2);
+  background: rgba(127, 29, 29, 0.28);
+  color: #fecdd3;
 }
 
 .ember-status-success {
-  border: 1px solid rgba(22, 163, 74, 0.14);
-  background: #f0fdf4;
-  color: #15803d;
+  border-color: rgba(74, 222, 128, 0.18);
+  background: rgba(20, 83, 45, 0.28);
+  color: #bbf7d0;
 }
 
 .ember-divider {
-  border-color: rgba(20, 20, 20, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .ember-topbar {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: var(--ember-charcoal);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(0, 0, 0, 0.72);
   color: white;
-  box-shadow: none;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .ember-setup-primary {
@@ -491,8 +543,9 @@ textarea {
 .ember-screen-card {
   border: 1px solid var(--ember-line);
   border-radius: 2rem;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: var(--ember-shadow-soft);
+  background: rgba(12, 12, 12, 0.84);
+  backdrop-filter: blur(22px);
+  box-shadow: var(--ember-shadow);
 }
 
 .ember-setup-hero {
@@ -583,9 +636,10 @@ textarea {
 
 .ember-sheet-surface {
   border-radius: 1.85rem 1.85rem 0 0;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 -18px 48px rgba(17, 17, 17, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 12, 12, 0.94);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.34);
 }
 
 .ember-sheet-body {
@@ -595,50 +649,149 @@ textarea {
 }
 
 .ember-sheet-panel {
-  border: 1px solid rgba(111, 128, 162, 0.14);
+  border: 1px solid var(--ember-line);
   border-radius: 1.45rem;
-  background: white;
+  background: rgba(255, 255, 255, 0.04);
   padding: 1rem;
 }
 
 .ember-muted-card {
-  border: 1px solid rgba(111, 128, 162, 0.14);
+  border: 1px solid var(--ember-line);
   border-radius: 1.35rem;
-  background: #f8fafd;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .ember-blue-card {
-  border: 1px solid rgba(75, 111, 255, 0.14);
+  border: 1px solid rgba(126, 164, 255, 0.18);
   border-radius: 1.35rem;
-  background: rgba(75, 111, 255, 0.06);
+  background: rgba(126, 164, 255, 0.08);
 }
 
 .ember-orange-card {
-  border: 1px solid rgba(255, 102, 33, 0.16);
+  border: 1px solid rgba(255, 122, 26, 0.18);
   border-radius: 1.35rem;
-  background: rgba(255, 102, 33, 0.06);
+  background: rgba(255, 122, 26, 0.08);
 }
 
 .ember-purple-card {
-  border: 1px solid rgba(168, 85, 247, 0.14);
+  border: 1px solid rgba(196, 181, 253, 0.18);
   border-radius: 1.35rem;
-  background: rgba(168, 85, 247, 0.08);
+  background: rgba(196, 181, 253, 0.08);
 }
 
 .ember-auth-shell {
   display: flex;
   width: 100%;
   justify-content: center;
-  padding: 0.45rem 0.75rem 1.5rem;
+  padding: 1.15rem 0.9rem 1.7rem;
 }
 
 .ember-auth-card {
   width: 100%;
   max-width: 30rem;
-  border: 1px solid rgba(111, 128, 162, 0.16);
+  border: 1px solid var(--ember-line-strong);
   border-radius: 2rem;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(10, 10, 10, 0.82);
+  backdrop-filter: blur(24px);
   box-shadow: var(--ember-shadow);
+}
+
+.ember-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.45rem 0.78rem;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ember-stage-section {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.7rem;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--ember-shadow-soft);
+}
+
+.ember-stage-blur-media {
+  position: absolute;
+  inset: -2rem;
+  width: calc(100% + 4rem);
+  height: calc(100% + 4rem);
+  object-fit: cover;
+  object-position: center;
+  filter: blur(24px);
+  transform: scale(1.08);
+  opacity: 0.72;
+}
+
+.ember-stage-main-media {
+  position: absolute;
+  inset: 4.5rem 0 4.5rem;
+  width: 100%;
+  height: calc(100% - 9rem);
+  object-fit: cover;
+  object-position: center;
+}
+
+.ember-stage-gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.34) 0%, transparent 25%, transparent 58%, rgba(0, 0, 0, 0.56) 100%);
+  pointer-events: none;
+}
+
+.ember-stage-home-button {
+  display: inline-flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--ember-stage-glass-soft);
+  color: var(--ember-stage-text);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16);
+}
+
+.ember-stage-glass {
+  border: 1px solid var(--ember-stage-line);
+  background: var(--ember-stage-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.26);
+}
+
+.ember-stage-bubble {
+  max-width: 85%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem 1rem 1rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.85rem 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.55;
+}
+
+.ember-stage-dock {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--ember-stage-line);
+  background: var(--ember-stage-glass);
+  padding: 1rem 1rem calc(env(safe-area-inset-bottom) + 1rem);
+  color: var(--ember-stage-text);
+  backdrop-filter: blur(20px);
 }
 
 @media (min-width: 640px) {
@@ -669,6 +822,78 @@ textarea {
 
   .ember-sheet-body {
     padding: 1.25rem 1.35rem 1.4rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ember-app-shell {
+    width: calc(100% - 2rem);
+    max-width: 96rem;
+    min-height: calc(100vh - 2rem);
+    margin: 1rem auto;
+    border-radius: 2rem;
+  }
+
+  .ember-overlay-shell {
+    top: 1rem;
+    bottom: 1rem;
+    width: calc(100% - 2rem);
+    max-width: 96rem;
+  }
+
+  .ember-screen,
+  .ember-screen-tight {
+    max-width: 78rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .ember-screen {
+    padding-top: 1rem;
+    padding-bottom: 2rem;
+  }
+
+  .ember-screen-tight {
+    padding-top: 0.75rem;
+    padding-bottom: 2rem;
+  }
+
+  .ember-screen-copy {
+    max-width: 64rem;
+    padding: 0.75rem 1.5rem 2rem;
+  }
+
+  .ember-auth-shell {
+    padding: 1.5rem 1.5rem 2.25rem;
+  }
+
+  .ember-auth-card {
+    max-width: 45rem;
+  }
+
+  .ember-sheet-body {
+    padding: 1.35rem 1.5rem 1.5rem;
+  }
+
+  .ember-stage-dock {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .ember-app-shell {
+    width: calc(100% - 3rem);
+    max-width: 108rem;
+    min-height: calc(100vh - 3rem);
+    margin: 1.5rem auto;
+  }
+
+  .ember-overlay-shell {
+    top: 1.5rem;
+    bottom: 1.5rem;
+    width: calc(100% - 3rem);
+    max-width: 108rem;
   }
 }
 

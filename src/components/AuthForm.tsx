@@ -6,6 +6,12 @@ import { useState } from 'react';
 
 type AuthMode = 'login' | 'signup';
 
+const inputClass =
+  'ember-input min-h-[3.35rem] px-4 text-[0.98rem] placeholder:text-white/34';
+
+const subtleButtonClass =
+  'ember-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-60';
+
 export default function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const isSignup = mode === 'signup';
@@ -146,67 +152,65 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[22rem]">
-      <div className="text-center">
-        <h1 className="text-[2.1rem] font-semibold tracking-[-0.05em] text-[#141414]">
-          {isSignup ? 'Create your account' : 'Log in to ember'}
-        </h1>
-        <p className="mt-3 text-[0.98rem] leading-7 text-[#6f6f6f]">
-          {isSignup
-            ? 'Create an Ember account with a password, or let Ember email you a secure sign-up link.'
-            : 'Sign in with your password, a magic link, or a phone code so you can get back to your memories quickly.'}
-        </p>
+    <div className="ember-auth-card p-7 sm:p-8">
+      <div className="space-y-4">
+        <span className="ember-stage-pill">
+          {isSignup ? 'Account creation' : 'Account access'}
+        </span>
+
+        <div>
+          <h1 className="text-[2.35rem] font-semibold leading-[0.96] tracking-[-0.06em] text-white">
+            {isSignup ? 'Create your Ember account' : 'Return to your Embers'}
+          </h1>
+          <p className="mt-3 max-w-[22rem] text-[0.98rem] leading-7 text-white/58">
+            {isSignup
+              ? 'Start with email and password, or let Ember send you a secure link so you can finish on the same device later.'
+              : 'Use your password, a magic link, or a texted sign-in code to get back into the memory workspace quickly.'}
+          </p>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         {isSignup && (
-          <div>
-            <label className="mb-2 block text-sm font-medium text-[#141414]">
-              Name
-            </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-white/78">Name</span>
             <input
               type="text"
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="How should Ember know you?"
-              className="h-13 w-full border border-[#d8d8d8] bg-white px-4 text-[1rem] text-[#141414] outline-none placeholder:text-[#9c9c9c]"
+              className={inputClass}
             />
-          </div>
+          </label>
         )}
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-[#141414]">
-            Email
-          </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-white/78">Email</span>
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
             required
-            className="h-13 w-full border border-[#d8d8d8] bg-white px-4 text-[1rem] text-[#141414] outline-none placeholder:text-[#9c9c9c]"
+            className={inputClass}
           />
-        </div>
+        </label>
 
         {isSignup && (
-          <div>
-            <label className="mb-2 block text-sm font-medium text-[#141414]">
-              Phone
-            </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-white/78">Phone</span>
             <input
               type="tel"
               value={phoneNumber}
               onChange={(event) => setPhoneNumber(event.target.value)}
-              placeholder="Optional, but useful for SMS and memory recovery"
-              className="h-13 w-full border border-[#d8d8d8] bg-white px-4 text-[1rem] text-[#141414] outline-none placeholder:text-[#9c9c9c]"
+              placeholder="Optional, but useful for SMS and recovery"
+              className={inputClass}
             />
-          </div>
+          </label>
         )}
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-[#141414]">
-            Password
-          </label>
+        <label className="block">
+          <span className="mb-2 block text-sm font-medium text-white/78">Password</span>
           <input
             type="password"
             value={password}
@@ -214,15 +218,15 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
             placeholder="At least 8 characters"
             required
             minLength={8}
-            className="h-13 w-full border border-[#d8d8d8] bg-white px-4 text-[1rem] text-[#141414] outline-none placeholder:text-[#9c9c9c]"
+            className={inputClass}
           />
-        </div>
+        </label>
 
         {!isSignup && (
           <div className="text-right">
             <Link
               href="/forgot-password"
-              className="text-sm font-medium text-[#e96a2f] transition-colors hover:opacity-75"
+              className="text-sm font-medium text-[var(--ember-orange-deep)] transition-colors hover:text-white"
             >
               Forgot password?
             </Link>
@@ -237,84 +241,84 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex min-h-[3.35rem] w-full items-center justify-center bg-[#e96a2f] px-4 text-[0.98rem] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSubmitting
-            ? isSignup
-              ? 'Creating account...'
-              : 'Logging in...'
-            : isSignup
-              ? 'Create account'
-              : 'Log in with password'}
-        </button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSubmitting
+              ? isSignup
+                ? 'Creating account...'
+                : 'Logging in...'
+              : isSignup
+                ? 'Create account'
+                : 'Log in with password'}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => void handleSendMagicLink()}
-          disabled={isSendingMagicLink}
-          className="flex min-h-[3.35rem] w-full items-center justify-center border border-[#d8d8d8] bg-white px-4 text-[0.98rem] font-semibold text-[#141414] disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSendingMagicLink
-            ? isSignup
-              ? 'Sending sign-up link...'
-              : 'Sending magic link...'
-            : isSignup
-              ? 'Send sign-up link'
-              : 'Email me a magic link'}
-        </button>
+          <button
+            type="button"
+            onClick={() => void handleSendMagicLink()}
+            disabled={isSendingMagicLink}
+            className={subtleButtonClass}
+          >
+            {isSendingMagicLink
+              ? isSignup
+                ? 'Sending sign-up link...'
+                : 'Sending magic link...'
+              : isSignup
+                ? 'Send sign-up link'
+                : 'Email me a magic link'}
+          </button>
+        </div>
       </form>
 
       {!isSignup && (
-        <div className="mt-8 border-t border-[#ececec] pt-8">
-          <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-[#8d8d8d]">
+        <div className="mt-8 rounded-[1.55rem] border border-white/8 bg-white/4 p-5 backdrop-blur-xl">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white/42">
             Phone sign-in
           </p>
-          <h2 className="mt-3 text-[1.8rem] font-semibold tracking-[-0.04em] text-[#141414]">
+          <h2 className="mt-3 text-[1.8rem] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
             Get a sign-in code by text
           </h2>
-          <p className="mt-2 text-sm leading-7 text-[#6f6f6f]">
-            This is especially useful if you created a test Ember and want to come back to it from your phone.
+          <p className="mt-2 text-sm leading-7 text-white/56">
+            Use this if the memory lives on your phone and you want the fastest way back in.
           </p>
 
           <div className="mt-5 space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-[#141414]">
-                Phone
-              </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-white/78">Phone</span>
               <input
                 type="tel"
                 value={phoneSignInNumber}
                 onChange={(event) => setPhoneSignInNumber(event.target.value)}
                 placeholder="(555) 555-5555"
-                className="h-13 w-full border border-[#d8d8d8] bg-white px-4 text-[1rem] text-[#141414] outline-none placeholder:text-[#9c9c9c]"
+                className={inputClass}
               />
-            </div>
+            </label>
 
             {phoneCodeRequested && (
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#141414]">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-white/78">
                   Sign-in code
-                </label>
+                </span>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={phoneCode}
                   onChange={(event) => setPhoneCode(event.target.value)}
                   placeholder="6-digit code"
-                  className="h-13 w-full border border-[#d8d8d8] bg-white px-4 text-[1rem] text-[#141414] outline-none placeholder:text-[#9c9c9c]"
+                  className={inputClass}
                 />
-              </div>
+              </label>
             )}
 
-            <div className="flex flex-col gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => void handleRequestPhoneCode()}
                 disabled={isRequestingPhoneCode}
-                className="flex min-h-[3.35rem] w-full items-center justify-center border border-[#d8d8d8] bg-white px-4 text-[0.98rem] font-semibold text-[#141414] disabled:cursor-not-allowed disabled:opacity-60"
+                className={subtleButtonClass}
               >
                 {isRequestingPhoneCode ? 'Sending code...' : 'Text me a sign-in code'}
               </button>
@@ -324,7 +328,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
                   type="button"
                   onClick={() => void handleVerifyPhoneCode()}
                   disabled={isVerifyingPhoneCode}
-                  className="flex min-h-[3.35rem] w-full items-center justify-center bg-[#e96a2f] px-4 text-[0.98rem] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isVerifyingPhoneCode ? 'Verifying code...' : 'Sign in with code'}
                 </button>
@@ -334,11 +338,11 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
         </div>
       )}
 
-      <p className="mt-6 text-sm text-[var(--ember-muted)]">
+      <p className="mt-6 text-sm text-white/52">
         {isSignup ? 'Already have an account?' : 'Need an account?'}{' '}
         <Link
           href={isSignup ? '/login' : '/signup'}
-          className="font-semibold text-[#e96a2f] transition-colors hover:opacity-75"
+          className="font-semibold text-[var(--ember-orange-deep)] transition-colors hover:text-white"
         >
           {isSignup ? 'Log in' : 'Create one'}
         </Link>
