@@ -17,13 +17,13 @@ import ContributorAddMoreFlow from "./workflows/ContributorAddMoreFlow";
 const TEST_IMAGE = "https://assets.dream.clubmed/pm_7531_679_679465-3wtke3lvb0-swhr.jpg";
 
 const FacebookIcon = () => (
-  <svg width={26} height={26} viewBox="0 0 24 24" fill="white">
+  <svg width={26} height={26} viewBox="0 0 24 24" fill="currentColor">
     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
   </svg>
 );
 
 const XIcon = () => (
-  <svg width={26} height={26} viewBox="0 0 24 24" fill="white">
+  <svg width={26} height={26} viewBox="0 0 24 24" fill="currentColor">
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
@@ -34,9 +34,9 @@ function Modal({ children }: { children: React.ReactNode }) {
       <Link href="/home" className="absolute inset-0" />
       <div
         className="relative w-full max-w-sm mx-4 rounded-2xl overflow-hidden"
-        style={{ background: "rgba(0,0,0,0.75)", WebkitBackdropFilter: "blur(5px)", backdropFilter: "blur(5px)", border: "1px solid rgba(255,255,255,0.08)" }}
+        style={{ background: "var(--bg-modal)", WebkitBackdropFilter: "blur(5px)", backdropFilter: "blur(5px)", border: "1px solid var(--border-subtle)" }}
       >
-        <Link href="/home" className="absolute top-3 right-3 text-white/50 z-10 w-8 h-8 flex items-center justify-center">
+        <Link href="/home" className="absolute top-3 right-3 text-white/60 z-10 w-8 h-8 flex items-center justify-center">
           <X size={18} />
         </Link>
         {children}
@@ -49,7 +49,7 @@ function GridItem({ icon: Icon, label }: { icon: React.ComponentType<{ size?: nu
   return (
     <div className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 cursor-pointer can-hover">
       <div className="w-11 h-11 flex items-center justify-center">
-        <Icon size={26} color="white" strokeWidth={1.6} />
+        <Icon size={26} color="var(--text-primary)" strokeWidth={1.6} />
       </div>
       <span className="text-white text-xs font-medium tracking-wide">{label}</span>
     </div>
@@ -79,12 +79,12 @@ function TendModal() {
   return (
     <Modal>
       <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-        <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: "rgba(255,255,255,0.10)" }}>
-          <Leaf size={28} color="white" strokeWidth={1.6} />
+        <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: "var(--bg-surface)" }}>
+          <Leaf size={28} color="var(--text-primary)" strokeWidth={1.6} />
         </div>
-        <span className="text-white text-sm font-medium">Tend &amp; grow this ember</span>
+        <span className="text-white text-base font-medium">Tend &amp; grow this ember</span>
       </div>
-      <div className="mx-5" style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }} />
+      <div className="mx-5" style={{ borderTop: "1px solid var(--border-default)" }} />
       <div className="px-5 py-6 grid grid-cols-3" style={{ gap: "36px 8px" }}>
         <SvgItem label="Add Content" href="/home?ember=owner-add">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
@@ -159,12 +159,12 @@ function UserModal() {
           className="rounded-full flex items-center justify-center"
           style={{ width: 66, height: 66, background: "rgba(249,115,22,0.85)" }}
         >
-          <span className="text-white text-xl font-bold">ST</span>
+          <span className="text-white text-base font-medium">ST</span>
         </div>
-        <span className="text-white text-sm font-medium">Seth Tropper</span>
+        <span className="text-white text-base font-medium">Seth Tropper</span>
       </div>
       {/* Divider */}
-      <div className="mx-5" style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }} />
+      <div className="mx-5" style={{ borderTop: "1px solid var(--border-default)" }} />
       {/* Menu */}
       <div className="px-5 py-6 grid grid-cols-3" style={{ gap: "36px 8px" }}>
         <SvgItem label="My Embers" href="/user/my-embers">
@@ -199,12 +199,12 @@ function ShareModal() {
   return (
     <Modal>
       <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-        <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: "rgba(255,255,255,0.10)" }}>
-          <Share2 size={28} color="white" strokeWidth={1.6} />
+        <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: "var(--bg-surface)" }}>
+          <Share2 size={28} color="var(--text-primary)" strokeWidth={1.6} />
         </div>
-        <span className="text-white text-sm font-medium">Share this ember</span>
+        <span className="text-white text-base font-medium">Share this ember</span>
       </div>
-      <div className="mx-5" style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }} />
+      <div className="mx-5" style={{ borderTop: "1px solid var(--border-default)" }} />
       <div className="p-5 grid grid-cols-3 gap-1">
         <GridItem icon={Link2}          label="Copy Link" />
         <GridItem icon={MessageCircle}  label="Message" />
@@ -228,11 +228,11 @@ function RailBtn({ icon: Icon, label, href, active }: {
     >
       <div
         className="w-11 h-11 rounded-full flex items-center justify-center"
-        style={{ background: "rgba(0,0,0,0.50)", WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}
+        style={{ background: "var(--bg-rail-btn)", WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}
       >
-        <Icon size={23} color="white" strokeWidth={1.8} />
+        <Icon size={23} color="var(--text-primary)" strokeWidth={1.8} />
       </div>
-      <span className="text-white text-xs font-semibold lowercase">{label}</span>
+      <span className="text-white text-xs font-medium lowercase">{label}</span>
     </Link>
   );
 }
@@ -268,17 +268,17 @@ function EmberBar({ flow }: { flow: string | null }) {
     <div
       className="absolute bottom-0 left-0 right-0 z-30 flex flex-col"
       style={{
-        background: "rgba(10,10,10,0.75)",
+        background: "var(--bg-screen)",
         WebkitBackdropFilter: "blur(20px)",
         backdropFilter: "blur(20px)",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
+        borderTop: "1px solid var(--border-subtle)",
       }}
     >
       <div className="flex items-center gap-3 pl-4 pr-[22px] py-3">
         <Link href={open ? "/home" : "/home?ember=welcome"} className="flex-1 text-left">
           <span className="flex items-center gap-2">
             {EMBER_ICON}
-            <span className="text-base font-bold text-white">{open ? "Ember Chat" : title}</span>
+            <span className="text-base font-medium text-white">{open ? "Ember Chat" : title}</span>
           </span>
         </Link>
         <Link
@@ -287,7 +287,7 @@ function EmberBar({ flow }: { flow: string | null }) {
           style={{ background: open ? "rgba(255,255,255,0.15)" : "#f97316" }}
         >
           {open
-            ? <ChevronDown size={18} color="white" strokeWidth={1.8} />
+            ? <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
             : <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>}
         </Link>
       </div>
@@ -369,14 +369,14 @@ function PlayOverlay() {
           className="relative flex flex-col items-center px-6 pt-8 pb-6 rounded-2xl"
           style={{
             width: 320,
-            background: "rgba(0,0,0,0.75)",
+            background: "var(--bg-modal)",
             WebkitBackdropFilter: "blur(5px)",
             backdropFilter: "blur(5px)",
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid var(--border-subtle)",
           }}
         >
           {/* Close */}
-          <Link href="/home" className="absolute top-3 right-3 text-white/50 w-8 h-8 flex items-center justify-center">
+          <Link href="/home" className="absolute top-3 right-3 text-white/60 w-8 h-8 flex items-center justify-center">
             <X size={18} />
           </Link>
 
@@ -402,13 +402,13 @@ function PlayOverlay() {
           {/* Transcript */}
           <div className="flex flex-col items-center gap-1 mt-4 text-center w-full" style={{ height: "3.25em" }}>
             <p
-              className="font-bold text-base leading-snug w-full truncate"
+              className="font-medium text-base leading-snug w-full truncate"
               style={{ color: fading ? "transparent" : "#ffffff", transition: "color 0.8s ease" }}
             >
               {STORY_LINES[lineIndex] ?? "\u00A0"}
             </p>
             <p
-              className="font-bold text-base leading-snug w-full truncate"
+              className="font-medium text-base leading-snug w-full truncate"
               style={{ color: !fading && STORY_LINES[lineIndex + 1] ? "#ffffff" : "transparent", transition: "color 0.8s ease" }}
             >
               {STORY_LINES[lineIndex + 1] ?? "\u00A0"}
@@ -416,18 +416,18 @@ function PlayOverlay() {
           </div>
 
           {/* Divider */}
-          <div className="w-full mt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.12)" }} />
+          <div className="w-full mt-5" style={{ borderTop: "1px solid var(--border-default)" }} />
 
           {/* Transport controls — Links for mobile reliability */}
           <div className="flex justify-center gap-8 mt-5">
             <SvgItem label="back" href="/home?m=play&restart=1">
               <circle cx="12" cy="12" r="10"/>
-              <polyline points="13,8 9,12 13,16" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <polyline points="13,8 9,12 13,16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </SvgItem>
             <SvgItem label={userPaused ? "play" : "pause"} href={userPaused ? "/home?m=play" : "/home?m=play&paused=1"}>
               <circle cx="12" cy="12" r="10"/>
               {userPaused
-                ? <polygon points="10,8 17,12 10,16" fill="white" stroke="none" />
+                ? <polygon points="10,8 17,12 10,16" fill="currentColor" stroke="none" />
                 : <><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></>
               }
             </SvgItem>
@@ -444,7 +444,7 @@ function PlayOverlay() {
 // ── First Ember: Confirm ────────────────────────────────────────────────────
 function ConfirmScreen() {
   return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-6" style={{ background: "#171515" }}>
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-6" style={{ background: "var(--bg-screen)" }}>
       {/* Back button — top left */}
       <div className="absolute top-4 left-4">
         <Link
@@ -452,12 +452,12 @@ function ConfirmScreen() {
           className="w-11 h-11 rounded-full flex items-center justify-center"
           style={{ background: "rgba(255,255,255,0.1)", cursor: "pointer" }}
         >
-          <ChevronLeft size={22} color="white" strokeWidth={1.8} />
+          <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
         </Link>
       </div>
 
       {/* Framed photo */}
-      <div className="w-full rounded-2xl overflow-hidden" style={{ maxWidth: 420, border: "1px solid rgba(255,255,255,0.18)" }}>
+      <div className="w-full rounded-2xl overflow-hidden" style={{ maxWidth: 420, border: "1px solid var(--border-default)" }}>
         <img
           src={TEST_IMAGE}
           alt="Selected photo"
@@ -467,21 +467,21 @@ function ConfirmScreen() {
 
       {/* Question + actions */}
       <div className="w-full flex flex-col gap-5 mt-7" style={{ maxWidth: 420 }}>
-        <p className="text-white font-semibold text-lg text-center leading-snug">
-          Would you like to create an ember from this photo?
+        <p className="text-white font-medium text-base text-center leading-snug">
+          Create an ember from this photo?
         </p>
         <div className="flex gap-3">
           <Link
             href="/home?mode=first-ember"
-            className="flex-1 flex items-center justify-center rounded-full font-semibold can-hover-dim"
-            style={{ minHeight: 48, background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", cursor: "pointer" }}
+            className="flex-1 flex items-center justify-center rounded-full text-sm font-medium can-hover-dim btn-secondary"
+            style={{ minHeight: 44, background: "transparent", border: "1.5px solid var(--border-btn)", cursor: "pointer" }}
           >
             Back
           </Link>
           <Link
             href="/home?mode=first-ember&step=processing"
-            className="flex-1 flex items-center justify-center rounded-full font-semibold text-white can-hover-dim"
-            style={{ minHeight: 48, background: "#f97316", cursor: "pointer" }}
+            className="flex-1 flex items-center justify-center rounded-full text-sm font-medium text-white can-hover-dim btn-primary"
+            style={{ minHeight: 44, background: "#f97316", cursor: "pointer" }}
           >
             Create Ember
           </Link>
@@ -499,7 +499,7 @@ const PROCESSING_STEPS = [
   { label: "Igniting ember",     desc: "Bringing your memory to life"    },
 ];
 // Cumulative ms at which each step completes
-const STEP_ENDS = [3000, 7000, 12000, 16000];
+const STEP_ENDS = [375, 875, 1500, 2000];
 
 function ProcessingScreen() {
   const router = useRouter();
@@ -514,7 +514,7 @@ function ProcessingScreen() {
           setCurrentStep(i + 1);
         } else {
           setDone(true);
-          setTimeout(() => router.push("/home"), 700);
+          setTimeout(() => router.push("/home?ember=welcome"), 700);
         }
       }, ms)
     );
@@ -525,7 +525,7 @@ function ProcessingScreen() {
   const progress = done ? 1 : (currentStep + 0.5) / PROCESSING_STEPS.length;
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8" style={{ background: "#171515" }}>
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8" style={{ background: "var(--bg-screen)" }}>
       <style>{`
         @keyframes glowBreath {
           0%, 100% { opacity: 0.3; transform: scale(1); }
@@ -551,13 +551,13 @@ function ProcessingScreen() {
         <div className="absolute rounded-full" style={{
           width: 148, height: 148,
           background: "radial-gradient(circle, rgba(249,115,22,0.35) 0%, transparent 70%)",
-          animation: "glowBreath2 3s ease-in-out infinite",
+          animation: "glowBreath2 1.5s ease-in-out infinite",
         }} />
         {/* Inner glow — brightens with step progress */}
         <div className="absolute rounded-full" style={{
           width: 96, height: 96,
           background: "radial-gradient(circle, rgba(249,115,22,0.55) 0%, transparent 70%)",
-          animation: "glowBreath 1.9s ease-in-out infinite",
+          animation: "glowBreath 0.95s ease-in-out infinite",
           animationDelay: "0.5s",
           opacity: 0.6 + progress * 0.4,
         }} />
@@ -586,7 +586,7 @@ function ProcessingScreen() {
       <div className="flex flex-col items-center gap-1 mt-8 text-center" style={{ minHeight: 56 }}>
         <p
           key={`label-${currentStep}-${done}`}
-          className="font-bold text-xl"
+          className="font-medium text-base"
           style={{ animation: "stepIn 0.45s ease", color: done ? "#f97316" : "#ffffff" }}
         >
           {done ? "Ember created!" : PROCESSING_STEPS[currentStep].label}
@@ -594,7 +594,7 @@ function ProcessingScreen() {
         <p
           key={`desc-${currentStep}-${done}`}
           className="text-sm"
-          style={{ animation: "stepIn 0.45s ease 0.1s both", color: "rgba(255,255,255,0.4)" }}
+          style={{ animation: "stepIn 0.45s ease 0.1s both", color: "var(--text-muted)" }}
         >
           {done ? "Opening your memory…" : PROCESSING_STEPS[currentStep].desc}
         </p>
@@ -613,7 +613,7 @@ function ProcessingScreen() {
                   <div className="absolute inset-0 rounded-full" style={{
                     border: "2px solid rgba(249,115,22,0.2)",
                     borderTop: "2px solid #f97316",
-                    animation: "spinArc 0.85s linear infinite",
+                    animation: "spinArc 0.425s linear infinite",
                   }} />
                 )}
                 <div className="absolute inset-0 rounded-full flex items-center justify-center" style={{
@@ -634,7 +634,7 @@ function ProcessingScreen() {
 
               {/* Label */}
               <span className="text-sm font-medium" style={{
-                color: isActive ? "#ffffff" : isComplete ? "rgba(255,255,255,0.38)" : "rgba(255,255,255,0.22)",
+                color: isActive ? "var(--text-primary)" : isComplete ? "var(--text-muted)" : "var(--text-muted)",
                 transition: "color 0.4s ease",
               }}>
                 {s.label}
@@ -645,7 +645,7 @@ function ProcessingScreen() {
       </div>
 
       {/* Progress bar */}
-      <div className="mt-8 rounded-full overflow-hidden" style={{ width: 280, height: 3, background: "rgba(255,255,255,0.08)" }}>
+      <div className="mt-8 rounded-full overflow-hidden" style={{ width: 280, height: 3, background: "var(--border-subtle)" }}>
         <div style={{
           height: "100%",
           borderRadius: 9999,
@@ -676,7 +676,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <div className="fixed inset-0" style={{ background: firstEmber ? "#171515" : "#000" }}>
+    <div className="fixed inset-0" style={{ background: "var(--bg-screen)" }}>
       {/* Blurred background fill — hidden in first ember mode */}
       {!firstEmber && (
         <div
@@ -728,12 +728,12 @@ export default function HomeScreen() {
               <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)"/>
             </svg>
             <div className="flex flex-col items-center gap-1.5 text-center">
-              <p className="text-white font-semibold text-base">Create your first ember</p>
-              <p className="text-white/45 text-sm leading-snug">Let's start with a photo that will help build this memory into a glowing ember.</p>
+              <p className="text-white font-medium text-base">Create your first ember</p>
+              <p className="text-white/60 text-sm leading-snug">Let's start with a photo that will help build this memory into a glowing ember.</p>
             </div>
             <Link
               href="/home?mode=first-ember&step=confirm"
-              className="mt-1 px-6 rounded-full text-white text-sm font-semibold flex items-center justify-center can-hover-dim"
+              className="mt-1 px-6 rounded-full text-white text-sm font-medium flex items-center justify-center can-hover-dim"
               style={{ background: "#f97316", minHeight: 44, cursor: "pointer" }}
             >
               Choose Photo
@@ -755,25 +755,18 @@ export default function HomeScreen() {
           className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
           style={btnStyle}
         >
-          <Home size={20} color="white" strokeWidth={1.8} />
+          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
         </Link>
         {!firstEmber && (
           <div className="pointer-events-none flex-1">
-            <p className="text-white font-semibold text-base leading-tight">Beach Day</p>
-            <p className="text-white/55 text-xs">Summer 2023</p>
+            <p className="text-white font-medium text-base leading-tight">Beach Day</p>
+            <p className="text-white/60 text-xs">Summer 2023</p>
           </div>
         )}
       </div>
 
       {/* Right rail */}
       <div className={`absolute right-3 z-20 flex flex-col gap-0 items-center transition-opacity duration-200 ${railHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`} style={{ bottom: "11%" }}>
-        <Link
-          href="/dev"
-          className="w-11 h-11 rounded-full flex items-center justify-center mb-6"
-          style={{ background: "rgba(255,255,255,0.15)", border: "1px dashed rgba(255,255,255,0.35)" }}
-        >
-          <span className="text-white/60 text-xs font-bold">DEV</span>
-        </Link>
         <Link
           href="/home?m=user"
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${modal === "user" ? "bg-white/20" : "hover:bg-white/10 active:bg-white/20"}`}
@@ -782,9 +775,9 @@ export default function HomeScreen() {
             className="w-11 h-11 rounded-full flex items-center justify-center"
             style={{ background: "rgba(249,115,22,0.85)" }}
           >
-            <span className="text-white text-sm font-bold">ST</span>
+            <span className="text-white text-sm font-medium">ST</span>
           </div>
-          <span className="text-white text-xs font-semibold lowercase">user</span>
+          <span className="text-white text-xs font-medium lowercase">user</span>
         </Link>
         <RailBtn icon={Share2}   label="share" href="/home?m=share" active={modal === "share"} />
         <RailBtn icon={Leaf}     label="tend"  href="/home?m=tend"  active={modal === "tend"} />

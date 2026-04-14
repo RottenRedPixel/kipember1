@@ -20,8 +20,8 @@ function initials(name: string) {
 
 // ── Shared field style ─────────────────────────────────────────────────────
 const fieldStyle = {
-  background: "rgba(255,255,255,0.06)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  background: "var(--bg-input)",
+  border: "1px solid var(--border-input)",
 };
 
 // ── Contributors List ──────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ function ContributorsList() {
               style={{ minHeight: 44, opacity: 0.9 }}
             >
               <div
-                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-bold"
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-medium"
                 style={{ background: "rgba(249,115,22,0.75)" }}
               >
                 {initials(c.name)}
@@ -55,14 +55,14 @@ function ContributorsList() {
               className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0"
               style={{ opacity: 0.75 }}
             >
-              <Phone size={15} color="white" strokeWidth={1.8} />
+              <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
             </a>
             <a
               href={`sms:${c.phone}`}
               className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0 mr-2"
               style={{ opacity: 0.75 }}
             >
-              <MessageSquare size={15} color="white" strokeWidth={1.8} />
+              <MessageSquare size={15} color="var(--text-primary)" strokeWidth={1.8} />
             </a>
           </div>
         ))}
@@ -72,7 +72,7 @@ function ContributorsList() {
       <div className="py-5 px-1">
         <Link
           href="/tend/contributors?view=add"
-          className="flex items-center justify-center gap-2 w-full rounded-full text-white text-sm font-semibold can-hover-dim"
+          className="flex items-center justify-center gap-2 w-full rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
           style={{ background: "#f97316", minHeight: 44, cursor: "pointer" }}
         >
           Add Contributor
@@ -103,7 +103,7 @@ function AddContributor() {
           style={fieldStyle}
         >
           <span className="text-white/30 text-sm">Language Preference</span>
-          <ChevronLeft size={18} color="rgba(255,255,255,0.3)" className="rotate-[-90deg]" />
+          <ChevronLeft size={18} color="var(--text-muted)" className="rotate-[-90deg]" />
         </div>
       </div>
 
@@ -111,14 +111,14 @@ function AddContributor() {
       <div className="py-5 flex gap-3">
         <Link
           href="/tend/contributors"
-          className="flex-1 flex items-center justify-center rounded-full text-white/60 text-sm font-semibold"
-          style={{ background: "rgba(255,255,255,0.08)", minHeight: 44 }}
+          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
+          style={{ background: "transparent", border: "1.5px solid var(--border-btn)", minHeight: 44 }}
         >
           Cancel
         </Link>
         <Link
           href="/tend/contributors"
-          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-semibold can-hover-dim"
+          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
           style={{ background: "#f97316", minHeight: 44, cursor: "pointer" }}
         >
           Save
@@ -136,9 +136,9 @@ function PrefRow({ label, value }: { label: string; value: string }) {
       style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)", minHeight: 44, cursor: "pointer", opacity: 0.9 }}
     >
       <span className="text-white text-sm font-medium">
-        {label} <span className="text-white/45 font-normal">({value})</span>
+        {label} <span className="text-white/60 font-normal">({value})</span>
       </span>
-      <ChevronLeft size={18} color="rgba(255,255,255,0.3)" className="rotate-[-90deg]" />
+      <ChevronLeft size={18} color="var(--text-muted)" className="rotate-[-90deg]" />
     </button>
   );
 }
@@ -146,7 +146,7 @@ function PrefRow({ label, value }: { label: string; value: string }) {
 // ── View Contributor ───────────────────────────────────────────────────────
 function ViewContributor({ id }: { id: string }) {
   const c = CONTRIBUTORS.find(x => x.id === id);
-  if (!c) return <p className="text-white/40 text-sm pt-6">Contributor not found.</p>;
+  if (!c) return <p className="text-white/30 text-sm pt-6">Contributor not found.</p>;
 
   return (
     <div className="flex flex-col h-full overflow-y-auto py-4 gap-4">
@@ -157,19 +157,19 @@ function ViewContributor({ id }: { id: string }) {
       >
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-white font-bold text-base">{c.name}</p>
-            <p className="text-white/50 text-sm mt-0.5">{c.phone}</p>
-            {c.email && <p className="text-white/50 text-sm">{c.email}</p>}
+            <p className="text-white font-medium text-base">{c.name}</p>
+            <p className="text-white/60 text-sm mt-0.5">{c.phone}</p>
+            {c.email && <p className="text-white/60 text-sm">{c.email}</p>}
           </div>
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
             style={{ background: "rgba(249,115,22,0.75)" }}
           >
             {initials(c.name)}
           </div>
         </div>
-        <p className="text-white/35 text-xs mt-3">
-          <span className="text-white/55 font-semibold">Joined Ember</span> · {c.joined}
+        <p className="text-white/30 text-xs mt-3">
+          <span className="text-white/60 font-medium">Joined Ember</span> · {c.joined}
         </p>
       </div>
 
@@ -183,13 +183,13 @@ function ViewContributor({ id }: { id: string }) {
       {/* Send buttons */}
       <div className="flex gap-3">
         <button
-          className="flex-1 flex items-center justify-center rounded-full text-white/70 text-sm font-semibold can-hover"
-          style={{ background: "rgba(255,255,255,0.08)", minHeight: 44, cursor: "pointer", opacity: 0.8 }}
+          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
+          style={{ background: "transparent", border: "1.5px solid var(--border-btn)", minHeight: 44, cursor: "pointer" }}
         >
           Scheduled
         </button>
         <button
-          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-semibold can-hover-dim"
+          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
           style={{ background: "#f97316", minHeight: 44, cursor: "pointer" }}
         >
           Send Now
@@ -198,21 +198,21 @@ function ViewContributor({ id }: { id: string }) {
 
       {/* Contributions */}
       <div className="flex flex-col gap-3 pb-6">
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }} className="pt-4">
-          <p className="text-white font-bold text-sm mb-3">{c.name.split(" ")[0]}&apos;s Contributions</p>
+        <div style={{ borderTop: "1px solid var(--border-subtle)" }} className="pt-4">
+          <p className="text-white font-medium text-sm mb-3">{c.name.split(" ")[0]}&apos;s Contributions</p>
           {c.contributions.length === 0 && (
-            <p className="text-white/35 text-sm">No contributions yet.</p>
+            <p className="text-white/30 text-sm">No contributions yet.</p>
           )}
           {c.contributions.map((contrib, i) => (
             <div key={i} className="mb-4">
-              <p className="text-white/55 text-xs font-medium mb-1">
-                {contrib.type} · <span className="text-white/35">{contrib.date}</span>
+              <p className="text-white/60 text-xs font-medium mb-1">
+                {contrib.type} · <span className="text-white/30">{contrib.date}</span>
               </p>
               <div
                 className="rounded-xl px-4 py-3"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
               >
-                <p className="text-white/40 text-xs italic">Transcript preview would appear here.</p>
+                <p className="text-white/30 text-xs italic">Transcript preview would appear here.</p>
               </div>
             </div>
           ))}
@@ -261,10 +261,10 @@ const WIKI_DATA = {
 function WikiBadge({ complete }: { complete: boolean }) {
   return (
     <span
-      className="text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
+      className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0"
       style={{
         background: complete ? "rgba(34,197,94,0.15)" : "rgba(249,115,22,0.15)",
-        color: complete ? "#4ade80" : "#fb923c",
+        color: complete ? "#4ade80" : "#f97316",
       }}
     >
       {complete ? "Complete" : "Not Complete"}
@@ -281,8 +281,8 @@ function WikiSection({
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span style={{ color: "rgba(255,255,255,0.55)" }}>{icon}</span>
-          <h3 className="text-white font-bold text-base">{title}</h3>
+          <span style={{ color: "var(--text-secondary)" }}>{icon}</span>
+          <h3 className="text-white font-medium text-base">{title}</h3>
         </div>
         <WikiBadge complete={complete} />
       </div>
@@ -293,7 +293,7 @@ function WikiSection({
 
 function WikiCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl px-4 py-3.5 flex flex-col gap-1" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="rounded-xl px-4 py-3.5 flex flex-col gap-1" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}>
       {children}
     </div>
   );
@@ -308,40 +308,40 @@ function WikiContent() {
       {/* Title */}
       <WikiSection icon={<FileText size={17} />} title="Title" complete>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold uppercase tracking-wider">Ember Title</p>
-          <p className="text-white font-semibold text-base">{d.title.value}</p>
-          <p className="text-white/35 text-xs">Source: {d.title.source}</p>
+          <p className="text-white/30 text-xs font-medium uppercase tracking-wider">Ember Title</p>
+          <p className="text-white font-medium text-base">{d.title.value}</p>
+          <p className="text-white/30 text-xs">Source: {d.title.source}</p>
         </WikiCard>
       </WikiSection>
 
       {/* Contributors */}
       <WikiSection icon={<Users size={17} />} title="Contributors" complete>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold mb-2">Owner</p>
+          <p className="text-white/30 text-xs font-medium mb-2">Owner</p>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
               {d.contributors.owner.initials}
             </div>
             <span className="text-white text-sm font-medium">{d.contributors.owner.name}</span>
-            <span className="ml-auto text-white/40 text-xs font-semibold">Owner</span>
+            <span className="ml-auto text-white/30 text-xs font-medium">Owner</span>
           </div>
         </WikiCard>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold mb-2">Invited (Accounts Created)</p>
+          <p className="text-white/30 text-xs font-medium mb-2">Invited (Accounts Created)</p>
           <div className="flex flex-col gap-2.5">
             {d.contributors.invited.map((c) => (
               <div key={c.name} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0" style={{ background: "rgba(255,255,255,0.15)" }}>
                   {c.initials}
                 </div>
                 <span className="text-white text-sm font-medium">{c.name}</span>
-                <span className="ml-auto text-white/35 text-xs">{c.status}</span>
+                <span className="ml-auto text-white/30 text-xs">{c.status}</span>
               </div>
             ))}
           </div>
         </WikiCard>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold">Invited (Accounts Not Created Yet)</p>
+          <p className="text-white/30 text-xs font-medium">Invited (Accounts Not Created Yet)</p>
           <p className="text-white/30 text-sm">No pending email invitations</p>
         </WikiCard>
       </WikiSection>
@@ -354,19 +354,19 @@ function WikiContent() {
             return (
               <div key={i} className={`flex flex-col gap-1 ${isAi ? "items-start" : "items-end"}`}>
                 <div className={`flex items-center gap-1.5 ${isAi ? "" : "flex-row-reverse"}`}>
-                  <span className="text-white/50 text-xs font-semibold">{msg.name}</span>
-                  <span className="text-white/25 text-xs">{msg.time}</span>
+                  <span className="text-white/60 text-xs font-medium">{msg.name}</span>
+                  <span className="text-white/30 text-xs">{msg.time}</span>
                 </div>
                 <div
                   className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed text-white/90 ${isAi ? "rounded-2xl rounded-tl-sm" : "rounded-2xl rounded-tr-sm"}`}
                   style={isAi
-                    ? { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)" }
-                    : { background: "rgba(249,115,22,0.6)" }
+                    ? { background: "var(--bg-ember-bubble)", border: "1px solid var(--border-ember)" }
+                    : { background: "var(--bg-chat-user)" }
                   }
                 >
                   {msg.text}
                 </div>
-                <span className="text-white/25 text-xs mx-1">
+                <span className="text-white/30 text-xs mx-1">
                   {isAi ? "AI Generated" : "Audio message"}
                 </span>
               </div>
@@ -378,27 +378,27 @@ function WikiContent() {
       {/* Photos */}
       <WikiSection icon={<Image size={17} />} title="Photos" complete={false}>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold mb-2">Ember Image</p>
+          <p className="text-white/30 text-xs font-medium mb-2">Ember Image</p>
           <div className="flex items-start gap-3">
-            <div className="w-14 h-14 rounded-lg flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }} />
+            <div className="w-14 h-14 rounded-lg flex-shrink-0" style={{ background: "var(--bg-ember-bubble)", border: "1px solid var(--border-ember)" }} />
             <div className="flex flex-col gap-0.5">
               <p className="text-white text-sm font-medium">{d.photos.cover.filename}</p>
-              <p className="text-white/35 text-xs">{d.photos.cover.dims} · {d.photos.cover.size}</p>
-              <p className="text-white/35 text-xs">Camera: {d.photos.cover.camera}</p>
-              <p className="text-white/35 text-xs">Taken: {d.photos.cover.taken}</p>
+              <p className="text-white/30 text-xs">{d.photos.cover.dims} · {d.photos.cover.size}</p>
+              <p className="text-white/30 text-xs">Camera: {d.photos.cover.camera}</p>
+              <p className="text-white/30 text-xs">Taken: {d.photos.cover.taken}</p>
             </div>
           </div>
         </WikiCard>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold mb-2">Supporting Media</p>
+          <p className="text-white/30 text-xs font-medium mb-2">Supporting Media</p>
           <div className="flex flex-col gap-3">
             {d.photos.supporting.map((p) => (
               <div key={p.filename} className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-lg flex-shrink-0" style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }} />
+                <div className="w-12 h-12 rounded-lg flex-shrink-0" style={{ background: "var(--bg-ember-bubble)", border: "1px solid var(--border-ember)" }} />
                 <div className="flex flex-col gap-0.5">
                   <p className="text-white text-sm font-medium">{p.label}</p>
-                  <p className="text-white/35 text-xs">{p.size} · {p.type}</p>
-                  <p className="text-white/25 text-xs">Added: {p.added}</p>
+                  <p className="text-white/30 text-xs">{p.size} · {p.type}</p>
+                  <p className="text-white/30 text-xs">Added: {p.added}</p>
                 </div>
               </div>
             ))}
@@ -409,42 +409,42 @@ function WikiContent() {
       {/* Location */}
       <WikiSection icon={<MapPin size={17} />} title="Location" complete>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold mb-1.5">GPS Location</p>
-          <p className="text-white font-semibold text-sm">{d.location.name}</p>
-          <p className="text-white/55 text-sm">{d.location.city}</p>
-          <p className="text-white/35 text-xs mt-1.5">Altitude: {d.location.altitude}</p>
-          <p className="text-white/35 text-xs">Source: {d.location.source}</p>
-          <p className="text-white/35 text-xs">Camera: {d.location.camera}</p>
+          <p className="text-white/30 text-xs font-medium mb-1.5">GPS Location</p>
+          <p className="text-white font-medium text-sm">{d.location.name}</p>
+          <p className="text-white/60 text-sm">{d.location.city}</p>
+          <p className="text-white/30 text-xs mt-1.5">Altitude: {d.location.altitude}</p>
+          <p className="text-white/30 text-xs">Source: {d.location.source}</p>
+          <p className="text-white/30 text-xs">Camera: {d.location.camera}</p>
         </WikiCard>
       </WikiSection>
 
       {/* Time & Date */}
       <WikiSection icon={<Clock size={17} />} title="Time & Date" complete>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold mb-1.5">Photo Timestamp</p>
-          <p className="text-white font-semibold text-sm">{d.timeDate.display}</p>
-          <p className="text-white/35 text-xs mt-1.5">Source: {d.timeDate.source}</p>
-          <p className="text-white/35 text-xs">Camera: {d.timeDate.camera}</p>
+          <p className="text-white/30 text-xs font-medium mb-1.5">Photo Timestamp</p>
+          <p className="text-white font-medium text-sm">{d.timeDate.display}</p>
+          <p className="text-white/30 text-xs mt-1.5">Source: {d.timeDate.source}</p>
+          <p className="text-white/30 text-xs">Camera: {d.timeDate.camera}</p>
         </WikiCard>
       </WikiSection>
 
       {/* Image Analysis */}
       <WikiSection icon={<Sparkles size={17} />} title="Image Analysis" complete>
         <WikiCard>
-          <p className="text-white/40 text-xs font-semibold mb-2">AI Image Analysis</p>
+          <p className="text-white/30 text-xs font-medium mb-2">AI Image Analysis</p>
           <div className="flex flex-col gap-1">
             {d.analysis.split("\n").map((line, i) => {
               const isBold = line.startsWith("**") && line.endsWith("**");
               const cleaned = line.replace(/\*\*/g, "");
               if (isBold) return (
-                <p key={i} className="text-white/70 text-xs font-semibold mt-2">{cleaned}</p>
+                <p key={i} className="text-white/60 text-xs font-medium mt-2">{cleaned}</p>
               );
               return (
-                <p key={i} className="text-white/50 text-xs leading-relaxed">{cleaned}</p>
+                <p key={i} className="text-white/60 text-xs leading-relaxed">{cleaned}</p>
               );
             })}
           </div>
-          <p className="text-white/20 text-xs mt-4">Source: GPT-4o · Analyzed: Jun 13, 2024</p>
+          <p className="text-white/30 text-xs mt-4">Source: GPT-4o · Analyzed: Jun 13, 2024</p>
         </WikiCard>
       </WikiSection>
 
@@ -487,19 +487,19 @@ export default function TendActionPage({
       {/* 93% panel */}
       <div
         className="w-[93%] h-full flex flex-col slide-in-right"
-        style={{ background: "#292726", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+        style={{ background: "var(--bg-screen)", borderLeft: "1px solid var(--border-subtle)" }}
       >
         {/* Header */}
         <div
           className="flex items-center gap-3 px-4 pt-6 pb-4 flex-shrink-0"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          style={{ borderBottom: "1px solid var(--border-subtle)" }}
         >
           <Link
             href={backHref}
             className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
             style={{ opacity: 0.75 }}
           >
-            <ChevronLeft size={22} color="#fff" strokeWidth={1.8} />
+            <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
           </Link>
 
           {(!isContributors || !view) && TEND_ICONS[action] && (
@@ -508,7 +508,7 @@ export default function TendActionPage({
               height={24}
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#fff"
+              stroke="var(--text-primary)"
               strokeWidth={1.6}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -518,7 +518,7 @@ export default function TendActionPage({
             </svg>
           )}
 
-          <h2 className="text-white font-bold text-lg">{subTitle}</h2>
+          <h2 className="text-white font-medium text-base">{subTitle}</h2>
         </div>
 
         {/* Content */}

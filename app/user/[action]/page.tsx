@@ -61,22 +61,22 @@ function EmberGallery({ embers, action }: { embers: typeof MY_EMBERS; action: st
           <Link
             href={`${base}?sort=${sort}&sort-open=${showSort ? "0" : "1"}`}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl can-hover"
-            style={{ background: "rgba(255,255,255,0.07)", opacity: 0.9 }}
+            style={{ background: "var(--bg-surface)", opacity: 0.9 }}
           >
             <span className="text-white text-xs font-medium">{sort}</span>
-            <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+            <ChevronDown size={13} color="var(--text-secondary)" strokeWidth={2} />
           </Link>
           {showSort && (
             <div
               className="absolute top-full right-0 mt-1 rounded-xl overflow-hidden z-10 flex flex-col"
-              style={{ background: "#1e1c1b", border: "1px solid rgba(255,255,255,0.12)", minWidth: 110 }}
+              style={{ background: "var(--bg-screen)", border: "1px solid var(--border-default)", minWidth: 110 }}
             >
               {SORT_OPTIONS.map(opt => (
                 <Link
                   key={opt}
                   href={`${base}?sort=${encodeURIComponent(opt)}&sort-open=0`}
                   className="px-4 py-2.5 text-xs font-medium can-hover"
-                  style={{ color: opt === sort ? "#f97316" : "rgba(255,255,255,0.8)", opacity: 0.9 }}
+                  style={{ color: opt === sort ? "#f97316" : "var(--text-primary)", opacity: 0.9 }}
                 >
                   {opt}
                 </Link>
@@ -90,7 +90,7 @@ function EmberGallery({ embers, action }: { embers: typeof MY_EMBERS; action: st
       <div className="flex-1 overflow-y-auto pb-6 no-scrollbar">
         <div className="grid grid-cols-3 gap-1.5">
           {sorted.map(e => (
-            <Link key={e.id} href="/home" className="aspect-square rounded-xl overflow-hidden can-hover" style={{ background: "#000", border: "1px solid rgba(255,255,255,0.12)", opacity: 0.95 }}>
+            <Link key={e.id} href="/home" className="aspect-square rounded-xl overflow-hidden can-hover" style={{ background: "var(--bg-surface)", border: "1px solid var(--border-default)", opacity: 0.95 }}>
               <div className="w-full h-full" />
             </Link>
           ))}
@@ -122,19 +122,19 @@ export default function UserActionPage({
       {/* 93% panel */}
       <div
         className="w-[93%] h-full flex flex-col slide-in-right"
-        style={{ background: "#292726", borderLeft: "1px solid rgba(255,255,255,0.08)" }}
+        style={{ background: "var(--bg-screen)", borderLeft: "1px solid var(--border-subtle)" }}
       >
         {/* Header */}
         <div
           className="flex items-center gap-3 px-4 pt-6 pb-4 flex-shrink-0"
-          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+          style={{ borderBottom: "1px solid var(--border-subtle)" }}
         >
           <Link
             href="/home"
             className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
             style={{ opacity: 0.75 }}
           >
-            <ChevronLeft size={22} color="#fff" strokeWidth={1.8} />
+            <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
           </Link>
 
           {USER_ICONS[action] && (
@@ -143,7 +143,7 @@ export default function UserActionPage({
               height={24}
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#fff"
+              stroke="var(--text-primary)"
               strokeWidth={1.6}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -153,7 +153,7 @@ export default function UserActionPage({
             </svg>
           )}
 
-          <h2 className="text-white font-bold text-lg">{title}</h2>
+          <h2 className="text-white font-medium text-base">{title}</h2>
         </div>
 
         {/* Content */}

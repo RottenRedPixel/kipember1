@@ -21,12 +21,12 @@ export default function SignInPage() {
   return (
     <div
       className="flex flex-col items-center justify-center w-full px-6"
-      style={{ minHeight: "100dvh", background: "#171515" }}
+      style={{ minHeight: "100dvh", background: "var(--bg-screen)" }}
     >
       <div className="flex flex-col gap-8 w-full max-w-sm py-16">
         <div className="flex flex-col gap-1">
           <h1 className="text-white text-2xl font-bold tracking-tight">Welcome back</h1>
-          <p className="text-white/50 text-sm">Sign in to continue to Ember.</p>
+          <p className="text-white/60 text-sm">Sign in to continue to Ember.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -35,21 +35,21 @@ export default function SignInPage() {
 
           <div className="flex justify-end">
             {/* TODO: wire up forgot password flow */}
-            <button type="button" className="text-white/40 text-xs hover:text-white/70 transition-colors">
+            <button type="button" className="text-white/30 text-xs hover:text-white/60 transition-colors">
               Forgot password?
             </button>
           </div>
 
           <Link
             href="/home"
-            className="flex items-center justify-center h-12 rounded-full text-white text-sm font-semibold tracking-wide transition-opacity hover:opacity-80"
-            style={{ background: "#f97316" }}
+            className="flex items-center justify-center rounded-full text-white text-sm font-medium transition-opacity hover:opacity-80 btn-primary"
+            style={{ background: "#f97316", minHeight: 44 }}
           >
             Sign In
           </Link>
         </form>
 
-        <p className="text-center text-white/50 text-sm">
+        <p className="text-center text-white/60 text-sm">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="text-white font-medium hover:opacity-70 transition-opacity">
             Sign Up
@@ -72,7 +72,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-white/70 text-xs font-medium">{label}</label>
+      <label className="text-white/60 text-xs font-medium">{label}</label>
       <input
         name={name}
         type={type}
@@ -80,13 +80,13 @@ function Field({
         value={value}
         onChange={onChange}
         autoComplete="off"
-        className="h-12 rounded-xl px-4 text-sm text-white placeholder-white/25 outline-none transition-colors"
+        className="h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
         style={{
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.10)",
+          background: "var(--bg-input)",
+          border: "1px solid var(--border-input)",
         }}
         onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(249,115,22,0.6)")}
-        onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)")}
+        onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border-input)")}
       />
     </div>
   );

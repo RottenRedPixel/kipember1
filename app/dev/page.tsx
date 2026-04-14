@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
 const WORKFLOWS = [
-  { label: "First Ember Flow", href: "/home?mode=first-ember&ember=welcome", desc: "Memory view with photo upload zone — no image yet" },
-  { label: "Welcome Flow", href: "/home?ember=welcome", desc: "Default intro — invite others / add to memory" },
+  { label: "First Ember Flow", href: "/signup", desc: "Memory view with photo upload zone — no image yet" },
   { label: "Owner Add Flow", href: "/home?ember=owner-add", desc: "Owner adding content — voice, photo, note" },
   { label: "Contributor Add Flow", href: "/home?ember=contrib-add", desc: "Contributor sharing a memory" },
   { label: "Owner Add More Flow", href: "/home?ember=owner-add-more", desc: "Owner adding more content to a memory" },

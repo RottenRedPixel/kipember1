@@ -24,6 +24,9 @@ export default function RootLayout({
       className={`${ubuntu.variable} h-full antialiased`}
       style={{ fontFamily: "var(--font-ubuntu), sans-serif" }}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('ember-theme');if(t)document.documentElement.dataset.theme=t;})();` }} />
+      </head>
       <body className="h-full w-full">{children}</body>
     </html>
   );

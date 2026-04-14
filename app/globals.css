@@ -5,11 +5,59 @@
   --foreground: #ffffff;
 }
 
+/* ── Theme tokens ─────────────────────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg-body:         #0a0a0a;
+  --bg-screen:       #171515;
+  --bg-modal:        rgba(0, 0, 0, 0.75);
+  --bg-surface:      rgba(255, 255, 255, 0.07);
+  --bg-input:        rgba(255, 255, 255, 0.06);
+  --bg-rail-btn:     rgba(0, 0, 0, 0.50);
+  --bg-chat-user:    #2e3a4e;
+  --bg-ember-bubble: rgba(255, 255, 255, 0.08);
+  /* Borders */
+  --border-subtle:   rgba(255, 255, 255, 0.08);
+  --border-default:  rgba(255, 255, 255, 0.12);
+  --border-input:    rgba(255, 255, 255, 0.10);
+  --border-btn:      rgba(255, 255, 255, 0.35);
+  --border-ember:    rgba(255, 255, 255, 0.10);
+  /* Text */
+  --text-primary:   #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted:     rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="light"] {
+  /* Override Tailwind v4 white token — makes text-white / text-white/60 / text-white/30
+     and bg-white/10 etc. all adapt to light mode automatically */
+  --color-white: #1c1917;
+  /* Backgrounds */
+  --bg-body:         #f0ebe4;
+  --bg-screen:       #faf7f3;
+  --bg-modal:        rgba(250, 247, 243, 0.92);
+  --bg-surface:      rgba(0, 0, 0, 0.05);
+  --bg-input:        rgba(0, 0, 0, 0.05);
+  --bg-rail-btn:     rgba(0, 0, 0, 0.10);
+  --bg-chat-user:    #3a5a7a;
+  --bg-ember-bubble: rgba(0, 0, 0, 0.05);
+  /* Borders */
+  --border-subtle:   rgba(28, 25, 23, 0.08);
+  --border-default:  rgba(28, 25, 23, 0.12);
+  --border-input:    rgba(28, 25, 23, 0.12);
+  --border-btn:      rgba(28, 25, 23, 0.35);
+  --border-ember:    rgba(28, 25, 23, 0.10);
+  /* Text */
+  --text-primary:   #1c1917;
+  --text-secondary: rgba(28, 25, 23, 0.6);
+  --text-muted:     rgba(28, 25, 23, 0.3);
+}
+
 html, body {
   height: 100%;
   width: 100%;
-  background: #0a0a0a;
-  color: #ffffff;
+  background: var(--bg-body);
+  color: var(--text-primary);
   font-family: var(--font-ubuntu), sans-serif;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
@@ -34,6 +82,27 @@ html, body {
     opacity: 0.82;
     transition: opacity 0.2s;
   }
+
+  /* Primary button — orange fill darkens slightly */
+  .btn-primary {
+    transition: filter 0.18s ease;
+  }
+  .btn-primary:hover {
+    filter: brightness(0.88);
+  }
+
+  /* Secondary button — inset box-shadow simulates fill without conflicting with inline background */
+  .btn-secondary {
+    transition: box-shadow 0.18s ease;
+  }
+  .btn-secondary:hover {
+    box-shadow: inset 0 0 0 100px rgba(255, 255, 255, 0.08);
+  }
+
+  /* Primary button text always stays white even in light mode */
+  [data-theme="light"] .btn-primary {
+    color: white;
+  }
 }
 
 /* SvgItem — color-based dimming inside backdrop-filter containers.
@@ -41,11 +110,11 @@ html, body {
    opacity < 1 on a child of backdrop-filter causes the first tap to change
    opacity and the click to fire only on the second tap. */
 .svg-item {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-secondary);
 }
 @media (hover: hover) and (pointer: fine) {
   .svg-item:hover {
-    color: #ffffff;
+    color: var(--text-primary);
     transition: color 0.2s;
   }
 }

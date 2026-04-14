@@ -4,6 +4,56 @@ This file documents intended UI behavior rules to guide implementation decisions
 
 ---
 
+## Implementation Rule — Follow Existing Patterns
+
+**When creating any new screen, component, or layout, always match the existing design system exactly. Do not introduce new values.**
+
+- **Buttons**: Use only the 2 defined styles (primary / secondary). Follow the exact height, font, shape, and rollover rules. No icons inside buttons.
+- **Typography**: Use only `text-xs`, `text-sm`, `text-base`, or `text-2xl`. Use only `font-normal`, `font-medium`, or `font-bold` (bold only on `text-2xl`). Do not introduce `text-lg`, `text-xl`, `text-3xl`, `font-semibold`, or any other size/weight.
+- **Colors**: Use only the 4 approved text colors (`text-white`, `text-white/60`, `text-white/30`, `#f97316`). Do not use `text-white/50`, `text-white/40`, `text-white/70`, or any other opacity variant.
+- **Backgrounds**: Main screens use `#171515`. Modals use `rgba(0,0,0,0.75)` with `blur(5px)`. Do not introduce new background colors.
+- **Spacing and layout**: Match existing screen padding, gap values, and alignment patterns from nearby components rather than inventing new ones.
+
+When in doubt, read an existing screen file and mirror its structure.
+
+---
+
+## Typography
+
+### Ember_Header
+The app's primary heading style: `text-base font-medium` (16px). Used for all screen titles, modal headings, and key UI labels including:
+- Ember title on memory view ("Beach Day")
+- "Create your first ember"
+- "Create an ember from this photo?"
+- Processing screen step heading
+- "Ember Chat" / "Start your journey here"
+- "Tend & grow this ember"
+- "Share this ember"
+- User name in user modal
+
+---
+
+## Buttons
+
+### No icons in buttons
+Buttons must contain text labels only — no icons. Icons add visual noise and the label alone is sufficient when copy is clear. Reserve icons for standalone navigation actions where there is no label (e.g. icon-only rail buttons, send button, close button).
+
+### Standard style
+- Font: `text-sm font-semibold`
+- Shape: `rounded-full`
+- Height: `minHeight: 44` (44px — Apple/WCAG minimum touch target). Never use `py-3` or `h-12` for buttons. Always set `minHeight: 44` in the inline style, with `flex items-center justify-center` in className.
+- **Primary**: `background: #f97316`, white text — used for the main/preferred action
+- **Secondary**: `background: transparent`, `border: 1.5px solid rgba(255,255,255,0.35)`, white text — used for all other actions (cancel, back, alternative choices)
+
+There are only 2 button styles. Ghost buttons (semi-transparent fill, no border) are not used — convert any to secondary.
+
+### Rollover (desktop only)
+Always add the matching CSS class to enable hover effects (scoped to `pointer: fine` devices — never fires on touch):
+- Primary buttons: add `btn-primary` class → darkens with `filter: brightness(0.88)` on hover
+- Secondary buttons: add `btn-secondary` class → shows subtle white fill via `box-shadow: inset 0 0 0 100px rgba(255,255,255,0.08)` on hover (inset shadow avoids conflicts with inline background styles)
+
+---
+
 ## Ember Chat
 
 ### Height when expanded
@@ -148,5 +198,37 @@ The ember chat message and CTAs change based on who is viewing and the state of 
 ---
 
 > **Note:** Messages above are placeholder copy. Final voice/tone to be defined. State is passed as a prop or derived from auth context + ember metadata.
+
+---
+
+## Typography System
+
+Four font sizes, three weights. No other sizes or weights are used.
+
+| Token | Tailwind | Use |
+|---|---|---|
+| `text-xs` | 12px | Timestamps, badges, fine print |
+| `text-sm` | 14px | Body copy, form fields, secondary text |
+| `text-base` | 16px | `Ember_Header` — screen titles, modal headings, key UI labels |
+| `text-2xl` | 24px | Page-level hero headings only (e.g. "ask ember") |
+
+| Weight | Tailwind | Use |
+|---|---|---|
+| Regular | `font-normal` | Default body text |
+| Medium | `font-medium` | Labels, buttons, UI elements |
+| Bold | `font-bold` | `text-2xl` headings only |
+
+---
+
+## Color System
+
+Four text/icon colors. No other opacity values or inline rgba text colors are used.
+
+| Value | Tailwind | Use |
+|---|---|---|
+| `#ffffff` | `text-white` | Primary labels, headings |
+| `rgba(255,255,255,0.6)` | `text-white/60` | Secondary / supporting text |
+| `rgba(255,255,255,0.3)` | `text-white/30` | Tertiary / placeholder / muted |
+| `#f97316` | `text-orange-500` | Brand accent, active states |
 
 *Add new behavior notes here as decisions are made.*
