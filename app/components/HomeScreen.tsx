@@ -45,7 +45,7 @@ function Modal({ children }: { children: React.ReactNode }) {
   );
 }
 
-function GridItem({ icon: Icon, label }: { icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }> | (() => JSX.Element); label: string }) {
+function GridItem({ icon: Icon, label }: { icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }> | (() => React.JSX.Element); label: string }) {
   return (
     <div className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 cursor-pointer can-hover">
       <div className="w-11 h-11 flex items-center justify-center">
