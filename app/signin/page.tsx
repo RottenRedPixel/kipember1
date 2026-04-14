@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Home } from "lucide-react";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -23,6 +24,15 @@ export default function SignInPage() {
       className="flex flex-col items-center justify-center w-full px-6"
       style={{ minHeight: "100dvh", background: "var(--bg-screen)" }}
     >
+      <div className="absolute top-4 left-4">
+        <Link
+          href="/"
+          className="w-11 h-11 rounded-full flex items-center justify-center"
+          style={{ background: "var(--bg-surface)" }}
+        >
+          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
+        </Link>
+      </div>
       <div className="flex flex-col gap-8 w-full max-w-sm py-16">
         <div className="flex flex-col gap-1">
           <h1 className="text-white text-2xl font-bold tracking-tight">Welcome back</h1>

@@ -508,17 +508,21 @@ function ProcessingScreen() {
 
   // Not inside backdrop-filter — setTimeout is safe here per CLAUDE.md
   useEffect(() => {
+    let finalTimer: ReturnType<typeof setTimeout> | null = null;
     const timers = STEP_ENDS.map((ms, i) =>
       setTimeout(() => {
         if (i < PROCESSING_STEPS.length - 1) {
           setCurrentStep(i + 1);
         } else {
           setDone(true);
-          setTimeout(() => router.push("/home?ember=welcome"), 700);
+          finalTimer = setTimeout(() => router.replace("/home?ember=welcome"), 700);
         }
       }, ms)
     );
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+      if (finalTimer) clearTimeout(finalTimer);
+    };
   }, [router]);
 
   // Progress fraction: half-step credit so bar is never at 0
