@@ -75,7 +75,6 @@ function ContributorsList() {
           className="flex items-center justify-center gap-2 w-full rounded-full text-white text-sm font-semibold can-hover-dim"
           style={{ background: "#f97316", minHeight: 44, cursor: "pointer" }}
         >
-          <Plus size={16} strokeWidth={2} />
           Add Contributor
         </Link>
       </div>
