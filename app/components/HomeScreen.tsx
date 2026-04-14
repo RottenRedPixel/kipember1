@@ -444,7 +444,7 @@ function PlayOverlay() {
 // ── First Ember: Confirm ────────────────────────────────────────────────────
 function ConfirmScreen() {
   return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-6" style={{ background: "#0a0a0a" }}>
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-6" style={{ background: "#171515" }}>
       {/* Back button — top left */}
       <div className="absolute top-4 left-4">
         <Link
@@ -525,7 +525,7 @@ function ProcessingScreen() {
   const progress = done ? 1 : (currentStep + 0.5) / PROCESSING_STEPS.length;
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8" style={{ background: "#0a0a0a" }}>
+    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8" style={{ background: "#171515" }}>
       <style>{`
         @keyframes glowBreath {
           0%, 100% { opacity: 0.3; transform: scale(1); }

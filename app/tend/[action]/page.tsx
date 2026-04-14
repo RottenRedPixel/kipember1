@@ -53,14 +53,14 @@ function ContributorsList() {
             <a
               href={`tel:${c.phone}`}
               className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0"
-              style={{ background: "rgba(255,255,255,0.06)", opacity: 0.75 }}
+              style={{ opacity: 0.75 }}
             >
               <Phone size={15} color="white" strokeWidth={1.8} />
             </a>
             <a
               href={`sms:${c.phone}`}
               className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0 mr-2"
-              style={{ background: "rgba(255,255,255,0.06)", opacity: 0.75, borderRadius: "0 8px 8px 0" }}
+              style={{ opacity: 0.75 }}
             >
               <MessageSquare size={15} color="white" strokeWidth={1.8} />
             </a>
