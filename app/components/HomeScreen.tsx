@@ -366,8 +366,9 @@ function PlayOverlay() {
       <style>{`@keyframes vizPulse { from { transform: scaleY(0.15); } to { transform: scaleY(1); } }`}</style>
       <div className="absolute left-0 right-0 z-30 flex justify-center" style={{ bottom: 88 }}>
         <div
-          className="relative w-full max-w-sm mx-4 flex flex-col items-center px-6 pt-8 pb-6 rounded-2xl"
+          className="relative flex flex-col items-center px-6 pt-8 pb-6 rounded-2xl"
           style={{
+            width: 320,
             background: "rgba(0,0,0,0.75)",
             WebkitBackdropFilter: "blur(5px)",
             backdropFilter: "blur(5px)",
