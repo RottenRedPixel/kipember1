@@ -137,67 +137,9 @@ Home button and memory title sit at the top of the screen with no safe-area offs
 
 ## Ember Chat — State Map
 
-The ember chat message and CTAs change based on who is viewing and the state of the ember. States are determined by a combination of **user role** and **ember lifecycle stage**.
+State determines what Ember says first and which CTAs appear. See **STATES.md** for the full state definitions, transition table, Mermaid diagram, and API data contracts.
 
----
-
-### State 1 — Newly Created (Owner, no content yet)
-**Route:** `/image/[id]`
-**Collapsed prompt:** "Begin your journey here."
-**Expanded message:** "Begin your journey here. How would you like to start?"
-**CTAs:** `invite others` · `add to memory`
-
----
-
-### State 2 — Owner Returning (has content, active ember)
-**Route:** `/image/[id]`
-**Collapsed prompt:** "What would you like to add to this memory?"
-**Expanded message:** "Your ember is growing. Would you like to add more, or invite others to contribute?"
-**CTAs:** `add to memory` · `invite others`
-
----
-
-### State 3 — Authenticated Non-Owner (viewer, no contribution access)
-**Route:** `/image/[id]`
-**Collapsed prompt:** "This memory belongs to [Owner Name]."
-**Expanded message:** "You're viewing this ember. Would you like to request contributor access?"
-**CTAs:** `request access` · `share`
-
----
-
-### State 4 — Guest Viewer (public, unauthenticated)
-**Route:** `/guest/[token]`
-**Collapsed prompt:** "You've been invited to view this memory."
-**Expanded message:** "You're viewing this ember as a guest. Want to add your own memories to it?"
-**CTAs:** `sign up to contribute` · `share`
-
----
-
-### State 5 — Invited Contributor
-**Route:** `/contribute/[token]` or `/image/[id]` (after accepting invite)
-**Collapsed prompt:** "You've been invited to contribute."
-**Expanded message:** "Share your part of this story. What do you remember about this moment?"
-**CTAs:** `record response` · `add a photo`
-
----
-
-### State 6 — Active Contributor (returning, has contributed)
-**Route:** `/image/[id]`
-**Collapsed prompt:** "Continue contributing to this memory."
-**Expanded message:** "You've already shared something here. Would you like to add more?"
-**CTAs:** `add more` · `view your contributions`
-
----
-
-### State 7 — Play Mode (narration active)
-**Route:** `/play` or `/image/[id]` during playback
-**Collapsed prompt:** "Now playing..."
-**Expanded message:** *(ember chat hidden or minimized during active playback)*
-**CTAs:** *(none — playback controls take over)*
-
----
-
-> **Note:** Messages above are placeholder copy. Final voice/tone to be defined. State is passed as a prop or derived from auth context + ember metadata.
+> State is passed as a prop or derived from auth context + ember metadata returned by the API.
 
 ---
 
