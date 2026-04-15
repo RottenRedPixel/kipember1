@@ -2,9 +2,25 @@ import { join } from 'path';
 
 type MediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
 const DEFAULT_UPLOADS_FALLBACK_BASE_URL = 'https://memory-wiki.onrender.com';
+const RENDER_DISK_ROOT = '/var/data';
+
+function normalizeUploadsDir(value: string): string {
+  const normalized = value.trim().replace(/[\\/]+$/, '');
+
+  // Some Render deploys expose the mounted disk root directly in UPLOADS_DIR.
+  // In that case we want a writable subdirectory for media, not the mount root.
+  if (normalized === RENDER_DISK_ROOT) {
+    return join(normalized, 'uploads');
+  }
+
+  return normalized;
+}
 
 export function getUploadsDir(): string {
-  return process.env.UPLOADS_DIR || join(process.cwd(), 'public', 'uploads');
+  const configuredDir = process.env.UPLOADS_DIR?.trim();
+  return configuredDir
+    ? normalizeUploadsDir(configuredDir)
+    : join(process.cwd(), 'public', 'uploads');
 }
 
 export function getUploadPath(filename: string): string {
