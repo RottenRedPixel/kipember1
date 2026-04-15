@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# database
+*.db
+*.db-journal
+
+# uploads
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# local screenshot artifacts
+/output/playwright/app-store-screenshots/
