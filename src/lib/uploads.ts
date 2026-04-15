@@ -1,8 +1,11 @@
-import { join } from 'path';
+import { accessSync, constants, existsSync } from 'fs';
+import { tmpdir } from 'os';
+import { dirname, join } from 'path';
 
 type MediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
 const DEFAULT_UPLOADS_FALLBACK_BASE_URL = 'https://memory-wiki.onrender.com';
 const RENDER_DISK_ROOT = '/var/data';
+const DEFAULT_TEMP_UPLOADS_DIR = join(tmpdir(), 'memory-wiki-uploads');
 
 function normalizeUploadsDir(value: string): string {
   const normalized = value.trim().replace(/[\\/]+$/, '');
@@ -16,11 +19,32 @@ function normalizeUploadsDir(value: string): string {
   return normalized;
 }
 
+function canCreateFilesIn(targetDir: string): boolean {
+  let current = targetDir;
+
+  while (!existsSync(current)) {
+    const parent = dirname(current);
+    if (parent === current) {
+      return false;
+    }
+    current = parent;
+  }
+
+  try {
+    accessSync(current, constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function getUploadsDir(): string {
   const configuredDir = process.env.UPLOADS_DIR?.trim();
-  return configuredDir
+  const preferredDir = configuredDir
     ? normalizeUploadsDir(configuredDir)
     : join(process.cwd(), 'public', 'uploads');
+
+  return canCreateFilesIn(preferredDir) ? preferredDir : DEFAULT_TEMP_UPLOADS_DIR;
 }
 
 export function getUploadPath(filename: string): string {
