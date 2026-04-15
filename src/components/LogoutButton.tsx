@@ -14,7 +14,7 @@ export default function LogoutButton() {
       await fetch('/api/auth/logout', {
         method: 'POST',
       });
-      router.push('/login');
+      router.push('/signin');
       router.refresh();
     } finally {
       setIsSubmitting(false);
@@ -26,7 +26,7 @@ export default function LogoutButton() {
       type="button"
       onClick={handleLogout}
       disabled={isSubmitting}
-      className="ember-button-secondary px-4 disabled:cursor-not-allowed disabled:opacity-60"
+      className="kip-secondary-button px-4 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {isSubmitting ? 'Logging out...' : 'Logout'}
     </button>

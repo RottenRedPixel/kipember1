@@ -1,11 +1,5 @@
-import ImageGallery from '@/components/ImageGallery';
+import { redirect } from 'next/navigation';
 
 export default function FeedPage() {
-  return (
-    <div className="flex flex-col">
-      <section>
-        <ImageGallery />
-      </section>
-    </div>
-  );
+  redirect('/home');
 }

@@ -14,6 +14,16 @@ export function getUploadUrl(filename: string): string {
   return `/api/uploads/${filename}`;
 }
 
+export function getUploadFallbackBaseUrl(): string | null {
+  const value = process.env.UPLOADS_FALLBACK_BASE_URL?.trim();
+  return value ? value.replace(/\/+$/, '') : null;
+}
+
+export function getUploadFallbackUrl(filename: string): string | null {
+  const baseUrl = getUploadFallbackBaseUrl();
+  return baseUrl ? `${baseUrl}/api/uploads/${filename}` : null;
+}
+
 export function getPreviewUploadUrl({
   mediaType,
   filename,

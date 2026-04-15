@@ -1,7 +1,5 @@
 'use client';
 
-import HeaderMenu from '@/components/HeaderMenu';
-
 type UploadProcessingOverlayProps = {
   open: boolean;
   stageIndex: number;
@@ -57,22 +55,8 @@ export default function UploadProcessingOverlay({
 
   return (
     <div className="fixed inset-0 z-[80] bg-[rgba(0,0,0,0.44)] backdrop-blur-md">
-      <div className="mx-auto flex h-full w-full max-w-[26rem] flex-col bg-[var(--ember-stage-bg)] text-white lg:max-w-[58rem]">
-        <div className="ember-topbar flex h-[2.7rem] items-center justify-between px-4 text-[0.78rem] font-semibold tracking-[0.16em] text-white">
-          <div className="flex items-center gap-4">
-            <span className="text-white">HOME</span>
-            <span className="text-white/45">EMBERS</span>
-          </div>
-          <HeaderMenu
-            authMode="detect"
-            className="text-white/55 hover:text-white"
-            panelClassName="right-0 top-[calc(100%+0.35rem)] min-w-[8.5rem] rounded-[1.1rem] border border-white/10 bg-[rgba(8,8,8,0.92)] p-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.34)]"
-            iconClassName="h-[0.95rem] w-[0.95rem]"
-            logoutRedirectTo="/"
-          />
-        </div>
-
-        <div className="relative flex min-h-0 flex-1 flex-col justify-between overflow-hidden px-5 py-6">
+      <div className="mx-auto flex h-full w-full max-w-[28rem] flex-col bg-[var(--kip-bg-screen)] text-white lg:max-w-[68rem]">
+        <div className="relative flex min-h-0 flex-1 flex-col justify-between overflow-hidden px-5 py-6 lg:px-8 lg:py-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,122,26,0.18),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_36%)]" />
 
           <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center text-center">
@@ -80,18 +64,18 @@ export default function UploadProcessingOverlay({
               <SpinnerCycleIcon />
             </div>
 
-            <span className="ember-stage-pill mt-8">{currentMediaLabel}</span>
+            <span className="kip-pill mt-8">{currentMediaLabel}</span>
 
             <div className="mt-5 max-w-[15rem] space-y-3 lg:max-w-[24rem]">
               <h2 className="text-[1.9rem] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
                 {stage.title}
               </h2>
-              <p className="text-sm leading-7 text-white/56">{stage.detail}</p>
+              <p className="text-sm leading-7 text-[var(--kip-text-secondary)]">{stage.detail}</p>
             </div>
           </div>
 
-          <div className="ember-stage-section relative px-4 py-4 text-center lg:mx-auto lg:w-full lg:max-w-[32rem]">
-            <p className="text-sm leading-6 text-white/72">
+          <div className="kip-surface relative rounded-[1.45rem] px-4 py-4 text-center lg:mx-auto lg:w-full lg:max-w-[34rem]">
+            <p className="text-sm leading-6 text-white/78">
               Your memory is being created. Ember will open the full layout as soon as it is ready.
             </p>
           </div>

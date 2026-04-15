@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
+import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
 
 function normalizeLabelKey(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -27,7 +28,6 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    void request;
     const auth = await requireApiUser();
 
     if (!auth) {
@@ -36,13 +36,207 @@ export async function GET(
 
     const { id } = await params;
     const accessType = await getImageAccessType(auth.user.id, id);
+    const scope = request.nextUrl.searchParams.get('scope');
 
     if (!accessType) {
       return NextResponse.json({ error: 'Image not found' }, { status: 404 });
     }
 
-    if (accessType === 'owner') {
-      await ensureOwnerContributorForImage(id, auth.user.id);
+    if (scope === 'play') {
+      const image = await prisma.image.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          filename: true,
+          mediaType: true,
+          posterFilename: true,
+          durationSeconds: true,
+          originalName: true,
+          title: true,
+          description: true,
+          createdAt: true,
+          shareToNetwork: true,
+          analysis: {
+            select: {
+              summary: true,
+              capturedAt: true,
+            },
+          },
+          wiki: {
+            select: {
+              content: true,
+              version: true,
+              updatedAt: true,
+            },
+          },
+          storyCut: {
+            select: {
+              script: true,
+            },
+          },
+        },
+      });
+
+      if (!image) {
+        return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        id: image.id,
+        filename: image.filename,
+        mediaType: image.mediaType,
+        posterFilename: image.posterFilename,
+        durationSeconds: image.durationSeconds,
+        originalName: image.originalName,
+        title: image.title,
+        description: image.description,
+        createdAt: image.createdAt,
+        shareToNetwork: image.shareToNetwork,
+        accessType,
+        canManage: accessType === 'owner',
+        analysis: image.analysis,
+        wiki: image.wiki,
+        storyCut: image.storyCut,
+      });
+    }
+
+    if (scope === 'contributors') {
+      const loadContributorImage = () =>
+        prisma.image.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            filename: true,
+            mediaType: true,
+            posterFilename: true,
+            durationSeconds: true,
+            originalName: true,
+            title: true,
+            description: true,
+            createdAt: true,
+            shareToNetwork: true,
+            owner: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            contributors: {
+              orderBy: { createdAt: 'asc' },
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    phoneNumber: true,
+                  },
+                },
+                conversation: {
+                  select: {
+                    status: true,
+                    currentStep: true,
+                    messages: {
+                      orderBy: { createdAt: 'asc' },
+                      select: {
+                        id: true,
+                        role: true,
+                        content: true,
+                        source: true,
+                        createdAt: true,
+                      },
+                    },
+                    responses: {
+                      orderBy: { createdAt: 'asc' },
+                      select: {
+                        id: true,
+                        questionType: true,
+                        question: true,
+                        answer: true,
+                        source: true,
+                        createdAt: true,
+                      },
+                    },
+                  },
+                },
+                voiceCalls: {
+                  orderBy: { createdAt: 'desc' },
+                  take: 1,
+                  select: {
+                    id: true,
+                    status: true,
+                    startedAt: true,
+                    endedAt: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    analyzedAt: true,
+                    callSummary: true,
+                    initiatedBy: true,
+                    memorySyncedAt: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+
+      let image = await loadContributorImage();
+
+      if (!image) {
+        return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+      }
+
+      if (accessType === 'owner') {
+        const ownerContributorExists = image.contributors.some(
+          (contributor) => contributor.userId === auth.user.id
+        );
+
+        if (!ownerContributorExists) {
+          await ensureOwnerContributorForImage(id, auth.user.id);
+          image = await loadContributorImage();
+        }
+      }
+
+      if (!image) {
+        return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+      }
+
+      const viewerContributor =
+        image.contributors.find((contributor) => contributor.userId === auth.user.id) || null;
+
+      return NextResponse.json({
+        id: image.id,
+        filename: image.filename,
+        mediaType: image.mediaType,
+        posterFilename: image.posterFilename,
+        durationSeconds: image.durationSeconds,
+        originalName: image.originalName,
+        title: image.title,
+        description: image.description,
+        createdAt: image.createdAt,
+        shareToNetwork: image.shareToNetwork,
+        owner: image.owner,
+        accessType,
+        canManage: accessType === 'owner',
+        currentUserId: auth.user.id,
+        viewerContributorId: viewerContributor?.id || null,
+        viewerCanLeave: accessType === 'contributor' && Boolean(viewerContributor),
+        contributors: image.contributors,
+        ownerConversationTarget:
+          accessType === 'owner'
+            ? image.contributors.find((contributor) => contributor.userId === auth.user.id) || null
+            : null,
+        attachments: [],
+        tags: [],
+        friends: [],
+        tagIdentities: [],
+        analysis: null,
+        voiceCallClips: [],
+        wiki: null,
+        storyCut: null,
+        sportsMode: null,
+      });
     }
 
     const loadImage = () =>
@@ -118,6 +312,14 @@ export async function GET(
               summary: true,
               visualDescription: true,
               metadataSummary: true,
+              mood: true,
+              peopleJson: true,
+              placesJson: true,
+              thingsJson: true,
+              activitiesJson: true,
+              visibleTextJson: true,
+              openQuestionsJson: true,
+              sceneInsightsJson: true,
               capturedAt: true,
               latitude: true,
               longitude: true,
@@ -257,6 +459,19 @@ export async function GET(
     }
 
     if (accessType === 'owner') {
+      const ownerContributorExists = image.contributors.some(
+        (contributor) => contributor.userId === auth.user.id
+      );
+
+      if (!ownerContributorExists) {
+        await ensureOwnerContributorForImage(id, auth.user.id);
+        image = await loadImage();
+      }
+
+      if (!image) {
+        return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+      }
+
       const ownerContributor = image.contributors.find(
         (contributor) => contributor.userId === auth.user.id
       );
@@ -393,6 +608,13 @@ export async function GET(
       analysis: image.analysis
         ? {
             ...image.analysis,
+            peopleObserved: safeParseJson(image.analysis.peopleJson, []),
+            placeSignals: safeParseJson(image.analysis.placesJson, []),
+            notableThings: safeParseJson(image.analysis.thingsJson, []),
+            activities: safeParseJson(image.analysis.activitiesJson, []),
+            visibleText: safeParseJson(image.analysis.visibleTextJson, []),
+            openQuestions: safeParseJson(image.analysis.openQuestionsJson, []),
+            sceneInsights: safeParseJson(image.analysis.sceneInsightsJson, null),
             confirmedLocation: parseConfirmedLocationContext(image.analysis.metadataJson),
           }
         : null,
@@ -460,6 +682,7 @@ export async function DELETE(
     await prisma.image.delete({
       where: { id: ownedImage.id },
     });
+    invalidateAccessibleImagesForUser(auth.user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -579,6 +802,8 @@ export async function PATCH(
         },
       });
     }
+
+    invalidateAccessibleImagesForUser(auth.user.id);
 
     return NextResponse.json(image);
   } catch (error) {

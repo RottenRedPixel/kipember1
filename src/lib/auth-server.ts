@@ -4,6 +4,7 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { claimGuestMemoriesForUser } from '@/lib/guest-embers';
+import { ensureOwnerContributorsForOwnedImages } from '@/lib/owner-contributor';
 
 const SESSION_COOKIE_NAME = 'ember_session';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -116,14 +117,16 @@ export async function claimMemoriesForUser(user: {
   phoneNumber: string | null;
   name: string | null;
 }) {
-  await syncContributorLinksForUser(user);
-
-  await claimGuestMemoriesForUser({
-    userId: user.id,
-    email: user.email,
-    phoneNumber: user.phoneNumber,
-    name: user.name,
-  });
+  await Promise.all([
+    syncContributorLinksForUser(user),
+    claimGuestMemoriesForUser({
+      userId: user.id,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      name: user.name,
+    }),
+    ensureOwnerContributorsForOwnedImages(user.id),
+  ]);
 }
 
 export async function createUserSession(userId: string): Promise<string> {
@@ -187,13 +190,6 @@ export async function getCurrentAuth() {
     return null;
   }
 
-  await claimMemoriesForUser({
-    id: session.user.id,
-    email: session.user.email,
-    phoneNumber: session.user.phoneNumber,
-    name: session.user.name,
-  });
-
   return {
     session,
     user: session.user,
@@ -207,7 +203,7 @@ export async function requireApiUser() {
 export async function requirePageUser() {
   const auth = await getCurrentAuth();
   if (!auth) {
-    redirect('/login');
+    redirect('/signin');
   }
 
   return auth.user;

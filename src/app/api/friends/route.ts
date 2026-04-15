@@ -3,14 +3,11 @@ import { normalizeEmail, requireApiUser } from '@/lib/auth-server';
 import { sendFriendRequestEmail } from '@/lib/auth-email';
 import { createUserAccount } from '@/lib/auth-users';
 import { prisma } from '@/lib/db';
-
-function toCounterpartyUser(friendship: {
-  requesterId: string;
-  requester: { id: string; name: string | null; email: string; phoneNumber: string | null };
-  addressee: { id: string; name: string | null; email: string; phoneNumber: string | null };
-}, currentUserId: string) {
-  return friendship.requesterId === currentUserId ? friendship.addressee : friendship.requester;
-}
+import {
+  getFriendNetworkForUser,
+  invalidateFriendNetworkForUser,
+} from '@/lib/friend-network';
+import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
 
 export async function GET() {
   try {
@@ -20,55 +17,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const friendships = await prisma.friendship.findMany({
-      where: {
-        OR: [{ requesterId: auth.user.id }, { addresseeId: auth.user.id }],
-      },
-      include: {
-        requester: {
-          select: { id: true, name: true, email: true, phoneNumber: true },
-        },
-        addressee: {
-          select: { id: true, name: true, email: true, phoneNumber: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const friends = friendships
-      .filter((friendship) => friendship.status === 'accepted')
-      .map((friendship) => ({
-        id: friendship.id,
-        user: toCounterpartyUser(friendship, auth.user.id),
-      }));
-
-    const incomingRequests = friendships
-      .filter(
-        (friendship) =>
-          friendship.status === 'pending' && friendship.addresseeId === auth.user.id
-      )
-      .map((friendship) => ({
-        id: friendship.id,
-        user: friendship.requester,
-        createdAt: friendship.createdAt,
-      }));
-
-    const outgoingRequests = friendships
-      .filter(
-        (friendship) =>
-          friendship.status === 'pending' && friendship.requesterId === auth.user.id
-      )
-      .map((friendship) => ({
-        id: friendship.id,
-        user: friendship.addressee,
-        createdAt: friendship.createdAt,
-      }));
-
-    return NextResponse.json({
-      friends,
-      incomingRequests,
-      outgoingRequests,
-    });
+    return NextResponse.json(await getFriendNetworkForUser(auth.user.id));
   } catch (error) {
     console.error('Friends fetch error:', error);
     return NextResponse.json(
@@ -138,6 +87,11 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        invalidateFriendNetworkForUser(auth.user.id);
+        invalidateFriendNetworkForUser(targetUser.id);
+        invalidateAccessibleImagesForUser(auth.user.id);
+        invalidateAccessibleImagesForUser(targetUser.id);
+
         return NextResponse.json({ friendship: accepted, autoAccepted: true });
       }
 
@@ -173,6 +127,8 @@ export async function POST(request: NextRequest) {
     } catch (emailError) {
       console.error('Friend request email failed:', emailError);
     }
+
+    invalidateFriendNetworkForUser(auth.user.id);
 
     return NextResponse.json({ friendship });
   } catch (error) {

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth-server';
-import { getAcceptedFriendIds } from '@/lib/ember-access';
-import {
-  ensureOwnerContributorForImage,
-  ensureOwnerContributorsForOwnedImages,
-} from '@/lib/owner-contributor';
+import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { persistUploadedMedia } from '@/lib/media-upload';
+import {
+  getAccessibleImagesForUser,
+  invalidateAccessibleImagesForUser,
+} from '@/lib/image-summaries';
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
     });
 
     await ensureOwnerContributorForImage(image.id, auth.user.id);
+    invalidateAccessibleImagesForUser(auth.user.id);
 
     let wikiGenerated = false;
     let warning: string | null = null;
@@ -96,65 +97,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const friendIds = await getAcceptedFriendIds(auth.user.id);
-    await ensureOwnerContributorsForOwnedImages(auth.user.id);
-
-    const images = await prisma.image.findMany({
-      where: {
-        OR: [
-          { ownerId: auth.user.id },
-          { contributors: { some: { userId: auth.user.id } } },
-          ...(friendIds.length > 0
-            ? [{ shareToNetwork: true, ownerId: { in: friendIds } }]
-            : []),
-        ],
-      },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        owner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        contributors: {
-          where: { userId: auth.user.id },
-          select: { id: true },
-          take: 1,
-        },
-        _count: {
-          select: { contributors: true, tags: true },
-        },
-        wiki: {
-          select: { id: true },
-        },
-      },
-    });
-
-    return NextResponse.json(
-      images.map((image) => ({
-        id: image.id,
-        filename: image.filename,
-        mediaType: image.mediaType,
-        posterFilename: image.posterFilename,
-        durationSeconds: image.durationSeconds,
-        originalName: image.originalName,
-        title: image.title,
-        description: image.description,
-        createdAt: image.createdAt,
-        shareToNetwork: image.shareToNetwork,
-        owner: image.owner,
-        accessType:
-          image.ownerId === auth.user.id
-            ? 'owner'
-            : image.contributors.length > 0
-              ? 'contributor'
-              : 'network',
-        _count: image._count,
-        wiki: image.wiki,
-      }))
-    );
+    return NextResponse.json(await getAccessibleImagesForUser(auth.user.id));
   } catch (error) {
     console.error('Error fetching images:', error);
     return NextResponse.json(

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createReadStream, promises as fs } from 'fs';
 import { extname, basename } from 'path';
 import { prisma } from '@/lib/db';
-import { getUploadPath } from '@/lib/uploads';
+import { getUploadFallbackUrl, getUploadPath } from '@/lib/uploads';
 import { shouldNormalizeAudioForIos, transcodeAudioToM4a } from '@/lib/audio-processing';
 import { shouldNormalizeVideoForBrowser, transcodeVideoToMp4 } from '@/lib/video-processing';
 
@@ -142,8 +142,9 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ filename: string }> }
 ) {
+  const { filename } = await params;
+
   try {
-    const { filename } = await params;
     const { filePath, contentType } = await resolvePlayableUpload(filename);
 
     await fs.access(filePath);
@@ -183,6 +184,10 @@ export async function GET(
       },
     });
   } catch {
+    const fallbackUrl = getUploadFallbackUrl(filename);
+    if (fallbackUrl) {
+      return NextResponse.redirect(fallbackUrl, 307);
+    }
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 }

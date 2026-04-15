@@ -1,125 +1,85 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import GuestImageUploader from '@/components/GuestImageUploader';
-import HeaderMenu from '@/components/HeaderMenu';
 import { getCurrentAuth } from '@/lib/auth-server';
-
-const featureRows = [
-  {
-    title: 'Shared by default',
-    body: 'Invite family and friends to add the details, voices, and reactions you would lose in a camera roll.',
-  },
-  {
-    title: 'Guided by Ember',
-    body: 'The conversation flow pulls out what happened, why it mattered, and what each person remembers differently.',
-  },
-  {
-    title: 'Built to keep growing',
-    body: 'Each upload becomes a living memory page you can revisit, tend, share, and expand later.',
-  },
-];
 
 export default async function LandingPage() {
   const auth = await getCurrentAuth();
 
   if (auth) {
-    redirect('/create');
+    redirect('/home');
   }
 
   return (
-    <main className="ember-page">
-      <div className="ember-app-shell">
-        <header className="ember-topbar sticky top-0 z-40">
-          <div className="flex h-[2.7rem] items-center justify-between px-4 text-[0.78rem] font-semibold tracking-[0.16em] text-white">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="text-white">
-                HOME
-              </Link>
-              <span className="text-white/45">EMBERS</span>
-            </div>
+    <div
+      className="flex min-h-[100dvh] w-full flex-col items-center justify-center px-6"
+      style={{ background: 'var(--bg-screen)' }}
+    >
+      <div className="flex w-full max-w-sm flex-col gap-8 py-16">
+        <div className="flex flex-col gap-3">
+          <h1 className="flex items-start gap-1.5 text-2xl font-bold tracking-tight text-white">
+            ask ember
+            <svg width={22} height={22} viewBox="0 0 72 72" fill="white" className="mt-0.5 flex-shrink-0">
+              <circle cx="36" cy="36" r="7.2" fill="#f97316" />
+              <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+              <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+              <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
+              <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(22.02 94.02) rotate(-90)" />
+              <rect x="47.97" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(29.55 -30.48) rotate(45)" />
+              <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(42.45 .66) rotate(45)" />
+              <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
+              <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
+            </svg>
+          </h1>
+          <p className="text-base leading-relaxed text-white/60">
+            An AI-guided companion that helps you preserve memories through shared, thoughtful conversations with friends and family.
+          </p>
+          <h2 className="text-base font-medium text-white">Voices Matter</h2>
+          <p className="text-base leading-relaxed text-white/60">
+            Ember records real voices of the people who gather to reflect on a moment-capturing what happened, how it felt, and what it meant to everyone.
+          </p>
+        </div>
 
-            <HeaderMenu
-              authMode="signed-out"
-              className="text-white/55 hover:text-white"
-              iconClassName="h-[0.95rem] w-[0.95rem]"
-              panelClassName="right-0 top-[calc(100%+0.35rem)] min-w-[8.5rem] rounded-[1.1rem] border border-white/10 bg-[rgba(8,8,8,0.92)] p-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.34)]"
-            />
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-1.5">
+            <h2 className="text-base font-medium text-white">The Story Circle</h2>
+            <p className="text-base leading-relaxed text-white/60">
+              Invite others to join a group conversation about a time or place-preserving not just the stories, but the voices and reactions around them.
+            </p>
           </div>
-        </header>
-
-        <section className="relative min-h-[calc(100vh-2.7rem)] px-4 pt-6 pb-6 lg:px-6 lg:py-8">
-          <div className="flex flex-col gap-6 lg:min-h-[calc(100vh-4.7rem)] lg:justify-between">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(24rem,32rem)] lg:items-start">
-              <div className="space-y-5 lg:max-w-[39rem] lg:pt-3">
-                <span className="ember-stage-pill">Living memory system</span>
-
-                <div className="space-y-4">
-                  <h1 className="max-w-[19rem] text-[2.9rem] font-bold leading-[0.94] tracking-[-0.06em] text-white sm:max-w-[24rem] lg:max-w-[38rem] lg:text-[4.4rem]">
-                    Start with the image. Keep the whole memory.
-                  </h1>
-                  <p className="max-w-[20rem] text-[0.98rem] leading-7 text-white/64 sm:max-w-[27rem] lg:max-w-[34rem] lg:text-[1.02rem]">
-                    Ember turns a photo or video into a shared memory space with guided prompts,
-                    contributor interviews, and a living page that keeps evolving.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 lg:max-w-[31rem]">
-                  <Link href="/signup" className="ember-button-primary w-full">
-                    Create account
-                  </Link>
-                  <Link href="/login" className="ember-button-secondary w-full">
-                    Log in
-                  </Link>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 text-[0.82rem] text-white/46">
-                  <Link href="/support" className="hover:text-white">
-                    Support
-                  </Link>
-                  <Link href="/privacy" className="hover:text-white">
-                    Privacy
-                  </Link>
-                </div>
-              </div>
-
-              <section className="ember-stage-section overflow-hidden px-4 py-5 lg:sticky lg:top-[4.35rem] lg:px-5 lg:py-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white/44">
-                      Welcome
-                    </p>
-                    <h2 className="mt-2 text-[1.55rem] font-semibold tracking-[-0.05em] text-white">
-                      Upload the first moment
-                    </h2>
-                  </div>
-                  <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-white/62">
-                    Photo or video
-                  </span>
-                </div>
-
-                <p className="mt-3 max-w-[19rem] text-sm leading-6 text-white/58 sm:max-w-[24rem] lg:max-w-[26rem]">
-                  This starts the same full-screen Ember flow used across the rest of the app.
-                </p>
-
-                <div className="mt-5">
-                  <GuestImageUploader />
-                </div>
-              </section>
-            </div>
-
-            <section className="grid gap-3 lg:grid-cols-3">
-              {featureRows.map((row) => (
-                <article key={row.title} className="ember-stage-section px-4 py-4 lg:px-5 lg:py-5">
-                  <h3 className="text-[1.05rem] font-semibold tracking-[-0.03em] text-white">
-                    {row.title}
-                  </h3>
-                  <p className="mt-2 text-sm leading-6 text-white/58">{row.body}</p>
-                </article>
-              ))}
-            </section>
+          <div className="flex flex-col gap-1.5">
+            <h2 className="text-base font-medium text-white">Keep It Alive</h2>
+            <p className="text-base leading-relaxed text-white/60">
+              Ember connects every story into a living archive. Evolving as new memories, voices, and perspectives are added over time.
+            </p>
           </div>
-        </section>
+        </div>
+
+        <div className="flex flex-col items-center gap-4">
+          <Link
+            href="/signup"
+            className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white transition-opacity hover:opacity-80 btn-primary"
+            style={{ background: '#f97316', minHeight: 44 }}
+          >
+            Sign Up
+          </Link>
+          <Link
+            href="/signin"
+            className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-secondary"
+            style={{ border: '1.5px solid rgba(255,255,255,0.35)', minHeight: 44 }}
+          >
+            Sign In
+          </Link>
+          <Link
+            href="/dev"
+            className="px-6 py-3 text-white/30 transition-colors hover:text-white/40"
+          >
+            <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6" />
+              <polyline points="8 6 2 12 8 18" />
+            </svg>
+          </Link>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

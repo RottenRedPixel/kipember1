@@ -1,352 +1,190 @@
 'use client';
 
 import Link from 'next/link';
+import { Home } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 type AuthMode = 'login' | 'signup';
 
-const inputClass =
-  'ember-input min-h-[3.35rem] px-4 text-[0.98rem] placeholder:text-white/34';
-
-const subtleButtonClass =
-  'ember-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-60';
-
 export default function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const isSignup = mode === 'signup';
-
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [phoneSignInNumber, setPhoneSignInNumber] = useState('');
-  const [phoneCode, setPhoneCode] = useState('');
-  const [phoneCodeRequested, setPhoneCodeRequested] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
-  const [isRequestingPhoneCode, setIsRequestingPhoneCode] = useState(false);
-  const [isVerifyingPhoneCode, setIsVerifyingPhoneCode] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
-  const clearFeedback = () => {
-    setError('');
-    setSuccess('');
-  };
+  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+  }
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setIsSubmitting(true);
-    clearFeedback();
+    setError('');
 
     try {
       const response = await fetch(`/api/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim() || null,
-          email,
-          phoneNumber: phoneNumber.trim() || null,
-          password,
+          name: isSignup ? form.name : undefined,
+          email: form.email,
+          password: form.password,
         }),
       });
 
-      const payload = await response.json();
+      const payload = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(payload.error || 'Authentication failed');
+        throw new Error(
+          typeof payload?.error === 'string' ? payload.error : 'Authentication failed'
+        );
       }
 
-      router.push('/feed');
+      router.push(isSignup ? '/home?mode=first-ember' : '/home');
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error ? submitError.message : 'Authentication failed'
+      );
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleSendMagicLink = async () => {
-    setIsSendingMagicLink(true);
-    clearFeedback();
-
-    try {
-      const response = await fetch('/api/auth/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode,
-          email,
-          name: name.trim() || null,
-          phoneNumber: phoneNumber.trim() || null,
-        }),
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || 'Failed to send magic link');
-      }
-
-      setSuccess(payload.message || 'Check your email for your Ember link.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send magic link');
-    } finally {
-      setIsSendingMagicLink(false);
-    }
-  };
-
-  const handleRequestPhoneCode = async () => {
-    setIsRequestingPhoneCode(true);
-    clearFeedback();
-
-    try {
-      const response = await fetch('/api/auth/phone/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: phoneSignInNumber,
-        }),
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || 'Failed to send sign-in code');
-      }
-
-      setPhoneCodeRequested(true);
-      setSuccess(payload.message || 'Check your phone for your sign-in code.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send sign-in code');
-    } finally {
-      setIsRequestingPhoneCode(false);
-    }
-  };
-
-  const handleVerifyPhoneCode = async () => {
-    setIsVerifyingPhoneCode(true);
-    clearFeedback();
-
-    try {
-      const response = await fetch('/api/auth/phone/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: phoneSignInNumber,
-          code: phoneCode,
-        }),
-      });
-
-      const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload.error || 'Failed to verify sign-in code');
-      }
-
-      router.push('/feed');
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to verify sign-in code');
-    } finally {
-      setIsVerifyingPhoneCode(false);
-    }
-  };
+  }
 
   return (
-    <div className="ember-auth-card p-7 sm:p-8">
-      <div className="space-y-4">
-        <span className="ember-stage-pill">
-          {isSignup ? 'Account creation' : 'Account access'}
-        </span>
-
-        <div>
-          <h1 className="text-[2.35rem] font-semibold leading-[0.96] tracking-[-0.06em] text-white">
-            {isSignup ? 'Create your Ember account' : 'Return to your Embers'}
+    <div
+      className="flex flex-col items-center justify-center w-full px-6"
+      style={{ minHeight: '100dvh', background: 'var(--bg-screen)' }}
+    >
+      <div className="absolute top-4 left-4">
+        <Link
+          href="/"
+          className="w-11 h-11 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--bg-surface)' }}
+        >
+          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
+        </Link>
+      </div>
+      <div className="flex flex-col gap-8 w-full max-w-sm py-16">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-white text-2xl font-bold tracking-tight">
+            {isSignup ? 'Create your account' : 'Welcome back'}
           </h1>
-          <p className="mt-3 max-w-[22rem] text-[0.98rem] leading-7 text-white/58">
+          <p className="text-white/60 text-sm">
             {isSignup
-              ? 'Start with email and password, or let Ember send you a secure link so you can finish on the same device later.'
-              : 'Use your password, a magic link, or a texted sign-in code to get back into the memory workspace quickly.'}
+              ? 'Start preserving your memories with Ember.'
+              : 'Sign in to continue to Ember.'}
           </p>
         </div>
-      </div>
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-        {isSignup && (
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-white/78">Name</span>
-            <input
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {isSignup ? (
+            <Field
+              label="Name"
+              name="name"
               type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="How should Ember know you?"
-              className={inputClass}
+              placeholder="Your name"
+              value={form.name}
+              onChange={handleChange}
             />
-          </label>
-        )}
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-white/78">Email</span>
-          <input
+          ) : null}
+          <Field
+            label="Email"
+            name="email"
             type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
-            required
-            className={inputClass}
+            value={form.email}
+            onChange={handleChange}
           />
-        </label>
-
-        {isSignup && (
-          <label className="block">
-            <span className="mb-2 block text-sm font-medium text-white/78">Phone</span>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(event) => setPhoneNumber(event.target.value)}
-              placeholder="Optional, but useful for SMS and recovery"
-              className={inputClass}
-            />
-          </label>
-        )}
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-white/78">Password</span>
-          <input
+          <Field
+            label="Password"
+            name="password"
             type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
-            required
-            minLength={8}
-            className={inputClass}
+            placeholder={isSignup ? 'Create a password' : 'Your password'}
+            value={form.password}
+            onChange={handleChange}
           />
-        </label>
 
-        {!isSignup && (
-          <div className="text-right">
-            <Link
-              href="/forgot-password"
-              className="text-sm font-medium text-[var(--ember-orange-deep)] transition-colors hover:text-white"
-            >
-              Forgot password?
-            </Link>
-          </div>
-        )}
+          {!isSignup ? (
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-white/30 text-xs hover:text-white/60 transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          ) : null}
 
-        {(error || success) && (
-          <div
-            className={`ember-status ${error ? 'ember-status-error' : 'ember-status-success'}`}
-          >
-            {error || success}
-          </div>
-        )}
+          {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
-        <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="submit"
             disabled={isSubmitting}
-            className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+            className={`${
+              isSignup ? 'mt-2' : ''
+            } flex items-center justify-center rounded-full text-white text-sm font-medium transition-opacity hover:opacity-80 w-full btn-primary disabled:cursor-not-allowed disabled:opacity-60`}
+            style={{ background: '#f97316', minHeight: 44 }}
           >
             {isSubmitting
               ? isSignup
-                ? 'Creating account...'
-                : 'Logging in...'
+                ? 'Signing Up...'
+                : 'Signing In...'
               : isSignup
-                ? 'Create account'
-                : 'Log in with password'}
+                ? 'Sign Up'
+                : 'Sign In'}
           </button>
+        </form>
 
-          <button
-            type="button"
-            onClick={() => void handleSendMagicLink()}
-            disabled={isSendingMagicLink}
-            className={subtleButtonClass}
+        <p className="text-center text-white/60 text-sm">
+          {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
+          <Link
+            href={isSignup ? '/signin' : '/signup'}
+            className="text-white font-medium hover:opacity-70 transition-opacity"
           >
-            {isSendingMagicLink
-              ? isSignup
-                ? 'Sending sign-up link...'
-                : 'Sending magic link...'
-              : isSignup
-                ? 'Send sign-up link'
-                : 'Email me a magic link'}
-          </button>
-        </div>
-      </form>
+            {isSignup ? 'Sign In' : 'Sign Up'}
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
 
-      {!isSignup && (
-        <div className="mt-8 rounded-[1.55rem] border border-white/8 bg-white/4 p-5 backdrop-blur-xl">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-white/42">
-            Phone sign-in
-          </p>
-          <h2 className="mt-3 text-[1.8rem] font-semibold leading-[1.02] tracking-[-0.05em] text-white">
-            Get a sign-in code by text
-          </h2>
-          <p className="mt-2 text-sm leading-7 text-white/56">
-            Use this if the memory lives on your phone and you want the fastest way back in.
-          </p>
-
-          <div className="mt-5 space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-white/78">Phone</span>
-              <input
-                type="tel"
-                value={phoneSignInNumber}
-                onChange={(event) => setPhoneSignInNumber(event.target.value)}
-                placeholder="(555) 555-5555"
-                className={inputClass}
-              />
-            </label>
-
-            {phoneCodeRequested && (
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-white/78">
-                  Sign-in code
-                </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={phoneCode}
-                  onChange={(event) => setPhoneCode(event.target.value)}
-                  placeholder="6-digit code"
-                  className={inputClass}
-                />
-              </label>
-            )}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={() => void handleRequestPhoneCode()}
-                disabled={isRequestingPhoneCode}
-                className={subtleButtonClass}
-              >
-                {isRequestingPhoneCode ? 'Sending code...' : 'Text me a sign-in code'}
-              </button>
-
-              {phoneCodeRequested && (
-                <button
-                  type="button"
-                  onClick={() => void handleVerifyPhoneCode()}
-                  disabled={isVerifyingPhoneCode}
-                  className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isVerifyingPhoneCode ? 'Verifying code...' : 'Sign in with code'}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <p className="mt-6 text-sm text-white/52">
-        {isSignup ? 'Already have an account?' : 'Need an account?'}{' '}
-        <Link
-          href={isSignup ? '/login' : '/signup'}
-          className="font-semibold text-[var(--ember-orange-deep)] transition-colors hover:text-white"
-        >
-          {isSignup ? 'Log in' : 'Create one'}
-        </Link>
-      </p>
+function Field({
+  label,
+  name,
+  type,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  name: string;
+  type: string;
+  placeholder: string;
+  value: string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-white/60 text-xs font-medium">{label}</label>
+      <input
+        name={name}
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        autoComplete="off"
+        className="h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
+        style={{
+          background: 'var(--bg-input)',
+          border: '1px solid var(--border-input)',
+        }}
+        onFocus={(event) => (event.currentTarget.style.borderColor = 'rgba(249,115,22,0.6)')}
+        onBlur={(event) => (event.currentTarget.style.borderColor = 'var(--border-input)')}
+      />
     </div>
   );
 }

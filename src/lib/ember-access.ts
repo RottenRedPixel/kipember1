@@ -35,8 +35,35 @@ export async function getAcceptedFriends(userId: string) {
 }
 
 export async function getAcceptedFriendIds(userId: string): Promise<string[]> {
-  const friends = await getAcceptedFriends(userId);
-  return friends.map((friend) => friend.id);
+  const friendships = await prisma.friendship.findMany({
+    where: {
+      status: 'accepted',
+      OR: [{ requesterId: userId }, { addresseeId: userId }],
+    },
+    select: {
+      requesterId: true,
+      addresseeId: true,
+    },
+  });
+
+  return friendships.map((friendship) =>
+    friendship.requesterId === userId ? friendship.addresseeId : friendship.requesterId
+  );
+}
+
+async function isAcceptedFriend(userId: string, otherUserId: string) {
+  const friendship = await prisma.friendship.findFirst({
+    where: {
+      status: 'accepted',
+      OR: [
+        { requesterId: userId, addresseeId: otherUserId },
+        { requesterId: otherUserId, addresseeId: userId },
+      ],
+    },
+    select: { id: true },
+  });
+
+  return Boolean(friendship);
 }
 
 export async function getImageAccessType(
@@ -72,8 +99,7 @@ export async function getImageAccessType(
     return null;
   }
 
-  const friendIds = await getAcceptedFriendIds(userId);
-  return friendIds.includes(image.ownerId) ? 'network' : null;
+  return (await isAcceptedFriend(userId, image.ownerId)) ? 'network' : null;
 }
 
 export async function ensureImageOwnerAccess(userId: string, imageId: string) {

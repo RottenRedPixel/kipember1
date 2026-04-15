@@ -110,28 +110,28 @@ export default function UploadConfirmModal({
         : 'Create this Ember from the selected image?';
 
     return (
-      <div className="fixed inset-0 z-[65] bg-[rgba(0,0,0,0.36)] backdrop-blur-md">
-        <div className="mx-auto flex h-full w-full max-w-[26rem] flex-col bg-[var(--ember-stage-bg)] lg:max-w-[58rem]">
+      <div className="fixed inset-0 z-[65] bg-[rgba(0,0,0,0.42)] backdrop-blur-md">
+        <div className="mx-auto flex h-full w-full max-w-[28rem] flex-col bg-[var(--kip-bg-screen)] lg:max-w-[68rem]">
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <PreviewSurface preview={preview} mediaType={mediaType} fileName={fileName} />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.24),transparent_28%,transparent_60%,rgba(0,0,0,0.72))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.28),transparent_24%,transparent_54%,rgba(0,0,0,0.78))]" />
 
             <button
               type="button"
               onClick={onCancel}
-              className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/8 bg-white/8 text-white backdrop-blur-md"
+              className="kip-home-button absolute right-4 top-4 z-10 text-white"
               aria-label="Close create confirmation"
             >
               <CloseIcon />
             </button>
 
-            <div className="absolute inset-x-4 bottom-4 z-10 rounded-[1.7rem] border border-white/10 bg-[rgba(10,10,10,0.78)] p-5 text-white backdrop-blur-xl lg:inset-x-6 lg:bottom-6 lg:max-w-[34rem]">
-              <span className="ember-stage-pill">Ready to create</span>
-              <p className="mt-4 text-[1.35rem] font-semibold leading-[1.1] tracking-[-0.04em]">
+            <div className="kip-panel absolute inset-x-4 bottom-4 z-10 rounded-[1.7rem] p-5 text-white lg:inset-x-6 lg:bottom-6 lg:max-w-[36rem]">
+              <span className="kip-pill">Ready to create</span>
+              <p className="mt-4 text-[1.35rem] font-semibold leading-[1.1] tracking-[-0.04em] text-white">
                 {promptLabel}
               </p>
               {subtitle ? (
-                <p className="mt-3 text-sm leading-6 text-white/56">{subtitle}</p>
+                <p className="mt-3 text-sm leading-6 text-[var(--kip-text-secondary)]">{subtitle}</p>
               ) : null}
 
               <div className="mt-5 grid grid-cols-2 gap-3">
@@ -139,7 +139,7 @@ export default function UploadConfirmModal({
                   type="button"
                   onClick={onCancel}
                   disabled={isSubmitting}
-                  className="ember-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-60"
+                  className="kip-secondary-button w-full disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {cancelLabel}
                 </button>
@@ -147,7 +147,7 @@ export default function UploadConfirmModal({
                   type="button"
                   onClick={onConfirm}
                   disabled={isSubmitting}
-                  className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+                  className="kip-primary-button w-full disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {isSubmitting ? confirmBusyLabel : confirmLabel}
                 </button>

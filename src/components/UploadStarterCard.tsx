@@ -59,13 +59,16 @@ export default function UploadStarterCard({
   onDrop,
 }: UploadStarterCardProps) {
   return (
-    <div className="px-1 pt-1 pb-1 text-center text-white lg:px-3 lg:pt-2">
-      <h2 className="ember-heading text-[2.15rem] font-semibold leading-[1.02] text-white lg:text-[3rem]">
-        {title}
-      </h2>
-      <p className="mx-auto mt-2 max-w-[18rem] text-[0.96rem] leading-7 text-white/56 sm:max-w-[24rem] lg:max-w-[32rem]">
-        {subtitle}
-      </p>
+    <div className="px-1 py-1 text-white">
+      <div className="space-y-2 text-center lg:text-left">
+        <span className="kip-pill mx-auto w-fit lg:mx-0">Upload</span>
+        <h2 className="text-[2rem] font-semibold leading-[1.02] tracking-[-0.05em] text-white lg:text-[2.85rem]">
+          {title}
+        </h2>
+        <p className="mx-auto max-w-[24rem] text-[0.95rem] leading-7 text-[var(--kip-text-secondary)] lg:mx-0 lg:max-w-[34rem]">
+          {subtitle}
+        </p>
+      </div>
 
       <button
         type="button"
@@ -73,21 +76,20 @@ export default function UploadStarterCard({
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        className={`mt-8 flex w-full flex-col items-center rounded-[1.85rem] border border-dashed px-6 py-[4.1rem] text-center transition ${
+        className={`mt-7 flex min-h-[23rem] w-full flex-col items-center justify-center rounded-[1.75rem] border border-dashed px-6 py-12 text-center transition lg:min-h-[31rem] ${
           isDragging
-            ? 'border-[rgba(255,122,26,0.34)] bg-[rgba(255,122,26,0.08)]'
-            : 'border-white/12 bg-white/4'
+            ? 'border-[rgba(249,115,22,0.46)] bg-[rgba(249,115,22,0.1)]'
+            : 'border-white/14 bg-[rgba(255,255,255,0.03)]'
         }`}
       >
-        <span className="inline-flex h-[4.85rem] w-[4.85rem] items-center justify-center rounded-full border border-white/10 bg-white/6">
+        <span className="inline-flex h-[5rem] w-[5rem] items-center justify-center rounded-full border border-white/10 bg-white/6">
           <UploadArrowIcon />
         </span>
 
-        <p className="mt-6 text-[1.04rem] font-normal tracking-[-0.02em] text-white/84">
-          Drop your file here, or{' '}
-          <span className="font-medium text-[var(--ember-orange-deep)]">browse</span>
+        <p className="mt-6 max-w-[16rem] text-[1.02rem] font-medium tracking-[-0.03em] text-white sm:max-w-none">
+          Drop your file here, or <span className="text-[var(--kip-accent)]">browse</span>
         </p>
-        <p className="mt-4 max-w-[24rem] text-[0.92rem] leading-6 text-white/46 lg:max-w-[28rem]">
+        <p className="mt-3 max-w-[23rem] text-[0.92rem] leading-6 text-[var(--kip-text-secondary)] lg:max-w-[28rem]">
           {supportText}
         </p>
       </button>

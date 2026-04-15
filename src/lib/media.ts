@@ -1,5 +1,40 @@
 export type EmberMediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
 
+const AUDIO_EXTENSIONS = new Set([
+  'mp3',
+  'wav',
+  'm4a',
+  'aac',
+  'ogg',
+  'oga',
+  'mpga',
+  'mpeg',
+]);
+
+function getExtension(value: string | null | undefined) {
+  return value?.split('.').pop()?.toLowerCase() || '';
+}
+
+export function isAudioLikeFilename(value: string | null | undefined) {
+  return AUDIO_EXTENSIONS.has(getExtension(value));
+}
+
+export function resolvePreviewMediaType(
+  mediaType: EmberMediaType,
+  filename: string,
+  posterFilename?: string | null
+): EmberMediaType {
+  if (
+    mediaType === 'AUDIO' ||
+    isAudioLikeFilename(filename) ||
+    isAudioLikeFilename(posterFilename)
+  ) {
+    return 'AUDIO';
+  }
+
+  return mediaType;
+}
+
 export function getUploadUrl(filename: string): string {
   return `/api/uploads/${filename}`;
 }
@@ -18,11 +53,20 @@ function buildVideoPlaceholderDataUrl(): string {
 
 function buildAudioPlaceholderDataUrl(): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320">
-    <rect width="480" height="320" fill="#fff7f2"/>
-    <rect x="24" y="24" width="432" height="272" rx="28" fill="#fff"/>
-    <circle cx="132" cy="160" r="54" fill="#ff6621" opacity="0.14"/>
-    <path d="M136 106v74c0 12-8 20-20 20s-20-8-20-20 8-20 20-20c5 0 10 1 14 4v-42l94-18v58c0 12-8 20-20 20s-20-8-20-20 8-20 20-20c5 0 10 1 14 4v-54l-82 16z" fill="#ff6621"/>
-    <text x="240" y="248" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#6b7280">Audio Ember</text>
+    <defs>
+      <radialGradient id="audioGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(110 72) rotate(46) scale(182 182)">
+        <stop stop-color="rgba(249,115,22,0.34)"/>
+        <stop offset="1" stop-color="rgba(249,115,22,0)"/>
+      </radialGradient>
+      <linearGradient id="audioBg" x1="240" y1="24" x2="240" y2="296" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#171412"/>
+        <stop offset="1" stop-color="#211A17"/>
+      </linearGradient>
+    </defs>
+    <rect width="480" height="320" rx="28" fill="url(#audioBg)"/>
+    <rect width="480" height="320" rx="28" fill="url(#audioGlow)"/>
+    <rect x="140" y="60" width="200" height="200" rx="100" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.12)" stroke-width="3"/>
+    <path d="M240 116v66c0 16-10.8 27-27 27s-27-11-27-27 10.8-27 27-27c7 0 13.4 1.8 18.2 5v-35.2l58.8-13.2v57c0 16-10.8 27-27 27s-27-11-27-27 10.8-27 27-27c7 0 13.4 1.8 18.2 5V107l-40.2 9z" fill="#f97316"/>
   </svg>`;
 
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
@@ -37,11 +81,13 @@ export function getPreviewMediaUrl({
   filename: string;
   posterFilename?: string | null;
 }): string {
-  if (mediaType === 'VIDEO') {
+  const resolvedMediaType = resolvePreviewMediaType(mediaType, filename, posterFilename);
+
+  if (resolvedMediaType === 'VIDEO') {
     return posterFilename ? getUploadUrl(posterFilename) : buildVideoPlaceholderDataUrl();
   }
 
-  if (mediaType === 'AUDIO') {
+  if (resolvedMediaType === 'AUDIO') {
     return buildAudioPlaceholderDataUrl();
   }
 
