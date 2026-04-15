@@ -5,6 +5,7 @@ import { chat } from '@/lib/claude';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getKidsImageModel, getOpenAIClient } from '@/lib/openai';
+import { getUploadsDir } from '@/lib/uploads';
 
 const PANEL_COUNT = 5;
 const PANEL_SIZE = '1536x1024';
@@ -193,7 +194,7 @@ async function renderPanelImage(prompt: string): Promise<Buffer> {
 }
 
 async function savePanelImage(buffer: Buffer): Promise<string> {
-  const uploadsDir = process.env.UPLOADS_DIR || join(process.cwd(), 'public', 'uploads');
+  const uploadsDir = getUploadsDir();
   await mkdir(uploadsDir, { recursive: true });
 
   const filename = `${randomUUID()}.${PANEL_OUTPUT_FORMAT}`;
