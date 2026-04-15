@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ChevronLeft, MessageSquare, Phone } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
 import KipemberWikiContent, {
@@ -314,6 +314,7 @@ function PrefRow({ label, value }: { label: string; value: string }) {
 }
 
 export default function TendActionScreen({ action }: { action: string }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const title = TEND_ACTIONS[action];
   const imageId = searchParams.get('id');
@@ -328,6 +329,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [status, setStatus] = useState('');
   const [titleValue, setTitleValue] = useState('');
   const [networkValue, setNetworkValue] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
 
   useEffect(() => {
@@ -511,6 +513,39 @@ export default function TendActionScreen({ action }: { action: string }) {
     });
     setStatus(response.ok ? 'Settings saved.' : 'Failed to save settings.');
     await refreshDetail();
+  }
+
+  async function deleteEmber() {
+    if (!resolvedImageId || !detail?.canManage || deletingImage) {
+      return;
+    }
+
+    const confirmed = window.confirm('Delete this Ember? This cannot be undone.');
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingImage(true);
+    setStatus('');
+
+    try {
+      const response = await fetch(`/api/images/${resolvedImageId}`, {
+        method: 'DELETE',
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setStatus(payload?.error || 'Failed to delete ember.');
+        return;
+      }
+
+      router.push('/home');
+      router.refresh();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Failed to delete ember.');
+    } finally {
+      setDeletingImage(false);
+    }
   }
 
   async function addContributor() {
@@ -1001,6 +1036,34 @@ export default function TendActionScreen({ action }: { action: string }) {
               >
                 Save Settings
               </button>
+              {detail?.canManage ? (
+                <div
+                  className="rounded-xl px-4 py-4"
+                  style={{
+                    background: 'rgba(120, 26, 26, 0.18)',
+                    border: '1px solid rgba(248, 113, 113, 0.2)',
+                  }}
+                >
+                  <p className="text-[rgba(255,220,220,0.92)] text-sm font-medium">
+                    Delete Ember
+                  </p>
+                  <p className="mt-2 text-[rgba(255,220,220,0.62)] text-xs leading-6">
+                    Permanently remove this Ember and its connected records.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={deleteEmber}
+                    disabled={deletingImage}
+                    className="mt-4 w-full rounded-full text-white text-sm font-medium disabled:opacity-40"
+                    style={{
+                      background: 'rgba(239,68,68,0.88)',
+                      minHeight: 44,
+                    }}
+                  >
+                    {deletingImage ? 'Deleting...' : 'Delete Ember'}
+                  </button>
+                </div>
+              ) : null}
             </>
           ) : null}
 
