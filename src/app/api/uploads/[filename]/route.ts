@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createReadStream, promises as fs } from 'fs';
 import { extname, basename, dirname } from 'path';
 import { prisma } from '@/lib/db';
+import { getUploadFromObjectStorage, uploadBufferToObjectStorage } from '@/lib/object-storage';
 import { getUploadFallbackUrl, getUploadPath } from '@/lib/uploads';
 import { shouldNormalizeAudioForIos, transcodeAudioToM4a } from '@/lib/audio-processing';
 import { shouldNormalizeVideoForBrowser, transcodeVideoToMp4 } from '@/lib/video-processing';
@@ -167,6 +168,37 @@ async function cacheFallbackUpload(filename: string, buffer: Buffer) {
   const filePath = getUploadPath(filename);
   await fs.mkdir(dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, buffer);
+  await uploadBufferToObjectStorage({ filename, body: buffer }).catch(() => undefined);
+}
+
+function buildStoredObjectHeaders(storedObject: {
+  contentType: string | null;
+  contentLength: string | null;
+  contentRange: string | null;
+  etag: string | null;
+  lastModified: string | null;
+}) {
+  const headers = new Headers();
+
+  if (storedObject.contentType) {
+    headers.set('Content-Type', storedObject.contentType);
+  }
+  if (storedObject.contentLength) {
+    headers.set('Content-Length', storedObject.contentLength);
+  }
+  if (storedObject.contentRange) {
+    headers.set('Content-Range', storedObject.contentRange);
+    headers.set('Accept-Ranges', 'bytes');
+  }
+  if (storedObject.etag) {
+    headers.set('ETag', storedObject.etag);
+  }
+  if (storedObject.lastModified) {
+    headers.set('Last-Modified', storedObject.lastModified);
+  }
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+
+  return headers;
 }
 
 export async function GET(
@@ -215,6 +247,18 @@ export async function GET(
       },
     });
   } catch {
+    const storedObject = await getUploadFromObjectStorage({
+      filename,
+      range: request.headers.get('range'),
+    });
+
+    if (storedObject) {
+      return new NextResponse(storedObject.body, {
+        status: storedObject.contentRange ? 206 : 200,
+        headers: buildStoredObjectHeaders(storedObject),
+      });
+    }
+
     const fallbackUrl = getUploadFallbackUrl(filename);
     if (fallbackUrl) {
       const range = request.headers.get('range');

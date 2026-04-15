@@ -19,6 +19,14 @@ services:
         value: /var/data/uploads
       - key: UPLOADS_FALLBACK_BASE_URL
         value: https://memory-wiki.onrender.com
+      - key: R2_BUCKET
+        value: ember-media-prod
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
       - key: NEXT_PUBLIC_BASE_URL

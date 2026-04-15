@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { mkdir, unlink, writeFile } from 'fs/promises';
 import { getUploadPath, getUploadsDir, inferMediaType } from '@/lib/uploads';
+import { uploadLocalFileToObjectStorage } from '@/lib/object-storage';
 import { shouldNormalizeAudioForIos, transcodeAudioToM4a } from '@/lib/audio-processing';
 import { generatePosterFrame, probeVideo } from '@/lib/video-processing';
 
@@ -102,6 +103,18 @@ export async function persistUploadedMedia(file: File): Promise<{
       mediaType === 'AUDIO'
         ? describeAudioProcessingError(error)
         : describeVideoProcessingError(error);
+  }
+
+  await uploadLocalFileToObjectStorage({
+    filename,
+    filePath,
+  });
+
+  if (posterFilename) {
+    await uploadLocalFileToObjectStorage({
+      filename: posterFilename,
+      filePath: getUploadPath(posterFilename),
+    });
   }
 
   return {

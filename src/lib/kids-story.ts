@@ -5,6 +5,7 @@ import { chat } from '@/lib/claude';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getKidsImageModel, getOpenAIClient } from '@/lib/openai';
+import { uploadLocalFileToObjectStorage } from '@/lib/object-storage';
 import { getUploadsDir } from '@/lib/uploads';
 
 const PANEL_COUNT = 5;
@@ -198,7 +199,13 @@ async function savePanelImage(buffer: Buffer): Promise<string> {
   await mkdir(uploadsDir, { recursive: true });
 
   const filename = `${randomUUID()}.${PANEL_OUTPUT_FORMAT}`;
-  await writeFile(join(uploadsDir, filename), buffer);
+  const filePath = join(uploadsDir, filename);
+  await writeFile(filePath, buffer);
+  await uploadLocalFileToObjectStorage({
+    filename,
+    filePath,
+    contentType: `image/${PANEL_OUTPUT_FORMAT}`,
+  });
   return filename;
 }
 
