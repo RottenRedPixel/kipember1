@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createReadStream, promises as fs } from 'fs';
-import { extname, basename } from 'path';
+import { extname, basename, dirname } from 'path';
 import { prisma } from '@/lib/db';
 import { getUploadFallbackUrl, getUploadPath } from '@/lib/uploads';
 import { shouldNormalizeAudioForIos, transcodeAudioToM4a } from '@/lib/audio-processing';
@@ -138,6 +138,37 @@ async function resolvePlayableUpload(filename: string) {
   }
 }
 
+function buildProxyHeaders(response: Response) {
+  const headers = new Headers();
+
+  for (const key of [
+    'content-type',
+    'content-length',
+    'cache-control',
+    'accept-ranges',
+    'content-range',
+    'etag',
+    'last-modified',
+  ]) {
+    const value = response.headers.get(key);
+    if (value) {
+      headers.set(key, value);
+    }
+  }
+
+  if (!headers.has('cache-control')) {
+    headers.set('cache-control', 'public, max-age=31536000, immutable');
+  }
+
+  return headers;
+}
+
+async function cacheFallbackUpload(filename: string, buffer: Buffer) {
+  const filePath = getUploadPath(filename);
+  await fs.mkdir(dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, buffer);
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ filename: string }> }
@@ -186,7 +217,26 @@ export async function GET(
   } catch {
     const fallbackUrl = getUploadFallbackUrl(filename);
     if (fallbackUrl) {
-      return NextResponse.redirect(fallbackUrl, 307);
+      const range = request.headers.get('range');
+      const response = await fetch(fallbackUrl, {
+        headers: range ? { Range: range } : undefined,
+      }).catch(() => null);
+
+      if (response?.ok) {
+        if (!range) {
+          const buffer = Buffer.from(await response.arrayBuffer());
+          await cacheFallbackUpload(filename, buffer).catch(() => undefined);
+          return new NextResponse(buffer, {
+            status: response.status,
+            headers: buildProxyHeaders(response),
+          });
+        }
+
+        return new NextResponse(response.body, {
+          status: response.status,
+          headers: buildProxyHeaders(response),
+        });
+      }
     }
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
