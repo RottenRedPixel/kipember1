@@ -1,6 +1,7 @@
 import { join } from 'path';
 
 type MediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
+const DEFAULT_UPLOADS_FALLBACK_BASE_URL = 'https://memory-wiki.onrender.com';
 
 export function getUploadsDir(): string {
   return process.env.UPLOADS_DIR || join(process.cwd(), 'public', 'uploads');
@@ -15,7 +16,8 @@ export function getUploadUrl(filename: string): string {
 }
 
 export function getUploadFallbackBaseUrl(): string | null {
-  const value = process.env.UPLOADS_FALLBACK_BASE_URL?.trim();
+  const value =
+    process.env.UPLOADS_FALLBACK_BASE_URL?.trim() || DEFAULT_UPLOADS_FALLBACK_BASE_URL;
   return value ? value.replace(/\/+$/, '') : null;
 }
 
