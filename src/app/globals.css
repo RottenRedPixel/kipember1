@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #ffffff;
+}
+
+:root {
+  --bg-body: #0a0a0a;
+  --bg-screen: #171515;
+  --bg-modal: rgba(0, 0, 0, 0.75);
+  --bg-surface: rgba(255, 255, 255, 0.07);
+  --bg-input: rgba(255, 255, 255, 0.06);
+  --bg-rail-btn: rgba(0, 0, 0, 0.5);
+  --bg-chat-user: #2e3a4e;
+  --bg-ember-bubble: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-input: rgba(255, 255, 255, 0.1);
+  --border-btn: rgba(255, 255, 255, 0.35);
+  --border-ember: rgba(255, 255, 255, 0.1);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.6);
+  --text-muted: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="light"] {
+  --color-white: #1c1917;
+  --bg-body: #f0ebe4;
+  --bg-screen: #faf7f3;
+  --bg-modal: rgba(250, 247, 243, 0.92);
+  --bg-surface: rgba(0, 0, 0, 0.05);
+  --bg-input: rgba(0, 0, 0, 0.05);
+  --bg-rail-btn: rgba(0, 0, 0, 0.1);
+  --bg-chat-user: #3a5a7a;
+  --bg-ember-bubble: rgba(0, 0, 0, 0.05);
+  --border-subtle: rgba(28, 25, 23, 0.08);
+  --border-default: rgba(28, 25, 23, 0.12);
+  --border-input: rgba(28, 25, 23, 0.12);
+  --border-btn: rgba(28, 25, 23, 0.35);
+  --border-ember: rgba(28, 25, 23, 0.1);
+  --text-primary: #1c1917;
+  --text-secondary: rgba(28, 25, 23, 0.6);
+  --text-muted: rgba(28, 25, 23, 0.3);
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  background: var(--bg-body);
+  color: var(--text-primary);
+  font-family: var(--font-ubuntu), sans-serif;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .can-hover:hover {
+    opacity: 1;
+    transition: opacity 0.2s;
+  }
+
+  .can-hover-dim:hover {
+    opacity: 0.82;
+    transition: opacity 0.2s;
+  }
+
+  .btn-primary {
+    transition: filter 0.18s ease;
+  }
+
+  .btn-primary:hover {
+    filter: brightness(0.88);
+  }
+
+  .btn-secondary {
+    transition: box-shadow 0.18s ease;
+  }
+
+  .btn-secondary:hover {
+    box-shadow: inset 0 0 0 100px rgba(255, 255, 255, 0.08);
+  }
+
+  [data-theme="light"] .btn-primary {
+    color: white;
+  }
+}
+
+.svg-item {
+  color: var(--text-secondary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .svg-item:hover {
+    color: var(--text-primary);
+    transition: color 0.2s;
+  }
+}
+
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+button,
+[role="button"] {
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}

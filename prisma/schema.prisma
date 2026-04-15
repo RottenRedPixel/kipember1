@@ -1,0 +1,463 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Image {
+  id           String        @id @default(cuid())
+  filename     String
+  mediaType    MediaType     @default(IMAGE)
+  posterFilename String?
+  durationSeconds Float?
+  originalName String
+  title        String?
+  description  String?
+  smartTitleSuggestionsJson String?
+  smartTitleSuggestionsUpdatedAt DateTime?
+  visibility   Visibility    @default(PRIVATE)
+  ownerId      String
+  shareToNetwork Boolean     @default(false)
+  createdAt    DateTime      @default(now())
+  owner        User          @relation("OwnedImages", fields: [ownerId], references: [id], onDelete: Cascade)
+  analysis     ImageAnalysis?
+  contributors Contributor[]
+  wiki         Wiki?
+  kidsStory    KidsStory?
+  sportsMode   SportsMode?
+  storyCut     StoryCut?
+  chatSessions ChatSession[]
+  tags         ImageTag[]
+  attachments  ImageAttachment[]
+  voiceCallClips VoiceCallClip[]
+
+  @@index([ownerId, createdAt])
+  @@index([shareToNetwork, createdAt])
+}
+
+model ImageAttachment {
+  id              String    @id @default(cuid())
+  imageId         String
+  filename        String
+  mediaType       MediaType @default(IMAGE)
+  posterFilename  String?
+  durationSeconds Float?
+  originalName    String
+  description     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  image           Image     @relation(fields: [imageId], references: [id], onDelete: Cascade)
+
+  @@index([imageId, createdAt])
+}
+
+model ImageAnalysis {
+  id                String   @id @default(cuid())
+  imageId           String   @unique
+  image             Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  status            String   @default("pending") // pending, processing, ready, partial, error
+  errorMessage      String?
+  summary           String?
+  visualDescription String?
+  metadataSummary   String?
+  mood              String?
+  peopleJson        String?
+  placesJson        String?
+  thingsJson        String?
+  activitiesJson    String?
+  visibleTextJson   String?
+  keywordsJson      String?
+  openQuestionsJson String?
+  sceneInsightsJson String?
+  metadataJson      String?
+  capturedAt        DateTime?
+  latitude          Float?
+  longitude         Float?
+  cameraMake        String?
+  cameraModel       String?
+  lensModel         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Contributor {
+  id           String        @id @default(cuid())
+  phoneNumber  String?
+  email        String?
+  name         String?
+  token        String        @unique @default(cuid()) // Secure token for web access
+  inviteSent   Boolean       @default(false)
+  imageId      String
+  userId       String?
+  image        Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  conversation Conversation?
+  voiceCalls   VoiceCall[]
+  voiceCallClips VoiceCallClip[]
+  tags         ImageTag[]
+  createdAt    DateTime      @default(now())
+
+  @@index([imageId, createdAt])
+  @@index([userId, createdAt])
+  @@unique([imageId, userId])
+}
+
+model Conversation {
+  id            String      @id @default(cuid())
+  contributorId String      @unique
+  contributor   Contributor @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  status        String      @default("pending") // pending, active, completed
+  currentStep   String      @default("greeting") // greeting, context, who, what, when, where, why, how, followup, closing
+  messages      Message[]
+  responses     Response[]
+  voiceCalls    VoiceCall[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String       // "assistant" or "user"
+  content        String
+  source         String       @default("web") // web, sms, voice
+  createdAt      DateTime     @default(now())
+}
+
+model Response {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  questionType   String       // context, who, what, when, where, why, how, followup
+  question       String
+  answer         String
+  source         String       @default("web") // web, sms, voice
+  createdAt      DateTime     @default(now())
+}
+
+model Wiki {
+  id        String   @id @default(cuid())
+  imageId   String   @unique
+  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  content   String   // Markdown content
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model KidsStory {
+  id          String          @id @default(cuid())
+  imageId      String          @unique
+  image        Image           @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  title        String
+  subtitle     String?
+  summary      String?
+  visualStyle  String?
+  status       String          @default("ready") // generating, ready, error
+  errorMessage String?
+  version      Int             @default(1)
+  panels       KidsStoryPanel[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model KidsStoryPanel {
+  id          String    @id @default(cuid())
+  storyId      String
+  story        KidsStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  position     Int
+  title        String
+  caption      String
+  imagePrompt  String
+  filename     String
+  createdAt    DateTime  @default(now())
+
+  @@unique([storyId, position])
+  @@index([storyId, position])
+}
+
+model SportsMode {
+  id            String   @id @default(cuid())
+  imageId        String   @unique
+  image          Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  sportType      String?
+  subjectName    String?
+  teamName       String?
+  opponentName   String?
+  eventName      String?
+  season         String?
+  outcome        String?
+  finalScore     String?
+  rawDetails     String
+  summary        String?
+  statLinesJson  String?
+  highlightsJson String?
+  parsedAt       DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model StoryCut {
+  id                      String   @id @default(cuid())
+  imageId                 String   @unique
+  image                   Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  title                   String
+  style                   String
+  focus                   String?
+  durationSeconds         Int
+  wordCount               Int
+  script                  String
+  blocksJson              String
+  metadataJson            String?
+  selectedMediaJson       String?
+  selectedContributorJson String?
+  includeOwner            Boolean  @default(true)
+  includeEmberVoice       Boolean  @default(true)
+  includeNarratorVoice    Boolean  @default(true)
+  emberVoiceId            String?
+  emberVoiceLabel         String?
+  narratorVoiceId         String?
+  narratorVoiceLabel      String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
+  SHARED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  AUDIO
+}
+
+model AccessPass {
+  id        String          @id @default(cuid())
+  label     String?
+  codeHash  String
+  salt      String
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  revokedAt DateTime?
+  sessions  AccessSession[]
+}
+
+model AccessSession {
+  id        String     @id @default(cuid())
+  token     String     @unique
+  passId    String
+  pass      AccessPass @relation(fields: [passId], references: [id], onDelete: Cascade)
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  revokedAt DateTime?
+}
+
+model User {
+  id                   String       @id @default(cuid())
+  name                 String?
+  email                String       @unique
+  phoneNumber          String?
+  passwordHash         String
+  sessions             UserSession[]
+  authChallenges       AuthChallenge[]
+  ownedImages          Image[]      @relation("OwnedImages")
+  contributorRecords   Contributor[]
+  sentFriendships      Friendship[] @relation("FriendshipRequester")
+  receivedFriendships  Friendship[] @relation("FriendshipAddressee")
+  createdTags          ImageTag[]   @relation("CreatedImageTags")
+  taggedImages         ImageTag[]   @relation("TaggedUserImages")
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId, createdAt])
+}
+
+model AuthChallenge {
+  id           String   @id @default(cuid())
+  type         String
+  tokenHash    String?  @unique
+  codeHash     String?
+  email        String?
+  phoneNumber  String?
+  name         String?
+  metadataJson String?
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([type, email, createdAt])
+  @@index([type, phoneNumber, createdAt])
+  @@index([userId, createdAt])
+}
+
+model ShortLink {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  targetUrl    String   @unique
+  visitCount   Int      @default(0)
+  lastVisitedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Friendship {
+  id          String   @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      String   @default("pending") // pending, accepted, declined
+  createdAt   DateTime @default(now())
+  respondedAt DateTime?
+  requester   User     @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee   User     @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
+}
+
+model ImageTag {
+  id              String       @id @default(cuid())
+  imageId         String
+  userId          String?
+  contributorId   String?
+  createdByUserId String
+  label           String
+  email           String?
+  phoneNumber     String?
+  leftPct         Float?
+  topPct          Float?
+  widthPct        Float?
+  heightPct       Float?
+  createdAt       DateTime     @default(now())
+  image           Image        @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  user            User?        @relation("TaggedUserImages", fields: [userId], references: [id], onDelete: SetNull)
+  contributor     Contributor? @relation(fields: [contributorId], references: [id], onDelete: SetNull)
+  createdByUser   User         @relation("CreatedImageTags", fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([imageId, createdAt])
+  @@index([userId, createdAt])
+  @@index([contributorId, createdAt])
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  browserId String
+  imageId   String
+  image     Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+  personaName String?
+  personaTraits String?
+  personaVoice String?
+  personaBackstory String?
+
+  @@unique([browserId, imageId])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String      // "user" or "assistant"
+  content   String
+  createdAt DateTime    @default(now())
+}
+
+model VoiceCall {
+  id                         String           @id @default(cuid())
+  contributorId              String
+  contributor                Contributor      @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  conversationId             String?
+  conversation               Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  retellCallId               String           @unique
+  initiatedBy                String           @default("system") // owner, contributor, system
+  callType                   String           @default("phone_call")
+  direction                  String?
+  fromNumber                 String?
+  toNumber                   String?
+  agentId                    String?
+  agentVersion               Int?
+  status                     String           @default("registered")
+  lastEventType              String?
+  disconnectionReason        String?
+  recordingUrl               String?
+  publicLogUrl               String?
+  transcript                 String?
+  transcriptObjectJson       String?
+  transcriptWithToolCallsJson String?
+  metadataJson               String?
+  dynamicVariablesJson       String?
+  callAnalysisJson           String?
+  callSummary                String?
+  callSuccessful             Boolean?
+  durationMs                 Int?
+  startedAt                  DateTime?
+  endedAt                    DateTime?
+  analyzedAt                 DateTime?
+  memorySyncedAt             DateTime?
+  createdAt                  DateTime         @default(now())
+  updatedAt                  DateTime         @updatedAt
+  clips                      VoiceCallClip[]
+  events                     VoiceCallEvent[]
+
+  @@index([contributorId, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+model VoiceCallClip {
+  id            String      @id @default(cuid())
+  imageId       String
+  contributorId String
+  voiceCallId   String
+  sortOrder     Int         @default(0)
+  title         String
+  quote         String
+  significance  String?
+  speaker       String?
+  audioUrl      String?
+  startMs       Int?
+  endMs         Int?
+  canUseForTitle Boolean    @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  image         Image       @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  contributor   Contributor @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  voiceCall     VoiceCall   @relation(fields: [voiceCallId], references: [id], onDelete: Cascade)
+
+  @@index([imageId, createdAt])
+  @@index([contributorId, createdAt])
+  @@index([voiceCallId, createdAt])
+}
+
+model VoiceCallEvent {
+  id          String    @id @default(cuid())
+  voiceCallId String
+  voiceCall   VoiceCall @relation(fields: [voiceCallId], references: [id], onDelete: Cascade)
+  eventType   String
+  payloadJson String
+  createdAt   DateTime  @default(now())
+
+  @@index([voiceCallId, createdAt])
+}

@@ -1,0 +1,1037 @@
+'use client';
+
+import Link from 'next/link';
+import { ChevronLeft, MessageSquare, Phone } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
+import KipemberWikiContent, {
+  type KipemberAttachment,
+  type KipemberContributor,
+  type KipemberWikiDetail,
+} from '@/components/kipember/KipemberWikiContent';
+import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor';
+
+const fieldStyle = {
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border-input)',
+};
+
+function formatDate(value: string | null | undefined) {
+  if (!value) {
+    return 'Unknown';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown';
+  }
+
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function WikiCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl px-4 py-3.5 flex flex-col gap-1" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+      {children}
+    </div>
+  );
+}
+
+type ConversationMessage = {
+  id: string;
+  role?: string | null;
+  content: string;
+  createdAt: string;
+  source?: string | null;
+};
+
+type ConversationResponse = {
+  id: string;
+  questionType?: string | null;
+  question?: string | null;
+  answer: string;
+  source?: string | null;
+  createdAt: string;
+};
+
+type ContributorVoiceCall = {
+  id: string;
+  status?: string | null;
+  startedAt: string | null;
+  endedAt?: string | null;
+  createdAt: string;
+  callSummary: string | null;
+  initiatedBy?: string | null;
+};
+
+type ImageTag = {
+  id: string;
+  label: string;
+};
+
+type TendContributor = KipemberContributor & {
+  token: string;
+  inviteSent: boolean;
+  voiceCalls: ContributorVoiceCall[];
+  conversation: {
+    status?: string | null;
+    currentStep?: string | null;
+    messages: ConversationMessage[];
+    responses?: ConversationResponse[];
+  } | null;
+};
+
+type TendDetail = KipemberWikiDetail & {
+  canManage: boolean;
+  shareToNetwork: boolean;
+  storyCut?: {
+    title: string;
+    style: string;
+    focus: string | null;
+    durationSeconds: number;
+    wordCount: number;
+    script: string;
+    metadata: {
+      focus: string;
+    } | null;
+    selectedMediaIds: string[];
+    selectedContributorIds: string[];
+    includeOwner: boolean;
+    includeEmberVoice: boolean;
+    updatedAt: string;
+  } | null;
+  contributors: TendContributor[];
+  attachments: KipemberAttachment[];
+  tags: ImageTag[];
+};
+
+type ContributorDetail = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  inviteSent: boolean;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+    phoneNumber: string | null;
+  } | null;
+  conversation: {
+    status: string | null;
+    currentStep: string | null;
+    responses: ConversationResponse[];
+  } | null;
+  voiceCalls: ContributorVoiceCall[];
+};
+
+type ContributorRecord = KipemberContributor | TendContributor | ContributorDetail;
+
+type ContributorContribution = {
+  id: string;
+  label: string;
+  timestamp: string;
+  preview: string;
+  sortAt: number;
+};
+
+function initials(value: string | null | undefined) {
+  const label = value?.trim() || 'Contributor';
+  return label
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function contributorDisplayName(contributor: ContributorRecord | null | undefined) {
+  if (!contributor) {
+    return 'Contributor';
+  }
+
+  return (
+    contributor.name ||
+    contributor.user?.name ||
+    contributor.email ||
+    contributor.user?.email ||
+    contributor.phoneNumber ||
+    contributor.user?.phoneNumber ||
+    'Contributor'
+  );
+}
+
+function contributorEmail(contributor: ContributorRecord | null | undefined) {
+  return contributor?.email || contributor?.user?.email || null;
+}
+
+function contributorPhone(contributor: ContributorRecord | null | undefined) {
+  return contributor?.phoneNumber || contributor?.user?.phoneNumber || null;
+}
+
+function formatPhoneNumber(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const digits = value.replace(/\D/g, '');
+  const normalized = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+
+  if (normalized.length === 10) {
+    return `${normalized.slice(0, 3)}.${normalized.slice(3, 6)}.${normalized.slice(6, 10)}`;
+  }
+
+  return value;
+}
+
+function formatContributionDate(value: string | null | undefined) {
+  if (!value) {
+    return 'Unknown';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown';
+  }
+
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function getContributorPreference(
+  phoneNumber: string | null,
+  email: string | null
+) {
+  if (phoneNumber) {
+    return 'SMS';
+  }
+
+  if (email) {
+    return 'Email';
+  }
+
+  return 'Private Link';
+}
+
+function buildContributorContributions(
+  contributor: ContributorDetail | null,
+  fallbackContributor: TendContributor | null
+) {
+  if (!contributor && !fallbackContributor) {
+    return [];
+  }
+
+  const voiceCallEntries: ContributorContribution[] = (contributor?.voiceCalls || []).map((voiceCall) => {
+    const preview = voiceCall.callSummary?.trim() || 'Transcript preview is not available yet.';
+    const atValue = voiceCall.startedAt || voiceCall.createdAt;
+
+    return {
+      id: `voice-call-${voiceCall.id}`,
+      label: 'Phone Call',
+      timestamp: formatContributionDate(atValue),
+      preview,
+      sortAt: new Date(atValue).getTime() || 0,
+    };
+  });
+
+  const responseEntries: ContributorContribution[] = (contributor?.conversation?.responses || []).map(
+    (response) => {
+      const question = response.question?.trim();
+      const answer = response.answer?.trim();
+      const preview = question ? `${question} ${answer}`.trim() : answer || 'Saved response';
+
+      return {
+        id: `response-${response.id}`,
+        label: 'Saved Response',
+        timestamp: formatContributionDate(response.createdAt),
+        preview,
+        sortAt: new Date(response.createdAt).getTime() || 0,
+      };
+    }
+  );
+
+  const hasDetailContent = voiceCallEntries.length > 0 || responseEntries.length > 0;
+
+  const fallbackEntries: ContributorContribution[] = hasDetailContent
+    ? []
+    : [
+        ...((fallbackContributor?.conversation?.responses || []).map((response) => {
+          const question = response.question?.trim();
+          const answer = response.answer?.trim();
+          const preview = question ? `${question} ${answer}`.trim() : answer || 'Saved response';
+
+          return {
+            id: `fallback-response-${response.id}`,
+            label: 'Saved Response',
+            timestamp: formatContributionDate(response.createdAt),
+            preview,
+            sortAt: new Date(response.createdAt).getTime() || 0,
+          };
+        }) as ContributorContribution[]),
+        ...((fallbackContributor?.conversation?.messages || []).map((message) => ({
+          id: `message-${message.id}`,
+          label: 'Story Message',
+          timestamp: formatContributionDate(message.createdAt),
+          preview: message.content.trim() || 'Saved story message',
+          sortAt: new Date(message.createdAt).getTime() || 0,
+        })) as ContributorContribution[]),
+      ];
+
+  return [...voiceCallEntries, ...responseEntries, ...fallbackEntries].sort(
+    (left, right) => right.sortAt - left.sortAt
+  );
+}
+
+function PrefRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      className="w-full flex items-center justify-between px-4 rounded-xl"
+      style={{
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        minHeight: 44,
+        opacity: 0.9,
+      }}
+    >
+      <span className="text-white text-sm font-medium">
+        {label} <span className="text-white/60 font-normal">({value})</span>
+      </span>
+      <ChevronLeft size={18} color="var(--text-muted)" className="rotate-[-90deg]" />
+    </div>
+  );
+}
+
+export default function TendActionScreen({ action }: { action: string }) {
+  const searchParams = useSearchParams();
+  const title = TEND_ACTIONS[action];
+  const imageId = searchParams.get('id');
+  const view = searchParams.get('view');
+  const [detail, setDetail] = useState<TendDetail | null>(null);
+  const [selectedContributorDetail, setSelectedContributorDetail] = useState<ContributorDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+  const [sendingContributorId, setSendingContributorId] = useState('');
+  const [callingContributorId, setCallingContributorId] = useState('');
+  const [images, setImages] = useState<Array<{ id: string }>>([]);
+  const [status, setStatus] = useState('');
+  const [titleValue, setTitleValue] = useState('');
+  const [networkValue, setNetworkValue] = useState(false);
+  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+
+  useEffect(() => {
+    if (imageId) {
+      return;
+    }
+
+    void fetch('/api/images')
+      .then(async (response) => {
+        if (!response.ok) {
+          return;
+        }
+        setImages((await response.json()) as Array<{ id: string }>);
+      })
+      .catch(() => undefined);
+  }, [imageId]);
+
+  const resolvedImageId = imageId || images[0]?.id || null;
+  const detailPath = resolvedImageId
+    ? action === 'contributors'
+      ? `/api/images/${resolvedImageId}?scope=contributors`
+      : `/api/images/${resolvedImageId}`
+    : null;
+
+  function applyDetail(payload: TendDetail) {
+    setDetail(payload);
+    setTitleValue(payload.title || '');
+    setNetworkValue(Boolean(payload.shareToNetwork));
+  }
+
+  useEffect(() => {
+    if (!resolvedImageId) {
+      return;
+    }
+
+    if (!detailPath) {
+      return;
+    }
+
+    void fetch(detailPath)
+      .then(async (response) => {
+        if (!response.ok) {
+          return;
+        }
+        applyDetail((await response.json()) as TendDetail);
+      })
+      .catch(() => undefined);
+  }, [detailPath, resolvedImageId]);
+
+  useEffect(() => {
+    if (action !== 'contributors' || !view || view === 'add') {
+      setSelectedContributorDetail(null);
+      setDetailLoading(false);
+      setDetailError('');
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadContributorDetail() {
+      setDetailLoading(true);
+      setDetailError('');
+
+      try {
+        const response = await fetch(`/api/contributors/${view}/details`, {
+          cache: 'no-store',
+        });
+
+        const payload = await response.json().catch(() => null);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok) {
+          setSelectedContributorDetail(null);
+          setDetailError(payload?.error || 'Failed to load contributor details.');
+          return;
+        }
+
+        setSelectedContributorDetail(payload as ContributorDetail);
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedContributorDetail(null);
+          setDetailError(
+            error instanceof Error ? error.message : 'Failed to load contributor details.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setDetailLoading(false);
+        }
+      }
+    }
+
+    void loadContributorDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [action, view]);
+
+  if (!title) {
+    return null;
+  }
+
+  const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}` : '/tend/contributors';
+  const backHref = action === 'contributors' && view ? listHref : resolvedImageId ? `/home?id=${resolvedImageId}` : '/home';
+  const contributors: TendContributor[] = detail?.contributors || [];
+  const contributor: TendContributor | null =
+    contributors.find((item) => item.id === view) || null;
+  const contributorSource = selectedContributorDetail || contributor;
+  const contributorName = contributorDisplayName(contributorSource);
+  const contributorPhoneNumber = contributorPhone(contributorSource);
+  const contributorEmailAddress = contributorEmail(contributorSource);
+  const contributorPhoneLabel = formatPhoneNumber(contributorPhoneNumber);
+  const contributorPreference = getContributorPreference(
+    contributorPhoneNumber,
+    contributorEmailAddress
+  );
+  const contributionEntries = buildContributorContributions(selectedContributorDetail, contributor);
+  const contributionHeading = `${contributorName.split(/\s+/)[0] || 'Contributor'}'s Contributions`;
+  const canManageContributors = Boolean(detail?.canManage);
+
+  async function refreshDetail() {
+    if (!resolvedImageId) {
+      return null;
+    }
+    if (!detailPath) {
+      return null;
+    }
+    const response = await fetch(detailPath, {
+      cache: 'no-store',
+    });
+    if (response.ok) {
+      const payload = (await response.json()) as TendDetail;
+      applyDetail(payload);
+      return payload;
+    }
+
+    return null;
+  }
+
+  async function refreshContributorDetail(contributorId: string) {
+    const response = await fetch(`/api/contributors/${contributorId}/details`, {
+      cache: 'no-store',
+    });
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(payload?.error || 'Failed to load contributor details.');
+    }
+
+    setSelectedContributorDetail(payload as ContributorDetail);
+    setDetailError('');
+    return payload as ContributorDetail;
+  }
+
+  async function saveTitle() {
+    if (!resolvedImageId) {
+      return;
+    }
+    const response = await fetch(`/api/images/${resolvedImageId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: titleValue }),
+    });
+    setStatus(response.ok ? 'Title saved.' : 'Failed to save title.');
+    await refreshDetail();
+  }
+
+  async function saveSettings() {
+    if (!resolvedImageId) {
+      return;
+    }
+    const response = await fetch(`/api/images/${resolvedImageId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shareToNetwork: networkValue }),
+    });
+    setStatus(response.ok ? 'Settings saved.' : 'Failed to save settings.');
+    await refreshDetail();
+  }
+
+  async function addContributor() {
+    if (!resolvedImageId) {
+      return;
+    }
+    const response = await fetch('/api/contributors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imageId: resolvedImageId,
+        name: `${addForm.firstName} ${addForm.lastName}`.trim(),
+        phoneNumber: addForm.phone,
+        email: addForm.email,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setStatus(payload?.error || 'Failed to add contributor.');
+      return;
+    }
+    setStatus('Contributor added.');
+    setAddForm({ firstName: '', lastName: '', phone: '', email: '' });
+    await refreshDetail();
+  }
+
+  async function copyLink(token: string | null | undefined) {
+    if (!token) {
+      setStatus('No contributor link is available.');
+      return;
+    }
+
+    try {
+      const url = `${window.location.origin}/contribute/${token}`;
+      await navigator.clipboard.writeText(url);
+      setStatus('Contributor link copied.');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Failed to copy contributor link.');
+    }
+  }
+
+  async function handleSendInvite(contributorId: string) {
+    setSendingContributorId(contributorId);
+    setDetailError('');
+
+    try {
+      const response = await fetch('/api/twilio/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributorId }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setStatus(payload?.error || 'Failed to send the text invite.');
+        return;
+      }
+
+      setStatus('Text invite sent.');
+      await refreshDetail();
+
+      if (view === contributorId) {
+        await refreshContributorDetail(contributorId);
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Failed to send the text invite.');
+    } finally {
+      setSendingContributorId('');
+    }
+  }
+
+  async function handleStartVoiceCall(contributorId: string) {
+    setCallingContributorId(contributorId);
+    setDetailError('');
+
+    try {
+      const response = await fetch('/api/voice/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributorId }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setStatus(payload?.error || 'Failed to start the phone call.');
+        return;
+      }
+
+      setStatus('Phone call started.');
+      await refreshDetail();
+
+      if (view === contributorId) {
+        await refreshContributorDetail(contributorId);
+      }
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Failed to start the phone call.');
+    } finally {
+      setCallingContributorId('');
+    }
+  }
+
+  async function addAttachment(file: File) {
+    if (!resolvedImageId) {
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`/api/images/${resolvedImageId}/attachments`, {
+      method: 'POST',
+      body: formData,
+    });
+    const payload = await response.json().catch(() => ({}));
+    setStatus(response.ok ? 'Content added.' : payload?.error || 'Failed to add content.');
+    await refreshDetail();
+  }
+
+  return (
+    <div className="fixed inset-0 flex">
+      <Link href={backHref} className="w-[7%] h-full" />
+      <div
+        className="w-[93%] h-full flex flex-col slide-in-right"
+        style={{ background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }}
+      >
+        <div
+          className="flex items-center gap-3 px-4 pt-6 pb-4 flex-shrink-0"
+          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+        >
+          <Link
+            href={backHref}
+            className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+            style={{ opacity: 0.75 }}
+          >
+            <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
+          </Link>
+          {TEND_ICONS[action] && !(action === 'contributors' && view) ? (
+            <svg
+              width={24}
+              height={24}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--text-primary)"
+              strokeWidth={1.6}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="flex-shrink-0"
+            >
+              {TEND_ICONS[action]}
+            </svg>
+          ) : null}
+          <h2 className="text-white font-medium text-base">
+            {action === 'contributors' && contributorSource ? contributorName : title}
+          </h2>
+        </div>
+
+        <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
+          {action === 'contributors' && !view ? (
+            <>
+              {contributors.length === 0 ? (
+                <WikiCard>
+                  <p className="text-white/30 text-sm">No contributors yet.</p>
+                </WikiCard>
+              ) : (
+                contributors.map((item) => {
+                  const label = contributorDisplayName(item);
+                  const phoneNumber = contributorPhone(item);
+                  const canTextOrCopy = Boolean(phoneNumber || item.token);
+                  const textDisabled =
+                    !canManageContributors ||
+                    !canTextOrCopy ||
+                    sendingContributorId === item.id;
+                  const callDisabled =
+                    !canManageContributors ||
+                    !canTextOrCopy ||
+                    callingContributorId === item.id;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center rounded-xl overflow-hidden"
+                      style={{ background: 'rgba(255,255,255,0.05)' }}
+                    >
+                      <Link
+                        href={`${listHref}&view=${item.id}`}
+                        className="flex items-center gap-3 flex-1 px-4 py-3 can-hover"
+                        style={{ minHeight: 44, opacity: 0.9 }}
+                      >
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-medium"
+                          style={{ background: 'rgba(249,115,22,0.75)' }}
+                        >
+                          {initials(label)}
+                        </div>
+                        <span className="text-white text-sm font-medium">{label}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (phoneNumber) {
+                            void handleStartVoiceCall(item.id);
+                          } else {
+                            void copyLink(item.token);
+                          }
+                        }}
+                        disabled={callDisabled}
+                        className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0 disabled:opacity-30"
+                        style={{ opacity: callDisabled ? 0.3 : 0.75 }}
+                        aria-label={`Call ${label}`}
+                      >
+                        <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (phoneNumber) {
+                            void handleSendInvite(item.id);
+                          } else {
+                            void copyLink(item.token);
+                          }
+                        }}
+                        disabled={textDisabled}
+                        className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0 mr-2 disabled:opacity-30"
+                        style={{ opacity: textDisabled ? 0.3 : 0.75 }}
+                        aria-label={`Text ${label}`}
+                      >
+                        <MessageSquare size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+              <Link
+                href={`${listHref}&view=add`}
+                className="flex items-center justify-center gap-2 w-full rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
+                style={{ background: '#f97316', minHeight: 44 }}
+              >
+                Add Contributor
+              </Link>
+            </>
+          ) : null}
+
+          {action === 'contributors' && view === 'add' ? (
+            <>
+              {[
+                ['firstName', 'First Name'],
+                ['lastName', 'Last Name (optional)'],
+                ['phone', 'Phone'],
+                ['email', 'Email (optional)'],
+              ].map(([key, placeholder]) => (
+                <input
+                  key={key}
+                  value={addForm[key as keyof typeof addForm]}
+                  onChange={(event) =>
+                    setAddForm((current) => ({ ...current, [key]: event.target.value }))
+                  }
+                  placeholder={placeholder}
+                  className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
+                  style={fieldStyle}
+                />
+              ))}
+              <div className="py-2 flex gap-3">
+                <Link
+                  href={listHref}
+                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
+                  style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="button"
+                  onClick={addContributor}
+                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Save
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {action === 'contributors' && contributorSource ? (
+            <>
+              <div
+                className="rounded-xl px-4 py-4"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-white font-medium text-base">{contributorName}</p>
+                    {contributorPhoneLabel ? (
+                      <p className="text-white/60 text-sm mt-0.5">{contributorPhoneLabel}</p>
+                    ) : null}
+                    {contributorEmailAddress ? (
+                      <p className="text-white/60 text-sm">{contributorEmailAddress}</p>
+                    ) : null}
+                  </div>
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
+                    style={{ background: 'rgba(249,115,22,0.75)' }}
+                  >
+                    {initials(contributorName)}
+                  </div>
+                </div>
+                <p className="text-white/30 text-xs mt-3">
+                  <span className="text-white/60 font-medium">Joined Ember</span> ·{' '}
+                  {formatDate(contributorSource.createdAt)}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <PrefRow label="Prefers" value={contributorPreference} />
+                <PrefRow label="Contact Time" value="Not set" />
+                <PrefRow label="Language" value="English" />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (contributor && contributorPhoneNumber) {
+                      void handleStartVoiceCall(contributor.id);
+                    } else if (contributor?.token) {
+                      void copyLink(contributor.token);
+                    }
+                  }}
+                  disabled={
+                    !canManageContributors ||
+                    (!contributorPhoneNumber && !contributor?.token) ||
+                    callingContributorId === contributor?.id
+                  }
+                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary disabled:opacity-40"
+                  style={{
+                    background: 'transparent',
+                    border: '1.5px solid var(--border-btn)',
+                    minHeight: 44,
+                  }}
+                >
+                  {contributorPhoneNumber ? 'Call Now' : 'Copy Link'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (contributor && contributorPhoneNumber) {
+                      void handleSendInvite(contributor.id);
+                    } else if (contributor?.token) {
+                      void copyLink(contributor.token);
+                    }
+                  }}
+                  disabled={
+                    !canManageContributors ||
+                    (!contributorPhoneNumber && !contributor?.token) ||
+                    sendingContributorId === contributor?.id
+                  }
+                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-40"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Send Now
+                </button>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border-subtle)' }} className="pt-4">
+                <p className="text-white font-medium text-sm mb-3">{contributionHeading}</p>
+
+                {detailLoading ? (
+                  <div
+                    className="rounded-xl px-4 py-3"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    <p className="text-white/30 text-xs italic">Loading contributor details...</p>
+                  </div>
+                ) : null}
+
+                {detailError ? (
+                  <div
+                    className="rounded-xl px-4 py-3 mb-4"
+                    style={{
+                      background: 'rgba(94,20,20,0.48)',
+                      border: '1px solid rgba(255,119,119,0.35)',
+                    }}
+                  >
+                    <p className="text-[rgba(255,210,210,0.94)] text-sm">{detailError}</p>
+                  </div>
+                ) : null}
+
+                {!detailLoading && !detailError && contributionEntries.length === 0 ? (
+                  <p className="text-white/30 text-sm">No contributions yet.</p>
+                ) : null}
+
+                {!detailLoading && !detailError
+                  ? contributionEntries.map((entry) => (
+                      <div key={entry.id} className="mb-4">
+                        <p className="text-white/60 text-xs font-medium mb-1">
+                          {entry.label} · <span className="text-white/30">{entry.timestamp}</span>
+                        </p>
+                        <div
+                          className="rounded-xl px-4 py-3"
+                          style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                          }}
+                        >
+                          <p className="text-white/45 text-xs leading-relaxed">
+                            {entry.preview}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  : null}
+              </div>
+            </>
+          ) : null}
+
+          {action === 'view-wiki' ? <KipemberWikiContent detail={detail} /> : null}
+
+          {action === 'edit-title' ? (
+            <>
+              <input
+                value={titleValue}
+                onChange={(event) => setTitleValue(event.target.value)}
+                placeholder="Ember title"
+                className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
+                style={fieldStyle}
+              />
+              <button
+                type="button"
+                onClick={saveTitle}
+                className="w-full rounded-full text-white text-sm font-medium btn-primary"
+                style={{ background: '#f97316', minHeight: 44 }}
+              >
+                Save Title
+              </button>
+            </>
+          ) : null}
+
+          {action === 'edit-snapshot' ? (
+            <KipemberSnapshotEditor
+              detail={detail}
+              imageId={resolvedImageId}
+              refreshDetail={refreshDetail}
+              onStatus={setStatus}
+            />
+          ) : null}
+
+          {action === 'add-content' ? (
+            <>
+              <label
+                className="w-full rounded-full text-white text-sm font-medium btn-primary flex items-center justify-center"
+                style={{ background: '#f97316', minHeight: 44 }}
+              >
+                Add Photo or Video
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void addAttachment(file);
+                    }
+                  }}
+                />
+              </label>
+              {(detail?.attachments || []).map((attachment) => (
+                <WikiCard key={attachment.id}>
+                  <p className="text-white/90 text-sm">{attachment.originalName}</p>
+                </WikiCard>
+              ))}
+            </>
+          ) : null}
+
+          {action === 'settings' ? (
+            <>
+              <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                <label className="flex items-center justify-between text-white text-sm font-medium">
+                  Share to network
+                  <input type="checkbox" checked={networkValue} onChange={(event) => setNetworkValue(event.target.checked)} />
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={saveSettings}
+                className="w-full rounded-full text-white text-sm font-medium btn-primary"
+                style={{ background: '#f97316', minHeight: 44 }}
+              >
+                Save Settings
+              </button>
+            </>
+          ) : null}
+
+          {action === 'tag-people' ? (
+            <>
+              <WikiCard>
+                {(detail?.tags || []).length > 0 ? (
+                  (detail?.tags || []).map((tag) => (
+                    <p key={tag.id} className="text-white/90 text-sm mb-1">
+                      {tag.label}
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-white/30 text-sm">No tags yet.</p>
+                )}
+              </WikiCard>
+              {resolvedImageId ? (
+                <Link
+                  href={`/image/${resolvedImageId}`}
+                  className="w-full rounded-full text-white text-sm font-medium btn-secondary flex items-center justify-center"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Open Tag Editor
+                </Link>
+              ) : null}
+            </>
+          ) : null}
+
+          {status ? <p className="text-sm text-white/60">{status}</p> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
