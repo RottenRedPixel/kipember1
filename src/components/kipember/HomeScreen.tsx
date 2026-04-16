@@ -171,10 +171,20 @@ function RailBtn({
   );
 }
 
-function WorkflowSlot({ flow }: { flow: string | null }) {
+function WorkflowSlot({
+  flow,
+  imageId,
+  onConversationStateChange,
+}: {
+  flow: string | null;
+  imageId: string | null;
+  onConversationStateChange: (hasConversation: boolean) => void;
+}) {
   switch (flow) {
     case 'welcome':
-      return <WelcomeFlow />;
+      return imageId ? (
+        <WelcomeFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+      ) : null;
     case 'owner-add':
       return <OwnerAddFlow />;
     case 'contrib-add':
@@ -231,9 +241,11 @@ export default function HomeScreen({
   const [createdImageId, setCreatedImageId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [storedTheme, setStoredTheme] = useState<string | null>(null);
+  const [hasConversationHistory, setHasConversationHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedImageId = params.get('id') || images[0]?.id || null;
+  const hasExistingEmbers = images.length > 0;
   const selectedSummary = images.find((image) => image.id === selectedImageId) || null;
   const displayImage = selectedImage || selectedSummary;
   const title = displayImage?.title || (displayImage ? stripExtension(displayImage.originalName) : 'Beach Day');
@@ -317,6 +329,43 @@ export default function HomeScreen({
       })
       .catch(() => undefined);
   }, [modal, selectedImageId]);
+
+  useEffect(() => {
+    if (!selectedImageId || firstEmber) {
+      setHasConversationHistory(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    void fetch(`/api/chat?imageId=${encodeURIComponent(selectedImageId)}`, {
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          if (!cancelled) {
+            setHasConversationHistory(false);
+          }
+          return;
+        }
+
+        const payload = await response.json();
+        if (!cancelled) {
+          setHasConversationHistory(
+            Array.isArray(payload.messages) && payload.messages.length > 0
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHasConversationHistory(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [firstEmber, selectedImageId]);
 
   useEffect(() => {
     return () => {
@@ -474,10 +523,13 @@ export default function HomeScreen({
           >
             <EmberMark size={56} />
             <div className="flex flex-col items-center gap-1.5 text-center">
-              <p className="text-white font-medium text-base">Create your first ember</p>
+              <p className="text-white font-medium text-base">
+                {hasExistingEmbers ? 'Create a new ember' : 'Create your first ember'}
+              </p>
               <p className="text-white/60 text-sm leading-snug">
-                Let&apos;s start with a photo that will help build this memory into a glowing
-                ember.
+                {hasExistingEmbers
+                  ? 'Choose a photo or video to start another memory.'
+                  : "Let's start with a photo that will help build this memory into a glowing ember."}
               </p>
             </div>
             <button
@@ -509,7 +561,9 @@ export default function HomeScreen({
           </div>
           <div className="w-full flex flex-col gap-5 mt-7" style={{ maxWidth: 420 }}>
             <p className="text-white font-medium text-base text-center leading-snug">
-              Create an ember from this photo?
+              {hasExistingEmbers
+                ? 'Create a new ember from this photo?'
+                : 'Create an ember from this photo?'}
             </p>
             {uploadError ? <p className="text-sm text-center text-red-300">{uploadError}</p> : null}
             <div className="flex gap-3">
@@ -669,14 +723,31 @@ export default function HomeScreen({
           style={{ background: 'var(--bg-screen)', WebkitBackdropFilter: 'blur(20px)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--border-subtle)' }}
         >
           <div className="flex items-center gap-3 pl-4 pr-[22px] py-3">
-            <Link href={flow ? buildHomeHref({ ember: null }) : buildHomeHref({ ember: 'welcome', m: null })} className="flex-1 text-left">
+            <Link
+              href={
+                flow
+                  ? buildHomeHref({ ember: null, step: null, sub: null })
+                  : buildHomeHref({ ember: 'welcome', m: null, step: null, sub: null })
+              }
+              className="flex-1 text-left"
+            >
               <span className="flex items-center gap-2">
                 <EmberMark />
-                <span className="text-base font-medium text-white">{flow ? 'Ember Chat' : 'Start your journey here'}</span>
+                <span className="text-base font-medium text-white">
+                  {flow
+                    ? 'Ember Chat'
+                    : hasConversationHistory
+                      ? 'Continue your journey here'
+                      : 'Start your journey here'}
+                </span>
               </span>
             </Link>
             <Link
-              href={flow ? buildHomeHref({ ember: null }) : buildHomeHref({ ember: 'welcome', m: null })}
+              href={
+                flow
+                  ? buildHomeHref({ ember: null, step: null, sub: null })
+                  : buildHomeHref({ ember: 'welcome', m: null, step: null, sub: null })
+              }
               className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
               style={{ background: flow ? 'rgba(255,255,255,0.15)' : '#f97316' }}
             >
@@ -690,7 +761,13 @@ export default function HomeScreen({
               )}
             </Link>
           </div>
-          {flow ? <WorkflowSlot flow={flow} /> : null}
+          {flow ? (
+            <WorkflowSlot
+              flow={flow}
+              imageId={selectedImageId}
+              onConversationStateChange={setHasConversationHistory}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>
