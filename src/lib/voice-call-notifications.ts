@@ -94,18 +94,42 @@ export function classifyVoiceCallOutcome(
   return { outcome: 'indeterminate' };
 }
 
+// voip.ms rejects messages over 160 chars with sms_toolong. Keep the
+// static part short, then budget whatever's left for the interpolated
+// title so a very long ember title truncates instead of blowing the limit.
+// Stick to ASCII (no em-dash, no smart quotes) so the whole message stays
+// in GSM-7 encoding and each char actually counts as one byte.
+const MAX_SMS_LENGTH = 160;
+
+function truncateForSms(value: string, maxLength: number): string {
+  const trimmed = value.trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  const cutoff = Math.max(0, maxLength - 3);
+  return `${trimmed.slice(0, cutoff).trimEnd()}...`;
+}
+
+function assembleWithTitleBudget(
+  prefix: string,
+  title: string,
+  suffix: string
+): string {
+  const budget = MAX_SMS_LENGTH - prefix.length - suffix.length;
+  const safeTitle = truncateForSms(title, Math.max(8, budget));
+  return `${prefix}${safeTitle}${suffix}`;
+}
+
 function buildContributorSms(params: {
   contributorName: string | null;
   emberTitle: string;
   ownerName: string | null;
 }): string {
-  const who = params.ownerName?.trim() || 'someone';
-  const name = params.contributorName?.trim();
+  const name = truncateForSms(params.contributorName ?? '', 20);
   const greeting = name ? `Hi ${name}, ` : 'Hi, ';
-  return (
-    `${greeting}we tried to reach you for "${params.emberTitle}" but the call didn't go through. ` +
-    `${who} would still love to hear your memory — we'll try again, or you can reply to this text when you're ready.`
-  );
+  const prefix = `${greeting}we tried calling about "`;
+  const suffix = `" but couldn't connect. We'll try again, or reply any time to share your memory.`;
+  return assembleWithTitleBudget(prefix, params.emberTitle, suffix);
 }
 
 function buildOwnerSms(params: {
@@ -113,12 +137,14 @@ function buildOwnerSms(params: {
   emberTitle: string;
   reason: string;
 }): string {
-  const name = params.contributorName?.trim() || 'your contributor';
-  const reasonLabel = formatReasonForHumans(params.reason);
-  return (
-    `Kipember: the interview call to ${name} for "${params.emberTitle}" didn't complete ` +
-    `(${reasonLabel}). They've been notified. You can retry from the memory view.`
+  const name = truncateForSms(
+    params.contributorName?.trim() || 'your contributor',
+    20
   );
+  const reasonLabel = truncateForSms(formatReasonForHumans(params.reason), 20);
+  const prefix = `Kipember: call to ${name} for "`;
+  const suffix = `" didn't connect (${reasonLabel}). They got a text. Retry in app.`;
+  return assembleWithTitleBudget(prefix, params.emberTitle, suffix);
 }
 
 function buildOwnerEmail(params: {
