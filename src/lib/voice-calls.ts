@@ -7,6 +7,7 @@ import {
   extractImportantVoiceCallClips,
   parseVoiceCallTranscriptSegments,
 } from '@/lib/voice-call-clips';
+import { maybeNotifyFailedCall } from '@/lib/voice-call-notifications';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 
 const QUESTION_PROMPTS = {
@@ -658,6 +659,12 @@ export async function refreshVoiceCallFromProvider(voiceCallId: string) {
     await syncVoiceCallToConversation(updated.id);
   }
 
+  if (eventType === 'call_ended' || eventType === 'call_analyzed') {
+    await maybeNotifyFailedCall(updated.id).catch((error) => {
+      console.error('Failed-call notification error (provider refresh):', error);
+    });
+  }
+
   return prisma.voiceCall.findUnique({
     where: { id: updated.id },
   });
@@ -840,6 +847,12 @@ export async function processRetellWebhook(rawPayload: unknown) {
 
   if (eventType === 'call_analyzed') {
     await syncVoiceCallToConversation(voiceCall.id);
+  }
+
+  if (eventType === 'call_ended' || eventType === 'call_analyzed') {
+    await maybeNotifyFailedCall(voiceCall.id).catch((error) => {
+      console.error('Failed-call notification error (webhook):', error);
+    });
   }
 
   return voiceCall;

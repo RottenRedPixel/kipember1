@@ -16,7 +16,11 @@
       "Bash(powershell -Command \"Stop-Process -Id 38372 -Force\")",
       "Bash(python -c \"import sys,json; logs=json.load\\(sys.stdin\\); errors=[l for l in logs if 'error' in l.get\\('type',''\\).lower\\(\\) or 'hydrat' in l.get\\('text',''\\).lower\\(\\)]; print\\(json.dumps\\(errors[-5:], indent=2\\)\\)\")",
       "Bash(node -e \"const fs=require\\('fs'\\);const logs=JSON.parse\\(fs.readFileSync\\('C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\Dell\\\\\\\\\\\\\\\\.claude\\\\\\\\\\\\\\\\projects\\\\\\\\\\\\\\\\D--SANDBOX-claude02\\\\\\\\\\\\\\\\a87cfe79-94f5-4657-8ec3-e9eb47b88a9e\\\\\\\\\\\\\\\\tool-results\\\\\\\\\\\\\\\\mcp-Claude_Preview-preview_console_logs-1776030764277.txt'\\)\\);const errors=logs.filter\\(l=>l.type==='error'||/hydrat/i.test\\(l.text\\)\\);console.log\\(JSON.stringify\\(errors.slice\\(-5\\),null,2\\)\\)\")",
-      "Bash(ipconfig)"
+      "Bash(ipconfig)",
+      "Bash(npx tsc:*)",
+      "Bash(npx prisma:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }
