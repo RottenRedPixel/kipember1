@@ -417,6 +417,7 @@ model VoiceCall {
   endedAt                    DateTime?
   analyzedAt                 DateTime?
   memorySyncedAt             DateTime?
+  failureNotifiedAt          DateTime?
   createdAt                  DateTime         @default(now())
   updatedAt                  DateTime         @updatedAt
   clips                      VoiceCallClip[]
