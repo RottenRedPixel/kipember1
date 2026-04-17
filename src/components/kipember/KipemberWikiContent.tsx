@@ -9,6 +9,7 @@ import {
   MapPin,
   Mic,
   Sparkles,
+  User,
   Users,
 } from 'lucide-react';
 import ClipAudioPlayer from '@/components/ClipAudioPlayer';
@@ -680,17 +681,16 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
-        icon={<Users size={17} />}
-        title="Contributors"
-        complete={Boolean(ownerName || contributors.length)}
+        icon={<User size={17} />}
+        title="Owner"
+        complete={Boolean(ownerName)}
       >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Owner</p>
           {ownerName ? (
             <div className="flex items-center gap-3">
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-                style={{ background: 'rgba(255,255,255,0.15)' }}
+                style={{ background: 'rgba(249,115,22,0.6)' }}
               >
                 {initials(ownerName)}
               </div>
@@ -701,9 +701,14 @@ export default function KipemberWikiContent({
             <p className="text-white/30 text-sm">Owner data is not available.</p>
           )}
         </WikiCard>
+      </WikiSection>
 
+      <WikiSection
+        icon={<Users size={17} />}
+        title="Contributors"
+        complete={activeContributors.length > 0 || pendingContributors.length > 0}
+      >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Contributors</p>
           {activeContributors.length === 0 && pendingContributors.length === 0 ? (
             <p className="text-white/30 text-sm">No contributors yet.</p>
           ) : (
