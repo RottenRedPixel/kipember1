@@ -713,7 +713,6 @@ export default function HomeScreen({
           imageId={selectedImageId}
           storyScript={selectedImage?.storyCut?.script || null}
           wikiContent={selectedImage?.wiki?.content || null}
-          fallbackText={selectedImage?.analysis?.summary || displayImage?.description || null}
         />
       ) : null}
 

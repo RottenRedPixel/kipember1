@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db';
 import { ensureImageAnalysisForImage } from '@/lib/image-analysis';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
+import { generateSnapshotScript } from '@/lib/claude';
+import { getEmberTitle } from '@/lib/ember-title';
 
 export async function POST(
   request: NextRequest,
@@ -27,6 +29,46 @@ export async function POST(
 
     await ensureImageAnalysisForImage(id);
     await generateWikiForImage(id);
+
+    // Auto-generate snapshot script if one doesn't exist yet
+    const existing = await prisma.storyCut.findUnique({ where: { imageId: id }, select: { id: true } });
+    if (!existing) {
+      const imageForSnapshot = await prisma.image.findUnique({
+        where: { id },
+        include: {
+          analysis: { select: { summary: true, metadataJson: true } },
+        },
+      });
+      if (imageForSnapshot) {
+        const title = getEmberTitle(imageForSnapshot);
+        const summary = imageForSnapshot.analysis?.summary || null;
+        const location = parseConfirmedLocationContext(imageForSnapshot.analysis?.metadataJson ?? null)?.label ?? null;
+        try {
+          const script = await generateSnapshotScript({ title, summary, location });
+          if (script.trim()) {
+            await prisma.storyCut.create({
+              data: {
+                imageId: id,
+                title,
+                style: 'documentary',
+                focus: '',
+                durationSeconds: 10,
+                wordCount: script.split(/\s+/).filter(Boolean).length,
+                script,
+                blocksJson: '[]',
+                selectedMediaJson: '[]',
+                selectedContributorJson: '[]',
+                includeOwner: true,
+                includeEmberVoice: true,
+                includeNarratorVoice: false,
+              },
+            });
+          }
+        } catch (snapshotError) {
+          console.error('Auto snapshot generation failed:', snapshotError);
+        }
+      }
+    }
 
     const analysis = await prisma.imageAnalysis.findUnique({
       where: { imageId: id },

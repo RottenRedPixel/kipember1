@@ -17,7 +17,6 @@ type KipemberPlayOverlayProps = {
   imageId: string | null;
   storyScript: string | null;
   wikiContent: string | null;
-  fallbackText: string | null;
 };
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
@@ -101,7 +100,6 @@ export default function KipemberPlayOverlay({
   imageId,
   storyScript,
   wikiContent,
-  fallbackText,
 }: KipemberPlayOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -112,9 +110,9 @@ export default function KipemberPlayOverlay({
   const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
 
-  const transcriptSource = storyScript || fallbackText || wikiContent;
+  const transcriptSource = storyScript || wikiContent;
   const storyLines = useMemo(() => buildStoryLines(transcriptSource), [transcriptSource]);
-  const canGenerateFallbackNarration = Boolean(storyScript || fallbackText || wikiContent);
+  const canGenerateFallbackNarration = Boolean(storyScript || wikiContent);
   const shouldAnimate = playbackState === 'playing' && !done;
 
   const disposeAudio = useCallback(() => {
@@ -192,7 +190,7 @@ export default function KipemberPlayOverlay({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        content: wikiContent || fallbackText || storyScript || '',
+        content: wikiContent || storyScript || '',
         script: storyScript || undefined,
       }),
     });
@@ -207,7 +205,7 @@ export default function KipemberPlayOverlay({
     }
 
     return await narrationResponse.blob();
-  }, [canGenerateFallbackNarration, fallbackText, imageId, storyScript, wikiContent]);
+  }, [canGenerateFallbackNarration, imageId, storyScript, wikiContent]);
 
   const buildAudio = useCallback(async () => {
     const audioBlob = await fetchAudioBlob();
