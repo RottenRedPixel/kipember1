@@ -491,7 +491,8 @@ export default function KipemberWikiContent({
   const contributors = detail?.contributors || [];
   const imageId = detail?.id || null;
   const ownerName = detail?.owner?.name || detail?.owner?.email || null;
-  const activeContributors = contributors.filter((contributor) => contributor.userId || contributor.user);
+  const ownerUserId = detail?.owner?.id;
+  const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
   const pendingContributors = contributors.filter((contributor) => !contributor.userId && !contributor.user);
   const latitude =
     detail?.analysis?.confirmedLocation?.latitude ??
@@ -702,8 +703,10 @@ export default function KipemberWikiContent({
         </WikiCard>
 
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Invited (Accounts Created)</p>
-          {activeContributors.length > 0 ? (
+          <p className="text-white/30 text-xs font-medium mb-2">Contributors</p>
+          {activeContributors.length === 0 && pendingContributors.length === 0 ? (
+            <p className="text-white/30 text-sm">No contributors yet.</p>
+          ) : (
             <div className="flex flex-col gap-2.5">
               {activeContributors.map((contributor) => {
                 const contributorName =
@@ -713,7 +716,6 @@ export default function KipemberWikiContent({
                   contributor.user?.email ||
                   contributor.phoneNumber ||
                   'Contributor';
-
                 return (
                   <div key={contributor.id} className="flex items-center gap-3">
                     <div
@@ -727,22 +729,19 @@ export default function KipemberWikiContent({
                   </div>
                 );
               })}
+              {pendingContributors.map((contributor) => (
+                <div key={contributor.id} className="flex items-center gap-3">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white/30 text-xs font-medium flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.08)' }}
+                  >
+                    {initials(contributor.name || contributor.email || contributor.phoneNumber || '?')}
+                  </div>
+                  <span className="text-white/60 text-sm">{contributor.name || contributor.email || contributor.phoneNumber || 'Pending'}</span>
+                  <span className="ml-auto text-white/30 text-xs">Invited</span>
+                </div>
+              ))}
             </div>
-          ) : (
-            <p className="text-white/30 text-sm">No linked contributor accounts yet.</p>
-          )}
-        </WikiCard>
-
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium">Invited (Accounts Not Created Yet)</p>
-          {pendingContributors.length > 0 ? (
-            pendingContributors.map((contributor) => (
-              <p key={contributor.id} className="text-white/60 text-sm mt-1">
-                {contributor.name || contributor.email || contributor.phoneNumber || 'Pending contributor'}
-              </p>
-            ))
-          ) : (
-            <p className="text-white/30 text-sm">No pending invitations</p>
           )}
         </WikiCard>
       </WikiSection>
