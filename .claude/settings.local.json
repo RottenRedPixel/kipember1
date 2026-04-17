@@ -1,26 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --no-eslint --import-alias \"@/*\" --yes)",
+      "Bash(git clone:*)",
       "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
       "Bash(npm run:*)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(taskkill /PID 11168 /F)",
-      "Bash(cmd /c \"taskkill /PID 11168 /F\")",
-      "Bash(cmd /c \"taskkill /F /IM node.exe /FI \\\\\"PID eq 11168\\\\\"\")",
-      "Bash(powershell -Command \"Stop-Process -Id 11168 -Force\")",
-      "Bash(powershell -Command \"Get-Process -Id 11168 -ErrorAction SilentlyContinue | Select-Object Id,Name\")",
-      "Bash(powershell -Command \"Stop-Process -Id 9388 -Force\")",
-      "Bash(powershell -Command \"Get-NetTCPConnection -LocalPort 3333 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort,State\")",
-      "Bash(powershell -Command \"Get-Process -Id \\(Get-NetTCPConnection -LocalPort 3333\\).OwningProcess | Select-Object Id,Name\")",
-      "Bash(powershell -Command \"Stop-Process -Id 38372 -Force\")",
-      "Bash(python -c \"import sys,json; logs=json.load\\(sys.stdin\\); errors=[l for l in logs if 'error' in l.get\\('type',''\\).lower\\(\\) or 'hydrat' in l.get\\('text',''\\).lower\\(\\)]; print\\(json.dumps\\(errors[-5:], indent=2\\)\\)\")",
-      "Bash(node -e \"const fs=require\\('fs'\\);const logs=JSON.parse\\(fs.readFileSync\\('C:\\\\\\\\\\\\\\\\Users\\\\\\\\\\\\\\\\Dell\\\\\\\\\\\\\\\\.claude\\\\\\\\\\\\\\\\projects\\\\\\\\\\\\\\\\D--SANDBOX-claude02\\\\\\\\\\\\\\\\a87cfe79-94f5-4657-8ec3-e9eb47b88a9e\\\\\\\\\\\\\\\\tool-results\\\\\\\\\\\\\\\\mcp-Claude_Preview-preview_console_logs-1776030764277.txt'\\)\\);const errors=logs.filter\\(l=>l.type==='error'||/hydrat/i.test\\(l.text\\)\\);console.log\\(JSON.stringify\\(errors.slice\\(-5\\),null,2\\)\\)\")",
-      "Bash(ipconfig)",
-      "Bash(npx tsc:*)",
-      "Bash(npx prisma:*)",
-      "Bash(git add:*)",
-      "Bash(git commit -m ':*)"
+      "Bash(netstat -ano)",
+      "Bash(awk '{print $5}')",
+      "Bash(xargs -r -I{} taskkill /PID {} /F)",
+      "Bash(curl -s -X POST http://localhost:59861/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}')",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"http://localhost:59861/api/auth/login\" -H \"Content-Type: application/json\" -d '{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}')",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"http://localhost:52123/api/auth/login\" -H \"Content-Type: application/json\" -d '{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}')"
     ]
   }
 }

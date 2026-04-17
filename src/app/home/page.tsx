@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
 import HomeScreen from '@/components/kipember/HomeScreen';
-import UserActionScreen from '@/components/kipember/UserActionScreen';
+import UserHomeScreen from '@/components/kipember/UserHomeScreen';
 import { getAccessibleImagesForUser } from '@/lib/image-summaries';
 
 const HOME_STAGE_QUERY_KEYS = new Set([
@@ -12,7 +12,6 @@ const HOME_STAGE_QUERY_KEYS = new Set([
   'mode',
   'step',
   'sub',
-  'theme',
   'paused',
   'restart',
 ]);
@@ -38,12 +37,7 @@ export default async function HomePage({
       {showStageView ? (
         <HomeScreen initialProfile={auth.user} initialImages={initialImages} />
       ) : (
-        <UserActionScreen
-          action="my-embers"
-          basePath="/home"
-          rootView
-          initialImages={initialImages}
-        />
+        <UserHomeScreen initialProfile={auth.user} />
       )}
     </Suspense>
   );
