@@ -756,6 +756,26 @@ export default function HomeScreen({
               );
             })()}
           </div>
+          <div className="mx-5 mb-5">
+            <div
+              className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+            >
+              <span className="flex-1 text-xs text-white/50 truncate">
+                {shareToken ? `${window.location.origin}/guest/${shareToken}` : 'Generating link…'}
+              </span>
+              {shareToken ? (
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(`${window.location.origin}/guest/${shareToken}`)}
+                  className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-md cursor-pointer"
+                  style={{ color: '#f97316' }}
+                >
+                  Copy
+                </button>
+              ) : null}
+            </div>
+          </div>
         </Modal>
       ) : null}
 
