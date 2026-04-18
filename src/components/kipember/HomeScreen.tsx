@@ -714,7 +714,6 @@ export default function HomeScreen({
           addHref={selectedImageId ? `/tend/add-content?id=${selectedImageId}` : '/tend/add-content'}
           imageId={selectedImageId}
           storyScript={selectedImage?.storyCut?.script || null}
-          wikiContent={selectedImage?.wiki?.content || null}
         />
       ) : null}
 

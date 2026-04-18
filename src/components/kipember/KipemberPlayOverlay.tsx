@@ -16,7 +16,6 @@ type KipemberPlayOverlayProps = {
   addHref: string;
   imageId: string | null;
   storyScript: string | null;
-  wikiContent: string | null;
 };
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
@@ -99,7 +98,6 @@ export default function KipemberPlayOverlay({
   addHref,
   imageId,
   storyScript,
-  wikiContent,
 }: KipemberPlayOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -110,9 +108,8 @@ export default function KipemberPlayOverlay({
   const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
 
-  const transcriptSource = storyScript || wikiContent;
-  const storyLines = useMemo(() => buildStoryLines(transcriptSource), [transcriptSource]);
-  const canGenerateFallbackNarration = Boolean(storyScript || wikiContent);
+  const storyLines = useMemo(() => buildStoryLines(storyScript), [storyScript]);
+  const hasPlayableContent = Boolean(storyScript);
   const shouldAnimate = playbackState === 'playing' && !done;
 
   const disposeAudio = useCallback(() => {
@@ -166,46 +163,23 @@ export default function KipemberPlayOverlay({
   }, [fading, storyLines.length]);
 
   const fetchAudioBlob = useCallback(async () => {
-    let storyCutError = '';
-
-    if (imageId && storyScript) {
-      const response = await fetch(`/api/images/${imageId}/story-cut-audio`, {
-        cache: 'no-store',
-      });
-
-      if (response.ok) {
-        return await response.blob();
-      }
-
-      const payload = await response.json().catch(() => null);
-      storyCutError =
-        typeof payload?.error === 'string' ? payload.error : 'Story audio is not available yet.';
+    if (!imageId || !storyScript) {
+      throw new Error('This ember does not have a snapshot yet.');
     }
 
-    if (!canGenerateFallbackNarration) {
-      throw new Error(storyCutError || 'This ember does not have playable audio yet.');
-    }
-
-    const narrationResponse = await fetch('/api/narration', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: wikiContent || storyScript || '',
-        script: storyScript || undefined,
-      }),
+    const response = await fetch(`/api/images/${imageId}/story-cut-audio`, {
+      cache: 'no-store',
     });
 
-    if (!narrationResponse.ok) {
-      const payload = await narrationResponse.json().catch(() => null);
-      throw new Error(
-        typeof payload?.error === 'string'
-          ? payload.error
-          : storyCutError || 'Audio is not available yet.'
-      );
+    if (response.ok) {
+      return await response.blob();
     }
 
-    return await narrationResponse.blob();
-  }, [canGenerateFallbackNarration, imageId, storyScript, wikiContent]);
+    const payload = await response.json().catch(() => null);
+    throw new Error(
+      typeof payload?.error === 'string' ? payload.error : 'Story audio is not available yet.'
+    );
+  }, [imageId, storyScript]);
 
   const buildAudio = useCallback(async () => {
     const audioBlob = await fetchAudioBlob();
@@ -236,7 +210,7 @@ export default function KipemberPlayOverlay({
 
   const startPlayback = useCallback(
     async ({ restart = false, allowAutoplay = false }: { restart?: boolean; allowAutoplay?: boolean } = {}) => {
-      if (!imageId) {
+      if (!imageId || !hasPlayableContent) {
         return;
       }
 
@@ -273,7 +247,7 @@ export default function KipemberPlayOverlay({
   );
 
   useEffect(() => {
-    if (autoplayAttemptedRef.current || !imageId) {
+    if (autoplayAttemptedRef.current || !imageId || !hasPlayableContent) {
       return;
     }
 
