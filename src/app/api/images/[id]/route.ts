@@ -6,6 +6,7 @@ import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
+import { toTitleCase } from '@/lib/ember-title';
 
 function normalizeLabelKey(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -733,7 +734,7 @@ export async function PATCH(
         );
       }
 
-      updateData.title = typeof body.title === 'string' ? body.title.trim() || null : null;
+      updateData.title = typeof body.title === 'string' ? (toTitleCase(body.title) || null) : null;
     }
 
     if (Object.prototype.hasOwnProperty.call(body ?? {}, 'description')) {

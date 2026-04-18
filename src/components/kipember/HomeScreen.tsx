@@ -24,6 +24,7 @@ import OwnerAddFlow from '@/components/kipember/workflows/OwnerAddFlow';
 import OwnerAddMoreFlow from '@/components/kipember/workflows/OwnerAddMoreFlow';
 import WelcomeFlow from '@/components/kipember/workflows/WelcomeFlow';
 import type { AccessibleImageSummary } from '@/lib/image-summaries';
+import { getEmberTitle } from '@/lib/ember-title';
 
 type AuthUser = {
   id: string;
@@ -250,11 +251,11 @@ export default function HomeScreen({
   const hasExistingEmbers = images.length > 0;
   const selectedSummary = images.find((image) => image.id === selectedImageId) || null;
   const displayImage = selectedImage || selectedSummary;
-  const title = displayImage?.title || (displayImage ? stripExtension(displayImage.originalName) : 'Beach Day');
+  const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
   const subtitle = selectedImage?.analysis?.capturedAt
     ? new Date(selectedImage.analysis.capturedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    : displayImage?.createdAt
-      ? new Date(displayImage.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : displayImage
+      ? 'Date Unknown'
       : '';
   const mediaUrl = displayImage
       ? getPreviewMediaUrl({
