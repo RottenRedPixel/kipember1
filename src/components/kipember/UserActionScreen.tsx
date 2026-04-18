@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, ChevronLeft, Plus, User, Users } from 'lucide-react';
+import { Camera, ChevronDown, ChevronLeft, Plus, User, Users } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { USER_ACTIONS, USER_ICONS } from '@/app/user/constants';
 import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -20,7 +20,12 @@ type Profile = {
   name: string | null;
   email: string;
   phoneNumber: string | null;
+  avatarUrl?: string | null;
 };
+
+function initials(value: string) {
+  return value.split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+}
 
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A-Z', 'Z-A'];
 
@@ -63,6 +68,9 @@ export default function UserActionScreen({
     email: initialProfile?.email || '',
     phoneNumber: initialProfile?.phoneNumber || '',
   });
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [friendEmail, setFriendEmail] = useState('');
   const [status, setStatus] = useState('');
   const isEmberList = action === 'my-embers' || action === 'shared-embers';
@@ -98,6 +106,7 @@ export default function UserActionScreen({
             email: payload.user.email,
             phoneNumber: payload.user.phoneNumber || '',
           });
+          setAvatarUrl(payload.user.avatarUrl ?? null);
         })
         .catch(() => undefined);
     }
@@ -167,6 +176,25 @@ export default function UserActionScreen({
     const refreshed = await fetch('/api/friends');
     if (refreshed.ok) {
       setFriends((await refreshed.json()) as FriendNetworkPayload);
+    }
+  }
+
+  async function handleAvatarUpload(file: File) {
+    setAvatarUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch('/api/profile/avatar', { method: 'POST', body: formData });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && typeof payload.avatarUrl === 'string') {
+        setAvatarUrl(payload.avatarUrl);
+      } else {
+        setStatus(payload?.error || 'Failed to upload avatar.');
+      }
+    } catch {
+      setStatus('Failed to upload avatar.');
+    } finally {
+      setAvatarUploading(false);
     }
   }
 
@@ -286,6 +314,48 @@ export default function UserActionScreen({
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto no-scrollbar py-5 flex flex-col gap-4">
+              <div className="flex flex-col items-center gap-3 py-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleAvatarUpload(file);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative cursor-pointer"
+                  style={{ width: 80, height: 80 }}
+                >
+                  <div
+                    className="w-full h-full rounded-full flex items-center justify-center overflow-hidden"
+                    style={{ background: 'rgba(249,115,22,0.85)' }}
+                  >
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-white text-xl font-medium">
+                        {initials(form.name || form.email || 'U')}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ background: '#f97316', border: '2px solid var(--bg-screen)' }}
+                  >
+                    <Camera size={12} color="white" strokeWidth={2} />
+                  </div>
+                </button>
+                {avatarUploading ? (
+                  <span className="text-xs text-white/50">Uploading...</span>
+                ) : (
+                  <span className="text-xs text-white/40">Tap to change photo</span>
+                )}
+              </div>
               <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <p className="text-white/30 text-xs font-medium mb-3">Profile</p>
                 <div className="flex flex-col">
