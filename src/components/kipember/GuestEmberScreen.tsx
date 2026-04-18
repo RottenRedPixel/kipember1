@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Home, UserPlus, ChevronDown, Plus, ScanEye, Share2, Link2, MessageCircle, Mail, MoreHorizontal, X } from 'lucide-react';
+
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
@@ -43,6 +44,28 @@ function EmberMark({ size = 18 }: { size?: number }) {
       <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
       <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
     </svg>
+  );
+}
+
+function Modal({ children, closeHref }: { children: React.ReactNode; closeHref: string }) {
+  return (
+    <div className="absolute inset-0 z-40 flex items-end justify-center pb-24">
+      <Link href={closeHref} className="absolute inset-0" />
+      <div
+        className="relative w-full max-w-sm mx-4 rounded-2xl overflow-hidden"
+        style={{
+          background: 'var(--bg-modal)',
+          WebkitBackdropFilter: 'blur(5px)',
+          backdropFilter: 'blur(5px)',
+          border: '1px solid var(--border-subtle)',
+        }}
+      >
+        <Link href={closeHref} className="absolute top-3 right-3 text-white/60 z-10 w-8 h-8 flex items-center justify-center">
+          <X size={18} />
+        </Link>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -206,40 +229,29 @@ export default function GuestEmberScreen({ token }: { token: string }) {
 
       {/* Share modal */}
       {modal === 'share' ? (
-        <div className="absolute left-0 right-0 z-30 flex justify-center px-4" style={{ bottom: 88 }}>
-          <div
-            className="relative w-full max-w-sm flex flex-col px-6 pt-8 pb-6 rounded-2xl"
-            style={{
-              background: 'var(--bg-modal)',
-              border: '1px solid var(--border-subtle)',
-            }}
-          >
-            <Link href={base} className="absolute top-3 right-3 text-white/60 w-8 h-8 flex items-center justify-center">
-              <X size={18} />
-            </Link>
-            <div className="flex flex-col items-center gap-2 mb-4">
-              <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'var(--bg-surface)' }}>
-                <Share2 size={28} color="var(--text-primary)" strokeWidth={1.6} />
-              </div>
-              <span className="text-white text-base font-medium">Share this ember</span>
+        <Modal closeHref={base}>
+          <div className="flex flex-col items-center pt-6 pb-4 gap-2">
+            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'var(--bg-surface)' }}>
+              <Share2 size={28} color="var(--text-primary)" strokeWidth={1.6} />
             </div>
-            <div className="w-full mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-            <div className="grid grid-cols-3 gap-1">
-              <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => void navigator.clipboard.writeText(shareUrl)}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
-              <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => window.location.assign(`sms:?&body=${encodeURIComponent(shareUrl)}`)}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
-              <a href={`mailto:?body=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
-              <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><Share2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
-              <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><Share2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">X / Twitter</span></a>
-              <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => navigator.share?.({ title, url: shareUrl })}><div className="w-11 h-11 flex items-center justify-center"><MoreHorizontal size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">More</span></button>
-            </div>
-            <div className="mt-4">
-              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <span className="flex-1 text-xs text-white/50 truncate">{shareUrl}</span>
-                <button type="button" onClick={() => void navigator.clipboard.writeText(shareUrl)} className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-md cursor-pointer" style={{ color: '#f97316' }}>Copy</button>
-              </div>
+            <span className="text-white text-base font-medium">Share this ember</span>
+          </div>
+          <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
+          <div className="p-5 grid grid-cols-3 gap-1">
+            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => void navigator.clipboard.writeText(shareUrl)}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
+            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => window.location.assign(`sms:?&body=${encodeURIComponent(shareUrl)}`)}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
+            <a href={`mailto:?body=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><Share2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
+            <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><Share2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">X / Twitter</span></a>
+            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => navigator.share?.({ title, url: shareUrl })}><div className="w-11 h-11 flex items-center justify-center"><MoreHorizontal size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">More</span></button>
+          </div>
+          <div className="mx-5 mb-5">
+            <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+              <span className="flex-1 text-xs text-white/50 truncate">{shareUrl}</span>
+              <button type="button" onClick={() => void navigator.clipboard.writeText(shareUrl)} className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-md cursor-pointer" style={{ color: '#f97316' }}>Copy</button>
             </div>
           </div>
-        </div>
+        </Modal>
       ) : null}
 
       {/* Play overlay */}
