@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, UserPlus, ChevronDown, Plus, ScanEye, Share2 } from 'lucide-react';
+import { Home, UserPlus, ChevronDown, Plus, ScanEye, Share2, Link2, MessageCircle, Mail, MoreHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
 import GuestContributorAddFlow from '@/components/kipember/workflows/GuestContributorAddFlow';
+import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 
 type GuestData = {
   guestFlow: true;
@@ -26,6 +27,7 @@ type GuestData = {
     description: string | null;
     createdAt: string;
   };
+  storyCutScript: string | null;
 };
 
 function EmberMark({ size = 18 }: { size?: number }) {
@@ -76,11 +78,7 @@ function RailBtn({
   }
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex flex-col items-center gap-1 p-2 rounded-xl cursor-pointer"
-    >
+    <button type="button" onClick={onClick} className="flex flex-col items-center gap-1 p-2 rounded-xl cursor-pointer">
       {inner}
     </button>
   );
@@ -89,6 +87,7 @@ function RailBtn({
 export default function GuestEmberScreen({ token }: { token: string }) {
   const params = useSearchParams();
   const flow = params.get('ember');
+  const modal = params.get('m');
 
   const [data, setData] = useState<GuestData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -142,9 +141,10 @@ export default function GuestEmberScreen({ token }: { token: string }) {
     posterFilename: data.image.posterFilename,
   });
 
-  const guestUrl = typeof window !== 'undefined' ? window.location.href : '';
-  const openHref = `/guest/${token}?ember=contrib-add`;
-  const closeHref = `/guest/${token}`;
+  const base = `/guest/${token}`;
+  const openHref = `${base}?ember=contrib-add`;
+  const closeHref = base;
+  const shareUrl = typeof window !== 'undefined' ? window.location.origin + base : base;
 
   return (
     <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
@@ -199,21 +199,57 @@ export default function GuestEmberScreen({ token }: { token: string }) {
       </div>
 
       {/* Right rail */}
-      <div className="absolute right-0 z-20 flex flex-col items-center gap-1 pr-1" style={{ top: '50%', transform: 'translateY(-50%)' }}>
-        <RailBtn icon={ScanEye} label="play" href={`/guest/${token}?m=play`} />
-        <RailBtn
-          icon={Share2}
-          label="share"
-          onClick={() => {
-            const url = guestUrl || window.location.href;
-            if (navigator.share) {
-              void navigator.share({ title, url });
-            } else {
-              void navigator.clipboard.writeText(url);
-            }
-          }}
-        />
+      <div className="absolute right-3 z-20 flex flex-col gap-0 items-center" style={{ bottom: '11%' }}>
+        <RailBtn icon={Share2} label="share" href={`${base}?m=share`} />
+        <RailBtn icon={ScanEye} label="play" href={`${base}?m=play`} />
       </div>
+
+      {/* Share modal */}
+      {modal === 'share' ? (
+        <div className="absolute left-0 right-0 z-30 flex justify-center px-4" style={{ bottom: 88 }}>
+          <div
+            className="relative w-full max-w-sm flex flex-col px-6 pt-8 pb-6 rounded-2xl"
+            style={{
+              background: 'var(--bg-modal)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            <Link href={base} className="absolute top-3 right-3 text-white/60 w-8 h-8 flex items-center justify-center">
+              <X size={18} />
+            </Link>
+            <div className="flex flex-col items-center gap-2 mb-4">
+              <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'var(--bg-surface)' }}>
+                <Share2 size={28} color="var(--text-primary)" strokeWidth={1.6} />
+              </div>
+              <span className="text-white text-base font-medium">Share this ember</span>
+            </div>
+            <div className="w-full mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
+            <div className="grid grid-cols-3 gap-1">
+              <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => void navigator.clipboard.writeText(shareUrl)}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
+              <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => window.location.assign(`sms:?&body=${encodeURIComponent(shareUrl)}`)}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
+              <a href={`mailto:?body=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
+              <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><Share2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
+              <a href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><Share2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">X / Twitter</span></a>
+              <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => navigator.share?.({ title, url: shareUrl })}><div className="w-11 h-11 flex items-center justify-center"><MoreHorizontal size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">More</span></button>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                <span className="flex-1 text-xs text-white/50 truncate">{shareUrl}</span>
+                <button type="button" onClick={() => void navigator.clipboard.writeText(shareUrl)} className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-md cursor-pointer" style={{ color: '#f97316' }}>Copy</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Play overlay */}
+      {modal === 'play' ? (
+        <KipemberPlayOverlay
+          closeHref={base}
+          imageId={data.image.id}
+          storyScript={data.storyCutScript}
+        />
+      ) : null}
 
       {/* Ember Chat bar */}
       <div
@@ -221,10 +257,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
         style={{ background: 'var(--bg-screen)', borderTop: '1px solid var(--border-subtle)' }}
       >
         <div className="flex items-center gap-3 pl-4 pr-[22px] py-3">
-          <Link
-            href={flow ? closeHref : openHref}
-            className="flex-1 text-left"
-          >
+          <Link href={flow ? closeHref : openHref} className="flex-1 text-left">
             <span className="flex items-center gap-2">
               <EmberMark />
               <span className="text-base font-medium text-white">

@@ -170,6 +170,10 @@ export async function GET(
           : null,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
         wiki: refreshedContributor.image.wiki,
+        storyCutScript: await prisma.storyCut
+          .findUnique({ where: { imageId: refreshedContributor.image.id }, select: { script: true } })
+          .then((sc) => sc?.script ?? null)
+          .catch(() => null),
       },
       {
         headers: {
