@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
+import { Home } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
-import EmberBrand from '@/components/EmberBrand';
 
 export default function ResetPasswordForm() {
   const router = useRouter();
@@ -13,7 +14,7 @@ export default function ResetPasswordForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError('');
 
@@ -38,75 +39,110 @@ export default function ResetPasswordForm() {
       const response = await fetch('/api/auth/password/reset', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          password,
-        }),
+        body: JSON.stringify({ token, password }),
       });
 
-      const payload = await response.json();
+      const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(payload.error || 'Failed to reset password');
       }
 
-      router.push('/feed');
+      router.push('/home');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to reset password');
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }
 
   return (
-    <div className="ember-auth-card p-8">
-      <EmberBrand subtitle="password reset" compact />
-      <h1 className="ember-heading mt-6 text-4xl text-[var(--ember-text)]">
-        Choose a new password
-      </h1>
-      <p className="ember-copy mt-3 text-sm">
-        Set a new password, then Ember will sign you in immediately.
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
-            New password
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            minLength={8}
-            required
-            className="ember-input"
-          />
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
-            Confirm password
-          </label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => setConfirmPassword(event.target.value)}
-            minLength={8}
-            required
-            className="ember-input"
-          />
-        </div>
-
-        {error && <div className="ember-status ember-status-error">{error}</div>}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+    <div
+      className="flex flex-col items-center justify-center w-full px-6"
+      style={{ minHeight: '100dvh', background: 'var(--bg-screen)' }}
+    >
+      <div className="absolute top-4 left-4">
+        <Link
+          href="/"
+          className="w-11 h-11 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--bg-surface)' }}
         >
-          {isSubmitting ? 'Resetting password...' : 'Reset password'}
-        </button>
-      </form>
+          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-8 w-full max-w-sm py-16">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-white text-2xl font-bold tracking-tight">Choose a new password</h1>
+          <p className="text-white/60 text-sm">Set a new password and Ember will sign you in.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Field
+            label="New password"
+            type="password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <Field
+            label="Confirm password"
+            type="password"
+            placeholder="Repeat your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+
+          {error ? <p className="text-sm text-red-300">{error}</p> : null}
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-2 flex items-center justify-center rounded-full text-white text-sm font-medium transition-opacity hover:opacity-80 w-full btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+            style={{ background: '#f97316', minHeight: 44 }}
+          >
+            {isSubmitting ? 'Resetting...' : 'Reset password'}
+          </button>
+        </form>
+
+        <p className="text-center text-white/60 text-sm">
+          Remembered it?{' '}
+          <Link href="/signin" className="text-white font-medium hover:opacity-70 transition-opacity">
+            Sign In
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  type,
+  placeholder,
+  value,
+  onChange,
+}: {
+  label: string;
+  type: string;
+  placeholder: string;
+  value: string;
+  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-white/60 text-xs font-medium">{label}</label>
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        autoComplete="off"
+        className="h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
+        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(249,115,22,0.6)')}
+        onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-input)')}
+      />
     </div>
   );
 }

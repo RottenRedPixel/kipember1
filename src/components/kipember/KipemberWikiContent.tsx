@@ -558,15 +558,7 @@ export default function KipemberWikiContent({
 
         return entries;
       });
-      const voiceCallEntries = (contributor.voiceCalls || [])
-        .filter((voiceCall) => voiceCall.callSummary?.trim())
-        .map((voiceCall) => ({
-          id: `voice-call-${voiceCall.id}`,
-          createdAt: voiceCall.startedAt || voiceCall.createdAt,
-          role: 'system',
-          source: 'voice',
-          text: voiceCall.callSummary?.trim() || '',
-        }));
+      const voiceCallEntries: typeof messageEntries = [];
 
       const entries = [...voiceCallEntries, ...messageEntries, ...responseEntries]
         .filter((entry) => entry.text.trim().length > 0)
