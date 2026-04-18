@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Home, User, ChevronDown, Plus } from 'lucide-react';
+import { Home, UserPlus, ChevronDown, Plus, ScanEye, Share2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
@@ -41,6 +41,48 @@ function EmberMark({ size = 18 }: { size?: number }) {
       <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
       <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
     </svg>
+  );
+}
+
+function RailBtn({
+  icon: Icon,
+  label,
+  href,
+  onClick,
+}: {
+  icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  label: string;
+  href?: string;
+  onClick?: () => void;
+}) {
+  const inner = (
+    <>
+      <div
+        className="w-11 h-11 rounded-full flex items-center justify-center"
+        style={{ background: 'rgba(0,0,0,0.40)', WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}
+      >
+        <Icon size={23} color="var(--text-primary)" strokeWidth={1.8} />
+      </div>
+      <span className="text-white text-xs font-medium lowercase">{label}</span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="flex flex-col items-center gap-1 p-2 rounded-xl">
+        {inner}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 p-2 rounded-xl cursor-pointer"
+    >
+      {inner}
+    </button>
   );
 }
 
@@ -100,6 +142,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
     posterFilename: data.image.posterFilename,
   });
 
+  const guestUrl = typeof window !== 'undefined' ? window.location.href : '';
   const openHref = `/guest/${token}?ember=contrib-add`;
   const closeHref = `/guest/${token}`;
 
@@ -146,12 +189,30 @@ export default function GuestEmberScreen({ token }: { token: string }) {
         <div className="pointer-events-none flex-1">
           <p className="text-white font-medium text-base leading-tight">{title}</p>
         </div>
-        <div
+        <Link
+          href="/signup"
           className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(100,116,139,0.6)' }}
+          style={{ background: 'rgba(249,115,22,0.85)' }}
         >
-          <User size={20} color="white" strokeWidth={1.8} />
-        </div>
+          <UserPlus size={20} color="white" strokeWidth={1.8} />
+        </Link>
+      </div>
+
+      {/* Right rail */}
+      <div className="absolute right-0 z-20 flex flex-col items-center gap-1 pr-1" style={{ top: '50%', transform: 'translateY(-50%)' }}>
+        <RailBtn icon={ScanEye} label="play" href={`/guest/${token}?m=play`} />
+        <RailBtn
+          icon={Share2}
+          label="share"
+          onClick={() => {
+            const url = guestUrl || window.location.href;
+            if (navigator.share) {
+              void navigator.share({ title, url });
+            } else {
+              void navigator.clipboard.writeText(url);
+            }
+          }}
+        />
       </div>
 
       {/* Ember Chat bar */}
@@ -167,7 +228,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
             <span className="flex items-center gap-2">
               <EmberMark />
               <span className="text-base font-medium text-white">
-                {flow ? 'Ember Chat' : 'Share your memory here'}
+                {flow ? 'Ember Chat' : 'Ember interactive memory'}
               </span>
             </span>
           </Link>
