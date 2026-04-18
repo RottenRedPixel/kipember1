@@ -590,6 +590,7 @@ export async function GET(
       title: image.title,
       description: image.description,
       createdAt: image.createdAt,
+      updatedAt: image.updatedAt,
       shareToNetwork: image.shareToNetwork,
       owner: image.owner,
       accessType,

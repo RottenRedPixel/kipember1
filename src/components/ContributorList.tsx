@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { X, ChevronLeft, Pencil, MessageSquare, Phone, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import MediaPreview from '@/components/MediaPreview';
 
 interface Contributor {
@@ -85,65 +86,6 @@ interface ContributorListProps {
 type Screen = 'list' | 'detail' | 'add';
 type ContributorFormMode = 'create' | 'edit';
 
-function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className={className}>
-      <path d="M6 6 18 18" />
-      <path d="M18 6 6 18" />
-    </svg>
-  );
-}
-
-function BackIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="m14.5 7.5-5 4.5 5 4.5" />
-    </svg>
-  );
-}
-
-function PencilIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="m4 20 4.5-1 9-9-3.5-3.5-9 9L4 20Z" />
-      <path d="m13.5 6.5 3.5 3.5" />
-    </svg>
-  );
-}
-
-function SmsIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
-      <path d="M4.5 6.5h15v10h-9l-4 3v-13Z" />
-    </svg>
-  );
-}
-
-function PhoneIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
-      <path d="M7.6 5.8c.6-.6 1.5-.8 2.3-.3l1.8 1.1c.8.5 1.1 1.5.7 2.3l-.9 1.7c1.3 2.5 3.3 4.5 5.8 5.8l1.7-.9c.8-.4 1.8-.1 2.3.7l1.1 1.8c.5.8.3 1.7-.3 2.3l-1.2 1.2c-.9.9-2.3 1.2-3.5.8-5.7-1.7-10.3-6.3-12-12-.4-1.2-.1-2.6.8-3.5l1.4-1.2Z" />
-    </svg>
-  );
-}
-
-function LinkIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
-      <path d="M10.5 13.5 13.5 10.5" />
-      <path d="M8.2 15.8 6.7 17.3a3.2 3.2 0 0 1-4.5-4.5l2.8-2.8a3.2 3.2 0 0 1 4.5 0" />
-      <path d="m15.8 8.2 1.5-1.5a3.2 3.2 0 0 1 4.5 4.5L19 14a3.2 3.2 0 0 1-4.5 0" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
 
 function formatPhoneNumber(value: string) {
   const digits = value.replace(/\D/g, '');
@@ -688,7 +630,7 @@ export default function ContributorList({
           className="ember-stage-home-button"
           aria-label={screen === 'list' ? 'Close contributors' : 'Back'}
         >
-          {screen === 'list' ? <CloseIcon className="h-4.5 w-4.5" /> : <BackIcon className="h-5 w-5" />}
+          {screen === 'list' ? <X size={18} /> : <ChevronLeft size={20} />}
         </button>
         <div className="pointer-events-none min-w-0 flex-1">
           <p className="truncate text-base font-bold leading-tight text-white">{screenTitle}</p>
@@ -803,19 +745,19 @@ export default function ContributorList({
                             <div className="flex items-center gap-2">
                               <ContributorActionCircle
                                 label={`Send SMS to ${label}`}
-                                icon={<SmsIcon className="h-4 w-4" />}
+                                icon={<MessageSquare size={16} />}
                                 onClick={() => void handleSendInvite(contributor.id)}
                                 disabled={!canManage || !phone || sendingContributorId === contributor.id}
                               />
                               <ContributorActionCircle
                                 label={`Call ${label}`}
-                                icon={<PhoneIcon className="h-4 w-4" />}
+                                icon={<Phone size={16} />}
                                 onClick={() => void handleStartVoiceCall(contributor.id)}
                                 disabled={!canManage || !phone || callingContributorId === contributor.id}
                               />
                               <ContributorActionCircle
                                 label={`Copy link for ${label}`}
-                                icon={<LinkIcon className="h-4 w-4" />}
+                                icon={<LinkIcon size={16} />}
                                 onClick={() => void copyLink(contributor.token)}
                                 disabled={!canManage}
                               />
@@ -860,7 +802,7 @@ export default function ContributorList({
                             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white/72 transition hover:bg-white/12 hover:text-white"
                             aria-label="Edit contributor"
                           >
-                            <PencilIcon className="h-4.5 w-4.5" />
+                            <Pencil size={18} />
                           </button>
                         )}
                       </div>
@@ -1052,7 +994,7 @@ export default function ContributorList({
                       <option value="French">French</option>
                     </select>
                     <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-white/56">
-                      <ChevronDownIcon className="h-4 w-4" />
+                      <ChevronDown size={16} />
                     </span>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { X } from 'lucide-react';
+import { Clock, Pause, Play, PlusCircle, RotateCcw, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PLAY_BAR_HEIGHTS = [6, 8, 14, 20, 25, 31, 25, 36, 31, 25, 36, 42, 36, 31, 42, 36, 31, 25, 36, 31, 25, 20, 25, 20, 14, 8, 14, 8, 6, 3].map((height) =>
@@ -71,18 +71,7 @@ function PlaybackControl({
       style={{ cursor: 'pointer' }}
     >
       <div className="flex flex-col items-center gap-1.5">
-        <svg
-          width={34}
-          height={34}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {children}
-        </svg>
+        {children}
         <span className="text-xs text-center leading-tight">{label}</span>
       </div>
     </button>
@@ -101,7 +90,7 @@ export default function KipemberPlayOverlay({
 }: KipemberPlayOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
-  const autoplayAttemptedRef = useRef(false);
+  const prepareAttemptedRef = useRef(false);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [error, setError] = useState('');
   const [lineIndex, setLineIndex] = useState(0);
@@ -246,18 +235,15 @@ export default function KipemberPlayOverlay({
     [buildAudio, imageId]
   );
 
+  // Silently pre-fetch audio in the background so playback starts instantly on user press
   useEffect(() => {
-    if (autoplayAttemptedRef.current || !imageId || !hasPlayableContent) {
+    if (prepareAttemptedRef.current || !imageId || !hasPlayableContent) {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      autoplayAttemptedRef.current = true;
-      void startPlayback({ allowAutoplay: true });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [imageId, startPlayback]);
+    prepareAttemptedRef.current = true;
+    void buildAudio().catch(() => undefined);
+  }, [imageId, hasPlayableContent, buildAudio]);
 
   const handleToggle = useCallback(() => {
     const audio = audioRef.current;
@@ -343,7 +329,7 @@ export default function KipemberPlayOverlay({
                 transition: 'color 0.8s ease',
               }}
             >
-              {storyLines[lineIndex + 1] ?? '\u00A0'}
+              {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : '\u00A0'}
             </p>
           </div>
 
@@ -357,48 +343,23 @@ export default function KipemberPlayOverlay({
 
           <div className="flex justify-center gap-8 mt-5">
             <PlaybackControl label="back" onClick={handleRestart}>
-              <circle cx="12" cy="12" r="10" />
-              <polyline
-                points="13,8 9,12 13,16"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
+              <RotateCcw size={34} strokeWidth={1.6} />
             </PlaybackControl>
             <PlaybackControl
               label={playbackState === 'playing' ? 'pause' : playbackState === 'loading' ? 'wait' : 'play'}
               onClick={handleToggle}
             >
-              <circle cx="12" cy="12" r="10" />
               {playbackState === 'playing' ? (
-                <>
-                  <line x1="10" y1="15" x2="10" y2="9" />
-                  <line x1="14" y1="15" x2="14" y2="9" />
-                </>
+                <Pause size={34} strokeWidth={1.6} />
               ) : playbackState === 'loading' ? (
-                <path d="M12 8v4l2.5 1.5" />
+                <Clock size={34} strokeWidth={1.6} />
               ) : (
-                <polygon points="10,8 17,12 10,16" fill="currentColor" stroke="none" />
+                <Play size={34} strokeWidth={1.6} />
               )}
             </PlaybackControl>
             <Link href={addHref} className="svg-item">
               <div className="flex flex-col items-center gap-1.5">
-                <svg
-                  width={34}
-                  height={34}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.6}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="16" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
+                <PlusCircle size={34} strokeWidth={1.6} />
                 <span className="text-xs text-center leading-tight">add</span>
               </div>
             </Link>

@@ -859,11 +859,15 @@ export async function generateSnapshotScript({
   title,
   summary,
   location,
+  durationSeconds = 30,
 }: {
   title: string;
   summary: string | null;
   location: string | null;
+  durationSeconds?: number;
 }): Promise<string> {
+  const targetWords = Math.round((durationSeconds / 60) * 150);
+
   const context = [
     `Memory title: ${title}`,
     location ? `Location: ${location}` : null,
@@ -872,8 +876,9 @@ export async function generateSnapshotScript({
     .filter(Boolean)
     .join('\n');
 
-  const systemPrompt = `You write short, warm narration scripts for family memory snapshots.
-Write 2-4 sentences in a natural, conversational tone — like a thoughtful friend describing a meaningful moment.
+  const systemPrompt = `You write warm narration scripts for family memory snapshots.
+Write approximately ${targetWords} words (targeting ${durationSeconds} seconds of spoken audio at a natural pace).
+Use a natural, conversational tone — like a thoughtful friend describing a meaningful moment.
 Do not invent names, relationships, or details not in the context.
 Do not use filler phrases like "In this heartwarming snapshot" or "A beautiful memory".
 Just describe the moment simply and warmly. Return only the narration text, nothing else.`;

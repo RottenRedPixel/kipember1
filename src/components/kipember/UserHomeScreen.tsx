@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { Bookmark, ChevronLeft, LogOut, Share2 } from 'lucide-react';
 
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
@@ -35,18 +35,16 @@ function SvgItem({
   label,
   href,
   onClick,
-  children,
+  icon: Icon,
 }: {
   label: string;
   href?: string;
   onClick?: () => void;
-  children: React.ReactNode;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
 }) {
   const inner = (
     <div className="flex flex-col items-center gap-1.5">
-      <svg width={34} height={34} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-        {children}
-      </svg>
+      <Icon size={28} strokeWidth={1.6} />
       <span className="text-xs text-center leading-tight">{label}</span>
     </div>
   );
@@ -225,19 +223,9 @@ export default function UserHomeScreen({
         {/* Actions */}
         <div className="px-4 py-2">
           <div className="grid grid-cols-3" style={{ gap: '0 8px' }}>
-            <SvgItem label="My Embers" href="/user/my-embers">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-            </SvgItem>
-            <SvgItem label="Shared Embers" href="/user/shared-embers">
-              <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-            </SvgItem>
-            <SvgItem label="Logout" onClick={handleLogout}>
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </SvgItem>
+            <SvgItem label="My Embers" href="/user/my-embers" icon={Bookmark} />
+            <SvgItem label="Shared Embers" href="/user/shared-embers" icon={Share2} />
+            <SvgItem label="Logout" onClick={handleLogout} icon={LogOut} />
           </div>
         </div>
 

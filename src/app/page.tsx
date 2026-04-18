@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
+import { Code } from 'lucide-react';
 
 export default async function LandingPage() {
   const auth = await getCurrentAuth();
@@ -73,10 +74,7 @@ export default async function LandingPage() {
             href="/dev"
             className="px-6 py-3 text-white/30 transition-colors hover:text-white/40"
           >
-            <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-            </svg>
+            <Code width={32} height={32} strokeWidth={1.5} />
           </Link>
         </div>
       </div>

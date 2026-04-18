@@ -23,6 +23,9 @@ export async function POST(
 
     const body = await request.json().catch(() => ({}));
     const manualScript = typeof body?.script === 'string' && body.script.trim() ? body.script.trim() : null;
+    const durationSeconds = typeof body?.durationSeconds === 'number' && body.durationSeconds >= 5 ? body.durationSeconds : 30;
+    const style = typeof body?.style === 'string' && body.style.trim() ? body.style.trim() : 'documentary';
+    const emberVoiceId = body?.emberVoiceId === null ? null : (typeof body?.emberVoiceId === 'string' && body.emberVoiceId.trim() ? body.emberVoiceId.trim() : undefined);
 
     const imageRecord = await prisma.image.findUnique({
       where: { id },
@@ -37,7 +40,7 @@ export async function POST(
     const summary = imageRecord.analysis?.summary || null;
     const location = parseConfirmedLocationContext(imageRecord.analysis?.metadataJson ?? null)?.label ?? null;
 
-    const script = manualScript ?? await generateSnapshotScript({ title, summary, location });
+    const script = manualScript ?? await generateSnapshotScript({ title, summary, location, durationSeconds });
 
     if (!script.trim()) {
       return NextResponse.json({ error: 'Could not generate snapshot text' }, { status: 500 });
@@ -48,14 +51,17 @@ export async function POST(
       update: {
         title,
         script,
+        style,
+        durationSeconds,
         wordCount: script.split(/\s+/).filter(Boolean).length,
+        ...(emberVoiceId !== undefined ? { emberVoiceId } : {}),
       },
       create: {
         imageId: id,
         title,
-        style: 'documentary',
+        style,
         focus: '',
-        durationSeconds: 10,
+        durationSeconds,
         wordCount: script.split(/\s+/).filter(Boolean).length,
         script,
         blocksJson: '[]',
@@ -97,6 +103,9 @@ export async function PATCH(
     const body = await request.json().catch(() => ({}));
     const script = typeof body?.script === 'string' && body.script.trim() ? body.script.trim() : '';
     const title = typeof body?.title === 'string' && body.title.trim() ? body.title.trim() : null;
+    const durationSeconds = typeof body?.durationSeconds === 'number' && body.durationSeconds >= 5 ? body.durationSeconds : null;
+    const style = typeof body?.style === 'string' && body.style.trim() ? body.style.trim() : null;
+    const emberVoiceId = body?.emberVoiceId === null ? null : (typeof body?.emberVoiceId === 'string' && body.emberVoiceId.trim() ? body.emberVoiceId.trim() : undefined);
 
     if (!script) {
       return NextResponse.json({ error: 'Snapshot script is required' }, { status: 400 });
@@ -113,6 +122,9 @@ export async function PATCH(
         script,
         title: title || existing.title,
         wordCount: script.split(/\s+/).filter(Boolean).length,
+        ...(durationSeconds !== null ? { durationSeconds } : {}),
+        ...(style !== null ? { style } : {}),
+        ...(emberVoiceId !== undefined ? { emberVoiceId } : {}),
       },
     });
 
@@ -120,6 +132,7 @@ export async function PATCH(
       storyCut: {
         title: updated.title,
         script: updated.script,
+        durationSeconds: updated.durationSeconds,
         wordCount: updated.wordCount,
         updatedAt: updated.updatedAt.toISOString(),
       },

@@ -1,22 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-
-function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M6 6 18 18" />
-      <path d="M18 6 6 18" />
-    </svg>
-  );
-}
+import { X, Music } from 'lucide-react';
 
 type UploadConfirmModalProps = {
   open: boolean;
@@ -60,9 +45,7 @@ function PreviewSurface({
     return (
       <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-[rgba(255,255,255,0.03)] px-6 text-center text-white">
         <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/6 text-[var(--ember-orange-deep)]">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-10 w-10" aria-hidden="true">
-            <path d="M12 3a1 1 0 0 1 1 1v9.55A4 4 0 1 1 11 17V7.82l6-1.34V14a4 4 0 1 1-2-3.46V7.91l-4 .9V17a4 4 0 1 1-2-3.46V4a1 1 0 0 1 1-1h2Z" />
-          </svg>
+          <Music size={40} />
         </div>
         <div className="space-y-2">
           <div className="text-sm font-medium text-white">Audio clip</div>
@@ -122,7 +105,7 @@ export default function UploadConfirmModal({
               className="kip-home-button absolute right-4 top-4 z-10 text-white"
               aria-label="Close create confirmation"
             >
-              <CloseIcon />
+              <X size={16} />
             </button>
 
             <div className="kip-panel absolute inset-x-4 bottom-4 z-10 rounded-[1.7rem] p-5 text-white lg:inset-x-6 lg:bottom-6 lg:max-w-[36rem]">
@@ -175,7 +158,7 @@ export default function UploadConfirmModal({
             className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/8 text-white hover:border-white/18"
             aria-label="Close create confirmation"
           >
-            <CloseIcon />
+            <X size={16} />
           </button>
 
           <div className="space-y-4">

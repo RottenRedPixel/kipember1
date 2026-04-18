@@ -103,6 +103,7 @@ type TendDetail = KipemberWikiDetail & {
     selectedContributorIds: string[];
     includeOwner: boolean;
     includeEmberVoice: boolean;
+    emberVoiceId?: string | null;
     updatedAt: string;
   } | null;
   contributors: TendContributor[];
@@ -437,6 +438,7 @@ export default function TendActionScreen({ action }: { action: string }) {
     return null;
   }
 
+  const TendIcon = TEND_ICONS[action];
   const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}` : '/tend/contributors';
   const backHref = action === 'contributors' && view ? listHref : resolvedImageId ? `/home?id=${resolvedImageId}` : '/home';
   const contributors: TendContributor[] = detail?.contributors || [];
@@ -703,20 +705,8 @@ export default function TendActionScreen({ action }: { action: string }) {
           >
             <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
           </Link>
-          {TEND_ICONS[action] && !(action === 'contributors' && view) ? (
-            <svg
-              width={24}
-              height={24}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--text-primary)"
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="flex-shrink-0"
-            >
-              {TEND_ICONS[action]}
-            </svg>
+          {TendIcon && !(action === 'contributors' && view) ? (
+            <TendIcon size={22} color="var(--text-primary)" strokeWidth={1.6} className="flex-shrink-0" />
           ) : null}
           <h2 className="text-white font-medium text-base">
             {action === 'contributors' && contributorSource ? contributorName : title}
@@ -992,13 +982,27 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'edit-title' ? (
             <>
-              <input
-                value={titleValue}
-                onChange={(event) => setTitleValue(event.target.value)}
-                placeholder="Ember title"
-                className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                style={fieldStyle}
-              />
+              <div
+                className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+              >
+                {detail?.updatedAt ? (
+                  <p className="text-white/30 text-xs mb-2">
+                    Last updated:{' '}
+                    {new Date(detail.updatedAt).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                ) : null}
+                <input
+                  value={titleValue}
+                  onChange={(event) => setTitleValue(event.target.value)}
+                  placeholder="Ember title"
+                  className="w-full px-0 py-2 text-sm text-white placeholder-white/30 outline-none bg-transparent border-t border-white/10"
+                />
+              </div>
               <div className="flex justify-end gap-3">
                 <button
                   type="button"

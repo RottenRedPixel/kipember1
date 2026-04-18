@@ -118,6 +118,7 @@ export default function UserActionScreen({
     return null;
   }
 
+  const UserIcon = USER_ICONS[action];
   const sort = searchParams.get('sort') ?? 'Newest';
   const showSort = searchParams.get('sort-open') === '1';
   const emberSet =
@@ -185,18 +186,7 @@ export default function UserActionScreen({
         >
           {rootView ? (
             <div className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full" style={{ background: 'var(--bg-surface)' }}>
-              <svg
-                width={24}
-                height={24}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--text-primary)"
-                strokeWidth={1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {USER_ICONS[action]}
-              </svg>
+              {UserIcon ? <UserIcon size={24} color="var(--text-primary)" strokeWidth={1.6} /> : null}
             </div>
           ) : (
             <Link
@@ -207,20 +197,8 @@ export default function UserActionScreen({
               <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
             </Link>
           )}
-          {!rootView && USER_ICONS[action] ? (
-            <svg
-              width={24}
-              height={24}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--text-primary)"
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="flex-shrink-0"
-            >
-              {USER_ICONS[action]}
-            </svg>
+          {!rootView && UserIcon ? (
+            <UserIcon size={24} color="var(--text-primary)" strokeWidth={1.6} className="flex-shrink-0" />
           ) : null}
           <h2 className="text-white font-medium text-base">{title}</h2>
           {rootView ? (

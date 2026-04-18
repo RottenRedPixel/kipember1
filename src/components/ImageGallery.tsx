@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { LayoutGrid, List } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MediaPreview from '@/components/MediaPreview';
 
@@ -14,32 +15,6 @@ type FeedImage = {
 };
 
 const LOAD_BATCH_SIZE = 15;
-
-function GridViewIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <rect x="3" y="3" width="5" height="5" rx="1.2" />
-      <rect x="10" y="3" width="5" height="5" rx="1.2" />
-      <rect x="17" y="3" width="5" height="5" rx="1.2" />
-      <rect x="3" y="10" width="5" height="5" rx="1.2" />
-      <rect x="10" y="10" width="5" height="5" rx="1.2" />
-      <rect x="17" y="10" width="5" height="5" rx="1.2" />
-      <rect x="3" y="17" width="5" height="5" rx="1.2" />
-      <rect x="10" y="17" width="5" height="5" rx="1.2" />
-      <rect x="17" y="17" width="5" height="5" rx="1.2" />
-    </svg>
-  );
-}
-
-function ListViewIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
-      <rect x="2" y="4" width="20" height="3.2" rx="1.4" />
-      <rect x="2" y="10.4" width="20" height="3.2" rx="1.4" />
-      <rect x="2" y="16.8" width="20" height="3.2" rx="1.4" />
-    </svg>
-  );
-}
 
 function formatCreatedAt(createdAt: string) {
   try {
@@ -137,7 +112,7 @@ export default function ImageGallery() {
                 layoutMode === 'list' ? 'bg-white/10 text-white' : ''
               }`}
             >
-              <ListViewIcon />
+              <List className="h-5 w-5" aria-hidden="true" />
             </button>
             <button
               type="button"
@@ -147,7 +122,7 @@ export default function ImageGallery() {
                 layoutMode === 'grid' ? 'bg-white/10 text-white' : ''
               }`}
             >
-              <GridViewIcon />
+              <LayoutGrid className="h-5 w-5" aria-hidden="true" />
             </button>
           </div>
         </div>

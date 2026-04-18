@@ -143,6 +143,7 @@ export type KipemberWikiDetail = {
   originalName: string;
   description: string | null;
   createdAt: string;
+  updatedAt?: string;
   storyCut?: {
     script: string;
   } | null;

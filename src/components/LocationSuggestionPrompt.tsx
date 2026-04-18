@@ -1,22 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-
-function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M6 6 18 18" />
-      <path d="M18 6 6 18" />
-    </svg>
-  );
-}
+import { X } from 'lucide-react';
 
 type LocationSuggestion = {
   id: string;
@@ -162,7 +147,7 @@ export default function LocationSuggestionPrompt({
             className="absolute right-6 top-6 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)] shadow-[0_8px_22px_rgba(17,17,17,0.08)] hover:border-[rgba(255,102,33,0.24)]"
             aria-label="Close location suggestions"
           >
-            <CloseIcon />
+            <X size={16} />
           </button>
           <p className="ember-eyebrow">Location context</p>
           <h2 className="ember-heading mt-3 pr-12 text-3xl text-[var(--ember-text)]">
