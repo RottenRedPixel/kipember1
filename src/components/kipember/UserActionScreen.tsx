@@ -9,6 +9,7 @@ import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
 import type { FriendNetworkPayload } from '@/lib/friend-network';
 import type { AccessibleImageSummary } from '@/lib/image-summaries';
+import AvatarCropModal from '@/components/kipember/AvatarCropModal';
 
 type ImageSummary = AccessibleImageSummary & {
   mediaType: EmberMediaType;
@@ -70,6 +71,7 @@ export default function UserActionScreen({
   });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [friendEmail, setFriendEmail] = useState('');
   const [status, setStatus] = useState('');
@@ -179,15 +181,16 @@ export default function UserActionScreen({
     }
   }
 
-  async function handleAvatarUpload(file: File) {
+  async function handleAvatarUpload(blob: Blob) {
     setAvatarUploading(true);
+    setCropSrc(null);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', blob, 'avatar.jpg');
     try {
       const response = await fetch('/api/profile/avatar', { method: 'POST', body: formData });
       const payload = await response.json().catch(() => ({}));
       if (response.ok && typeof payload.avatarUrl === 'string') {
-        setAvatarUrl(payload.avatarUrl);
+        setAvatarUrl(payload.avatarUrl + '?t=' + Date.now());
       } else {
         setStatus(payload?.error || 'Failed to upload avatar.');
       }
@@ -322,7 +325,10 @@ export default function UserActionScreen({
                   className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) void handleAvatarUpload(file);
+                    e.currentTarget.value = '';
+                    if (!file) return;
+                    const url = URL.createObjectURL(file);
+                    setCropSrc(url);
                   }}
                 />
                 <button
@@ -427,6 +433,13 @@ export default function UserActionScreen({
           )}
         </div>
       </div>
+      {cropSrc ? (
+        <AvatarCropModal
+          imageSrc={cropSrc}
+          onConfirm={(blob) => { void handleAvatarUpload(blob); }}
+          onCancel={() => { URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+        />
+      ) : null}
     </div>
   );
 }

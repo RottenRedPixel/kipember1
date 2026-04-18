@@ -79,6 +79,7 @@ export default function UserHomeScreen({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [createdImageId, setCreatedImageId] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const displayName = initialProfile?.name || initialProfile?.email || 'Ember User';
 
@@ -95,6 +96,18 @@ export default function UserHomeScreen({
     }, 2400);
     return () => clearTimeout(timer);
   }, [createdImageId, step, router]);
+
+  useEffect(() => {
+    void fetch('/api/profile', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const payload = await res.json();
+        if (typeof payload?.user?.avatarUrl === 'string') {
+          setAvatarUrl(payload.user.avatarUrl);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -211,10 +224,14 @@ export default function UserHomeScreen({
         <div className="flex flex-col items-center py-4 gap-2">
           <Link href="/user/profile">
             <div
-              className="rounded-full flex items-center justify-center"
+              className="rounded-full flex items-center justify-center overflow-hidden"
               style={{ width: 72, height: 72, background: 'rgba(249,115,22,0.85)' }}
             >
-              <span className="text-white text-lg font-medium">{initials(displayName)}</span>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+              ) : (
+                <span className="text-white text-lg font-medium">{initials(displayName)}</span>
+              )}
             </div>
           </Link>
           <span className="text-white font-semibold text-base">{displayName}</span>

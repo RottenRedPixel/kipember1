@@ -44,6 +44,7 @@ type AuthUser = {
   name: string | null;
   email: string;
   phoneNumber: string | null;
+  avatarUrl?: string | null;
 };
 
 type ImageSummary = AccessibleImageSummary & {
@@ -257,6 +258,7 @@ export default function HomeScreen({
   const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play' || modal === 'user';
 
   const [profile, setProfile] = useState<AuthUser | null>(initialProfile ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
   const [images, setImages] = useState<ImageSummary[]>(initialImages);
   const [selectedImage, setSelectedImage] = useState<ImageDetail | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -333,6 +335,18 @@ export default function HomeScreen({
       })
       .catch(() => undefined);
   }, [profile]);
+
+  useEffect(() => {
+    void fetch('/api/profile', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const payload = await res.json();
+        if (typeof payload?.user?.avatarUrl === 'string') {
+          setAvatarUrl(payload.user.avatarUrl);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (createdImageId === null && initialImages.length > 0) {
@@ -582,10 +596,14 @@ export default function HomeScreen({
         {!firstEmber ? (
           <Link
             href={buildHomeHref({ m: 'user' })}
-            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
             style={{ background: 'rgba(249,115,22,0.85)' }}
           >
-            <span className="text-white text-sm font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+            ) : (
+              <span className="text-white text-sm font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
+            )}
           </Link>
         ) : null}
       </div>
@@ -715,8 +733,12 @@ export default function HomeScreen({
       {modal === 'user' ? (
         <Modal closeHref={buildHomeHref({ m: null })}>
           <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'rgba(249,115,22,0.85)' }}>
-              <span className="text-white text-base font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
+            <div className="rounded-full flex items-center justify-center overflow-hidden" style={{ width: 55, height: 55, background: 'rgba(249,115,22,0.85)' }}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+              ) : (
+                <span className="text-white text-base font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
+              )}
             </div>
             <span className="text-white text-base font-medium">{profile?.name || profile?.email || 'Ember User'}</span>
           </div>
@@ -735,8 +757,8 @@ export default function HomeScreen({
       {modal === 'share' ? (
         <Modal closeHref={buildHomeHref({ m: null })}>
           <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'var(--bg-surface)' }}>
-              <Share2 size={28} color="var(--text-primary)" strokeWidth={1.6} />
+            <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#4a6172' }}>
+              <Share2 size={28} color="#c8dce8" strokeWidth={1.6} />
             </div>
             <span className="text-white text-base font-medium">Share this ember</span>
           </div>
@@ -782,7 +804,7 @@ export default function HomeScreen({
       {modal === 'tend' ? (
         <Modal closeHref={buildHomeHref({ m: null })}>
           <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: '#6a7c5c' }}>
+            <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#6a7c5c' }}>
               <Leaf size={28} color="#d4e8c2" strokeWidth={1.6} />
             </div>
             <span className="text-white text-base font-medium">Tend &amp; grow this ember</span>
