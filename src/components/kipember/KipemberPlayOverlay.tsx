@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Clock, Pause, Play, PlusCircle, RotateCcw, X } from 'lucide-react';
+import { Clock, Pause, Play, RotateCcw, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PLAY_BAR_HEIGHTS = [6, 8, 14, 20, 25, 31, 25, 36, 31, 25, 36, 42, 36, 31, 42, 36, 31, 25, 36, 31, 25, 20, 25, 20, 14, 8, 14, 8, 6, 3].map((height) =>
@@ -13,8 +13,8 @@ const PLAY_BAR_DURATIONS = PLAY_BAR_HEIGHTS.map((_, index) =>
 
 type KipemberPlayOverlayProps = {
   closeHref: string;
-  addHref: string;
   imageId: string | null;
+  title: string | null;
   storyScript: string | null;
 };
 
@@ -84,8 +84,8 @@ function resetAudioPosition(audio: HTMLAudioElement) {
 
 export default function KipemberPlayOverlay({
   closeHref,
-  addHref,
   imageId,
+  title,
   storyScript,
 }: KipemberPlayOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -279,11 +279,10 @@ export default function KipemberPlayOverlay({
   return (
     <>
       <style>{'@keyframes vizPulse { from { transform: scaleY(0.15); } to { transform: scaleY(1); } }'}</style>
-      <div className="absolute left-0 right-0 z-30 flex justify-center" style={{ bottom: 88 }}>
+      <div className="absolute left-0 right-0 z-30 flex justify-center px-4" style={{ bottom: 88 }}>
         <div
-          className="relative flex flex-col items-center px-6 pt-8 pb-6 rounded-2xl"
+          className="relative w-full max-w-sm flex flex-col items-center px-6 pt-8 pb-6 rounded-2xl"
           style={{
-            width: 320,
             background: 'var(--bg-modal)',
             WebkitBackdropFilter: 'blur(5px)',
             backdropFilter: 'blur(5px)',
@@ -296,6 +295,13 @@ export default function KipemberPlayOverlay({
           >
             <X size={18} />
           </Link>
+
+          {title ? (
+            <>
+              <p className="text-white font-semibold text-base mb-5 text-center">{title}</p>
+              <div className="w-full mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
+            </>
+          ) : null}
 
           <div className="flex items-center gap-[3px]" style={{ height: 34 }}>
             {PLAY_BAR_HEIGHTS.map((height, index) => (
@@ -357,12 +363,6 @@ export default function KipemberPlayOverlay({
                 <Play size={34} strokeWidth={1.6} />
               )}
             </PlaybackControl>
-            <Link href={addHref} className="svg-item">
-              <div className="flex flex-col items-center gap-1.5">
-                <PlusCircle size={34} strokeWidth={1.6} />
-                <span className="text-xs text-center leading-tight">add</span>
-              </div>
-            </Link>
           </div>
         </div>
       </div>

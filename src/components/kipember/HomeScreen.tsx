@@ -762,8 +762,8 @@ export default function HomeScreen({
         <KipemberPlayOverlay
           key={`${selectedImageId || 'empty'}:${selectedImage?.wiki?.updatedAt || 'wiki'}:${selectedImage?.storyCut?.script ? 'story-cut' : 'fallback'}`}
           closeHref={buildHomeHref({ m: null })}
-          addHref={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'}
           imageId={selectedImageId}
+          title={selectedImage?.title || selectedImage?.originalName || null}
           storyScript={selectedImage?.storyCut?.script || null}
         />
       ) : null}
