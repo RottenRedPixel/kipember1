@@ -269,6 +269,7 @@ export default function HomeScreen({
   const [hasConversationHistory, setHasConversationHistory] = useState(false);
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [shareToken, setShareToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedImageId = params.get('id') || images[0]?.id || null;
@@ -425,6 +426,21 @@ export default function HomeScreen({
       }
     };
   }, [selectedPreviewUrl]);
+
+  useEffect(() => {
+    if (modal !== 'share' || !selectedImageId) {
+      return;
+    }
+
+    void fetch(`/api/images/${selectedImageId}/share-token`, { method: 'POST' })
+      .then(async (res) => {
+        const payload = await res.json().catch(() => null);
+        if (typeof payload?.token === 'string') {
+          setShareToken(payload.token);
+        }
+      })
+      .catch(() => undefined);
+  }, [modal, selectedImageId]);
 
   useEffect(() => {
     const stored = localStorage.getItem('ember-theme');
@@ -725,12 +741,19 @@ export default function HomeScreen({
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="p-5 grid grid-cols-3 gap-1">
-            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => selectedImageId ? void navigator.clipboard.writeText(`${window.location.origin}/home?id=${selectedImageId}`) : undefined}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
-            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => selectedImageId ? window.location.assign(`sms:?&body=${encodeURIComponent(`${window.location.origin}/home?id=${selectedImageId}`)}`) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
-            <a href={selectedImageId ? `mailto:?body=${encodeURIComponent(`${window.location.origin}/home?id=${selectedImageId}`)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
-            <a href={selectedImageId ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/home?id=${selectedImageId}`)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><FacebookIcon /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
-            <a href={selectedImageId ? `https://twitter.com/intent/tweet?url=${encodeURIComponent(`${window.location.origin}/home?id=${selectedImageId}`)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><XIcon /></div><span className="text-white text-xs font-medium tracking-wide">X / Twitter</span></a>
-            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => selectedImageId ? navigator.share?.({ title, url: `${window.location.origin}/home?id=${selectedImageId}` }) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MoreHorizontal size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">More</span></button>
+            {(() => {
+              const shareUrl = shareToken ? `${window.location.origin}/guest/${shareToken}` : null;
+              return (
+                <>
+                  <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? void navigator.clipboard.writeText(shareUrl) : undefined}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
+                  <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? window.location.assign(`sms:?&body=${encodeURIComponent(shareUrl)}`) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
+                  <a href={shareUrl ? `mailto:?body=${encodeURIComponent(shareUrl)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
+                  <a href={shareUrl ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><FacebookIcon /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
+                  <a href={shareUrl ? `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><XIcon /></div><span className="text-white text-xs font-medium tracking-wide">X / Twitter</span></a>
+                  <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? navigator.share?.({ title, url: shareUrl }) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MoreHorizontal size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">More</span></button>
+                </>
+              );
+            })()}
           </div>
         </Modal>
       ) : null}
