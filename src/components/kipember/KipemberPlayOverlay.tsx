@@ -298,7 +298,7 @@ export default function KipemberPlayOverlay({
             <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'rgba(249,115,22,0.85)' }}>
               <ScanEye size={28} color="white" strokeWidth={1.6} />
             </div>
-            <span className="text-white text-base font-medium">Story Snapshot</span>
+            <span className="text-white text-base font-medium">Play snapshot of ember</span>
           </div>
           <div className="w-full mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
 
