@@ -310,12 +310,12 @@ export default function UserActionScreen({
             <div className="flex-1 overflow-y-auto no-scrollbar py-5 flex flex-col gap-4">
               <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <p className="text-white/30 text-xs font-medium mb-3">Profile</p>
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col">
                   {[
                     { key: 'name', placeholder: 'Your name' },
                     { key: 'email', placeholder: 'Email address' },
                     { key: 'phoneNumber', placeholder: 'Phone number' },
-                  ].map((field) => (
+                  ].map((field, index) => (
                     <input
                       key={field.key}
                       value={form[field.key as keyof typeof form]}
@@ -323,15 +323,17 @@ export default function UserActionScreen({
                         setForm((current) => ({ ...current, [field.key]: event.target.value }))
                       }
                       placeholder={field.placeholder}
-                      className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                      style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
+                      className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                      style={{ borderTop: index > 0 ? '1px solid var(--border-subtle)' : 'none' }}
                     />
                   ))}
                 </div>
+              </div>
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={saveProfile}
-                  className="mt-4 w-full rounded-full text-white text-sm font-medium btn-primary"
+                  className="rounded-full px-5 text-white text-sm font-medium btn-primary"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
                   Save Profile
@@ -340,23 +342,22 @@ export default function UserActionScreen({
 
               <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <p className="text-white/30 text-xs font-medium mb-3">Add to Your Network</p>
-                <div className="flex gap-2">
-                  <input
-                    value={friendEmail}
-                    onChange={(event) => setFriendEmail(event.target.value)}
-                    placeholder="Friend email"
-                    className="flex-1 h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={addFriend}
-                    className="rounded-full px-4 text-white text-sm font-medium btn-secondary"
-                    style={{ border: '1.5px solid var(--border-btn)' }}
-                  >
-                    Add
-                  </button>
-                </div>
+                <input
+                  value={friendEmail}
+                  onChange={(event) => setFriendEmail(event.target.value)}
+                  placeholder="Friend email"
+                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={addFriend}
+                  className="rounded-full px-5 text-white text-sm font-medium btn-secondary"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Add Friend
+                </button>
               </div>
 
               {status ? <p className="text-sm text-white/60">{status}</p> : null}

@@ -143,6 +143,9 @@ export type KipemberWikiDetail = {
   originalName: string;
   description: string | null;
   createdAt: string;
+  storyCut?: {
+    script: string;
+  } | null;
   owner?: {
     id: string;
     name: string | null;
@@ -747,6 +750,20 @@ export default function KipemberWikiContent({
                 </div>
               ))}
             </div>
+          )}
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
+        icon={<FileText size={17} />}
+        title="Snapshot"
+        complete={Boolean(detail?.storyCut?.script)}
+      >
+        <WikiCard>
+          {detail?.storyCut?.script ? (
+            <p className="text-white/90 text-sm leading-relaxed">{detail.storyCut.script}</p>
+          ) : (
+            <p className="text-white/30 text-sm">No snapshot yet.</p>
           )}
         </WikiCard>
       </WikiSection>

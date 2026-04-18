@@ -196,41 +196,40 @@ export default function KipemberSnapshotEditor({
           onChange={(event) => setScriptDraft(event.target.value)}
           disabled={!detail.canManage}
           rows={8}
-          className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none disabled:opacity-70"
-          style={fieldStyle}
+          className="w-full px-0 py-2 text-sm text-white outline-none disabled:opacity-70 bg-transparent border-t border-white/10 resize-none"
           placeholder="Snapshot text will appear here..."
         />
         {error ? <p className="text-rose-300 text-xs mt-1">{error}</p> : null}
-        <div className="flex flex-wrap gap-3 mt-3">
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={!detail.canManage || saving || !isDirty}
-            className="rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
-            style={{ background: '#f97316', minHeight: 44 }}
-          >
-            {saving ? 'Saving...' : 'Save Snapshot'}
-          </button>
-          {detail.storyCut?.script?.trim() ? (
-            <Link
-              href={`/home?id=${imageId}&m=play`}
-              className="rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
-              style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-            >
-              Play Snapshot
-            </Link>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => void handleRegenerate()}
-            disabled={!detail.canManage || regenerating}
-            className="rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+      </SnapshotCard>
+      <div className="flex flex-wrap justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => void handleRegenerate()}
+          disabled={!detail.canManage || regenerating}
+          className="rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+          style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+        >
+          {regenerating ? 'Regenerating...' : 'Regenerate'}
+        </button>
+        {detail.storyCut?.script?.trim() ? (
+          <Link
+            href={`/home?id=${imageId}&m=play`}
+            className="rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
             style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
           >
-            {regenerating ? 'Regenerating...' : 'Regenerate'}
-          </button>
-        </div>
-      </SnapshotCard>
+            Play
+          </Link>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={!detail.canManage || saving || !isDirty}
+          className="rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
+          style={{ background: '#f97316', minHeight: 44 }}
+        >
+          {saving ? 'Saving...' : 'Save Snapshot'}
+        </button>
+      </div>
     </SnapshotSection>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, MessageCircle, Mic, Phone, SendHorizontal } from 'lucide-react';
+import { Image as ImageIcon, Mic, Phone, SendHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type Message = {
@@ -43,6 +43,7 @@ export default function WelcomeFlow({
   onConversationStateChange?: (hasConversation: boolean) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [welcomeBack, setWelcomeBack] = useState('');
   const [input, setInput] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
@@ -90,6 +91,14 @@ export default function WelcomeFlow({
         if (!cancelled) {
           setMessages(nextMessages);
           onConversationStateChange?.(nextMessages.length > 0);
+          if (nextMessages.length > 0) {
+            const picks = [
+              'Welcome back! What would you like to add?',
+              'Good to see you again. What\'s on your mind?',
+              'Welcome back! I\'m here whenever you\'re ready.',
+            ];
+            setWelcomeBack(picks[Math.floor(Math.random() * picks.length)]);
+          }
         }
       } catch {
         if (!cancelled) {
@@ -366,29 +375,11 @@ export default function WelcomeFlow({
                 style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
               >
                 <p className="text-sm leading-relaxed text-white/90">
-                  Want to add to this memory? Receive a text, get a phone call for a quick interview or start chatting below
+                  Want to add to this memory? Call your phone for a quick interview or start chatting below
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 pt-1 pl-1">
-                <button
-                  type="button"
-                  onClick={() => void triggerSelfInvite('text')}
-                  disabled={invitingMode !== null || hasPhoneNumber === false || hasPhoneNumber === null}
-                  aria-label={
-                    hasPhoneNumber === false
-                      ? 'Add a phone number in your profile to receive a text'
-                      : 'Receive a Text'
-                  }
-                  className="inline-flex items-center justify-center rounded-full px-3 text-xs font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  style={{
-                    border: '1.5px solid var(--border-btn)',
-                    background: 'transparent',
-                    minHeight: 44,
-                  }}
-                >
-                  {invitingMode === 'text' ? 'Sending...' : 'Receive a Text'}
-                </button>
                 <button
                   type="button"
                   onClick={() => void triggerSelfInvite('call')}
@@ -398,10 +389,10 @@ export default function WelcomeFlow({
                       ? 'Add a phone number in your profile to get a call'
                       : 'Get a Phone Call'
                   }
-                  className="inline-flex items-center justify-center rounded-full px-3 text-xs font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className="inline-flex items-center justify-center rounded-full px-5 text-sm font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer btn-primary"
                   style={{ background: '#f97316', border: 'none', minHeight: 44 }}
                 >
-                  {invitingMode === 'call' ? 'Calling...' : 'Get a Phone Call'}
+                  {invitingMode === 'call' ? 'Calling...' : 'Call My Phone'}
                 </button>
               </div>
 
@@ -444,6 +435,17 @@ export default function WelcomeFlow({
                 </div>
               );
             })}
+            {welcomeBack ? (
+              <div className="flex flex-col gap-2 items-start">
+                <span className="pl-1 text-xs font-medium text-white">ember</span>
+                <div
+                  className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
+                  style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                >
+                  <p className="text-sm leading-relaxed text-white/90">{welcomeBack}</p>
+                </div>
+              </div>
+            ) : null}
             {isSending ? (
               <div className="flex flex-col gap-1 items-start">
                 <span className="pl-1 text-xs font-medium text-white">ember</span>
@@ -465,6 +467,7 @@ export default function WelcomeFlow({
                 </div>
               </div>
             ) : null}
+            <div ref={messagesEndRef} />
           </div>
         </div>
       ) : !isLoadingHistory ? (
@@ -489,7 +492,7 @@ export default function WelcomeFlow({
             style={{ background: 'rgba(255,255,255,0.08)' }}
             aria-label="Add photo"
           >
-            <Camera size={18} />
+            <ImageIcon size={18} />
           </button>
 
           <button
@@ -501,6 +504,17 @@ export default function WelcomeFlow({
             aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
           >
             <Mic size={18} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void triggerSelfInvite('call')}
+            disabled={invitingMode !== null || hasPhoneNumber === false || hasPhoneNumber === null}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
+            style={{ background: invitingMode === 'call' ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
+            aria-label="Call my phone"
+          >
+            <Phone size={18} />
           </button>
 
           <input
@@ -538,7 +552,6 @@ export default function WelcomeFlow({
         ) : null}
       </div>
 
-      <div ref={messagesEndRef} />
     </div>
   );
 }

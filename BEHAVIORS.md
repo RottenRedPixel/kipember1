@@ -47,6 +47,12 @@ Buttons must contain text labels only — no icons. Icons add visual noise and t
 
 There are only 2 button styles. Ghost buttons (semi-transparent fill, no border) are not used — convert any to secondary.
 
+### Maximum 2 container layers in sliders
+Slider content must never exceed 2 visual container layers: the slider background (layer 1) and a single content card (layer 2). Do not place a styled container (background, border) inside another styled container. Input fields and textareas inside a card must be transparent — the card is the container, not the input.
+
+### Button alignment in sliders
+Buttons inside slider interfaces must always be **right-justified**. Use `justify-end` on the button row container. The primary action button sits at the far right.
+
 ### Rollover (desktop only)
 Always add the matching CSS class to enable hover effects (scoped to `pointer: fine` devices — never fires on touch):
 - Primary buttons: add `btn-primary` class → darkens with `filter: brightness(0.88)` on hover

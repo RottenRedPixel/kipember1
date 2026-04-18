@@ -186,7 +186,9 @@ function WorkflowSlot({
         <WelcomeFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
       ) : null;
     case 'owner-add':
-      return <OwnerAddFlow />;
+      return imageId ? (
+        <WelcomeFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+      ) : null;
     case 'contrib-add':
       return <ContributorAddFlow />;
     case 'owner-add-more':
@@ -692,7 +694,7 @@ export default function HomeScreen({
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-            <SvgItem label="Add Content" href={selectedImageId ? `/tend/add-content?id=${selectedImageId}` : '/tend/add-content'}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></SvgItem>
+            <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></SvgItem>
             <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'}><path d="M4 19V6a2 2 0 0 1 2-2h13" /><path d="M4 19a2 2 0 0 0 2 2h13V8H6a2 2 0 0 0-2 2" /></SvgItem>
             <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'}><rect x="3" y="3" width="18" height="14" rx="2" /><path d="M8 21h8M12 17v4" /><path d="M7 7l3.5 3.5L15 6" /></SvgItem>
             <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'}><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></SvgItem>

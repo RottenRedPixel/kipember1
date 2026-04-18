@@ -776,13 +776,15 @@ export default function TendActionScreen({ action }: { action: string }) {
                   );
                 })
               )}
-              <Link
-                href={`${listHref}&view=add`}
-                className="flex items-center justify-center gap-2 w-full rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
-                style={{ background: '#f97316', minHeight: 44 }}
-              >
-                Add Contributor
-              </Link>
+              <div className="flex justify-end">
+                <Link
+                  href={`${listHref}&view=add`}
+                  className="flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium can-hover-dim btn-primary"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Add Contributor
+                </Link>
+              </div>
             </>
           ) : null}
 
@@ -974,14 +976,16 @@ export default function TendActionScreen({ action }: { action: string }) {
                 className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
                 style={fieldStyle}
               />
-              <button
-                type="button"
-                onClick={saveTitle}
-                className="w-full rounded-full text-white text-sm font-medium btn-primary"
-                style={{ background: '#f97316', minHeight: 44 }}
-              >
-                Save Title
-              </button>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={saveTitle}
+                  className="rounded-full px-5 text-white text-sm font-medium btn-primary"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Save Title
+                </button>
+              </div>
             </>
           ) : null}
 
@@ -1028,14 +1032,16 @@ export default function TendActionScreen({ action }: { action: string }) {
                   <input type="checkbox" checked={networkValue} onChange={(event) => setNetworkValue(event.target.checked)} />
                 </label>
               </div>
-              <button
-                type="button"
-                onClick={saveSettings}
-                className="w-full rounded-full text-white text-sm font-medium btn-primary"
-                style={{ background: '#f97316', minHeight: 44 }}
-              >
-                Save Settings
-              </button>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={saveSettings}
+                  className="rounded-full px-5 text-white text-sm font-medium btn-primary"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Save Settings
+                </button>
+              </div>
               {detail?.canManage ? (
                 <div
                   className="rounded-xl px-4 py-4"
