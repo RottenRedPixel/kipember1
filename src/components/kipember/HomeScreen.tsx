@@ -38,6 +38,16 @@ type ImageSummary = AccessibleImageSummary & {
   capturedAt: string | Date | null;
 };
 
+type ImageAttachment = {
+  id: string;
+  filename: string;
+  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
+  posterFilename: string | null;
+  durationSeconds: number | null;
+  originalName: string;
+  description: string | null;
+};
+
 type ImageDetail = ImageSummary & {
   analysis: {
     summary: string | null;
@@ -246,6 +256,9 @@ export default function HomeScreen({
   const [uploadError, setUploadError] = useState('');
   const [storedTheme, setStoredTheme] = useState<string | null>(null);
   const [hasConversationHistory, setHasConversationHistory] = useState(false);
+  const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const touchStartXRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedImageId = params.get('id') || images[0]?.id || null;
@@ -331,6 +344,21 @@ export default function HomeScreen({
       })
       .catch(() => undefined);
   }, [modal, selectedImageId]);
+
+  useEffect(() => {
+    setPhotoIndex(0);
+    if (!selectedImageId || firstEmber) {
+      setAttachments([]);
+      return;
+    }
+    void fetch(`/api/images/${encodeURIComponent(selectedImageId)}/attachments`, { cache: 'no-store' })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const payload = await r.json() as { attachments: ImageAttachment[] };
+        setAttachments(payload.attachments ?? []);
+      })
+      .catch(() => undefined);
+  }, [selectedImageId, firstEmber]);
 
   useEffect(() => {
     if (!selectedImageId || firstEmber) {
@@ -466,37 +494,114 @@ export default function HomeScreen({
         }}
       />
 
-      {!firstEmber && mediaUrl ? (
-        <>
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: `url(${mediaUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              filter: 'blur(24px)',
-              transform: 'scale(1.08)',
-              opacity: 0.7,
-            }}
-          />
-          <img
-            src={mediaUrl}
-            alt=""
-            className="absolute left-0 right-0 pointer-events-none w-full"
-            style={{
-              top: 72,
-              bottom: 72,
-              height: 'calc(100% - 144px)',
-              objectFit: 'cover',
-              objectPosition: 'center center',
-            }}
-          />
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
-          />
-        </>
-      ) : null}
+      {!firstEmber && mediaUrl ? (() => {
+        const PEEK = 14;
+        const allMedia = [
+          { url: mediaUrl },
+          ...attachments.map((a) => ({
+            url: getPreviewMediaUrl({ mediaType: a.mediaType, filename: a.filename, posterFilename: a.posterFilename }),
+          })),
+        ];
+        const currentUrl = allMedia[photoIndex]?.url ?? mediaUrl;
+        const nextUrl = allMedia[photoIndex + 1]?.url ?? null;
+        const hasNext = nextUrl !== null;
+        const hasPrev = photoIndex > 0;
+        const showDots = allMedia.length > 1;
+        return (
+          <>
+            {/* Blurred background — always current photo */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `url(${currentUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(24px)',
+                transform: 'scale(1.08)',
+                opacity: 0.7,
+              }}
+            />
+            {/* Current photo */}
+            <img
+              key={`photo-${photoIndex}`}
+              src={currentUrl}
+              alt=""
+              className="absolute pointer-events-none"
+              style={{
+                top: 72,
+                bottom: 72,
+                left: 0,
+                right: hasNext ? PEEK : 0,
+                height: 'calc(100% - 144px)',
+                width: hasNext ? `calc(100% - ${PEEK}px)` : '100%',
+                objectFit: 'cover',
+                objectPosition: 'center center',
+              }}
+            />
+            {/* Peek slice of next photo */}
+            {hasNext ? (
+              <div
+                className="absolute overflow-hidden pointer-events-none"
+                style={{ top: 72, bottom: 72, left: `calc(100% - ${PEEK}px)`, right: 0, height: 'calc(100% - 144px)' }}
+              >
+                <img
+                  src={nextUrl}
+                  alt=""
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    right: 0,
+                    width: '100vw',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'left center',
+                  }}
+                />
+              </div>
+            ) : null}
+            {/* Gradient overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
+            />
+            {/* Swipe touch target */}
+            <div
+              className="absolute"
+              style={{ top: 72, bottom: 72, left: 0, right: 0 }}
+              onTouchStart={(e) => { touchStartXRef.current = e.touches[0].clientX; }}
+              onTouchEnd={(e) => {
+                if (touchStartXRef.current === null) return;
+                const dx = touchStartXRef.current - e.changedTouches[0].clientX;
+                touchStartXRef.current = null;
+                if (Math.abs(dx) < 40) return;
+                if (dx > 0 && hasNext) setPhotoIndex((i) => i + 1);
+                if (dx < 0 && hasPrev) setPhotoIndex((i) => i - 1);
+              }}
+            />
+            {/* Dots */}
+            {showDots ? (
+              <div
+                className="absolute z-10 flex items-center justify-center gap-1.5 pointer-events-none"
+                style={{ bottom: 80, left: 0, right: hasNext ? PEEK : 0 }}
+              >
+                {allMedia.map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: i === photoIndex ? '#ffffff' : 'rgba(255,255,255,0.35)',
+                      transition: 'background 0.2s',
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </>
+        );
+      })() : null}
 
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-4 pt-4 pb-4">
         <Link

@@ -1,8 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { ensureImageOwnerAccess, getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { persistUploadedMedia } from '@/lib/media-upload';
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await requireApiUser();
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { id } = await params;
+    const accessType = await getImageAccessType(auth.user.id, id);
+    if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+
+    const attachments = await prisma.imageAttachment.findMany({
+      where: { imageId: id },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        filename: true,
+        mediaType: true,
+        posterFilename: true,
+        durationSeconds: true,
+        originalName: true,
+        description: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ attachments });
+  } catch (error) {
+    console.error('Attachment fetch error:', error);
+    return NextResponse.json({ error: 'Failed to fetch attachments' }, { status: 500 });
+  }
+}
 
 export async function POST(
   request: NextRequest,
