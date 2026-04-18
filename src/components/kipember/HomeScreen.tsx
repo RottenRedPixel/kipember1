@@ -763,7 +763,6 @@ export default function HomeScreen({
           key={`${selectedImageId || 'empty'}:${selectedImage?.wiki?.updatedAt || 'wiki'}:${selectedImage?.storyCut?.script ? 'story-cut' : 'fallback'}`}
           closeHref={buildHomeHref({ m: null })}
           imageId={selectedImageId}
-          title={selectedImage?.title || selectedImage?.originalName || null}
           storyScript={selectedImage?.storyCut?.script || null}
         />
       ) : null}

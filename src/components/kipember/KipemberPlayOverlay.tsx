@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Clock, Pause, Play, RotateCcw, X } from 'lucide-react';
+import { Clock, Pause, Play, RotateCcw, ScanEye, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PLAY_BAR_HEIGHTS = [6, 8, 14, 20, 25, 31, 25, 36, 31, 25, 36, 42, 36, 31, 42, 36, 31, 25, 36, 31, 25, 20, 25, 20, 14, 8, 14, 8, 6, 3].map((height) =>
@@ -14,7 +14,6 @@ const PLAY_BAR_DURATIONS = PLAY_BAR_HEIGHTS.map((_, index) =>
 type KipemberPlayOverlayProps = {
   closeHref: string;
   imageId: string | null;
-  title: string | null;
   storyScript: string | null;
 };
 
@@ -85,7 +84,6 @@ function resetAudioPosition(audio: HTMLAudioElement) {
 export default function KipemberPlayOverlay({
   closeHref,
   imageId,
-  title,
   storyScript,
 }: KipemberPlayOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -296,12 +294,13 @@ export default function KipemberPlayOverlay({
             <X size={18} />
           </Link>
 
-          {title ? (
-            <>
-              <p className="text-white font-semibold text-base mb-5 text-center">{title}</p>
-              <div className="w-full mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-            </>
-          ) : null}
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'rgba(249,115,22,0.85)' }}>
+              <ScanEye size={28} color="white" strokeWidth={1.6} />
+            </div>
+            <span className="text-white text-base font-medium">Story Snapshot</span>
+          </div>
+          <div className="w-full mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
 
           <div className="flex items-center gap-[3px]" style={{ height: 34 }}>
             {PLAY_BAR_HEIGHTS.map((height, index) => (
