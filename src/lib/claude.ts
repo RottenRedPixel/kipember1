@@ -855,6 +855,34 @@ Should we ask a follow-up question? If yes, what should it be?`;
   return result.trim();
 }
 
+export async function generateSnapshotScript({
+  title,
+  summary,
+  location,
+}: {
+  title: string;
+  summary: string | null;
+  location: string | null;
+}): Promise<string> {
+  const context = [
+    `Memory title: ${title}`,
+    location ? `Location: ${location}` : null,
+    summary ? `What the image shows: ${summary}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const systemPrompt = `You write short, warm narration scripts for family memory snapshots.
+Write 2-4 sentences in a natural, conversational tone — like a thoughtful friend describing a meaningful moment.
+Do not invent names, relationships, or details not in the context.
+Do not use filler phrases like "In this heartwarming snapshot" or "A beautiful memory".
+Just describe the moment simply and warmly. Return only the narration text, nothing else.`;
+
+  return chat(systemPrompt, [
+    { role: 'user', content: context },
+  ]);
+}
+
 export async function chatWithImage(
   wikiContent: string,
   rawResponses: { contributorName: string; questionType: string; answer: string }[],

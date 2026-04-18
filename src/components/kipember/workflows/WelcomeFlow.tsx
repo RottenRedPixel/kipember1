@@ -378,17 +378,16 @@ export default function WelcomeFlow({
                   aria-label={
                     hasPhoneNumber === false
                       ? 'Add a phone number in your profile to receive a text'
-                      : 'Receive a text'
+                      : 'Receive a Text'
                   }
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center rounded-full px-3 text-xs font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                   style={{
                     border: '1.5px solid var(--border-btn)',
                     background: 'transparent',
-                    minHeight: 32,
+                    minHeight: 44,
                   }}
                 >
-                  <MessageCircle size={14} />
-                  {invitingMode === 'text' ? 'Sending...' : 'Receive a text'}
+                  {invitingMode === 'text' ? 'Sending...' : 'Receive a Text'}
                 </button>
                 <button
                   type="button"
@@ -397,13 +396,12 @@ export default function WelcomeFlow({
                   aria-label={
                     hasPhoneNumber === false
                       ? 'Add a phone number in your profile to get a call'
-                      : 'Get a phone call'
+                      : 'Get a Phone Call'
                   }
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{ background: '#f97316', border: 'none', minHeight: 32 }}
+                  className="inline-flex items-center justify-center rounded-full px-3 text-xs font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  style={{ background: '#f97316', border: 'none', minHeight: 44 }}
                 >
-                  <Phone size={14} />
-                  {invitingMode === 'call' ? 'Calling...' : 'Get a phone call'}
+                  {invitingMode === 'call' ? 'Calling...' : 'Get a Phone Call'}
                 </button>
               </div>
 
