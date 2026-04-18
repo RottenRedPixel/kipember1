@@ -8,6 +8,9 @@ import {
   getAccessibleImagesForUser,
   invalidateAccessibleImagesForUser,
 } from '@/lib/image-summaries';
+import { generateSnapshotScript } from '@/lib/claude';
+import { getEmberTitle } from '@/lib/ember-title';
+import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,6 +72,41 @@ export async function POST(request: NextRequest) {
         error instanceof Error
           ? error.message
           : `${persistedMedia.mediaType === 'VIDEO' ? 'Video' : 'Image'} uploaded, but the automatic wiki could not be generated`;
+    }
+
+    // Auto-generate snapshot script after analysis + wiki
+    try {
+      const imageForSnapshot = await prisma.image.findUnique({
+        where: { id: image.id },
+        include: { analysis: { select: { summary: true, metadataJson: true } } },
+      });
+      if (imageForSnapshot) {
+        const title = getEmberTitle(imageForSnapshot);
+        const summary = imageForSnapshot.analysis?.summary || null;
+        const location = parseConfirmedLocationContext(imageForSnapshot.analysis?.metadataJson ?? null)?.label ?? null;
+        const script = await generateSnapshotScript({ title, summary, location });
+        if (script.trim()) {
+          await prisma.storyCut.create({
+            data: {
+              imageId: image.id,
+              title,
+              style: 'documentary',
+              focus: '',
+              durationSeconds: 10,
+              wordCount: script.split(/\s+/).filter(Boolean).length,
+              script,
+              blocksJson: '[]',
+              selectedMediaJson: '[]',
+              selectedContributorJson: '[]',
+              includeOwner: true,
+              includeEmberVoice: true,
+              includeNarratorVoice: false,
+            },
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Auto snapshot generation failed:', error);
     }
 
     if (persistedMedia.warning) {
