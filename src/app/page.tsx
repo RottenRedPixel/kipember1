@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
-import { Code } from 'lucide-react';
 
 export default async function LandingPage() {
   const auth = await getCurrentAuth();
@@ -69,12 +68,6 @@ export default async function LandingPage() {
             style={{ border: '1.5px solid rgba(255,255,255,0.35)', minHeight: 44 }}
           >
             Sign In
-          </Link>
-          <Link
-            href="/dev"
-            className="px-6 py-3 text-white/30 transition-colors hover:text-white/40"
-          >
-            <Code width={32} height={32} strokeWidth={1.5} />
           </Link>
         </div>
       </div>
