@@ -35,6 +35,7 @@ type AuthUser = {
 
 type ImageSummary = AccessibleImageSummary & {
   createdAt: string | Date;
+  capturedAt: string | Date | null;
 };
 
 type ImageDetail = ImageSummary & {
@@ -252,11 +253,12 @@ export default function HomeScreen({
   const selectedSummary = images.find((image) => image.id === selectedImageId) || null;
   const displayImage = selectedImage || selectedSummary;
   const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
-  const subtitle = selectedImage?.analysis?.capturedAt
-    ? new Date(selectedImage.analysis.capturedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    : displayImage
-      ? 'Date Unknown'
-      : '';
+  const capturedAt = selectedImage?.analysis?.capturedAt ?? displayImage?.capturedAt ?? null;
+  const subtitle = displayImage
+    ? capturedAt
+      ? new Date(capturedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      : 'Date Unknown'
+    : '';
   const mediaUrl = displayImage
       ? getPreviewMediaUrl({
         mediaType: displayImage.mediaType,

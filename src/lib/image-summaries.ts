@@ -14,6 +14,7 @@ export type AccessibleImageSummary = {
   title: string | null;
   description: string | null;
   createdAt: Date;
+  capturedAt: Date | null;
   shareToNetwork: boolean;
   accessType: 'owner' | 'contributor' | 'network';
 };
@@ -73,6 +74,9 @@ export async function getAccessibleImagesForUser(userId: string) {
         select: { id: true },
         take: 1,
       },
+      analysis: {
+        select: { capturedAt: true },
+      },
     },
   });
 
@@ -86,6 +90,7 @@ export async function getAccessibleImagesForUser(userId: string) {
     title: image.title,
     description: image.description,
     createdAt: image.createdAt,
+    capturedAt: image.analysis?.capturedAt ?? null,
     shareToNetwork: image.shareToNetwork,
     accessType:
       image.ownerId === userId
