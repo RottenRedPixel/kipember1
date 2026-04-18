@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bookmark, ChevronLeft, LogOut, Share2 } from 'lucide-react';
+import { ChevronLeft, CircleEllipsis, LogOut, ShieldEllipsis } from 'lucide-react';
 
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
@@ -223,8 +223,8 @@ export default function UserHomeScreen({
         {/* Actions */}
         <div className="px-4 py-2">
           <div className="grid grid-cols-3" style={{ gap: '0 8px' }}>
-            <SvgItem label="My Embers" href="/user/my-embers" icon={Bookmark} />
-            <SvgItem label="Shared Embers" href="/user/shared-embers" icon={Share2} />
+            <SvgItem label="My Embers" href="/user/my-embers" icon={ShieldEllipsis} />
+            <SvgItem label="Shared Embers" href="/user/shared-embers" icon={CircleEllipsis} />
             <SvgItem label="Logout" onClick={handleLogout} icon={LogOut} />
           </div>
         </div>

@@ -23,7 +23,7 @@ type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
 function buildStoryLines(value: string | null | undefined) {
   const text = value?.replace(/\s+/g, ' ').trim();
   if (!text) {
-    return ['Playback will follow this ember', 'as it grows.'];
+    return [];
   }
 
   const sentences = text

@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import {
-  Bookmark,
   BookOpen,
+  CircleEllipsis,
+  ShieldEllipsis,
   ChevronDown,
   ChevronLeft,
   LogOut,
@@ -704,8 +705,8 @@ export default function HomeScreen({
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-            <SvgItem label="My Embers" href="/user/my-embers" icon={Bookmark} />
-            <SvgItem label="Shared Embers" href="/user/shared-embers" icon={Share2} />
+            <SvgItem label="My Embers" href="/user/my-embers" icon={ShieldEllipsis} />
+            <SvgItem label="Shared Embers" href="/user/shared-embers" icon={CircleEllipsis} />
             <SvgItem label="Create Ember" href="/home?mode=first-ember" icon={PlusCircle} />
             <SvgItem label="Profile" href="/user/profile" icon={User} />
             <SvgItem label={isDarkTheme ? 'Light Mode' : 'Dark Mode'} href={buildHomeHref({ m: 'user', theme: isDarkTheme ? 'light' : 'dark' })} icon={isDarkTheme ? Sun : Moon} />
