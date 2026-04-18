@@ -21,7 +21,7 @@ import {
   MessageCircle,
   Share2,
   Sun,
-  Tag,
+  UserStar,
   User,
   Users,
   X,
@@ -737,8 +737,8 @@ export default function HomeScreen({
       {modal === 'tend' ? (
         <Modal closeHref={buildHomeHref({ m: null })}>
           <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'var(--bg-surface)' }}>
-              <Leaf size={28} color="var(--text-primary)" strokeWidth={1.6} />
+            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: '#6a7c5c' }}>
+              <Leaf size={28} color="#d4e8c2" strokeWidth={1.6} />
             </div>
             <span className="text-white text-base font-medium">Tend &amp; grow this ember</span>
           </div>
@@ -747,7 +747,7 @@ export default function HomeScreen({
             <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
             <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
             <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
-            <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={Tag} />
+            <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
             <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
             <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
             <div className="col-span-3 flex justify-center">

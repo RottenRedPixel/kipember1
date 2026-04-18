@@ -18,6 +18,7 @@ model Image {
   durationSeconds Float?
   originalName String
   title        String?
+  titleUpdatedAt DateTime?
   description  String?
   smartTitleSuggestionsJson String?
   smartTitleSuggestionsUpdatedAt DateTime?

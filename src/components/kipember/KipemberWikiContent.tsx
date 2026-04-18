@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import {
-  BookOpen,
   Clock,
   FileText,
+  History,
   Image as ImageIcon,
   MapPin,
   Mic,
+  ScanEye,
+  ShieldUser,
   Sparkles,
-  User,
   Users,
 } from 'lucide-react';
 import ClipAudioPlayer from '@/components/ClipAudioPlayer';
@@ -140,6 +141,7 @@ export type KipemberWikiDetail = {
   mediaType: EmberMediaType;
   posterFilename: string | null;
   title: string | null;
+  titleUpdatedAt?: string | null;
   originalName: string;
   description: string | null;
   createdAt: string;
@@ -678,7 +680,7 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
-        icon={<User size={17} />}
+        icon={<ShieldUser size={17} />}
         title="Owner"
         complete={Boolean(ownerName)}
       >
@@ -749,7 +751,7 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
-        icon={<FileText size={17} />}
+        icon={<ScanEye size={17} />}
         title="Snapshot"
         complete={Boolean(detail?.storyCut?.script)}
       >
@@ -763,7 +765,7 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
-        icon={<BookOpen size={17} />}
+        icon={<History size={17} />}
         title="Story Circle"
         complete={totalStoryMessages > 0}
       >

@@ -588,6 +588,7 @@ export async function GET(
       durationSeconds: image.durationSeconds,
       originalName: image.originalName,
       title: image.title,
+      titleUpdatedAt: image.titleUpdatedAt ?? null,
       description: image.description,
       createdAt: image.createdAt,
       updatedAt: image.updatedAt,
@@ -719,6 +720,7 @@ export async function PATCH(
     const updateData: {
       shareToNetwork?: boolean;
       title?: string | null;
+      titleUpdatedAt?: Date | null;
       description?: string | null;
     } = {};
     let capturedAtValue: Date | null | undefined;
@@ -736,6 +738,7 @@ export async function PATCH(
       }
 
       updateData.title = typeof body.title === 'string' ? (toTitleCase(body.title) || null) : null;
+      updateData.titleUpdatedAt = new Date();
     }
 
     if (Object.prototype.hasOwnProperty.call(body ?? {}, 'description')) {

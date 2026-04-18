@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, MessageSquare, Phone } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Phone, ShieldUser } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
@@ -734,6 +734,8 @@ export default function TendActionScreen({ action }: { action: string }) {
                     !canTextOrCopy ||
                     callingContributorId === item.id;
 
+                  const isOwner = item.userId === detail?.owner?.id || item.user?.id === detail?.owner?.id;
+
                   return (
                     <div
                       key={item.id}
@@ -747,11 +749,14 @@ export default function TendActionScreen({ action }: { action: string }) {
                       >
                         <div
                           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-medium"
-                          style={{ background: 'rgba(249,115,22,0.75)' }}
+                          style={{ background: isOwner ? 'rgba(249,115,22,0.75)' : 'rgba(100,116,139,0.6)' }}
                         >
                           {initials(label)}
                         </div>
                         <span className="text-white text-sm font-medium">{label}</span>
+                        {isOwner ? (
+                          <ShieldUser size={15} className="ml-auto flex-shrink-0" style={{ color: 'rgba(249,115,22,0.8)' }} />
+                        ) : null}
                       </Link>
                       <button
                         type="button"
@@ -986,10 +991,10 @@ export default function TendActionScreen({ action }: { action: string }) {
                 className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
               >
-                {detail?.updatedAt ? (
+                {detail?.titleUpdatedAt ? (
                   <p className="text-white/30 text-xs mb-2">
                     Last updated:{' '}
-                    {new Date(detail.updatedAt).toLocaleDateString('en-US', {
+                    {new Date(detail.titleUpdatedAt).toLocaleDateString('en-US', {
                       month: 'long',
                       day: 'numeric',
                       year: 'numeric',
