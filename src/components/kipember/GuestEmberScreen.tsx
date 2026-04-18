@@ -295,6 +295,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
           closeHref={base}
           imageId={data.image.id}
           storyScript={data.storyCutScript}
+          guestToken={token}
         />
       ) : null}
 

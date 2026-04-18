@@ -15,6 +15,7 @@ type KipemberPlayOverlayProps = {
   closeHref: string;
   imageId: string | null;
   storyScript: string | null;
+  guestToken?: string | null;
 };
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
@@ -85,6 +86,7 @@ export default function KipemberPlayOverlay({
   closeHref,
   imageId,
   storyScript,
+  guestToken,
 }: KipemberPlayOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
@@ -154,7 +156,10 @@ export default function KipemberPlayOverlay({
       throw new Error('This ember does not have a snapshot yet.');
     }
 
-    const response = await fetch(`/api/images/${imageId}/story-cut-audio`, {
+    const audioUrl = guestToken
+      ? `/api/images/${imageId}/story-cut-audio?token=${encodeURIComponent(guestToken)}`
+      : `/api/images/${imageId}/story-cut-audio`;
+    const response = await fetch(audioUrl, {
       cache: 'no-store',
     });
 
