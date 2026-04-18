@@ -170,6 +170,13 @@ export async function GET(
           : null,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
         wiki: refreshedContributor.image.wiki,
+        attachments: await prisma.imageAttachment
+          .findMany({
+            where: { imageId: refreshedContributor.image.id },
+            select: { id: true, filename: true, mediaType: true, posterFilename: true },
+            orderBy: { createdAt: 'asc' },
+          })
+          .catch(() => []),
         storyCutScript: await prisma.storyCut
           .findUnique({ where: { imageId: refreshedContributor.image.id }, select: { script: true } })
           .then((sc) => sc?.script ?? null)

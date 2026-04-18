@@ -10,6 +10,13 @@ import { getPreviewMediaUrl } from '@/lib/media';
 import GuestContributorAddFlow from '@/components/kipember/workflows/GuestContributorAddFlow';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 
+type GuestAttachment = {
+  id: string;
+  filename: string;
+  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
+  posterFilename: string | null;
+};
+
 type GuestData = {
   guestFlow: true;
   contributor: {
@@ -28,6 +35,7 @@ type GuestData = {
     description: string | null;
     createdAt: string;
   };
+  attachments: GuestAttachment[];
   storyCutScript: string | null;
 };
 
@@ -115,6 +123,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
   const [data, setData] = useState<GuestData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -158,11 +167,20 @@ export default function GuestEmberScreen({ token }: { token: string }) {
   }
 
   const title = getEmberTitle({ title: data.image.title, originalName: data.image.originalName });
-  const photoUrl = getPreviewMediaUrl({
+  const mainUrl = getPreviewMediaUrl({
     mediaType: data.image.mediaType,
     filename: data.image.filename,
     posterFilename: data.image.posterFilename,
   });
+
+  const allMedia = [
+    { url: mainUrl },
+    ...data.attachments.map((a) => ({
+      url: getPreviewMediaUrl({ mediaType: a.mediaType, filename: a.filename, posterFilename: a.posterFilename }),
+    })),
+  ];
+  const currentPhotoUrl = allMedia[photoIndex]?.url ?? mainUrl;
+  const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
 
   const base = `/guest/${token}`;
   const openHref = `${base}?ember=contrib-add`;
@@ -175,7 +193,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: `url(${photoUrl})`,
+          backgroundImage: `url(${currentPhotoUrl})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           filter: 'blur(24px)',
@@ -184,7 +202,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
         }}
       />
       <img
-        src={photoUrl}
+        src={currentPhotoUrl}
         alt=""
         className="absolute left-0 right-0 pointer-events-none w-full"
         style={{
@@ -223,6 +241,23 @@ export default function GuestEmberScreen({ token }: { token: string }) {
 
       {/* Right rail */}
       <div className="absolute right-3 z-20 flex flex-col gap-0 items-center" style={{ bottom: '11%' }}>
+        {allMedia.length > 1 && nextPhotoUrl ? (
+          <button
+            type="button"
+            onClick={() => setPhotoIndex((i) => (i + 1) % allMedia.length)}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 active:bg-white/20 cursor-pointer"
+          >
+            <div className="relative w-11 h-11">
+              <div className="w-11 h-11 rounded-full overflow-hidden">
+                <img src={nextPhotoUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+              <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1" style={{ background: '#f97316', fontSize: 10, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
+                {allMedia.length}
+              </div>
+            </div>
+            <span className="text-white text-xs font-medium lowercase">more</span>
+          </button>
+        ) : null}
         <RailBtn icon={Share2} label="share" href={`${base}?m=share`} />
         <RailBtn icon={ScanEye} label="play" href={`${base}?m=play`} />
       </div>
