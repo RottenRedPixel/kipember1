@@ -211,12 +211,14 @@ export default function UserHomeScreen({
 
         {/* Profile */}
         <div className="flex flex-col items-center py-4 gap-2">
-          <div
-            className="rounded-full flex items-center justify-center"
-            style={{ width: 72, height: 72, background: 'rgba(249,115,22,0.85)' }}
-          >
-            <span className="text-white text-lg font-medium">{initials(displayName)}</span>
-          </div>
+          <Link href="/user/profile">
+            <div
+              className="rounded-full flex items-center justify-center"
+              style={{ width: 72, height: 72, background: 'rgba(249,115,22,0.85)' }}
+            >
+              <span className="text-white text-lg font-medium">{initials(displayName)}</span>
+            </div>
+          </Link>
           <span className="text-white font-semibold text-base">{displayName}</span>
         </div>
 
