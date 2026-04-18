@@ -591,7 +591,6 @@ export async function GET(
       titleUpdatedAt: image.titleUpdatedAt ?? null,
       description: image.description,
       createdAt: image.createdAt,
-      updatedAt: image.updatedAt,
       shareToNetwork: image.shareToNetwork,
       owner: image.owner,
       accessType,
