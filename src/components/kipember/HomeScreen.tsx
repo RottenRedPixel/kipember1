@@ -83,13 +83,13 @@ function stripExtension(value: string) {
   return value.replace(/\.[^.]+$/, '');
 }
 
-function Modal({ children, closeHref }: { children: React.ReactNode; closeHref: string }) {
+function Modal({ children, closeHref, cardStyle }: { children: React.ReactNode; closeHref: string; cardStyle?: React.CSSProperties }) {
   return (
     <div className="absolute inset-0 z-40 flex items-end justify-center pb-24">
       <Link href={closeHref} className="absolute inset-0" />
       <div
         className="relative w-full max-w-sm mx-4 rounded-2xl overflow-hidden"
-        style={{
+        style={cardStyle ?? {
           background: 'var(--bg-modal)',
           WebkitBackdropFilter: 'blur(5px)',
           backdropFilter: 'blur(5px)',
@@ -311,9 +311,6 @@ export default function HomeScreen({
         }
         const payload = (await response.json()) as ImageSummary[];
         setImages(payload);
-        if (!firstEmber && payload.length === 0) {
-          router.replace('/home?mode=first-ember');
-        }
       })
       .catch(() => undefined);
   }, [createdImageId, firstEmber, initialImages.length, router]);
@@ -503,7 +500,7 @@ export default function HomeScreen({
 
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-4 pt-4 pb-4">
         <Link
-          href="/"
+          href="/home"
           className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: 'var(--bg-rail-btn)', WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}
         >
@@ -519,15 +516,15 @@ export default function HomeScreen({
 
       {firstEmber ? (
         <div
-          className="absolute left-0 right-0 flex flex-col items-center justify-center gap-5"
+          className="absolute left-0 right-0 flex flex-col items-center justify-center px-5"
           style={{ top: 72, bottom: 0 }}
         >
           <div
-            className="flex flex-col items-center gap-4 mx-8 px-8 py-10 rounded-2xl"
-            style={{ border: '1.5px dashed rgba(255,255,255,0.25)', background: 'rgba(0,0,0,0.6)' }}
+            className="w-full flex flex-col items-center gap-3 rounded-2xl px-6 py-8"
+            style={{ maxWidth: 420, background: 'var(--bg-surface)' }}
           >
-            <EmberMark size={56} />
-            <div className="flex flex-col items-center gap-1.5 text-center">
+            <EmberMark size={44} />
+            <div className="flex flex-col items-center gap-1 text-center">
               <p className="text-white font-medium text-base">
                 {hasExistingEmbers ? 'Create a new ember' : 'Create your first ember'}
               </p>
@@ -540,7 +537,7 @@ export default function HomeScreen({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="mt-1 px-6 rounded-full text-white text-sm font-medium flex items-center justify-center can-hover-dim"
+              className="px-8 rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
               style={{ background: '#f97316', minHeight: 44 }}
             >
               Choose Photo

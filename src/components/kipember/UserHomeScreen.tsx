@@ -1,8 +1,25 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ChevronLeft } from 'lucide-react';
+
+function EmberMark({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 72 72" fill="white">
+      <circle cx="36" cy="36" r="7.2" fill="#f97316" />
+      <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+      <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+      <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
+      <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(22.02 94.02) rotate(-90)" />
+      <rect x="47.97" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(29.55 -30.48) rotate(45)" />
+      <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(42.45 .66) rotate(45)" />
+      <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
+      <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
+    </svg>
+  );
+}
 
 function initials(value: string) {
   return value
@@ -49,33 +66,37 @@ function SvgItem({
   );
 }
 
+type Step = 'home' | 'confirm' | 'processing';
+
 export default function UserHomeScreen({
   initialProfile,
 }: {
   initialProfile: { name: string | null; email: string } | null;
 }) {
   const router = useRouter();
-  const params = useSearchParams();
-  const [storedTheme, setStoredTheme] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [step, setStep] = useState<Step>('home');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [createdImageId, setCreatedImageId] = useState<string | null>(null);
+
+  const displayName = initialProfile?.name || initialProfile?.email || 'Ember User';
 
   useEffect(() => {
-    const stored = localStorage.getItem('ember-theme');
-    if (stored) {
-      setStoredTheme(stored);
-      document.documentElement.dataset.theme = stored;
-    }
-  }, []);
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   useEffect(() => {
-    const theme = params.get('theme');
-    if (!theme) return;
-    localStorage.setItem('ember-theme', theme);
-    document.documentElement.dataset.theme = theme;
-    setStoredTheme(theme);
-  }, [params]);
-
-  const isDarkTheme = params.get('theme') ? params.get('theme') !== 'light' : storedTheme !== 'light';
-  const themeHref = isDarkTheme ? '/home?theme=light' : '/home?theme=dark';
+    if (!createdImageId || step !== 'processing') return;
+    const timer = setTimeout(() => {
+      router.replace(`/home?id=${createdImageId}&ember=welcome`);
+    }, 2400);
+    return () => clearTimeout(timer);
+  }, [createdImageId, step, router]);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -83,74 +104,163 @@ export default function UserHomeScreen({
     router.refresh();
   }
 
-  const displayName = initialProfile?.name || initialProfile?.email || 'Ember User';
+  async function handleCreate() {
+    if (!selectedFile) return;
+    setUploading(true);
+    setUploadError('');
+    setCreatedImageId(null);
+    setStep('processing');
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    try {
+      const response = await fetch('/api/images', { method: 'POST', body: formData });
+      const payload = await response.json().catch(() => ({})) as { id?: string; error?: string };
+      if (!response.ok || typeof payload?.id !== 'string') {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
+      }
+      setCreatedImageId(payload.id);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Failed to create ember');
+      setStep('confirm');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (step === 'confirm' && previewUrl) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: 'var(--bg-screen)' }}>
+        <div className="absolute top-4 left-4">
+          <button
+            type="button"
+            onClick={() => setStep('home')}
+            className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(255,255,255,0.1)' }}
+          >
+            <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
+          </button>
+        </div>
+        <div className="w-full rounded-2xl overflow-hidden" style={{ maxWidth: 420, border: '1px solid var(--border-default)' }}>
+          <img src={previewUrl} alt="Selected photo" className="w-full h-auto block" />
+        </div>
+        <div className="w-full flex flex-col gap-5 mt-7" style={{ maxWidth: 420 }}>
+          <p className="text-white font-medium text-base text-center leading-snug">Create an ember from this photo?</p>
+          {uploadError ? <p className="text-sm text-center text-red-300">{uploadError}</p> : null}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setStep('home')}
+              className="flex-1 flex items-center justify-center rounded-full text-sm font-medium can-hover-dim"
+              style={{ minHeight: 44, background: 'transparent', border: '1.5px solid var(--border-btn)' }}
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={handleCreate}
+              className="flex-1 flex items-center justify-center rounded-full text-sm font-medium text-white can-hover-dim"
+              style={{ minHeight: 44, background: '#f97316' }}
+            >
+              Create Ember
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'processing') {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center px-8" style={{ background: 'var(--bg-screen)' }}>
+        <style>{'@keyframes kipSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }'}</style>
+        <div className="rounded-full flex items-center justify-center" style={{ width: 96, height: 96, background: 'rgba(249,115,22,0.15)', border: '1.5px solid rgba(249,115,22,0.55)', animation: 'kipSpin 1.5s linear infinite' }}>
+          <EmberMark size={40} />
+        </div>
+        <p className="mt-8 font-medium text-base text-white">
+          {createdImageId ? 'Ember created!' : 'Igniting ember'}
+        </p>
+        <p className="mt-1 text-sm text-white/60">
+          {uploadError || (createdImageId ? 'Opening your memory...' : 'Building the ember structure')}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div
-      className="flex min-h-[100dvh] w-full items-center justify-center px-4"
-      style={{ background: '#000' }}
+      className="fixed inset-0 flex flex-col items-center justify-center px-5 gap-3"
+      style={{ background: 'var(--bg-screen)' }}
     >
-      <div
-        className="w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{
-          background: 'var(--bg-modal)',
-          WebkitBackdropFilter: 'blur(5px)',
-          backdropFilter: 'blur(5px)',
-          border: '1px solid var(--border-subtle)',
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
+          setSelectedFile(file);
+          setPreviewUrl(URL.createObjectURL(file));
+          setUploadError('');
+          setStep('confirm');
         }}
-      >
-        <div className="flex flex-col items-center pt-6 pb-4 gap-2">
+      />
+
+      <div className="w-full flex flex-col gap-3" style={{ maxWidth: 420 }}>
+
+        {/* Profile */}
+        <div className="flex flex-col items-center py-4 gap-2">
           <div
             className="rounded-full flex items-center justify-center"
-            style={{ width: 66, height: 66, background: 'rgba(249,115,22,0.85)' }}
+            style={{ width: 72, height: 72, background: 'rgba(249,115,22,0.85)' }}
           >
-            <span className="text-white text-base font-medium">{initials(displayName)}</span>
+            <span className="text-white text-lg font-medium">{initials(displayName)}</span>
           </div>
-          <span className="text-white text-base font-medium">{displayName}</span>
+          <span className="text-white font-semibold text-base">{displayName}</span>
         </div>
 
-        <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-
-        <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-          <SvgItem label="My Embers" href="/user/my-embers">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-          </SvgItem>
-          <SvgItem label="Shared Embers" href="/user/shared-embers">
-            <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-          </SvgItem>
-          <SvgItem label="Create Ember" href="/home?mode=first-ember">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="16" />
-            <line x1="8" y1="12" x2="16" y2="12" />
-          </SvgItem>
-          <SvgItem label="Profile" href="/user/profile">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
-          </SvgItem>
-          <SvgItem label={isDarkTheme ? 'Light Mode' : 'Dark Mode'} href={themeHref}>
-            {isDarkTheme ? (
-              <>
-                <circle cx="12" cy="12" r="4" />
-                <line x1="12" y1="2" x2="12" y2="4" />
-                <line x1="12" y1="20" x2="12" y2="22" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="2" y1="12" x2="4" y2="12" />
-                <line x1="20" y1="12" x2="22" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </>
-            ) : (
-              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            )}
-          </SvgItem>
-          <SvgItem label="Logout" onClick={handleLogout}>
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </SvgItem>
+        {/* Actions */}
+        <div className="px-4 py-2">
+          <div className="grid grid-cols-3" style={{ gap: '0 8px' }}>
+            <SvgItem label="My Embers" href="/user/my-embers">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </SvgItem>
+            <SvgItem label="Shared Embers" href="/user/shared-embers">
+              <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </SvgItem>
+            <SvgItem label="Logout" onClick={handleLogout}>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </SvgItem>
+          </div>
         </div>
+
+        {/* Create ember */}
+        <div
+          className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8"
+          style={{ background: 'var(--bg-surface)' }}
+        >
+          <EmberMark size={44} />
+          <div className="flex flex-col items-center gap-1 text-center">
+            <p className="text-white font-medium text-base">Create a new ember</p>
+            <p className="text-white/60 text-sm leading-snug">
+              Choose a photo or video to start a new memory.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="px-8 rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
+            style={{ background: '#f97316', minHeight: 44 }}
+          >
+            Choose Photo
+          </button>
+        </div>
+
       </div>
     </div>
   );

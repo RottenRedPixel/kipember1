@@ -507,14 +507,16 @@ export default function KipemberWikiContent({
     detail?.analysis?.longitude ??
     null;
   const coordinateLine = formatCoordinates(latitude, longitude);
-  const storyMessages = contributors
-    .flatMap((contributor) => {
-      const contributorName =
+  const contributorChats = contributors
+    .map((contributor) => {
+      const isOwner = contributor.userId === ownerUserId || contributor.user?.id === ownerUserId;
+      const name =
         contributor.name ||
         contributor.user?.name ||
         contributor.email ||
         contributor.user?.email ||
         contributor.phoneNumber ||
+        (isOwner ? ownerName : null) ||
         'Contributor';
       const messageEntries = (contributor.conversation?.messages || []).map((message) => ({
         id: `message-${message.id}`,
@@ -522,7 +524,6 @@ export default function KipemberWikiContent({
         role: message.role || null,
         source: message.source || null,
         text: message.content,
-        name: contributorName,
       }));
       const hasMessages = messageEntries.length > 0;
       const responseEntries = (contributor.conversation?.responses || []).flatMap((response) => {
@@ -532,7 +533,6 @@ export default function KipemberWikiContent({
           role: string | null;
           source: string | null;
           text: string;
-          name: string;
         }> = [];
         const shouldExpandPair = response.source === 'voice' || !hasMessages;
 
@@ -543,7 +543,6 @@ export default function KipemberWikiContent({
             role: 'assistant',
             source: response.source || null,
             text: response.question.trim(),
-            name: contributorName,
           });
         }
 
@@ -554,7 +553,6 @@ export default function KipemberWikiContent({
             role: 'user',
             source: response.source || null,
             text: response.answer.trim(),
-            name: contributorName,
           });
         }
 
@@ -568,13 +566,16 @@ export default function KipemberWikiContent({
           role: 'system',
           source: 'voice',
           text: voiceCall.callSummary?.trim() || '',
-          name: contributorName,
         }));
 
-      return [...voiceCallEntries, ...messageEntries, ...responseEntries];
+      const entries = [...voiceCallEntries, ...messageEntries, ...responseEntries]
+        .filter((entry) => entry.text.trim().length > 0)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      return { contributorId: contributor.id, isOwner, name: name || 'Contributor', entries };
     })
-    .filter((entry) => entry.text.trim().length > 0)
-    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+    .filter((chat) => chat.entries.length > 0);
+  const totalStoryMessages = contributorChats.reduce((sum, chat) => sum + chat.entries.length, 0);
   const isAudioAttachment = (attachment: KipemberAttachment) =>
     attachment.mediaType === 'AUDIO' ||
     isAudioLikeFilename(attachment.filename) ||
@@ -771,59 +772,75 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<BookOpen size={17} />}
         title="Story Circle"
-        complete={storyMessages.length > 0}
+        complete={totalStoryMessages > 0}
       >
-        <div className="flex flex-col gap-3 px-1">
-          {storyMessages.length > 0 ? (
-            storyMessages.map((message) => {
-              const isAi = message.role === 'assistant' || message.source === 'ai';
-              const isSystem = message.role === 'system';
-
-              return (
-                <div
-                  key={message.id}
-                  className={`flex flex-col gap-1 ${
-                    isSystem ? 'items-center' : isAi ? 'items-start' : 'items-end'
-                  }`}
-                >
-                  <div className={`flex items-center gap-1.5 ${isAi ? '' : 'flex-row-reverse'}`}>
-                    <span className="text-white/60 text-xs font-medium">
-                      {isSystem ? 'Story Circle' : isAi ? 'Ember AI' : message.name}
-                    </span>
-                    <span className="text-white/30 text-xs">
-                      {formatLongDate(message.createdAt)}
-                    </span>
-                  </div>
+        <div className="flex flex-col gap-4">
+          {contributorChats.length > 0 ? (
+            contributorChats.map((chat, chatIndex) => (
+              <div key={chat.contributorId}>
+                {chatIndex > 0 && (
+                  <div className="mb-4" style={{ borderTop: '1px solid var(--border-subtle)' }} />
+                )}
+                {/* Participant header */}
+                <div className="flex items-center gap-2 px-1 mb-3">
                   <div
-                    className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed text-white/90 ${
-                      isSystem
-                        ? 'rounded-2xl'
-                        : isAi
-                          ? 'rounded-2xl rounded-tl-sm'
-                          : 'rounded-2xl rounded-tr-sm'
-                    }`}
-                    style={
-                      isSystem
-                        ? {
-                            background: 'rgba(249,115,22,0.12)',
-                            border: '1px solid rgba(249,115,22,0.28)',
-                          }
-                        : isAi
-                        ? {
-                            background: 'var(--bg-ember-bubble)',
-                            border: '1px solid var(--border-ember)',
-                          }
-                        : { background: 'var(--bg-chat-user)' }
-                    }
+                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-medium"
+                    style={{ background: chat.isOwner ? 'rgba(249,115,22,0.85)' : 'var(--bg-surface)', border: chat.isOwner ? 'none' : '1px solid var(--border-default)' }}
                   >
-                    {message.text}
+                    {initials(chat.name)}
                   </div>
-                  <span className="text-white/30 text-xs mx-1">
-                    {isSystem ? 'Voice call summary' : isAi ? 'AI Generated' : 'Contributor response'}
+                  <span className="text-white/80 text-xs font-medium">{chat.name}</span>
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{ background: chat.isOwner ? 'rgba(249,115,22,0.15)' : 'var(--bg-surface)', color: chat.isOwner ? 'rgba(249,115,22,0.9)' : 'var(--text-muted)', border: chat.isOwner ? '1px solid rgba(249,115,22,0.25)' : '1px solid var(--border-subtle)' }}
+                  >
+                    {chat.isOwner ? 'owner' : 'contributor'}
                   </span>
                 </div>
-              );
-            })
+                {/* Messages */}
+                <div className="flex flex-col gap-2 px-1">
+                  {chat.entries.map((message) => {
+                    const isAi = message.role === 'assistant' || message.source === 'ai';
+                    const isSystem = message.role === 'system';
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex flex-col gap-1 ${
+                          isSystem ? 'items-center' : isAi ? 'items-start' : 'items-end'
+                        }`}
+                      >
+                        <div className={`flex items-center gap-1.5 ${isAi ? '' : 'flex-row-reverse'}`}>
+                          <span className="text-white/40 text-xs font-medium">
+                            {isSystem ? 'Summary' : isAi ? 'ember' : 'you'}
+                          </span>
+                          <span className="text-white/20 text-xs">
+                            {formatLongDate(message.createdAt)}
+                          </span>
+                        </div>
+                        <div
+                          className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed text-white/90 ${
+                            isSystem
+                              ? 'rounded-2xl'
+                              : isAi
+                                ? 'rounded-2xl rounded-tl-sm'
+                                : 'rounded-2xl rounded-tr-sm'
+                          }`}
+                          style={
+                            isSystem
+                              ? { background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.28)' }
+                              : isAi
+                              ? { background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }
+                              : { background: 'var(--bg-chat-user)' }
+                          }
+                        >
+                          {message.text}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
           ) : (
             <WikiCard>
               <p className="text-white/30 text-sm">No story messages yet.</p>
@@ -1025,7 +1042,7 @@ export default function KipemberWikiContent({
                 return (
                   <p
                     key={`analysis-line-${index}`}
-                    className={isBold ? 'text-white/60 text-xs font-medium mt-2' : 'text-white/60 text-xs leading-relaxed'}
+                    className={isBold ? 'text-white/60 text-sm font-medium mt-2' : 'text-white/60 text-sm leading-relaxed'}
                   >
                     {cleaned}
                   </p>

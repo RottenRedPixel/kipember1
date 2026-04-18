@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
+import { Home } from 'lucide-react';
 import { useState } from 'react';
-import EmberBrand from '@/components/EmberBrand';
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
@@ -36,46 +37,81 @@ export default function ForgotPasswordForm() {
   };
 
   return (
-    <div className="ember-auth-card p-8">
-      <EmberBrand subtitle="password reset" compact />
-      <h1 className="ember-heading mt-6 text-4xl text-[var(--ember-text)]">
-        Reset your password
-      </h1>
-      <p className="ember-copy mt-3 text-sm">
-        Enter your email and Ember will send you a secure password reset link.
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-[var(--ember-text)]">
-            Email
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
-            required
-            className="ember-input"
-          />
-        </div>
-
-        {(error || success) && (
-          <div
-            className={`ember-status ${error ? 'ember-status-error' : 'ember-status-success'}`}
-          >
-            {error || success}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="ember-button-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+    <div
+      className="flex flex-col items-center justify-center w-full px-6"
+      style={{ minHeight: '100dvh', background: 'var(--bg-screen)' }}
+    >
+      <div className="absolute top-4 left-4">
+        <Link
+          href="/"
+          className="w-11 h-11 rounded-full flex items-center justify-center"
+          style={{ background: 'var(--bg-surface)' }}
         >
-          {isSubmitting ? 'Sending reset link...' : 'Email reset link'}
-        </button>
-      </form>
+          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
+        </Link>
+      </div>
+
+      <div className="flex flex-col gap-8 w-full max-w-sm py-16">
+        {success ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <h1 className="text-white text-2xl font-bold tracking-tight">Check your email</h1>
+              <p className="text-white/60 text-sm">{success}</p>
+            </div>
+            <Link
+              href="/signin"
+              className="flex items-center justify-center rounded-full text-white text-sm font-medium"
+              style={{ background: '#f97316', minHeight: 44 }}
+            >
+              Back to Sign In
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1">
+              <h1 className="text-white text-2xl font-bold tracking-tight">Reset your password</h1>
+              <p className="text-white/60 text-sm">
+                Enter your email and we'll send you a secure reset link.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-white/60 text-xs font-medium">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  className="h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
+                  style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(249,115,22,0.6)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-input)')}
+                />
+              </div>
+
+              {error ? <p className="text-sm text-red-300">{error}</p> : null}
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center justify-center rounded-full text-white text-sm font-medium transition-opacity hover:opacity-80 w-full disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ background: '#f97316', minHeight: 44 }}
+              >
+                {isSubmitting ? 'Sending reset link...' : 'Email reset link'}
+              </button>
+            </form>
+
+            <p className="text-center text-white/60 text-sm">
+              Remember your password?{' '}
+              <Link href="/signin" className="text-white font-medium hover:opacity-70 transition-opacity">
+                Sign In
+              </Link>
+            </p>
+          </>
+        )}
+      </div>
     </div>
   );
 }
