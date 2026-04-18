@@ -521,12 +521,13 @@ export default function HomeScreen({
                 opacity: 0.7,
               }}
             />
-            {/* Current photo */}
+            {/* Current photo — also handles swipe gestures */}
             <img
               key={`photo-${photoIndex}`}
               src={currentUrl}
               alt=""
-              className="absolute pointer-events-none"
+              draggable={false}
+              className="absolute"
               style={{
                 top: 72,
                 bottom: 72,
@@ -536,6 +537,17 @@ export default function HomeScreen({
                 width: hasNext ? `calc(100% - ${PEEK}px)` : '100%',
                 objectFit: 'cover',
                 objectPosition: 'center center',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+              }}
+              onTouchStart={(e) => { touchStartXRef.current = e.touches[0].clientX; }}
+              onTouchEnd={(e) => {
+                if (touchStartXRef.current === null) return;
+                const dx = touchStartXRef.current - e.changedTouches[0].clientX;
+                touchStartXRef.current = null;
+                if (Math.abs(dx) < 40) return;
+                if (dx > 0 && hasNext) setPhotoIndex((i) => i + 1);
+                if (dx < 0 && hasPrev) setPhotoIndex((i) => i - 1);
               }}
             />
             {/* Peek slice of next photo */}
@@ -547,6 +559,7 @@ export default function HomeScreen({
                 <img
                   src={nextUrl}
                   alt=""
+                  draggable={false}
                   style={{
                     position: 'absolute',
                     top: 0,
@@ -564,20 +577,6 @@ export default function HomeScreen({
             <div
               className="absolute inset-0 pointer-events-none"
               style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
-            />
-            {/* Swipe touch target */}
-            <div
-              className="absolute"
-              style={{ top: 72, bottom: 72, left: 0, right: 0 }}
-              onTouchStart={(e) => { touchStartXRef.current = e.touches[0].clientX; }}
-              onTouchEnd={(e) => {
-                if (touchStartXRef.current === null) return;
-                const dx = touchStartXRef.current - e.changedTouches[0].clientX;
-                touchStartXRef.current = null;
-                if (Math.abs(dx) < 40) return;
-                if (dx > 0 && hasNext) setPhotoIndex((i) => i + 1);
-                if (dx < 0 && hasPrev) setPhotoIndex((i) => i - 1);
-              }}
             />
             {/* Dots */}
             {showDots ? (
