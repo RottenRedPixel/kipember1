@@ -1042,7 +1042,7 @@ export default function KipemberWikiContent({
                 return (
                   <p
                     key={`analysis-line-${index}`}
-                    className={isBold ? 'text-white/60 text-sm font-medium mt-2' : 'text-white/60 text-sm leading-relaxed'}
+                    className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white text-sm leading-relaxed'}
                   >
                     {cleaned}
                   </p>
