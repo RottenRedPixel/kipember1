@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { isGuestUserEmail } from '@/lib/guest-embers';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
 export async function GET(
@@ -38,11 +37,6 @@ export async function GET(
         },
         image: {
           include: {
-            owner: {
-              select: {
-                email: true,
-              },
-            },
             analysis: {
               select: {
                 status: true,
@@ -65,7 +59,7 @@ export async function GET(
       },
     });
 
-    if (!contributor || !isGuestUserEmail(contributor.image.owner.email)) {
+    if (!contributor) {
       return NextResponse.json(
         { error: 'Guest memory not found' },
         {
@@ -113,11 +107,6 @@ export async function GET(
         },
         image: {
           include: {
-            owner: {
-              select: {
-                email: true,
-              },
-            },
             analysis: {
               select: {
                 status: true,
@@ -140,7 +129,7 @@ export async function GET(
       },
     });
 
-    if (!refreshedContributor || !isGuestUserEmail(refreshedContributor.image.owner.email)) {
+    if (!refreshedContributor) {
       return NextResponse.json(
         { error: 'Guest memory not found' },
         {

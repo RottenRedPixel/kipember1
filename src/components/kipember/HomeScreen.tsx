@@ -429,6 +429,7 @@ export default function HomeScreen({
 
   useEffect(() => {
     if (modal !== 'share' || !selectedImageId) {
+      setShareToken(null);
       return;
     }
 
