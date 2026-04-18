@@ -258,7 +258,6 @@ export default function HomeScreen({
   const [hasConversationHistory, setHasConversationHistory] = useState(false);
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const touchStartXRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedImageId = params.get('id') || images[0]?.id || null;
@@ -279,6 +278,17 @@ export default function HomeScreen({
         posterFilename: displayImage.posterFilename,
       })
     : '';
+
+  const allMedia = mediaUrl
+    ? [
+        { url: mediaUrl },
+        ...attachments.map((a) => ({
+          url: getPreviewMediaUrl({ mediaType: a.mediaType, filename: a.filename, posterFilename: a.posterFilename }),
+        })),
+      ]
+    : [];
+  const currentPhotoUrl = allMedia[photoIndex]?.url ?? mediaUrl;
+  const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
 
   const buildHomeHref = useCallback((updates: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
@@ -494,113 +504,38 @@ export default function HomeScreen({
         }}
       />
 
-      {!firstEmber && mediaUrl ? (() => {
-        const PEEK = 14;
-        const allMedia = [
-          { url: mediaUrl },
-          ...attachments.map((a) => ({
-            url: getPreviewMediaUrl({ mediaType: a.mediaType, filename: a.filename, posterFilename: a.posterFilename }),
-          })),
-        ];
-        const currentUrl = allMedia[photoIndex]?.url ?? mediaUrl;
-        const nextUrl = allMedia[photoIndex + 1]?.url ?? null;
-        const hasNext = nextUrl !== null;
-        const hasPrev = photoIndex > 0;
-        const showDots = allMedia.length > 1;
-        return (
-          <>
-            {/* Blurred background — always current photo */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: `url(${currentUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                filter: 'blur(24px)',
-                transform: 'scale(1.08)',
-                opacity: 0.7,
-              }}
-            />
-            {/* Current photo — also handles swipe gestures */}
-            <img
-              key={`photo-${photoIndex}`}
-              src={currentUrl}
-              alt=""
-              draggable={false}
-              className="absolute"
-              style={{
-                top: 72,
-                bottom: 72,
-                left: 0,
-                right: hasNext ? PEEK : 0,
-                height: 'calc(100% - 144px)',
-                width: hasNext ? `calc(100% - ${PEEK}px)` : '100%',
-                objectFit: 'cover',
-                objectPosition: 'center center',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-              }}
-              onTouchStart={(e) => { touchStartXRef.current = e.touches[0].clientX; }}
-              onTouchEnd={(e) => {
-                if (touchStartXRef.current === null) return;
-                const dx = touchStartXRef.current - e.changedTouches[0].clientX;
-                touchStartXRef.current = null;
-                if (Math.abs(dx) < 40) return;
-                if (dx > 0 && hasNext) setPhotoIndex((i) => i + 1);
-                if (dx < 0 && hasPrev) setPhotoIndex((i) => i - 1);
-              }}
-            />
-            {/* Peek slice of next photo */}
-            {hasNext ? (
-              <div
-                className="absolute overflow-hidden pointer-events-none"
-                style={{ top: 72, bottom: 72, left: `calc(100% - ${PEEK}px)`, right: 0, height: 'calc(100% - 144px)' }}
-              >
-                <img
-                  src={nextUrl}
-                  alt=""
-                  draggable={false}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    bottom: 0,
-                    right: 0,
-                    width: '100vw',
-                    height: '100%',
-                    objectFit: 'cover',
-                    objectPosition: 'left center',
-                  }}
-                />
-              </div>
-            ) : null}
-            {/* Gradient overlay */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
-            />
-            {/* Dots */}
-            {showDots ? (
-              <div
-                className="absolute z-10 flex items-center justify-center gap-1.5 pointer-events-none"
-                style={{ bottom: 80, left: 0, right: hasNext ? PEEK : 0 }}
-              >
-                {allMedia.map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      background: i === photoIndex ? '#ffffff' : 'rgba(255,255,255,0.35)',
-                      transition: 'background 0.2s',
-                    }}
-                  />
-                ))}
-              </div>
-            ) : null}
-          </>
-        );
-      })() : null}
+      {!firstEmber && currentPhotoUrl ? (
+        <>
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `url(${currentPhotoUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              filter: 'blur(24px)',
+              transform: 'scale(1.08)',
+              opacity: 0.7,
+            }}
+          />
+          <img
+            key={`photo-${photoIndex}`}
+            src={currentPhotoUrl}
+            alt=""
+            className="absolute left-0 right-0 pointer-events-none w-full"
+            style={{
+              top: 72,
+              bottom: 72,
+              height: 'calc(100% - 144px)',
+              objectFit: 'cover',
+              objectPosition: 'center center',
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
+          />
+        </>
+      ) : null}
 
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-4 pt-4 pb-4">
         <Link
@@ -615,6 +550,15 @@ export default function HomeScreen({
             <p className="text-white font-medium text-base leading-tight">{title}</p>
             <p className="text-white/60 text-xs">{subtitle}</p>
           </div>
+        ) : null}
+        {!firstEmber ? (
+          <Link
+            href={buildHomeHref({ m: 'user' })}
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: 'rgba(249,115,22,0.85)' }}
+          >
+            <span className="text-white text-sm font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
+          </Link>
         ) : null}
       </div>
 
@@ -716,17 +660,25 @@ export default function HomeScreen({
         }`}
         style={{ bottom: '11%' }}
       >
-        <Link
-          href={buildHomeHref({ m: 'user' })}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
-            modal === 'user' ? 'bg-white/20' : 'hover:bg-white/10 active:bg-white/20'
-          }`}
-        >
-          <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(249,115,22,0.85)' }}>
-            <span className="text-white text-sm font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
-          </div>
-          <span className="text-white text-xs font-medium lowercase">user</span>
-        </Link>
+        {allMedia.length > 1 && nextPhotoUrl ? (
+          <button
+            type="button"
+            onClick={() => setPhotoIndex((i) => (i + 1) % allMedia.length)}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 active:bg-white/20 cursor-pointer"
+          >
+            <div className="relative w-11 h-11">
+              <div className="w-11 h-11 rounded-full overflow-hidden">
+                <img src={nextPhotoUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+              {allMedia.length > 1 ? (
+                <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1" style={{ background: '#f97316', fontSize: 10, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
+                  {allMedia.length}
+                </div>
+              ) : null}
+            </div>
+            <span className="text-white text-xs font-medium lowercase">more</span>
+          </button>
+        ) : null}
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
         <RailBtn icon={Leaf} label="tend" href={buildHomeHref({ m: 'tend' })} active={modal === 'tend'} />
         <RailBtn icon={Play} label="play" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />

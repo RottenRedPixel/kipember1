@@ -211,15 +211,6 @@ export default function KipemberSnapshotEditor({
         >
           {regenerating ? 'Regenerating...' : 'Regenerate'}
         </button>
-        {detail.storyCut?.script?.trim() ? (
-          <Link
-            href={`/home?id=${imageId}&m=play`}
-            className="rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
-            style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-          >
-            Play
-          </Link>
-        ) : null}
         <button
           type="button"
           onClick={() => void handleSave()}

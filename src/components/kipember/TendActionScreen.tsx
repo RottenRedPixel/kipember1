@@ -328,6 +328,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [images, setImages] = useState<Array<{ id: string }>>([]);
   const [status, setStatus] = useState('');
   const [titleValue, setTitleValue] = useState('');
+  const [generatingTitle, setGeneratingTitle] = useState(false);
   const [networkValue, setNetworkValue] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
@@ -487,6 +488,28 @@ export default function TendActionScreen({ action }: { action: string }) {
     setSelectedContributorDetail(payload as ContributorDetail);
     setDetailError('');
     return payload as ContributorDetail;
+  }
+
+  async function generateTitle() {
+    if (!resolvedImageId || generatingTitle) return;
+    setGeneratingTitle(true);
+    setStatus('');
+    try {
+      const response = await fetch(`/api/images/${resolvedImageId}/title-suggestions`, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || 'Failed to generate title');
+      if (typeof payload?.title === 'string' && payload.title.trim()) {
+        const wasEmpty = !titleValue.trim();
+        setTitleValue(payload.title.trim());
+        setStatus(wasEmpty ? 'Title generated.' : 'Title regenerated.');
+      }
+    } catch (error) {
+      if (!titleValue.trim()) {
+        setStatus(error instanceof Error ? error.message : 'Failed to generate title');
+      }
+    } finally {
+      setGeneratingTitle(false);
+    }
   }
 
   async function saveTitle() {
@@ -976,7 +999,16 @@ export default function TendActionScreen({ action }: { action: string }) {
                 className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
                 style={fieldStyle}
               />
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => void generateTitle()}
+                  disabled={generatingTitle}
+                  className="rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  {generatingTitle ? 'Generating...' : titleValue.trim() ? 'Regenerate' : 'Generate'}
+                </button>
                 <button
                   type="button"
                   onClick={saveTitle}
