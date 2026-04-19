@@ -11,7 +11,7 @@ declare global {
 import Link from 'next/link';
 import { ChevronLeft, MessageSquare, Pencil, Phone, ShieldUser, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
 import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberWikiContent, {
@@ -85,6 +85,20 @@ type ImageTag = {
   topPct?: number | null;
   widthPct?: number | null;
   heightPct?: number | null;
+};
+
+type TitleQuoteSuggestion = {
+  title: string;
+  contributorName: string;
+  quote: string;
+  source: 'voice' | 'text';
+};
+
+type TitleSuggestionResponse = {
+  analysisSuggestions: string[];
+  contextSuggestions: string[];
+  contributorQuotes: TitleQuoteSuggestion[];
+  suggestions: string[];
 };
 
 type FaceTag = {
@@ -354,7 +368,10 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [images, setImages] = useState<Array<{ id: string }>>([]);
   const [status, setStatus] = useState('');
   const [titleValue, setTitleValue] = useState('');
-  const [generatingTitle, setGeneratingTitle] = useState(false);
+  const [titleSuggestions, setTitleSuggestions] = useState<TitleSuggestionResponse | null>(null);
+  const [titleSuggestionsLoading, setTitleSuggestionsLoading] = useState(false);
+  const [titleSuggestionsRefreshing, setTitleSuggestionsRefreshing] = useState(false);
+  const [titleSuggestionsError, setTitleSuggestionsError] = useState('');
   const [networkValue, setNetworkValue] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
@@ -419,6 +436,73 @@ export default function TendActionScreen({ action }: { action: string }) {
   }, [detailPath, resolvedImageId]);
 
   useEffect(() => {
+    if (action !== 'edit-title' || !resolvedImageId) {
+      setTitleSuggestions(null);
+      setTitleSuggestionsLoading(false);
+      setTitleSuggestionsRefreshing(false);
+      setTitleSuggestionsError('');
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSuggestions(refresh = false) {
+      if (refresh) {
+        setTitleSuggestionsRefreshing(true);
+      } else {
+        setTitleSuggestionsLoading(true);
+      }
+
+      setTitleSuggestionsError('');
+
+      try {
+        const response = await fetch(
+          `/api/images/${resolvedImageId}/title-suggestions${refresh ? '?refresh=1' : ''}`,
+          { cache: 'no-store' }
+        );
+        const payload = (await response.json().catch(() => null)) as
+          | TitleSuggestionResponse
+          | { error?: string }
+          | null;
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok || !payload || !('suggestions' in payload)) {
+          setTitleSuggestions(null);
+          setTitleSuggestionsError(
+            payload && 'error' in payload
+              ? payload.error || 'Failed to load title suggestions.'
+              : 'Failed to load title suggestions.'
+          );
+          return;
+        }
+
+        setTitleSuggestions(payload);
+      } catch (error) {
+        if (!cancelled) {
+          setTitleSuggestions(null);
+          setTitleSuggestionsError(
+            error instanceof Error ? error.message : 'Failed to load title suggestions.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setTitleSuggestionsLoading(false);
+          setTitleSuggestionsRefreshing(false);
+        }
+      }
+    }
+
+    void loadSuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [action, resolvedImageId]);
+
+  useEffect(() => {
     if (action !== 'contributors' || !view || view === 'add') {
       setSelectedContributorDetail(null);
       setDetailLoading(false);
@@ -470,10 +554,6 @@ export default function TendActionScreen({ action }: { action: string }) {
       cancelled = true;
     };
   }, [action, view]);
-
-  if (!title) {
-    return null;
-  }
 
   const TendIcon = TEND_ICONS[action];
   const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}` : '/tend/contributors';
@@ -529,28 +609,6 @@ export default function TendActionScreen({ action }: { action: string }) {
     return payload as ContributorDetail;
   }
 
-  async function generateTitle() {
-    if (!resolvedImageId || generatingTitle) return;
-    setGeneratingTitle(true);
-    setStatus('');
-    try {
-      const response = await fetch(`/api/images/${resolvedImageId}/title-suggestions`, { method: 'POST' });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || 'Failed to generate title');
-      if (typeof payload?.title === 'string' && payload.title.trim()) {
-        const wasEmpty = !titleValue.trim();
-        setTitleValue(payload.title.trim());
-        setStatus(wasEmpty ? 'Title generated.' : 'Title regenerated.');
-      }
-    } catch (error) {
-      if (!titleValue.trim()) {
-        setStatus(error instanceof Error ? error.message : 'Failed to generate title');
-      }
-    } finally {
-      setGeneratingTitle(false);
-    }
-  }
-
   async function saveTitle() {
     if (!resolvedImageId) {
       return;
@@ -562,6 +620,44 @@ export default function TendActionScreen({ action }: { action: string }) {
     });
     setStatus(response.ok ? 'Title saved.' : 'Failed to save title.');
     await refreshDetail();
+  }
+
+  async function refreshTitleSuggestions() {
+    if (!resolvedImageId) {
+      return;
+    }
+
+    setTitleSuggestionsRefreshing(true);
+    setTitleSuggestionsError('');
+
+    try {
+      const response = await fetch(`/api/images/${resolvedImageId}/title-suggestions?refresh=1`, {
+        cache: 'no-store',
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | TitleSuggestionResponse
+        | { error?: string }
+        | null;
+
+      if (!response.ok || !payload || !('suggestions' in payload)) {
+        setTitleSuggestions(null);
+        setTitleSuggestionsError(
+          payload && 'error' in payload
+            ? payload.error || 'Failed to refresh title suggestions.'
+            : 'Failed to refresh title suggestions.'
+        );
+        return;
+      }
+
+      setTitleSuggestions(payload);
+      setStatus('Title suggestions refreshed.');
+    } catch (error) {
+      setTitleSuggestionsError(
+        error instanceof Error ? error.message : 'Failed to refresh title suggestions.'
+      );
+    } finally {
+      setTitleSuggestionsRefreshing(false);
+    }
   }
 
   async function saveSettings() {
@@ -905,6 +1001,10 @@ export default function TendActionScreen({ action }: { action: string }) {
     }
   }
 
+  if (!title) {
+    return null;
+  }
+
   return (
     <div
       className="fixed inset-0 flex"
@@ -1218,6 +1318,137 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'edit-title' ? (
             <>
+              <WikiCard>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col gap-1">
+                    <p className="text-white text-sm font-medium">Smart title suggestions</p>
+                    <p className="text-white/45 text-xs leading-relaxed">
+                      Tagged people, contributor memories, and voice call details are used here.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={refreshTitleSuggestions}
+                    disabled={titleSuggestionsRefreshing || titleSuggestionsLoading}
+                    className="rounded-full px-3 py-2 text-xs font-medium text-white btn-secondary disabled:opacity-40"
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid var(--border-btn)',
+                      minHeight: 36,
+                    }}
+                  >
+                    {titleSuggestionsRefreshing ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                </div>
+
+                {titleSuggestionsLoading ? (
+                  <p className="text-white/45 text-sm mt-2">Loading suggestions...</p>
+                ) : null}
+
+                {titleSuggestionsError ? (
+                  <p className="text-white/45 text-sm mt-2">{titleSuggestionsError}</p>
+                ) : null}
+
+                {!titleSuggestionsLoading && !titleSuggestionsError && titleSuggestions ? (
+                  <div className="flex flex-col gap-4 mt-3">
+                    {titleSuggestions.analysisSuggestions.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-white/45 text-[11px] uppercase tracking-[0.18em]">
+                          From The Image
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {titleSuggestions.analysisSuggestions.map((suggestion) => (
+                            <button
+                              key={`analysis-${suggestion}`}
+                              type="button"
+                              onClick={() => setTitleValue(suggestion)}
+                              className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
+                              style={{
+                                background:
+                                  titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                                    ? 'rgba(249,115,22,0.22)'
+                                    : 'rgba(255,255,255,0.05)',
+                                border:
+                                  titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                                    ? '1px solid rgba(249,115,22,0.7)'
+                                    : '1px solid rgba(255,255,255,0.08)',
+                              }}
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {titleSuggestions.contextSuggestions.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-white/45 text-[11px] uppercase tracking-[0.18em]">
+                          From The Story
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {titleSuggestions.contextSuggestions.map((suggestion) => (
+                            <button
+                              key={`context-${suggestion}`}
+                              type="button"
+                              onClick={() => setTitleValue(suggestion)}
+                              className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
+                              style={{
+                                background:
+                                  titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                                    ? 'rgba(249,115,22,0.22)'
+                                    : 'rgba(255,255,255,0.05)',
+                                border:
+                                  titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                                    ? '1px solid rgba(249,115,22,0.7)'
+                                    : '1px solid rgba(255,255,255,0.08)',
+                              }}
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {titleSuggestions.contributorQuotes.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-white/45 text-[11px] uppercase tracking-[0.18em]">
+                          From Real Quotes
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {titleSuggestions.contributorQuotes.map((suggestion) => (
+                            <button
+                              key={`quote-${suggestion.title}-${suggestion.contributorName}`}
+                              type="button"
+                              onClick={() => setTitleValue(suggestion.title)}
+                              className="w-full rounded-xl px-4 py-3 text-left can-hover"
+                              style={{
+                                background:
+                                  titleValue.trim().toLowerCase() === suggestion.title.trim().toLowerCase()
+                                    ? 'rgba(249,115,22,0.18)'
+                                    : 'rgba(255,255,255,0.05)',
+                                border:
+                                  titleValue.trim().toLowerCase() === suggestion.title.trim().toLowerCase()
+                                    ? '1px solid rgba(249,115,22,0.65)'
+                                    : '1px solid rgba(255,255,255,0.08)',
+                              }}
+                            >
+                              <p className="text-white text-sm font-medium">{suggestion.title}</p>
+                              <p className="text-white/45 text-xs mt-1">
+                                {suggestion.contributorName} via {suggestion.source === 'voice' ? 'voice' : 'text'}
+                              </p>
+                              <p className="text-white/60 text-sm mt-2 leading-relaxed">
+                                {suggestion.quote}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </WikiCard>
               <div
                 className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
@@ -1242,12 +1473,12 @@ export default function TendActionScreen({ action }: { action: string }) {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => void generateTitle()}
-                  disabled={generatingTitle}
+                  onClick={refreshTitleSuggestions}
+                  disabled={titleSuggestionsRefreshing || titleSuggestionsLoading}
                   className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
                   style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
                 >
-                  {generatingTitle ? 'Generating...' : titleValue.trim() ? 'Regenerate' : 'Generate'}
+                  {titleSuggestionsRefreshing ? 'Refreshing...' : 'Refresh Suggestions'}
                 </button>
                 <button
                   type="button"
