@@ -11,7 +11,29 @@
       "Bash(xargs -r -I{} taskkill /PID {} /F)",
       "Bash(curl -s -X POST http://localhost:59861/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}')",
       "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"http://localhost:59861/api/auth/login\" -H \"Content-Type: application/json\" -d '{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}')",
-      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"http://localhost:52123/api/auth/login\" -H \"Content-Type: application/json\" -d '{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}')"
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\" -X POST \"http://localhost:52123/api/auth/login\" -H \"Content-Type: application/json\" -d '{\"email\":\"test@test.com\",\"password\":\"wrongpassword\"}')",
+      "Bash(git status:*)",
+      "Bash(gh pr create --title 'Simplify snapshot to single source of truth' --body ':*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(grep -l \"prisma\\\\.chatSession\\\\|prisma\\\\.chatMessage\" /d/SANDBOX/kipember1/src/app/api/**/*.ts)",
+      "Bash(find /d/SANDBOX/kipember1/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec grep -l \"prisma\\\\.conversation\\\\|prisma\\\\.message\\\\|prisma\\\\.response\" {} \\\\;)",
+      "Bash(grep -n \"PATCH\\\\|title\\\\|prisma.image.update\" D:/SANDBOX/kipember1/src/app/api/images/[id]/route.ts)",
+      "Bash(npx tsc:*)",
+      "Bash(git -C \"D:/SANDBOX/kipember1\" status)",
+      "Bash(git -C \"D:/SANDBOX/kipember1\" diff --stat)",
+      "Bash(git -C \"D:/SANDBOX/kipember1\" add src/components/kipember/GuestEmberScreen.tsx)",
+      "Bash(git -C D:/SANDBOX/kipember1 commit -m ':*)",
+      "Bash(git -C \"D:/SANDBOX/kipember1\" push)",
+      "Bash(git -C \"D:/SANDBOX/kipember1\" add src/app/api/images/[id]/story-cut-audio/route.ts src/components/kipember/KipemberPlayOverlay.tsx src/components/kipember/GuestEmberScreen.tsx)",
+      "Bash(git -C \"D:/SANDBOX/kipember1/.claude/worktrees/agent-abd7d192\" status --short)",
+      "Bash(git -C \"D:/SANDBOX/kipember1\" status --short)",
+      "Bash(git -C \"D:/SANDBOX/kipember1\" add prisma/schema.prisma prisma/migrations/20260418_add_user_avatar/ src/app/api/profile/route.ts src/app/api/profile/avatar/ src/components/kipember/UserActionScreen.tsx)",
+      "Bash(npm list:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(del \"D:\\\\SANDBOX\\\\kipember1\\\\.next\\\\dev\\\\lock\")"
     ]
   }
 }

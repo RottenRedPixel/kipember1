@@ -199,8 +199,9 @@ export default function UserHomeScreen({
         style={{ top: 56 }}
       >
         {/* a) Greeting */}
-        <div className="pt-5 pb-2">
-          <p className="text-sm text-white/60">Good to see you, {firstName}</p>
+        <div className="pt-5 pb-2 flex flex-col gap-1">
+          <h1 className="text-white text-2xl font-bold tracking-tight">Hello {firstName}</h1>
+          <p className="text-white/60 text-sm">Good to see you again!</p>
         </div>
 
         {/* b) Create ember block */}

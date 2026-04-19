@@ -350,7 +350,7 @@ export default function WelcomeFlow({
   }
 
   return (
-    <div className="relative z-[1] px-4 pb-4 pt-1">
+    <div className="relative z-[1] pl-4 pr-[14px] pb-4 pt-1">
       <input
         ref={fileInputRef}
         type="file"
@@ -475,10 +475,9 @@ export default function WelcomeFlow({
       ) : null}
 
       <div
-        className="rounded-[1.45rem] border p-2"
+        className="rounded-full p-2"
         style={{
           background: 'rgba(12,12,12,0.72)',
-          borderColor: 'rgba(255,255,255,0.08)',
           WebkitBackdropFilter: 'blur(12px)',
           backdropFilter: 'blur(12px)',
         }}

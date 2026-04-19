@@ -866,7 +866,13 @@ export default function TendActionScreen({ action }: { action: string }) {
                   </div>
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
-                    style={{ background: 'rgba(249,115,22,0.75)' }}
+                    style={{
+                      background:
+                        contributorSource.userId === detail?.owner?.id ||
+                        contributorSource.user?.id === detail?.owner?.id
+                          ? 'rgba(249,115,22,0.75)'
+                          : 'rgba(100,116,139,0.6)',
+                    }}
                   >
                     {initials(contributorName)}
                   </div>

@@ -72,17 +72,14 @@ export default function AppHeader({
       </Link>
 
       {/* Nav links */}
-      {authenticated ? (
-        <Link href="/home" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : '#6b7280' }}>
-          HOME
-        </Link>
-      ) : (
-        <Link href="/" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/' ? '#ffffff' : '#6b7280' }}>
-          ABOUT
-        </Link>
-      )}
+      <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
+        ABOUT
+      </Link>
       {authenticated ? (
         <>
+          <Link href="/home" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : '#6b7280' }}>
+            HOME
+          </Link>
           <Link href="/user/my-embers" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/user/my-embers' ? '#ffffff' : '#6b7280' }}>
             EMBERS
           </Link>
@@ -96,8 +93,8 @@ export default function AppHeader({
       {authenticated ? (
         <Link
           href={userModalHref}
-          className="w-11 h-11 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
-          style={{ background: 'rgba(249,115,22,0.85)' }}
+          className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
+          style={{ width: 35, height: 35, background: 'rgba(249,115,22,0.85)' }}
           aria-label="Account"
         >
           {avatarUrl ? (

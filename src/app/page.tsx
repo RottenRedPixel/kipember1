@@ -8,14 +8,14 @@ export default async function LandingPage() {
 
   return (
     <div
-      className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-6"
+      className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4"
       style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
     >
       <AppHeader />
-      <div className="flex w-full max-w-sm flex-col gap-8 pt-6 pb-16">
+      <div className="flex w-full flex-col gap-8 pt-6 pb-16">
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-white">
-            ask ember
+            This is ember
           </h1>
           <p className="text-base leading-relaxed text-white/60">
             An AI-guided companion that helps you preserve memories through shared, thoughtful conversations with friends and family.
