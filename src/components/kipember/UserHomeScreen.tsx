@@ -227,7 +227,7 @@ export default function UserHomeScreen({
         {/* b) Create ember block */}
         <div className="mt-4">
           <div
-            className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8 w-full can-hover-lift"
+            className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8 w-full can-hover-card"
             style={{
               background: isDragOver ? 'rgba(249,115,22,0.08)' : 'var(--bg-surface)',
               border: `2px dashed ${isDragOver ? '#f97316' : 'var(--border-subtle)'}`,
