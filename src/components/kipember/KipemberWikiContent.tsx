@@ -120,6 +120,7 @@ export type KipemberAttachment = {
   durationSeconds: number | null;
   originalName: string;
   description: string | null;
+  analysisText?: string | null;
   createdAt: string;
 };
 
@@ -909,6 +910,11 @@ export default function KipemberWikiContent({
                     {attachment.description ? (
                       <p className="text-white/30 text-xs break-words">
                         {attachment.description}
+                      </p>
+                    ) : null}
+                    {attachment.analysisText ? (
+                      <p className="text-white/60 text-xs break-words mt-1">
+                        {attachment.analysisText}
                       </p>
                     ) : null}
                   </div>

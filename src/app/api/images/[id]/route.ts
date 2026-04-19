@@ -363,6 +363,7 @@ export async function GET(
               durationSeconds: true,
               originalName: true,
               description: true,
+              analysisText: true,
               createdAt: true,
               updatedAt: true,
             },
