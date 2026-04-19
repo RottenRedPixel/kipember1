@@ -912,6 +912,98 @@ ${JSON.stringify(AUTO_TAG_SCHEMA)}`,
     .filter((match): match is NonNullable<typeof match> => Boolean(match));
 }
 
+const FACE_DETECT_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['faces'],
+  properties: {
+    faces: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['leftPct', 'topPct', 'widthPct', 'heightPct'],
+        properties: {
+          leftPct: { type: 'number' },
+          topPct: { type: 'number' },
+          widthPct: { type: 'number' },
+          heightPct: { type: 'number' },
+        },
+      },
+    },
+  },
+} as const;
+
+export async function detectFacesInImage({
+  ownerId,
+  imageId,
+}: {
+  ownerId: string;
+  imageId: string;
+}): Promise<FaceBox[]> {
+  if (!process.env.ANTHROPIC_API_KEY) return [];
+
+  const image = await prisma.image.findFirst({
+    where: { id: imageId, ownerId },
+    select: { filename: true, mediaType: true, posterFilename: true },
+  });
+
+  if (!image || image.mediaType === 'AUDIO') return [];
+
+  const targetImage = await loadTargetImageBuffer({
+    filename: image.filename,
+    mediaType: image.mediaType,
+    posterFilename: image.posterFilename,
+  });
+
+  const response = await anthropic.messages.create({
+    model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
+    max_tokens: 1000,
+    system: `You detect human faces in photos and return their bounding boxes.
+
+Rules:
+- Return a tight bounding box for every visible human face in the image.
+- Use percentages from 0 to 100 relative to the full image dimensions.
+- leftPct and topPct are the top-left corner. widthPct and heightPct are the box size.
+- Include partial faces if they are clearly recognisable as faces.
+- Return valid JSON only. No markdown, no code fences.
+- The JSON must match this schema exactly:
+${JSON.stringify(FACE_DETECT_SCHEMA)}`,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: 'image/jpeg', data: targetImage.toString('base64') },
+          },
+          { type: 'text', text: 'Detect all human faces in this image and return their bounding boxes.' },
+        ],
+      },
+    ],
+  });
+
+  const responseText = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+
+  let parsed: unknown;
+  try {
+    parsed = parseJsonFromText(responseText);
+  } catch {
+    return [];
+  }
+
+  const record = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+  const faces = Array.isArray(record.faces) ? record.faces : [];
+
+  return faces
+    .filter(isValidFaceBox)
+    .map(normalizeFaceBox);
+}
+
 export async function suggestFaceMatchesForImage({
   ownerId,
   imageId,
