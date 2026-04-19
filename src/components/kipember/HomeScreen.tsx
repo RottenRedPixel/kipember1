@@ -269,6 +269,7 @@ export default function HomeScreen({
   const [hasConversationHistory, setHasConversationHistory] = useState(false);
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [photoOpacity, setPhotoOpacity] = useState(1);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -381,6 +382,7 @@ export default function HomeScreen({
 
   useEffect(() => {
     setPhotoIndex(0);
+    setPhotoOpacity(1);
     if (!selectedImageId || firstEmber) {
       setAttachments([]);
       return;
@@ -554,11 +556,11 @@ export default function HomeScreen({
               backgroundPosition: 'center',
               filter: 'blur(24px)',
               transform: 'scale(1.08)',
-              opacity: 0.7,
+              opacity: photoOpacity * 0.7,
+              transition: 'opacity 0.22s ease',
             }}
           />
           <img
-            key={`photo-${photoIndex}`}
             src={currentPhotoUrl}
             alt=""
             className="absolute left-0 right-0 pointer-events-none w-full"
@@ -568,6 +570,8 @@ export default function HomeScreen({
               height: 'calc(100% - 128px)',
               objectFit: 'cover',
               objectPosition: 'center center',
+              opacity: photoOpacity,
+              transition: 'opacity 0.22s ease',
             }}
           />
           <div
@@ -690,7 +694,13 @@ export default function HomeScreen({
         {allMedia.length > 1 && nextPhotoUrl ? (
           <button
             type="button"
-            onClick={() => setPhotoIndex((i) => (i + 1) % allMedia.length)}
+            onClick={() => {
+              setPhotoOpacity(0);
+              setTimeout(() => {
+                setPhotoIndex((i) => (i + 1) % allMedia.length);
+                setPhotoOpacity(1);
+              }, 220);
+            }}
             className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 active:bg-white/20 cursor-pointer"
           >
             <div className="relative w-11 h-11">
