@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, CircleEllipsis, LogOut, ShieldEllipsis } from 'lucide-react';
+import { BookOpen, ChevronLeft, Mic, ScanEye, Share2, UserPlus } from 'lucide-react';
+import AppHeader from '@/components/kipember/AppHeader';
 
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
@@ -31,45 +31,17 @@ function initials(value: string) {
     .toUpperCase();
 }
 
-function SvgItem({
-  label,
-  href,
-  onClick,
-  icon: Icon,
-}: {
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-}) {
-  const inner = (
-    <div className="flex flex-col items-center gap-1.5">
-      <Icon size={28} strokeWidth={1.6} />
-      <span className="text-xs text-center leading-tight">{label}</span>
-    </div>
-  );
-
-  if (href) {
-    return (
-      <Link href={href} className="svg-item">
-        {inner}
-      </Link>
-    );
-  }
-
-  return (
-    <button type="button" onClick={onClick} className="svg-item" style={{ cursor: 'pointer' }}>
-      {inner}
-    </button>
-  );
-}
 
 type Step = 'home' | 'confirm' | 'processing';
 
 export default function UserHomeScreen({
   initialProfile,
+  initialImages,
+  initialAvatarUrl,
 }: {
   initialProfile: { name: string | null; email: string } | null;
+  initialImages?: Array<{ accessType: string }>;
+  initialAvatarUrl?: string | null;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -79,7 +51,7 @@ export default function UserHomeScreen({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [createdImageId, setCreatedImageId] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
 
   const displayName = initialProfile?.name || initialProfile?.email || 'Ember User';
 
@@ -109,12 +81,6 @@ export default function UserHomeScreen({
       .catch(() => undefined);
   }, []);
 
-  async function handleLogout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/signin');
-    router.refresh();
-  }
-
   async function handleCreate() {
     if (!selectedFile) return;
     setUploading(true);
@@ -140,8 +106,9 @@ export default function UserHomeScreen({
 
   if (step === 'confirm' && previewUrl) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: 'var(--bg-screen)' }}>
-        <div className="absolute top-4 left-4">
+      <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: 'var(--bg-screen)', paddingTop: 56 }}>
+        <AppHeader avatarUrl={avatarUrl} userInitials={initials(displayName)} userModalHref="/account" />
+        <div className="absolute top-4 left-4" style={{ top: 64 }}>
           <button
             type="button"
             onClick={() => setStep('home')}
@@ -182,7 +149,8 @@ export default function UserHomeScreen({
 
   if (step === 'processing') {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center px-8" style={{ background: 'var(--bg-screen)' }}>
+      <div className="fixed inset-0 flex flex-col items-center justify-center px-8" style={{ background: 'var(--bg-screen)', paddingTop: 56 }}>
+        <AppHeader avatarUrl={avatarUrl} userInitials={initials(displayName)} userModalHref="/account" />
         <style>{'@keyframes kipSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }'}</style>
         <div className="rounded-full flex items-center justify-center" style={{ width: 96, height: 96, background: 'rgba(249,115,22,0.15)', border: '1.5px solid rgba(249,115,22,0.55)', animation: 'kipSpin 1.5s linear infinite' }}>
           <EmberMark size={40} />
@@ -197,11 +165,18 @@ export default function UserHomeScreen({
     );
   }
 
+  const firstName = (displayName || '').split(/\s+/)[0] ?? displayName;
+
   return (
     <div
-      className="fixed inset-0 flex flex-col items-center justify-center px-5 gap-3"
-      style={{ background: 'var(--bg-screen)' }}
+      className="fixed inset-0"
+      style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
     >
+      <AppHeader
+        avatarUrl={avatarUrl}
+        userInitials={initials(displayName)}
+        userModalHref="/account"
+      />
       <input
         ref={fileInputRef}
         type="file"
@@ -218,56 +193,86 @@ export default function UserHomeScreen({
         }}
       />
 
-      <div className="w-full flex flex-col gap-3" style={{ maxWidth: 420 }}>
-
-        {/* Profile */}
-        <div className="flex flex-col items-center py-4 gap-2">
-          <Link href="/user/profile">
-            <div
-              className="rounded-full flex items-center justify-center overflow-hidden"
-              style={{ width: 72, height: 72, background: 'rgba(249,115,22,0.85)' }}
-            >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-              ) : (
-                <span className="text-white text-lg font-medium">{initials(displayName)}</span>
-              )}
-            </div>
-          </Link>
-          <span className="text-white font-semibold text-base">{displayName}</span>
+      {/* Scrollable content */}
+      <div
+        className="absolute left-0 right-0 bottom-0 overflow-y-auto no-scrollbar px-4"
+        style={{ top: 56 }}
+      >
+        {/* a) Greeting */}
+        <div className="pt-5 pb-2">
+          <p className="text-sm text-white/60">Good to see you, {firstName}</p>
         </div>
 
-        {/* Actions */}
-        <div className="px-4 py-2">
-          <div className="grid grid-cols-3" style={{ gap: '0 8px' }}>
-            <SvgItem label="My Embers" href="/user/my-embers" icon={ShieldEllipsis} />
-            <SvgItem label="Shared Embers" href="/user/shared-embers" icon={CircleEllipsis} />
-            <SvgItem label="Logout" onClick={handleLogout} icon={LogOut} />
-          </div>
-        </div>
-
-        {/* Create ember */}
-        <div
-          className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8"
-          style={{ background: 'var(--bg-surface)' }}
-        >
-          <EmberMark size={44} />
-          <div className="flex flex-col items-center gap-1 text-center">
-            <p className="text-white font-medium text-base">Create a new ember</p>
-            <p className="text-white/60 text-sm leading-snug">
-              Choose a photo or video to start a new memory.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-8 rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
-            style={{ background: '#f97316', minHeight: 44 }}
+        {/* b) Create ember block */}
+        <div className="mt-4">
+          <div
+            className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8 w-full"
+            style={{ background: 'var(--bg-surface)' }}
           >
-            Choose Photo
-          </button>
+            <EmberMark size={44} />
+            <div className="flex flex-col items-center gap-1 text-center">
+              <p className="text-white font-medium text-base">Create a new ember</p>
+              <p className="text-white/60 text-sm leading-snug">
+                Choose a photo or video to start a new memory.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-8 rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
+              style={{ background: '#f97316', minHeight: 44 }}
+            >
+              Choose Photo
+            </button>
+          </div>
         </div>
 
+        {/* c) Recent Activity */}
+        <div className="mt-5">
+          <p className="text-xs font-medium text-white/30 mb-3">Recent Activity</p>
+          <div className="flex flex-col gap-2">
+            {[
+              { icon: ScanEye, title: 'Story snapshot ready', sub: 'Your ember is ready to play' },
+              { icon: UserPlus, title: 'New contributor joined', sub: 'Someone added to your ember' },
+              { icon: BookOpen, title: 'Wiki updated', sub: 'Ember knowledge base was refined' },
+            ].map(({ icon: Icon, title, sub }) => (
+              <div
+                key={title}
+                className="flex items-center gap-4 px-4 py-3 rounded-xl"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+              >
+                <Icon size={17} color="#6b7280" strokeWidth={1.6} className="flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white leading-snug">{title}</p>
+                  <p className="text-xs text-white/40 leading-snug">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* d) Requests */}
+        <div className="mt-5 mb-8">
+          <p className="text-xs font-medium text-white/30 mb-3">Requests</p>
+          <div className="flex flex-col gap-2">
+            {[
+              { icon: Mic, title: 'Contribution request', sub: 'Someone wants to add a memory' },
+              { icon: Share2, title: 'Share request', sub: 'An ember was shared with you' },
+            ].map(({ icon: Icon, title, sub }) => (
+              <div
+                key={title}
+                className="flex items-center gap-4 px-4 py-3 rounded-xl"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+              >
+                <Icon size={17} color="#6b7280" strokeWidth={1.6} className="flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white leading-snug">{title}</p>
+                  <p className="text-xs text-white/40 leading-snug">{sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

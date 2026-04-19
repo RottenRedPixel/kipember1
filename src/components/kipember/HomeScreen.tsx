@@ -3,8 +3,6 @@
 import Link from 'next/link';
 import {
   BookOpen,
-  CircleEllipsis,
-  ShieldEllipsis,
   ChevronDown,
   ChevronLeft,
   LogOut,
@@ -15,7 +13,6 @@ import {
   PlusCircle,
   ScanEye,
   Settings,
-  Home,
   Leaf,
   Link2,
   Mail,
@@ -27,6 +24,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import AppHeader from '@/components/kipember/AppHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -255,7 +253,7 @@ export default function HomeScreen({
   const step = params.get('step');
   const firstEmber = mode === 'first-ember';
   const emberOpen = flow !== null;
-  const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play' || modal === 'user';
+  const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
 
   const [profile, setProfile] = useState<AuthUser | null>(initialProfile ?? null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
@@ -565,9 +563,9 @@ export default function HomeScreen({
             alt=""
             className="absolute left-0 right-0 pointer-events-none w-full"
             style={{
-              top: 72,
+              top: 56,
               bottom: 72,
-              height: 'calc(100% - 144px)',
+              height: 'calc(100% - 128px)',
               objectFit: 'cover',
               objectPosition: 'center center',
             }}
@@ -579,39 +577,22 @@ export default function HomeScreen({
         </>
       ) : null}
 
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-4 pt-4 pb-4">
-        <Link
-          href="/home"
-          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--bg-rail-btn)', WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}
-        >
-          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
-        </Link>
-        {!firstEmber ? (
-          <div className="pointer-events-none flex-1">
-            <p className="text-white font-medium text-base leading-tight">{title}</p>
-            <p className="text-white/60 text-xs">{subtitle}</p>
-          </div>
-        ) : null}
-        {!firstEmber ? (
-          <Link
-            href={buildHomeHref({ m: 'user' })}
-            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
-            style={{ background: 'rgba(249,115,22,0.85)' }}
-          >
-            {avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-            ) : (
-              <span className="text-white text-sm font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
-            )}
-          </Link>
-        ) : null}
-      </div>
+      <AppHeader
+        avatarUrl={avatarUrl}
+        userInitials={initials(profile?.name || profile?.email || 'ST')}
+      />
+
+      {!firstEmber && displayImage ? (
+        <div className="absolute left-4 z-20 pointer-events-none" style={{ top: 64 }}>
+          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{title}</p>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{subtitle}</p>
+        </div>
+      ) : null}
 
       {firstEmber ? (
         <div
           className="absolute left-0 right-0 flex flex-col items-center justify-center px-5"
-          style={{ top: 72, bottom: 0 }}
+          style={{ top: 56, bottom: 0 }}
         >
           <div
             className="w-full flex flex-col items-center gap-3 rounded-2xl px-6 py-8"
@@ -729,30 +710,6 @@ export default function HomeScreen({
         <RailBtn icon={Leaf} label="tend" href={buildHomeHref({ m: 'tend' })} active={modal === 'tend'} />
         <RailBtn icon={ScanEye} label="play" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
-
-      {modal === 'user' ? (
-        <Modal closeHref={buildHomeHref({ m: null })}>
-          <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center overflow-hidden" style={{ width: 55, height: 55, background: 'rgba(249,115,22,0.85)' }}>
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-              ) : (
-                <span className="text-white text-base font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
-              )}
-            </div>
-            <span className="text-white text-base font-medium">{profile?.name || profile?.email || 'Ember User'}</span>
-          </div>
-          <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-          <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-            <SvgItem label="My Embers" href="/user/my-embers" icon={ShieldEllipsis} />
-            <SvgItem label="Shared Embers" href="/user/shared-embers" icon={CircleEllipsis} />
-            <SvgItem label="Create Ember" href="/home?mode=first-ember" icon={PlusCircle} />
-            <SvgItem label="Profile" href="/user/profile" icon={User} />
-            <SvgItem label={isDarkTheme ? 'Light Mode' : 'Dark Mode'} href={buildHomeHref({ m: 'user', theme: isDarkTheme ? 'light' : 'dark' })} icon={isDarkTheme ? Sun : Moon} />
-            <SvgItem label="Logout" onClick={handleLogout} icon={LogOut} />
-          </div>
-        </Modal>
-      ) : null}
 
       {modal === 'share' ? (
         <Modal closeHref={buildHomeHref({ m: null })}>

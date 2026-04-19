@@ -80,6 +80,14 @@ body {
     transition: opacity 0.2s;
   }
 
+  .nav-link {
+    transition: color 0.18s ease;
+  }
+
+  .nav-link:hover {
+    color: #e5e7eb !important;
+  }
+
   .btn-primary {
     transition: filter 0.18s ease;
   }

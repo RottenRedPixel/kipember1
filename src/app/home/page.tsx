@@ -4,6 +4,7 @@ import { getCurrentAuth } from '@/lib/auth-server';
 import HomeScreen from '@/components/kipember/HomeScreen';
 import UserHomeScreen from '@/components/kipember/UserHomeScreen';
 import { getAccessibleImagesForUser } from '@/lib/image-summaries';
+import { getAvatarUrl } from '@/lib/avatar';
 
 const HOME_STAGE_QUERY_KEYS = new Set([
   'id',
@@ -27,7 +28,10 @@ export default async function HomePage({
   }
 
   const resolvedSearchParams = await searchParams;
-  const initialImages = await getAccessibleImagesForUser(auth.user.id);
+  const [initialImages, initialAvatarUrl] = await Promise.all([
+    getAccessibleImagesForUser(auth.user.id),
+    getAvatarUrl(auth.user.id),
+  ]);
   const showStageView = Object.keys(resolvedSearchParams).some((key) =>
     HOME_STAGE_QUERY_KEYS.has(key)
   );
@@ -37,7 +41,7 @@ export default async function HomePage({
       {showStageView ? (
         <HomeScreen initialProfile={auth.user} initialImages={initialImages} />
       ) : (
-        <UserHomeScreen initialProfile={auth.user} />
+        <UserHomeScreen initialProfile={auth.user} initialImages={initialImages} initialAvatarUrl={initialAvatarUrl} />
       )}
     </Suspense>
   );

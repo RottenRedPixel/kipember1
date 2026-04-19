@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Home } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import AppHeader from '@/components/kipember/AppHeader';
 import { useState } from 'react';
 
 export default function ResetPasswordForm() {
@@ -58,20 +58,11 @@ export default function ResetPasswordForm() {
 
   return (
     <div
-      className="flex flex-col items-center justify-center w-full px-6"
-      style={{ minHeight: '100dvh', background: 'var(--bg-screen)' }}
+      className="flex flex-col items-center justify-start w-full px-6"
+      style={{ minHeight: '100dvh', background: 'var(--bg-screen)', paddingTop: 56 }}
     >
-      <div className="absolute top-4 left-4">
-        <Link
-          href="/"
-          className="w-11 h-11 rounded-full flex items-center justify-center"
-          style={{ background: 'var(--bg-surface)' }}
-        >
-          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
-        </Link>
-      </div>
-
-      <div className="flex flex-col gap-8 w-full max-w-sm py-16">
+      <AppHeader />
+      <div className="flex flex-col gap-8 w-full max-w-sm pt-6 pb-16">
         <div className="flex flex-col gap-1">
           <h1 className="text-white text-2xl font-bold tracking-tight">Choose a new password</h1>
           <p className="text-white/60 text-sm">Set a new password and Ember will sign you in.</p>
