@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     ext = 'jpg';
   }
 
-  const filename = `avatar-${auth.user.id}.${ext}`;
+  const filename = `avatar-${auth.user.id}-${Date.now()}.${ext}`;
   const uploadPath = getUploadPath(filename);
 
   // Write to local disk (for local dev and as fallback)
