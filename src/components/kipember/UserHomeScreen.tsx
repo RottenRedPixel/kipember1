@@ -46,6 +46,7 @@ export default function UserHomeScreen({
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState<Step>('home');
+  const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -54,6 +55,28 @@ export default function UserHomeScreen({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
 
   const displayName = initialProfile?.name || initialProfile?.email || 'Ember User';
+
+  function handleFile(file: File) {
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setUploadError('');
+    setStep('confirm');
+  }
+
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const item = Array.from(e.clipboardData?.items ?? []).find(
+        (i) => i.kind === 'file' && (i.type.startsWith('image/') || i.type.startsWith('video/'))
+      );
+      const file = item?.getAsFile();
+      if (file) handleFile(file);
+    }
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewUrl]);
 
   useEffect(() => {
     return () => {
@@ -184,12 +207,8 @@ export default function UserHomeScreen({
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (!file) return;
-          if (previewUrl) URL.revokeObjectURL(previewUrl);
-          setSelectedFile(file);
-          setPreviewUrl(URL.createObjectURL(file));
-          setUploadError('');
-          setStep('confirm');
+          if (file) handleFile(file);
+          e.target.value = '';
         }}
       />
 
@@ -209,13 +228,25 @@ export default function UserHomeScreen({
         <div className="mt-4">
           <div
             className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8 w-full can-hover-lift"
-            style={{ background: 'var(--bg-surface)' }}
+            style={{
+              background: isDragOver ? 'rgba(249,115,22,0.08)' : 'var(--bg-surface)',
+              border: `2px dashed ${isDragOver ? '#f97316' : 'var(--border-subtle)'}`,
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragOver(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) handleFile(file);
+            }}
           >
             <EmberMark size={44} />
             <div className="flex flex-col items-center gap-1 text-center">
               <p className="text-white font-medium text-base">Create a new ember</p>
               <p className="text-white/60 text-sm leading-snug">
-                Choose a photo or video to start a new memory.
+                Drop a photo, paste, or choose a file to start a new memory.
               </p>
             </div>
             <button
