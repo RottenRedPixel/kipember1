@@ -5,6 +5,7 @@ import { ChevronLeft, MessageSquare, Phone, ShieldUser } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
+import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberWikiContent, {
   type KipemberAttachment,
   type KipemberContributor,
@@ -687,8 +688,19 @@ export default function TendActionScreen({ action }: { action: string }) {
     await refreshDetail();
   }
 
+  const coverPhotoUrl = detail
+    ? getPreviewMediaUrl({ mediaType: detail.mediaType, filename: detail.filename, posterFilename: detail.posterFilename })
+    : null;
+
   return (
-    <div className="fixed inset-0 flex">
+    <div
+      className="fixed inset-0 flex"
+      style={coverPhotoUrl ? {
+        backgroundImage: `url(${coverPhotoUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      } : undefined}
+    >
       <Link href={backHref} className="w-[7%] h-full" />
       <div
         className="w-[93%] h-full flex flex-col slide-in-right"
