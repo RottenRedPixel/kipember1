@@ -270,6 +270,7 @@ export default function HomeScreen({
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [photoOpacity, setPhotoOpacity] = useState(1);
+  const [photoIsLandscape, setPhotoIsLandscape] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -564,11 +565,15 @@ export default function HomeScreen({
             src={currentPhotoUrl}
             alt=""
             className="absolute left-0 right-0 pointer-events-none w-full"
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              setPhotoIsLandscape(img.naturalWidth > img.naturalHeight);
+            }}
             style={{
               top: 56,
               bottom: 72,
               height: 'calc(100% - 128px)',
-              objectFit: 'cover',
+              objectFit: photoIsLandscape ? 'contain' : 'cover',
               objectPosition: 'center center',
               opacity: photoOpacity,
               transition: 'opacity 0.22s ease',
@@ -698,6 +703,7 @@ export default function HomeScreen({
               setPhotoOpacity(0);
               setTimeout(() => {
                 setPhotoIndex((i) => (i + 1) % allMedia.length);
+                setPhotoIsLandscape(false);
                 setPhotoOpacity(1);
               }, 220);
             }}

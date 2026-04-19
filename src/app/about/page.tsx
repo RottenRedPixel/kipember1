@@ -151,7 +151,7 @@ export default function AboutPage() {
         style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
       >
         <AppHeader />
-        <div className="flex w-full max-w-sm flex-col gap-6 pt-6 pb-16">
+        <div className="flex w-full max-w-xl flex-col gap-6 pt-6 pb-16">
           <div className="flex flex-col gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-white">
               What is ember?
@@ -166,7 +166,7 @@ export default function AboutPage() {
           <Link
             href="#"
             className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-primary"
-            style={{ background: '#f97316', minHeight: 44 }}
+            style={{ background: '#6a7c5c', minHeight: 44 }}
           >
             Demo an ember
           </Link>
@@ -183,13 +183,12 @@ export default function AboutPage() {
             >
               Sign Up
             </Link>
-            <Link
-              href="/login"
-              className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-secondary"
-              style={{ background: 'rgba(255,255,255,0.08)', minHeight: 44 }}
-            >
-              Login
-            </Link>
+            <p className="text-center text-white/60 text-sm">
+              Already have an account?{' '}
+              <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
+                Login
+              </Link>
+            </p>
           </div>
         </div>
       </div>

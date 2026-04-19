@@ -195,9 +195,10 @@ export default function UserHomeScreen({
 
       {/* Scrollable content */}
       <div
-        className="absolute left-0 right-0 bottom-0 overflow-y-auto no-scrollbar px-4"
+        className="absolute left-0 right-0 bottom-0 overflow-y-auto no-scrollbar flex flex-col items-center px-4"
         style={{ top: 56 }}
       >
+      <div className="w-full max-w-xl">
         {/* a) Greeting */}
         <div className="pt-5 pb-2 flex flex-col gap-1">
           <h1 className="text-white text-2xl font-bold tracking-tight">Hello {firstName}</h1>
@@ -233,16 +234,27 @@ export default function UserHomeScreen({
           <p className="text-xs font-medium text-white/30 mb-3">Recent Activity</p>
           <div className="flex flex-col gap-2">
             {[
-              { icon: UserPlus, title: 'New contributor joined', sub: 'Someone added to your ember' },
-              { icon: BookOpen, title: 'Wiki updated', sub: 'Ember knowledge base was refined' },
-            ].map(({ icon: Icon, title, sub }) => (
-              <div
-                key={title}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl can-hover-card"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-              >
-                <Icon size={17} color="#6b7280" strokeWidth={1.6} className="flex-shrink-0" />
-                <div className="flex-1 min-w-0">
+              { icon: UserPlus, title: 'New contributor joined', sub: 'Someone added to your ember', count: 4 },
+              { icon: BookOpen, title: 'Wiki updated', sub: 'Ember knowledge base was refined', count: 1 },
+            ].map(({ icon: Icon, title, sub, count }) => (
+              <div key={title} className="flex items-center gap-3 can-hover-card rounded-xl">
+                <div className="relative flex-shrink-0">
+                  <div
+                    className="flex items-center justify-center rounded-full"
+                    style={{ width: 55, height: 55, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                  >
+                    <Icon size={22} color="#6b7280" strokeWidth={1.6} />
+                  </div>
+                  {count ? (
+                    <span
+                      className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      style={{ minWidth: 18, height: 18, background: '#f97316', padding: '0 4px' }}
+                    >
+                      {count}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex-1 min-w-0 px-2">
                   <p className="text-sm font-medium text-white leading-snug">{title}</p>
                   <p className="text-xs text-white/40 leading-snug">{sub}</p>
                 </div>
@@ -256,16 +268,27 @@ export default function UserHomeScreen({
           <p className="text-xs font-medium text-white/30 mb-3">Requests</p>
           <div className="flex flex-col gap-2">
             {[
-              { icon: Mic, title: 'Contribution request', sub: 'Someone wants to add a memory' },
-              { icon: Share2, title: 'Share request', sub: 'An ember was shared with you' },
-            ].map(({ icon: Icon, title, sub }) => (
-              <div
-                key={title}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl can-hover-card"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-              >
-                <Icon size={17} color="#6b7280" strokeWidth={1.6} className="flex-shrink-0" />
-                <div className="flex-1 min-w-0">
+              { icon: Mic, title: 'Contribution request', sub: 'Someone wants to add a memory', count: 2 },
+              { icon: Share2, title: 'Share request', sub: 'An ember was shared with you', count: 0 },
+            ].map(({ icon: Icon, title, sub, count }) => (
+              <div key={title} className="flex items-center gap-3 can-hover-card rounded-xl">
+                <div className="relative flex-shrink-0">
+                  <div
+                    className="flex items-center justify-center rounded-full"
+                    style={{ width: 55, height: 55, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                  >
+                    <Icon size={22} color="#6b7280" strokeWidth={1.6} />
+                  </div>
+                  {count ? (
+                    <span
+                      className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
+                      style={{ minWidth: 18, height: 18, background: '#f97316', padding: '0 4px' }}
+                    >
+                      {count}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex-1 min-w-0 px-2">
                   <p className="text-sm font-medium text-white leading-snug">{title}</p>
                   <p className="text-xs text-white/40 leading-snug">{sub}</p>
                 </div>
@@ -273,6 +296,7 @@ export default function UserHomeScreen({
             ))}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

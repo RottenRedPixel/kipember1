@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AppHeader from '@/components/kipember/AppHeader';
@@ -71,32 +71,43 @@ export default function MyEmbersScreen({
     <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
       <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref="/account" />
 
-      <div className="absolute left-0 right-0 bottom-0 flex flex-col" style={{ top: 56 }}>
+<div className="absolute left-0 right-0 bottom-0 flex flex-col items-center" style={{ top: 56 }}>
+      <div className="flex flex-col w-full max-w-xl flex-1 min-h-0">
 
         {/* Toolbar */}
         <div className="flex items-center justify-between px-4 py-3 flex-shrink-0">
 
-          {/* View toggle */}
-          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'var(--bg-surface)' }}>
+          {/* View toggle + create button */}
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'var(--bg-surface)' }}>
+              <Link
+                href={buildHref({ view: null, 'sort-open': null })}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{
+                  background: !isShared ? 'var(--bg-screen)' : 'transparent',
+                  color: !isShared ? '#ffffff' : 'var(--text-secondary)',
+                }}
+              >
+                Mine
+              </Link>
+              <Link
+                href={buildHref({ view: 'shared', 'sort-open': null })}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{
+                  background: isShared ? 'var(--bg-screen)' : 'transparent',
+                  color: isShared ? '#ffffff' : 'var(--text-secondary)',
+                }}
+              >
+                Shared
+              </Link>
+            </div>
             <Link
-              href={buildHref({ view: null, 'sort-open': null })}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={{
-                background: !isShared ? 'var(--bg-screen)' : 'transparent',
-                color: !isShared ? '#ffffff' : 'var(--text-secondary)',
-              }}
+              href="/home"
+              className="flex items-center justify-center rounded-full can-hover-dim"
+              style={{ width: 32, height: 32, background: '#f97316', flexShrink: 0 }}
+              aria-label="Create new ember"
             >
-              Mine
-            </Link>
-            <Link
-              href={buildHref({ view: 'shared', 'sort-open': null })}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={{
-                background: isShared ? 'var(--bg-screen)' : 'transparent',
-                color: isShared ? '#ffffff' : 'var(--text-secondary)',
-              }}
-            >
-              Shared
+              <Plus size={16} color="white" strokeWidth={2.5} />
             </Link>
           </div>
 
@@ -170,6 +181,7 @@ export default function MyEmbersScreen({
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

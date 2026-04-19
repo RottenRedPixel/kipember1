@@ -167,7 +167,7 @@ export default function GuestContributorAddFlow({ token }: { token: string }) {
   }
 
   return (
-    <div className="relative z-[1] pl-4 pr-[14px] pb-4 pt-1">
+    <div className="relative z-[1] pl-4 pr-[22px] pb-4 pt-1">
       <div className="max-h-[34vh] overflow-y-auto pb-4 pr-1 no-scrollbar">
         <div className="flex flex-col gap-4">
           {/* Greeting */}
@@ -230,15 +230,7 @@ export default function GuestContributorAddFlow({ token }: { token: string }) {
       </div>
 
       {/* Input bar */}
-      <div
-        className="rounded-full p-2"
-        style={{
-          background: 'rgba(12,12,12,0.72)',
-          WebkitBackdropFilter: 'blur(12px)',
-          backdropFilter: 'blur(12px)',
-        }}
-      >
-        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2">
           <button
             type="button"
             onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
@@ -279,7 +271,6 @@ export default function GuestContributorAddFlow({ token }: { token: string }) {
             )}
           </div>
         ) : null}
-      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ export default async function LandingPage() {
       style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
     >
       <AppHeader />
-      <div className="flex w-full max-w-sm flex-col gap-8 pt-6 pb-16">
+      <div className="flex w-full max-w-xl flex-col gap-8 pt-6 pb-16">
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-white">
             This is ember
@@ -42,13 +42,12 @@ export default async function LandingPage() {
             >
               Sign Up
             </Link>
-            <Link
-              href="/login"
-              className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-secondary"
-              style={{ border: '1.5px solid rgba(255,255,255,0.35)', minHeight: 44 }}
-            >
-              Login
-            </Link>
+            <p className="text-center text-white/60 text-sm">
+              Already have an account?{' '}
+              <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
+                Login
+              </Link>
+            </p>
           </div>
         ) : null}
       </div>

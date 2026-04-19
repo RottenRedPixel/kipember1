@@ -149,10 +149,12 @@ export default function AccountScreen({
           imageSrc={cropSrc}
           onConfirm={handleCropConfirm}
           onCancel={() => setCropSrc(null)}
+          onChooseNew={() => fileInputRef.current?.click()}
         />
       ) : null}
 
-      <div className="absolute left-0 right-0 bottom-0 overflow-y-auto no-scrollbar px-4" style={{ top: 56 }}>
+      <div className="absolute left-0 right-0 bottom-0 overflow-y-auto no-scrollbar flex flex-col items-center px-4" style={{ top: 56 }}>
+      <div className="w-full max-w-xl">
 
         {/* Back */}
         <div className="pt-4 pb-2">
@@ -256,6 +258,7 @@ export default function AccountScreen({
           </div>
         </div>
 
+      </div>
       </div>
     </div>
   );
