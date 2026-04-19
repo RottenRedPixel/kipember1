@@ -84,6 +84,32 @@ This pattern is used in all workflow components. State is read from the URL via 
 ## Slider pattern
 All detail screens use a consistent slider panel: 93% width, 7% peek on the left to go back, header with back chevron + icon + title, scrollable content area.
 
+### Slider button row rule
+Action buttons at the bottom of a slider content area always split the full width equally using `flex`:
+
+```tsx
+// ALWAYS — buttons fill the row equally, right-aligned when fewer than full width
+<div className="flex gap-3">
+  <button className="flex-1 ...">Cancel</button>  // each gets equal share
+  <button className="flex-1 ...">Save</button>
+</div>
+
+// Single button — takes half the width, right-aligned (push left with ml-auto):
+<div className="flex">
+  <button className="flex-1 ml-auto ...">Add Contributor</button>
+</div>
+// OR equivalently:
+<div className="flex justify-end">
+  <button className="w-1/2 ...">Add Contributor</button>
+</div>
+```
+
+- 1 button → `w-1/2`, right-aligned (`ml-auto` or `justify-end`)
+- 2 buttons → each `flex-1` (50/50 split)
+- 3 buttons → each `flex-1` (33/33/33 split)
+
+This ensures visual consistency across all sliders — a lone CTA is never full-width.
+
 Structure: constants file (actions map + icons map) → dynamic `[action]` route → slider page.
 
 - **Tend sliders** (`/tend/[action]`) — Add Content, View Wiki, Edit Snapshot, Tag People, Edit Title, Contributors, Settings

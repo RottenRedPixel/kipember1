@@ -33,7 +33,15 @@ export default async function LandingPage() {
           </p>
         </div>
 
-        {!isLoggedIn ? (
+        {isLoggedIn ? (
+          <Link
+            href="/home"
+            className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white transition-opacity hover:opacity-80"
+            style={{ background: '#f97316', minHeight: 44 }}
+          >
+            Get Started
+          </Link>
+        ) : (
           <div className="flex flex-col items-center gap-4">
             <Link
               href="/signup"
@@ -49,7 +57,7 @@ export default async function LandingPage() {
               </Link>
             </p>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );

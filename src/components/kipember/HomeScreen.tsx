@@ -5,6 +5,7 @@ import {
   BookOpen,
   ChevronDown,
   ChevronLeft,
+  Copy,
   LogOut,
   Moon,
   MoreHorizontal,
@@ -589,6 +590,7 @@ export default function HomeScreen({
       <AppHeader
         avatarUrl={avatarUrl}
         userInitials={initials(profile?.name || profile?.email || 'ST')}
+        userModalHref={selectedImageId ? `/account?imageId=${selectedImageId}` : '/account'}
       />
 
       {!firstEmber && displayImage ? (
@@ -724,7 +726,7 @@ export default function HomeScreen({
         ) : null}
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
         <RailBtn icon={Leaf} label="tend" href={buildHomeHref({ m: 'tend' })} active={modal === 'tend'} />
-        <RailBtn icon={ScanEye} label="play" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
+        <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
 
       {modal === 'share' ? (
@@ -763,10 +765,9 @@ export default function HomeScreen({
                 <button
                   type="button"
                   onClick={() => void navigator.clipboard.writeText(`${window.location.origin}/guest/${shareToken}`)}
-                  className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-md cursor-pointer"
-                  style={{ color: '#f97316' }}
+                  className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md cursor-pointer"
                 >
-                  Copy
+                  <Copy size={16} color="white" strokeWidth={1.8} />
                 </button>
               ) : null}
             </div>

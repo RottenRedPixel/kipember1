@@ -259,7 +259,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
           </button>
         ) : null}
         <RailBtn icon={Share2} label="share" href={`${base}?m=share`} />
-        <RailBtn icon={ScanEye} label="play" href={`${base}?m=play`} />
+        <RailBtn icon={ScanEye} label="view" href={`${base}?m=play`} />
       </div>
 
       {/* Share modal */}

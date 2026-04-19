@@ -387,7 +387,7 @@ export default function UserActionScreen({
                 <button
                   type="button"
                   onClick={saveProfile}
-                  className="rounded-full px-5 text-white text-sm font-medium btn-primary"
+                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-primary"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
                   Save Profile
@@ -407,7 +407,7 @@ export default function UserActionScreen({
                 <button
                   type="button"
                   onClick={addFriend}
-                  className="rounded-full px-5 text-white text-sm font-medium btn-secondary"
+                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-secondary"
                   style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
                 >
                   Add Friend

@@ -809,7 +809,7 @@ export default function TendActionScreen({ action }: { action: string }) {
               <div className="flex justify-end">
                 <Link
                   href={`${listHref}&view=add`}
-                  className="flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium can-hover-dim btn-primary"
+                  className="w-1/2 flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium can-hover-dim btn-primary"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
                   Add Contributor
@@ -1026,12 +1026,12 @@ export default function TendActionScreen({ action }: { action: string }) {
                   className="w-full px-0 py-2 text-sm text-white placeholder-white/30 outline-none bg-transparent border-t border-white/10"
                 />
               </div>
-              <div className="flex justify-end gap-3">
+              <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => void generateTitle()}
                   disabled={generatingTitle}
-                  className="rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
                   style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
                 >
                   {generatingTitle ? 'Generating...' : titleValue.trim() ? 'Regenerate' : 'Generate'}
@@ -1039,7 +1039,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                 <button
                   type="button"
                   onClick={saveTitle}
-                  className="rounded-full px-5 text-white text-sm font-medium btn-primary"
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
                   Save Title
@@ -1095,7 +1095,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                 <button
                   type="button"
                   onClick={saveSettings}
-                  className="rounded-full px-5 text-white text-sm font-medium btn-primary"
+                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-primary"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
                   Save Settings
