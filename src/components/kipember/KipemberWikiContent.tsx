@@ -112,6 +112,15 @@ export type KipemberContributor = {
   } | null;
 };
 
+export type KipemberTag = {
+  id: string;
+  label: string;
+  leftPct?: number | null;
+  topPct?: number | null;
+  widthPct?: number | null;
+  heightPct?: number | null;
+};
+
 export type KipemberAttachment = {
   id: string;
   filename: string;
@@ -176,6 +185,7 @@ export type KipemberWikiDetail = {
   } | null;
   contributors: KipemberContributor[];
   attachments: KipemberAttachment[];
+  tags?: KipemberTag[];
   voiceCallClips?: KipemberVoiceCallClip[];
 };
 
@@ -972,6 +982,27 @@ export default function KipemberWikiContent({
           ))}
         </WikiSection>
       ) : null}
+
+      <WikiSection
+        icon={<Users size={17} />}
+        title="Tagged People"
+        complete={Boolean(detail?.tags && detail.tags.length > 0)}
+      >
+        <WikiCard>
+          {detail?.tags && detail.tags.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {detail.tags.map((tag) => (
+                <div key={tag.id} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0 bg-orange-400" />
+                  <p className="text-white text-sm">{tag.label}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/30 text-sm">No people tagged yet.</p>
+          )}
+        </WikiCard>
+      </WikiSection>
 
       <WikiSection
         icon={<MapPin size={17} />}
