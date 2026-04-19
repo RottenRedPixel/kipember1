@@ -3,8 +3,8 @@ import { requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { generateSnapshotScript } from '@/lib/claude';
-import { getEmberTitle } from '@/lib/ember-title';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
+import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 
 export const runtime = 'nodejs';
 
@@ -27,20 +27,24 @@ export async function POST(
     const style = typeof body?.style === 'string' && body.style.trim() ? body.style.trim() : 'documentary';
     const emberVoiceId = body?.emberVoiceId === null ? null : (typeof body?.emberVoiceId === 'string' && body.emberVoiceId.trim() ? body.emberVoiceId.trim() : undefined);
 
-    const imageRecord = await prisma.image.findUnique({
-      where: { id },
-      include: {
-        analysis: { select: { summary: true, metadataJson: true } },
-      },
-    });
+    const context = await loadEmberSetupContext(id);
+    if (!context) return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
 
-    if (!imageRecord) return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
-
-    const title = getEmberTitle(imageRecord);
+    const { image: imageRecord, imageTitle: title, confirmedPeople, confirmedLocation, contributorMemories, callSummaries, callHighlights } = context;
     const summary = imageRecord.analysis?.summary || null;
-    const location = parseConfirmedLocationContext(imageRecord.analysis?.metadataJson ?? null)?.label ?? null;
+    const location = confirmedLocation?.label ?? parseConfirmedLocationContext(imageRecord.analysis?.metadataJson ?? null)?.label ?? null;
 
-    const script = manualScript ?? await generateSnapshotScript({ title, summary, location, durationSeconds });
+    const script = manualScript ?? await generateSnapshotScript({
+      title,
+      summary,
+      location,
+      durationSeconds,
+      taggedPeople: confirmedPeople,
+      wikiContent: imageRecord.wiki?.content ?? null,
+      contributorMemories: contributorMemories.map((m) => ({ contributorName: m.contributorName, answer: m.answer })),
+      callSummaries: callSummaries.map((c) => ({ contributorName: c.contributorName, summary: c.summary })),
+      callHighlights: callHighlights.map((h) => ({ contributorName: h.contributorName, title: h.title, quote: h.quote })),
+    });
 
     if (!script.trim()) {
       return NextResponse.json({ error: 'Could not generate snapshot text' }, { status: 500 });

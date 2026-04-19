@@ -176,6 +176,14 @@ export default function MyEmbersScreen({
                     alt={image.title || image.originalName}
                     className="absolute inset-0 h-full w-full object-cover"
                   />
+                  {image.photoCount > 1 ? (
+                    <div
+                      className="absolute top-1.5 right-1.5 min-w-[20px] h-5 rounded-full flex items-center justify-center text-white font-bold px-1 z-10"
+                      style={{ background: '#f97316', fontSize: 10 }}
+                    >
+                      {image.photoCount}
+                    </div>
+                  ) : null}
                 </Link>
               ))}
             </div>

@@ -1352,3 +1352,46 @@ export async function ensureImageAnalysisForImage(imageId: string) {
     throw error;
   }
 }
+
+/**
+ * Lightweight visual analysis for an image attachment.
+ * Returns a descriptive paragraph suitable for embedding in the wiki.
+ */
+export async function analyzeAttachmentImage(
+  filename: string,
+  originalName: string
+): Promise<string | null> {
+  try {
+    const filePath = getUploadPath(filename);
+    const buffer = await readFile(filePath);
+    const mimeType = inferImageMimeType(filename) || inferImageMimeType(originalName);
+
+    if (!mimeType) return null;
+
+    const imageSource = await toBase64ImageSource(buffer, mimeType);
+    if (!imageSource) return null;
+
+    const openai = getOpenAIClient();
+    const response = await openai.responses.create({
+      model: getImageAnalysisModel(),
+      input: [
+        {
+          role: 'user',
+          type: 'message',
+          content: [
+            imageSource,
+            {
+              type: 'input_text',
+              text: `Describe this photo in 2–4 sentences. Note who is in it (describe people by appearance if unnamed), what is happening, the setting, and any notable details. Be specific and factual — do not invent names or relationships. Return only the description, no preamble.`,
+            },
+          ],
+        },
+      ],
+    });
+
+    const text = response.output_text?.trim();
+    return text || null;
+  } catch {
+    return null;
+  }
+}

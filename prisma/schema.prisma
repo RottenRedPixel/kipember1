@@ -51,6 +51,7 @@ model ImageAttachment {
   durationSeconds Float?
   originalName    String
   description     String?
+  analysisText    String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   image           Image     @relation(fields: [imageId], references: [id], onDelete: Cascade)

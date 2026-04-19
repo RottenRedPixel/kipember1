@@ -356,13 +356,11 @@ Analyze all the context deeply and generate ONE perfect title that:
 4. Resonates personally
 5. Still feels meaningful years from now
 
-Consider:
-- The story conversations and how people are talking about this moment
-- Any important quoted moment pulled from a voice call
-- The relationships between tagged people
-- The setting and context from image analysis
-- Emotional undertones or significance mentioned
-- Specific details that make this memory unique
+PRIORITY (in order):
+- If specific people are tagged in the photo, strongly prefer a title that names them or captures their relationship (e.g. "Zia and Anna at the Beach" or "Mom's First La Jolla Visit")
+- Use real wording or emotional details from contributor memories and voice call highlights when present
+- Draw on wiki content for specific personal details that make this memory unique
+- Fall back to visual scene details only when no personal context is available
 
 Generate ONE thoughtful, evocative title between 2 and 8 words.
 Return ONLY the title, with no explanation.`,
