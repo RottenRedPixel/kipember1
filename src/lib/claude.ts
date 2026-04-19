@@ -788,39 +788,26 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
     analysis,
   });
 
-  const systemPrompt = `You are Ember's memory writer. Rewrite a structured memory object into a warm, readable story snapshot.
+  // Assemble the snapshot directly from structured fields — no LLM rewrite needed
+  const parts: string[] = [
+    structuredMemory.overview,
+    structuredMemory.story.main,
+    structuredMemory.story.significance,
+    structuredMemory.whenAndWhere,
+    structuredMemory.detailsWorthKeeping.length > 0
+      ? structuredMemory.detailsWorthKeeping.join(' ')
+      : null,
+    structuredMemory.quotes.length > 0
+      ? structuredMemory.quotes.map((q) => `"${q.quote}" — ${q.speaker}`).join(' ')
+      : null,
+  ].filter((s): s is string => Boolean(s?.trim()));
 
-Rules:
-- Use only the structured memory object below.
-- Do not add facts, identities, motives, or background not present in the object.
-- Make it feel like a memory someone would want to revisit, not a report.
-- Let the human memory details lead. If contributor details are present, they should shape the voice of the page more than metadata or visual-analysis leftovers.
-- Prefer short paragraphs and avoid repeating the same detail across sections.
-- If a tagged name is ambiguous, mention it naturally as tagged in the image instead of assigning it by sight.
-- Do not reintroduce weaker visual ambiguity if the structured memory already resolved it from tags or contributor memories.
-- Do not turn obvious corrections into standalone lines. If a clarification matters, weave it into the story naturally and positively.
-- Do not include low-value observations that do not deepen the memory, such as ordinary clothing notes, unless the structured memory makes them meaningful.
-- Keep the output to 2-4 short paragraphs.
-- Do not write headings, bullet lists, labels, or markdown sections.
-- Do not repeat the title as a heading.
-- Keep the output concise and high-signal.
-
-Write plain text only.`;
-
-  const output = await chat(systemPrompt, [
-    {
-      role: 'user',
-      content: `Structured memory JSON:
-${JSON.stringify(structuredMemory, null, 2)}`,
-    },
-  ]);
-
-  const trimmedOutput = output.trim();
-  if (!trimmedOutput) {
-    throw new Error('Anthropic wiki rewrite returned an empty response');
+  const assembled = parts.join('\n\n').trim();
+  if (!assembled) {
+    throw new Error('Structured memory pass produced no usable snapshot text');
   }
 
-  return trimmedOutput;
+  return assembled;
 }
 
 export async function generateFollowUpQuestion(

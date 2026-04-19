@@ -72,9 +72,6 @@ export default function AppHeader({
       </Link>
 
       {/* Nav links */}
-      <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
-        ABOUT
-      </Link>
       {authenticated ? (
         <>
           <Link href="/home" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : '#6b7280' }}>
@@ -84,7 +81,11 @@ export default function AppHeader({
             EMBERS
           </Link>
         </>
-      ) : null}
+      ) : (
+        <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
+          ABOUT
+        </Link>
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />

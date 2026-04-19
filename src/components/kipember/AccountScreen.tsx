@@ -221,7 +221,7 @@ export default function AccountScreen({
               className="rounded-full px-5 text-white text-sm font-medium"
               style={{ background: '#f97316', minHeight: 36, cursor: 'pointer' }}
             >
-              Save
+              Update Profile
             </button>
           </div>
         </div>

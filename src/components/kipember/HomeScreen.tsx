@@ -519,7 +519,7 @@ export default function HomeScreen({
       setSelectedFile(null);
       setSelectedPreviewUrl('');
       router.replace(`/home?id=${createdImageId}&ember=welcome`);
-    }, 2400);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [createdImageId, router, step]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, ChevronLeft, Mic, ScanEye, Share2, UserPlus } from 'lucide-react';
+import { BookOpen, ChevronLeft, Mic, Share2, UserPlus } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 
 function EmberMark({ size = 18 }: { size?: number }) {
@@ -65,7 +65,7 @@ export default function UserHomeScreen({
     if (!createdImageId || step !== 'processing') return;
     const timer = setTimeout(() => {
       router.replace(`/home?id=${createdImageId}&ember=welcome`);
-    }, 2400);
+    }, 400);
     return () => clearTimeout(timer);
   }, [createdImageId, step, router]);
 
@@ -233,7 +233,6 @@ export default function UserHomeScreen({
           <p className="text-xs font-medium text-white/30 mb-3">Recent Activity</p>
           <div className="flex flex-col gap-2">
             {[
-              { icon: ScanEye, title: 'Story snapshot ready', sub: 'Your ember is ready to play' },
               { icon: UserPlus, title: 'New contributor joined', sub: 'Someone added to your ember' },
               { icon: BookOpen, title: 'Wiki updated', sub: 'Ember knowledge base was refined' },
             ].map(({ icon: Icon, title, sub }) => (
