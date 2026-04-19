@@ -3,6 +3,8 @@ import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-serve
 import { sendContributorSmsInvite } from '@/lib/contributor-invites';
 import { prisma } from '@/lib/db';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { invalidateSmartTitleSuggestions } from '@/lib/smart-title-suggestions';
+import { generateWikiForImage } from '@/lib/wiki-generator';
 
 export async function POST(
   request: NextRequest,
@@ -162,6 +164,14 @@ export async function POST(
         inviteSent: true,
       };
     }
+
+    await invalidateSmartTitleSuggestions(id).catch((titleError) => {
+      console.error('Smart title cache reset failed after tag invite:', titleError);
+    });
+
+    await generateWikiForImage(id).catch((wikiError) => {
+      console.error('Wiki refresh failed after tag invite:', wikiError);
+    });
 
     return NextResponse.json({
       contributor,

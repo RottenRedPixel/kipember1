@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
+import { invalidateSmartTitleSuggestions } from '@/lib/smart-title-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 
 function parseOptionalPercentage(value: unknown): number | null {
@@ -134,6 +135,10 @@ export async function POST(
           },
         },
       },
+    });
+
+    await invalidateSmartTitleSuggestions(id).catch((titleError) => {
+      console.error('Smart title cache reset failed after tag create:', titleError);
     });
 
     if (shouldRefreshWiki) {

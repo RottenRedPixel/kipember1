@@ -234,12 +234,14 @@ function extractAskVoiceNoteText(description: string | null | undefined) {
 function buildFallbackStorySnapshot({
   imageTitle,
   imageDescription,
+  confirmedPeople,
   responses,
   callSummaries,
   callHighlights,
 }: {
   imageTitle: string;
   imageDescription: string | null;
+  confirmedPeople: string[];
   responses: Array<{
     contributorName: string;
     questionType: string;
@@ -279,6 +281,7 @@ function buildFallbackStorySnapshot({
 
   const parts = [
     contextAnswer ? excerptText(contextAnswer, 320) : null,
+    confirmedPeople.length > 0 ? `People identified: ${confirmedPeople.join(', ')}` : null,
     whereAnswer ? `Location noted: ${excerptText(whereAnswer, 140)}` : null,
     whenAnswer ? `Timing noted: ${excerptText(whenAnswer, 140)}` : null,
     whyAnswer ? `Why it mattered: ${excerptText(whyAnswer, 180)}` : null,
@@ -830,6 +833,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     storySnapshot = buildFallbackStorySnapshot({
       imageTitle,
       imageDescription: image.description,
+      confirmedPeople,
       responses: allResponses,
       callSummaries,
       callHighlights,
