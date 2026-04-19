@@ -1445,6 +1445,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                           autoFocus
                           value={editingName}
                           onChange={(e) => setEditingName(e.target.value)}
+                          onFocus={(e) => e.target.select()}
                           onBlur={() => handleSaveTagName(tag.id)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleSaveTagName(tag.id);
@@ -1480,12 +1481,11 @@ export default function TendActionScreen({ action }: { action: string }) {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => void handleDetectFaces()}
-                  disabled={detectingFaces || !coverPhotoUrl}
-                  className="flex-1 flex items-center justify-center rounded-full text-white/70 text-sm font-medium disabled:opacity-50"
-                  style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: 'pointer' }}
+                  disabled
+                  className="flex-1 flex items-center justify-center rounded-full text-white/30 text-sm font-medium disabled:opacity-50"
+                  style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: 'not-allowed' }}
                 >
-                  {detectingFaces ? 'Detecting...' : 'Detect Faces'}
+                  Auto Detect
                 </button>
                 <button
                   type="button"
