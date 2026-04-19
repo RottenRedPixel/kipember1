@@ -89,7 +89,7 @@ export default function AppHeader({
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Avatar — only shown when authenticated */}
+      {/* Right side — avatar when authenticated, LOGIN when not */}
       {authenticated ? (
         <Link
           href={userModalHref}
@@ -103,7 +103,15 @@ export default function AppHeader({
             <span className="text-white text-sm font-medium">{userInitials}</span>
           )}
         </Link>
-      ) : null}
+      ) : (
+        <Link
+          href="/login"
+          className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0"
+          style={{ color: pathname === '/login' ? '#ffffff' : '#6b7280' }}
+        >
+          LOGIN
+        </Link>
+      )}
     </div>
   );
 }

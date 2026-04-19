@@ -50,11 +50,11 @@ export default function ForgotPasswordForm() {
               <p className="text-white/60 text-sm">{success}</p>
             </div>
             <Link
-              href="/signin"
+              href="/login"
               className="flex items-center justify-center rounded-full text-white text-sm font-medium"
               style={{ background: '#f97316', minHeight: 44 }}
             >
-              Back to Sign In
+              Back to Login
             </Link>
           </div>
         ) : (
@@ -96,8 +96,8 @@ export default function ForgotPasswordForm() {
 
             <p className="text-center text-white/60 text-sm">
               Remember your password?{' '}
-              <Link href="/signin" className="text-white font-medium hover:opacity-70 transition-opacity">
-                Sign In
+              <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
+                Login
               </Link>
             </p>
           </>

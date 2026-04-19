@@ -43,11 +43,11 @@ export default async function LandingPage() {
               Sign Up
             </Link>
             <Link
-              href="/signin"
+              href="/login"
               className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-secondary"
               style={{ border: '1.5px solid rgba(255,255,255,0.35)', minHeight: 44 }}
             >
-              Sign In
+              Login
             </Link>
           </div>
         ) : null}

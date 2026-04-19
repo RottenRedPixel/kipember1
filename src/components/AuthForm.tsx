@@ -67,7 +67,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
           <p className="text-white/60 text-sm">
             {isSignup
               ? 'Start preserving your memories with Ember.'
-              : 'Sign in to continue to Ember.'}
+              : 'Log in to continue to Ember.'}
           </p>
         </div>
 
@@ -123,20 +123,20 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
             {isSubmitting
               ? isSignup
                 ? 'Signing Up...'
-                : 'Signing In...'
+                : 'Logging in...'
               : isSignup
                 ? 'Sign Up'
-                : 'Sign In'}
+                : 'Login'}
           </button>
         </form>
 
         <p className="text-center text-white/60 text-sm">
           {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
           <Link
-            href={isSignup ? '/signin' : '/signup'}
+            href={isSignup ? '/login' : '/signup'}
             className="text-white font-medium hover:opacity-70 transition-opacity"
           >
-            {isSignup ? 'Sign In' : 'Sign Up'}
+            {isSignup ? 'Login' : 'Sign Up'}
           </Link>
         </p>
       </div>

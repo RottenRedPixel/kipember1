@@ -98,8 +98,8 @@ export default function ResetPasswordForm() {
 
         <p className="text-center text-white/60 text-sm">
           Remembered it?{' '}
-          <Link href="/signin" className="text-white font-medium hover:opacity-70 transition-opacity">
-            Sign In
+          <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
+            Login
           </Link>
         </p>
       </div>
