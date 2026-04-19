@@ -1379,7 +1379,11 @@ export async function analyzeAttachmentImage(
           role: 'user',
           type: 'message',
           content: [
-            imageSource,
+            {
+              type: 'input_image',
+              image_url: imageSource,
+              detail: 'auto',
+            },
             {
               type: 'input_text',
               text: `Describe this photo in 2–4 sentences. Note who is in it (describe people by appearance if unnamed), what is happening, the setting, and any notable details. Be specific and factual — do not invent names or relationships. Return only the description, no preamble.`,
