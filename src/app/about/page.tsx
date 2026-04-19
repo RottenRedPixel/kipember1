@@ -151,7 +151,7 @@ export default function AboutPage() {
         style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
       >
         <AppHeader />
-        <div className="flex w-full flex-col gap-6 pt-6 pb-16">
+        <div className="flex w-full max-w-sm flex-col gap-6 pt-6 pb-16">
           <div className="flex flex-col gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-white">
               What is ember?
@@ -163,19 +163,32 @@ export default function AboutPage() {
 
           <EmberDiagram />
 
-          <div className="flex flex-col gap-3">
-            <p className="text-base leading-relaxed text-white/60">
-              As friends and family contribute their own stories over time, each ember grows richer, building a shared archive that no single person could create alone.
-            </p>
-          </div>
+          <Link
+            href="#"
+            className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-primary"
+            style={{ background: '#f97316', minHeight: 44 }}
+          >
+            Demo an ember
+          </Link>
 
-          <div className="flex flex-col items-center gap-4">
+          <p className="text-base leading-relaxed text-white/60">
+            As friends and family contribute their own stories over time, each ember grows richer, building a shared archive that no single person could create alone.
+          </p>
+
+          <div className="flex flex-col gap-3">
             <Link
-              href="#"
+              href="/signup"
               className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-primary"
               style={{ background: '#f97316', minHeight: 44 }}
             >
-              See an ember
+              Sign Up
+            </Link>
+            <Link
+              href="/login"
+              className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-secondary"
+              style={{ background: 'rgba(255,255,255,0.08)', minHeight: 44 }}
+            >
+              Login
             </Link>
           </div>
         </div>

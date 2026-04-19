@@ -207,7 +207,7 @@ export default function UserHomeScreen({
         {/* b) Create ember block */}
         <div className="mt-4">
           <div
-            className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8 w-full"
+            className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8 w-full can-hover-lift"
             style={{ background: 'var(--bg-surface)' }}
           >
             <EmberMark size={44} />
@@ -238,7 +238,7 @@ export default function UserHomeScreen({
             ].map(({ icon: Icon, title, sub }) => (
               <div
                 key={title}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl"
+                className="flex items-center gap-4 px-4 py-3 rounded-xl can-hover-card"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
               >
                 <Icon size={17} color="#6b7280" strokeWidth={1.6} className="flex-shrink-0" />
@@ -261,7 +261,7 @@ export default function UserHomeScreen({
             ].map(({ icon: Icon, title, sub }) => (
               <div
                 key={title}
-                className="flex items-center gap-4 px-4 py-3 rounded-xl"
+                className="flex items-center gap-4 px-4 py-3 rounded-xl can-hover-card"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
               >
                 <Icon size={17} color="#6b7280" strokeWidth={1.6} className="flex-shrink-0" />

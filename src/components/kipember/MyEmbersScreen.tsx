@@ -153,7 +153,7 @@ export default function MyEmbersScreen({
                 <Link
                   key={image.id}
                   href={`/home?id=${image.id}`}
-                  className="aspect-square rounded-xl overflow-hidden can-hover relative"
+                  className="aspect-square rounded-xl overflow-hidden can-hover-lift relative"
                   style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: 0.95 }}
                 >
                   <img
