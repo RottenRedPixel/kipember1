@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import AuthForm from '@/components/AuthForm';
 import { getCurrentAuth } from '@/lib/auth-server';
@@ -9,5 +10,9 @@ export default async function SigninPage() {
     redirect('/home');
   }
 
-  return <AuthForm mode="login" />;
+  return (
+    <Suspense>
+      <AuthForm mode="login" />
+    </Suspense>
+  );
 }
