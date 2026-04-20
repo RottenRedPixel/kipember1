@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 type Message = {
   role: 'user' | 'assistant';
   content: string;
+  imageUrl?: string;
 };
 
 type BrowserSpeechRecognition = {
@@ -222,6 +223,14 @@ export default function WelcomeFlow({
     setError('');
     setStatus('');
 
+    const isVideo = file.type.startsWith('video/');
+    const previewUrl = URL.createObjectURL(file);
+
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: isVideo ? 'Video' : 'Photo', imageUrl: previewUrl },
+    ]);
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -236,11 +245,10 @@ export default function WelcomeFlow({
       if (!response.ok) {
         throw new Error(payload?.error || 'Failed to add content.');
       }
-
-      setStatus(file.type.startsWith('video/') ? 'Video added to this memory.' : 'Photo added to this memory.');
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Failed to add content.');
     } finally {
+      URL.revokeObjectURL(previewUrl);
       setIsUploading(false);
     }
   }
@@ -419,19 +427,30 @@ export default function WelcomeFlow({
                   <span className={`text-xs font-medium ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}>
                     {isUser ? 'you' : 'ember'}
                   </span>
-                  <div
-                    className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${
-                      isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
-                    }`}
-                    style={{
-                      background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
-                      border: isUser ? 'none' : '1px solid var(--border-ember)',
-                    }}
-                  >
-                    <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
-                      {message.content}
-                    </p>
-                  </div>
+                  {message.imageUrl ? (
+                    <div className="max-w-[60%] rounded-2xl rounded-tr-sm overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={message.imageUrl}
+                        alt={message.content}
+                        className="w-full h-auto object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                        isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
+                      }`}
+                      style={{
+                        background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
+                        border: isUser ? 'none' : '1px solid var(--border-ember)',
+                      }}
+                    >
+                      <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
+                        {message.content}
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })}
