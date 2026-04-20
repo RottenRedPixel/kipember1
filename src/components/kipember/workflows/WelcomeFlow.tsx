@@ -173,7 +173,7 @@ export default function WelcomeFlow({
     let cancelled = false;
     fetch('/api/profile', { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => { if (!cancelled) setHasPhoneNumber(Boolean(data?.phoneNumber)); })
+      .then((data) => { if (!cancelled) setHasPhoneNumber(Boolean(data?.user?.phoneNumber)); })
       .catch(() => { if (!cancelled) setHasPhoneNumber(false); });
     return () => { cancelled = true; };
   }, []);
@@ -421,42 +421,59 @@ export default function WelcomeFlow({
             {messages.map((message, index) => {
               const isUser = message.role === 'user';
               const isVoice = message.source === 'voice';
+              const msgDate = message.createdAt ? new Date(message.createdAt) : null;
+              const prevMessage = index > 0 ? messages[index - 1] : null;
+              const prevDate = prevMessage?.createdAt ? new Date(prevMessage.createdAt) : null;
+              const showDateDivider = msgDate && (!prevDate || msgDate.toDateString() !== prevDate.toDateString());
+              const timeLabel = msgDate && !Number.isNaN(msgDate.getTime())
+                ? msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                : null;
+              const dateDividerLabel = msgDate && !Number.isNaN(msgDate.getTime())
+                ? msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : null;
               return (
-                <div
-                  key={`${message.role}-${index}-${message.content.slice(0, 24)}`}
-                  className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}
-                >
-                  <span className={`flex items-center gap-1 text-xs font-medium ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}>
-                    {isVoice ? <Phone size={10} className={isUser ? 'text-white/30' : 'text-white/60'} /> : null}
-                    {isUser ? 'you' : 'ember'}
-                  </span>
-                  {(message.imageUrl || message.imageFilename) ? (
-                    <div className="max-w-[30%] rounded-2xl rounded-tr-sm overflow-hidden">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={message.imageUrl ?? `/api/uploads/${message.imageFilename}`}
-                        alt="Uploaded photo"
-                        className="w-full h-auto object-cover"
-                      />
+                <div key={`${message.role}-${index}-${message.content.slice(0, 24)}`}>
+                  {showDateDivider && dateDividerLabel ? (
+                    <div className="flex justify-center my-2">
+                      <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
                     </div>
-                  ) : (
-                    <div
-                      className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${
-                        isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
-                      }`}
-                      style={{
-                        background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
-                        border: isUser ? 'none' : '1px solid var(--border-ember)',
-                      }}
-                    >
-                      <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
-                        {message.content}
-                      </p>
-                      {message.audioUrl ? (
-                        <AudioPlayer src={message.audioUrl} />
-                      ) : null}
-                    </div>
-                  )}
+                  ) : null}
+                  <div className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
+                    <span className={`flex items-center gap-1 text-xs font-bold ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}>
+                      {isVoice ? <Phone size={10} className={isUser ? 'text-white/30' : 'text-white/60'} /> : null}
+                      {isUser ? 'you' : 'ember'}
+                    </span>
+                    {(message.imageUrl || message.imageFilename) ? (
+                      <div className="max-w-[30%] rounded-2xl rounded-tr-sm overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={message.imageUrl ?? `/api/uploads/${message.imageFilename}`}
+                          alt="Uploaded photo"
+                          className="w-full h-auto object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                          isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
+                        }`}
+                        style={{
+                          background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
+                          border: isUser ? 'none' : '1px solid var(--border-ember)',
+                        }}
+                      >
+                        <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
+                          {message.content}
+                        </p>
+                        {message.audioUrl ? (
+                          <AudioPlayer src={message.audioUrl} />
+                        ) : null}
+                      </div>
+                    )}
+                    {timeLabel ? (
+                      <span className={`text-white/25 text-[10px] mt-0.5 ${isUser ? 'pr-1' : 'pl-1'}`}>{timeLabel}</span>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}
@@ -505,6 +522,17 @@ export default function WelcomeFlow({
       <form onSubmit={handleSubmit} className="flex items-end gap-2">
           <button
             type="button"
+            onClick={() => void triggerSelfInvite()}
+            disabled={isCalling || hasPhoneNumber === false}
+            className="flex h-11 w-11 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
+            style={{ background: isCalling ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)', color: '#f97316' }}
+            aria-label="Call my phone"
+          >
+            <Phone size={18} />
+          </button>
+
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || isSending}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40"
@@ -512,17 +540,6 @@ export default function WelcomeFlow({
             aria-label="Add photo"
           >
             <ImageIcon size={18} />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => void triggerSelfInvite()}
-            disabled={isCalling || hasPhoneNumber === false}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
-            style={{ background: isCalling ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
-            aria-label="Call my phone"
-          >
-            <Phone size={18} />
           </button>
 
           <button
@@ -540,7 +557,7 @@ export default function WelcomeFlow({
             type="text"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="Ask Ember about this memory..."
+            placeholder="Chat with ember about this memory..."
             className="min-w-0 flex-1 rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]"
             disabled={isSending}
           />

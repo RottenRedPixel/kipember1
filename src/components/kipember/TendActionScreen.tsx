@@ -1425,10 +1425,10 @@ export default function TendActionScreen({ action }: { action: string }) {
                 className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
               >
-                {detail?.titleUpdatedAt ? (
+                {(detail?.titleUpdatedAt || detail?.createdAt) ? (
                   <p className="text-white/30 text-xs mb-2">
-                    Last updated:{' '}
-                    {new Date(detail.titleUpdatedAt).toLocaleDateString('en-US', {
+                    {detail.titleUpdatedAt ? 'Last updated' : 'Created'}:{' '}
+                    {new Date(detail.titleUpdatedAt ?? detail.createdAt).toLocaleDateString('en-US', {
                       month: 'long',
                       day: 'numeric',
                       year: 'numeric',
@@ -1631,7 +1631,7 @@ export default function TendActionScreen({ action }: { action: string }) {
             <>
               <WikiCard>
                 <p className="text-white/45 text-xs leading-relaxed mb-3">
-                  Set the date and time this photo was taken. This updates the timestamp used across the wiki and snapshot.
+                  Set the date and time this photo was taken.
                 </p>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-white/45 text-xs font-medium uppercase tracking-wider">Date & Time</span>
@@ -1640,7 +1640,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                     value={timeDateValue}
                     onChange={(e) => setTimeDateValue(e.target.value)}
                     className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
-                    style={fieldStyle}
+                    style={{ ...fieldStyle, colorScheme: 'dark' }}
                   />
                 </label>
               </WikiCard>

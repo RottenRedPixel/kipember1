@@ -858,45 +858,71 @@ export default function KipemberWikiContent({
                   <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
                 </div>
                 <div className="flex flex-col gap-3">
+                  {/* Synthetic opening message ember always shows first */}
+                  <div className="flex flex-col gap-0.5 items-start">
+                    <span className="text-white text-xs font-bold">ember</span>
+                    <div
+                      className="inline-block max-w-[85%] rounded-2xl rounded-tl-sm px-3 py-2 text-xs leading-relaxed text-white/80"
+                      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                    >
+                      Want to tell me more about this memory? I can call your phone for a quick interview or you can just continue with ember chat.
+                    </div>
+                  </div>
                   {block.messages.map((msg, i) => {
                     const isUser = msg.role === 'user';
                     const isVoice = msg.source === 'voice';
+                    const msgDate = new Date(msg.createdAt);
+                    const prevMsg = block.messages[i - 1];
+                    const prevDate = prevMsg ? new Date(prevMsg.createdAt) : null;
+                    const showDateDivider = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
+                    const timeLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                    const dateDividerLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                     return (
-                      <div key={i} className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
-                        <span className="flex items-center gap-1 text-white/30 text-xs">
-                          {isVoice ? <Phone size={9} /> : null}
-                          {isUser ? block.personName.split(' ')[0] : 'ember'}
-                        </span>
-                        {msg.imageFilename ? (
-                          <div className="max-w-[15%] rounded-xl overflow-hidden">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={`/api/uploads/${msg.imageFilename}`} alt="Uploaded" className="w-full h-auto object-cover" />
+                      <div key={i}>
+                        {showDateDivider && dateDividerLabel ? (
+                          <div className="flex justify-center my-2">
+                            <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
                           </div>
-                        ) : (
-                          <div
-                            className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
-                            style={{
-                              background: isUser ? 'rgba(255,255,255,0.08)' : 'var(--bg-ember-bubble)',
-                              border: isUser ? 'none' : '1px solid var(--border-ember)',
-                            }}
-                          >
-                            {msg.content}
-                            {msg.audioUrl ? (
-                              <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
-                                <a
-                                  href={msg.audioUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
-                                  style={{ background: 'rgba(249,115,22,0.85)' }}
-                                >
-                                  <Play size={9} className="text-white" />
-                                </a>
-                                <span className="text-white/30 text-xs">Voice recording</span>
-                              </div>
-                            ) : null}
-                          </div>
-                        )}
+                        ) : null}
+                        <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
+                          <span className="flex items-center gap-1 text-white text-xs font-bold">
+                            {isVoice ? <Phone size={9} /> : null}
+                            {isUser ? block.personName.split(' ')[0] : 'ember'}
+                          </span>
+                          {msg.imageFilename ? (
+                            <div className="max-w-[15%] rounded-xl overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={`/api/uploads/${msg.imageFilename}`} alt="Uploaded" className="w-full h-auto object-cover" />
+                            </div>
+                          ) : (
+                            <div
+                              className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
+                              style={{
+                                background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
+                                border: isUser ? 'none' : '1px solid var(--border-ember)',
+                              }}
+                            >
+                              {msg.content}
+                              {msg.audioUrl ? (
+                                <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
+                                  <a
+                                    href={msg.audioUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
+                                    style={{ background: 'rgba(249,115,22,0.85)' }}
+                                  >
+                                    <Play size={9} className="text-white" />
+                                  </a>
+                                  <span className="text-white/30 text-xs">Voice recording</span>
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                          {timeLabel ? (
+                            <span className="text-white/25 text-[10px] mt-0.5">{timeLabel}</span>
+                          ) : null}
+                        </div>
                       </div>
                     );
                   })}
