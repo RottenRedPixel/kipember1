@@ -630,6 +630,21 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         } => Boolean(note.answer)
       );
 
+    const askConversationTextSet = new Set(
+      (contributor.conversation?.messages || [])
+        .filter((message) => {
+          const source = cleanInlineText(message.source)?.toLowerCase();
+          return source === 'web' || source === 'voice';
+        })
+        .map((message) => normalizeMemoryText(message.content))
+        .filter((text) => Boolean(text))
+    );
+
+    const dedupedAskNotes = askDerivedNotes.filter((note) => {
+      const normalizedAnswer = normalizeMemoryText(note.answer);
+      return normalizedAnswer ? !askConversationTextSet.has(normalizedAnswer) : true;
+    });
+
     const askConversationMessages =
       contributor.conversation?.messages
         ?.filter((message) => {
@@ -645,12 +660,12 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         .filter((line): line is string => Boolean(line))
         .join('\n') || null;
 
-    if (askDerivedNotes.length > 0 || askConversationMessages) {
+    if (dedupedAskNotes.length > 0 || askConversationMessages) {
       storyCircleEntries.push({
         contributorLabel,
         kind: getContributorKind(contributor),
         createdAt:
-          askDerivedNotes[askDerivedNotes.length - 1]?.createdAt ||
+          dedupedAskNotes[dedupedAskNotes.length - 1]?.createdAt ||
           contributor.conversation?.updatedAt ||
           contributor.createdAt,
         summary: null,
@@ -659,7 +674,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         sourceLabel: 'Ask Ember memory notes',
         askConversationExcerpt: askConversationMessages,
         clips: [],
-        askNotes: askDerivedNotes.map((note) => ({
+        askNotes: dedupedAskNotes.map((note) => ({
           topic: note.questionType,
           answer: note.answer,
           source: note.source,
