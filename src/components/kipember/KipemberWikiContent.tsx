@@ -498,6 +498,8 @@ function WikiCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+const TAG_COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
+
 export default function KipemberWikiContent({
   detail,
 }: {
@@ -991,9 +993,12 @@ export default function KipemberWikiContent({
         <WikiCard>
           {detail?.tags && detail.tags.length > 0 ? (
             <div className="flex flex-col gap-2">
-              {detail.tags.map((tag) => (
+              {detail.tags.map((tag, i) => (
                 <div key={tag.id} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full flex-shrink-0 bg-orange-400" />
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: TAG_COLORS[i % TAG_COLORS.length] }}
+                  />
                   <p className="text-white text-sm">{tag.label}</p>
                 </div>
               ))}
