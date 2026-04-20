@@ -279,6 +279,7 @@ model User {
   receivedFriendships  Friendship[] @relation("FriendshipAddressee")
   createdTags          ImageTag[]   @relation("CreatedImageTags")
   taggedImages         ImageTag[]   @relation("TaggedUserImages")
+  chatSessions         ChatSession[]
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 }
@@ -368,6 +369,8 @@ model ChatSession {
   id        String        @id @default(cuid())
   browserId String
   imageId   String
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   image     Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
   messages  ChatMessage[]
   createdAt DateTime      @default(now())
@@ -377,15 +380,18 @@ model ChatSession {
   personaBackstory String?
 
   @@unique([browserId, imageId])
+  @@unique([userId, imageId])
+  @@index([userId])
 }
 
 model ChatMessage {
-  id        String      @id @default(cuid())
-  sessionId String
-  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      String      // "user" or "assistant"
-  content   String
-  createdAt DateTime    @default(now())
+  id              String      @id @default(cuid())
+  sessionId       String
+  session         ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role            String      // "user" or "assistant"
+  content         String
+  imageFilename   String?
+  createdAt       DateTime    @default(now())
 }
 
 model VoiceCall {

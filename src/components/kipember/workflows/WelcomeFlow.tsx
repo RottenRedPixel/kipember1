@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 type Message = {
   role: 'user' | 'assistant';
   content: string;
-  imageUrl?: string;
+  imageUrl?: string;        // transient local blob URL (upload preview)
+  imageFilename?: string | null; // persisted filename from DB
 };
 
 type BrowserSpeechRecognition = {
@@ -245,6 +246,24 @@ export default function WelcomeFlow({
       if (!response.ok) {
         throw new Error(payload?.error || 'Failed to add content.');
       }
+
+      // Persist the image message in chat history so it survives page reloads
+      const uploadedFilename: string | null = payload?.attachment?.filename ?? null;
+      if (uploadedFilename) {
+        void fetch('/api/chat', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageId, imageFilename: uploadedFilename }),
+        });
+        // Swap the transient blob URL message for a persisted filename message
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.imageUrl === previewUrl
+              ? { ...m, imageUrl: undefined, imageFilename: uploadedFilename }
+              : m
+          )
+        );
+      }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Failed to add content.');
     } finally {
@@ -427,12 +446,12 @@ export default function WelcomeFlow({
                   <span className={`text-xs font-medium ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}>
                     {isUser ? 'you' : 'ember'}
                   </span>
-                  {message.imageUrl ? (
+                  {(message.imageUrl || message.imageFilename) ? (
                     <div className="max-w-[60%] rounded-2xl rounded-tr-sm overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={message.imageUrl}
-                        alt={message.content}
+                        src={message.imageUrl ?? `/api/uploads/${message.imageFilename}`}
+                        alt="Uploaded photo"
                         className="w-full h-auto object-cover"
                       />
                     </div>
