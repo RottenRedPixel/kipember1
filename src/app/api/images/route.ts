@@ -8,6 +8,8 @@ import {
   getAccessibleImagesForUser,
   invalidateAccessibleImagesForUser,
 } from '@/lib/image-summaries';
+import { generateSnapshotScript } from '@/lib/claude';
+import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,29 +59,60 @@ export async function POST(request: NextRequest) {
     await ensureOwnerContributorForImage(image.id, auth.user.id);
     invalidateAccessibleImagesForUser(auth.user.id);
 
-    let wikiGenerated = false;
-    let warning: string | null = null;
+    // Fire AI processing in the background — do not block the response
+    void (async () => {
+      try {
+        await generateWikiForImage(image.id);
+      } catch (error) {
+        console.error('Auto wiki generation failed:', error);
+      }
 
-    try {
-      await generateWikiForImage(image.id);
-      wikiGenerated = true;
-    } catch (error) {
-      console.error('Auto wiki generation failed:', error);
-      warning =
-        error instanceof Error
-          ? error.message
-          : `${persistedMedia.mediaType === 'VIDEO' ? 'Video' : 'Image'} uploaded, but the automatic wiki could not be generated`;
-    }
-
-    if (persistedMedia.warning) {
-      warning = warning ? `${persistedMedia.warning}. ${warning}` : persistedMedia.warning;
-    }
+      try {
+        const context = await loadEmberSetupContext(image.id);
+        if (context) {
+          const { imageTitle: title, image: imageRecord, confirmedPeople, confirmedLocation, contributorMemories, callSummaries, callHighlights } = context;
+          const summary = imageRecord.analysis?.summary || null;
+          const location = confirmedLocation?.label ?? null;
+          const script = await generateSnapshotScript({
+            title,
+            summary,
+            location,
+            durationSeconds: 10,
+            taggedPeople: confirmedPeople,
+            wikiContent: imageRecord.wiki?.content ?? null,
+            contributorMemories: contributorMemories.map((m) => ({ contributorName: m.contributorName, answer: m.answer })),
+            callSummaries: callSummaries.map((c) => ({ contributorName: c.contributorName, summary: c.summary })),
+            callHighlights: callHighlights.map((h) => ({ contributorName: h.contributorName, title: h.title, quote: h.quote })),
+          });
+          if (script.trim()) {
+            await prisma.storyCut.create({
+              data: {
+                imageId: image.id,
+                title,
+                style: 'documentary',
+                focus: '',
+                durationSeconds: 10,
+                wordCount: script.split(/\s+/).filter(Boolean).length,
+                script,
+                blocksJson: '[]',
+                selectedMediaJson: '[]',
+                selectedContributorJson: '[]',
+                includeOwner: true,
+                includeEmberVoice: true,
+                includeNarratorVoice: false,
+              },
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Auto snapshot generation failed:', error);
+      }
+    })();
 
     return NextResponse.json({
       id: image.id,
       mediaType: persistedMedia.mediaType,
-      wikiGenerated,
-      warning,
+      warning: persistedMedia.warning ?? null,
     });
   } catch (error) {
     console.error('Upload error:', error);

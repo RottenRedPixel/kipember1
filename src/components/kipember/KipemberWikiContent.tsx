@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import {
-  BookOpen,
   Clock,
   FileText,
+  History,
   Image as ImageIcon,
   MapPin,
   Mic,
+  Phone,
+  Play,
+  ScanEye,
+  ShieldUser,
   Sparkles,
   Users,
 } from 'lucide-react';
@@ -102,12 +106,22 @@ export type KipemberContributor = {
     name: string | null;
     email: string;
     phoneNumber: string | null;
+    avatarFilename?: string | null;
   } | null;
   voiceCalls?: ContributorVoiceCall[];
   conversation: {
     messages: ConversationMessage[];
     responses?: ConversationResponse[];
   } | null;
+};
+
+export type KipemberTag = {
+  id: string;
+  label: string;
+  leftPct?: number | null;
+  topPct?: number | null;
+  widthPct?: number | null;
+  heightPct?: number | null;
 };
 
 export type KipemberAttachment = {
@@ -118,6 +132,7 @@ export type KipemberAttachment = {
   durationSeconds: number | null;
   originalName: string;
   description: string | null;
+  analysisText?: string | null;
   createdAt: string;
 };
 
@@ -139,13 +154,18 @@ export type KipemberWikiDetail = {
   mediaType: EmberMediaType;
   posterFilename: string | null;
   title: string | null;
+  titleUpdatedAt?: string | null;
   originalName: string;
   description: string | null;
   createdAt: string;
+  storyCut?: {
+    script: string;
+  } | null;
   owner?: {
     id: string;
     name: string | null;
     email: string;
+    avatarFilename?: string | null;
   } | null;
   analysis: {
     status?: string;
@@ -165,11 +185,25 @@ export type KipemberWikiDetail = {
       kind?: string;
       latitude?: number | null;
       longitude?: number | null;
+      confirmedAt?: string | null;
     } | null;
   } | null;
   contributors: KipemberContributor[];
   attachments: KipemberAttachment[];
+  tags?: KipemberTag[];
   voiceCallClips?: KipemberVoiceCallClip[];
+  chatBlocks?: Array<{
+    personName: string;
+    avatarUrl?: string | null;
+    messages: Array<{
+      role: string;
+      content: string;
+      source: string;
+      imageFilename?: string | null;
+      audioUrl?: string | null;
+      createdAt: string;
+    }>;
+  }>;
 };
 
 function formatLongDate(value: string | null | undefined) {
@@ -199,6 +233,38 @@ function initials(value: string) {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+}
+
+function AvatarCircle({
+  name,
+  avatarUrl,
+  size = 32,
+  bgColor = 'rgba(255,255,255,0.15)',
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  size?: number;
+  bgColor?: string;
+}) {
+  return avatarUrl ? (
+    <img
+      src={avatarUrl}
+      alt={name}
+      className="rounded-full object-cover flex-shrink-0"
+      style={{ width: size, height: size }}
+    />
+  ) : (
+    <div
+      className="rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+      style={{ width: size, height: size, background: bgColor }}
+    >
+      {initials(name)}
+    </div>
+  );
+}
+
+function normalizeStoryText(value: string | null | undefined) {
+  return value?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
 }
 
 function formatCoordinates(
@@ -481,6 +547,8 @@ function WikiCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+const TAG_COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
+
 export default function KipemberWikiContent({
   detail,
 }: {
@@ -491,7 +559,8 @@ export default function KipemberWikiContent({
   const contributors = detail?.contributors || [];
   const imageId = detail?.id || null;
   const ownerName = detail?.owner?.name || detail?.owner?.email || null;
-  const activeContributors = contributors.filter((contributor) => contributor.userId || contributor.user);
+  const ownerUserId = detail?.owner?.id;
+  const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
   const pendingContributors = contributors.filter((contributor) => !contributor.userId && !contributor.user);
   const latitude =
     detail?.analysis?.confirmedLocation?.latitude ??
@@ -502,14 +571,16 @@ export default function KipemberWikiContent({
     detail?.analysis?.longitude ??
     null;
   const coordinateLine = formatCoordinates(latitude, longitude);
-  const storyMessages = contributors
-    .flatMap((contributor) => {
-      const contributorName =
+  const contributorChats = contributors
+    .map((contributor) => {
+      const isOwner = contributor.userId === ownerUserId || contributor.user?.id === ownerUserId;
+      const name =
         contributor.name ||
         contributor.user?.name ||
         contributor.email ||
         contributor.user?.email ||
         contributor.phoneNumber ||
+        (isOwner ? ownerName : null) ||
         'Contributor';
       const messageEntries = (contributor.conversation?.messages || []).map((message) => ({
         id: `message-${message.id}`,
@@ -517,9 +588,20 @@ export default function KipemberWikiContent({
         role: message.role || null,
         source: message.source || null,
         text: message.content,
-        name: contributorName,
       }));
       const hasMessages = messageEntries.length > 0;
+      const seenConversationEntries = new Set(
+        messageEntries
+          .map((entry) => {
+            const normalizedText = normalizeStoryText(entry.text);
+            if (!normalizedText) {
+              return null;
+            }
+
+            return `${entry.role || 'unknown'}::${normalizedText}`;
+          })
+          .filter((entry): entry is string => Boolean(entry))
+      );
       const responseEntries = (contributor.conversation?.responses || []).flatMap((response) => {
         const entries: Array<{
           id: string;
@@ -527,49 +609,53 @@ export default function KipemberWikiContent({
           role: string | null;
           source: string | null;
           text: string;
-          name: string;
         }> = [];
         const shouldExpandPair = response.source === 'voice' || !hasMessages;
 
         if (shouldExpandPair && response.question?.trim()) {
-          entries.push({
-            id: `response-question-${response.id}`,
-            createdAt: response.createdAt,
-            role: 'assistant',
-            source: response.source || null,
-            text: response.question.trim(),
-            name: contributorName,
-          });
+          const questionText = response.question.trim();
+          const questionKey = `assistant::${normalizeStoryText(questionText)}`;
+
+          if (!seenConversationEntries.has(questionKey)) {
+            seenConversationEntries.add(questionKey);
+            entries.push({
+              id: `response-question-${response.id}`,
+              createdAt: response.createdAt,
+              role: 'assistant',
+              source: response.source || null,
+              text: questionText,
+            });
+          }
         }
 
         if (response.answer?.trim()) {
-          entries.push({
-            id: `response-answer-${response.id}`,
-            createdAt: response.createdAt,
-            role: 'user',
-            source: response.source || null,
-            text: response.answer.trim(),
-            name: contributorName,
-          });
+          const answerText = response.answer.trim();
+          const answerKey = `user::${normalizeStoryText(answerText)}`;
+
+          if (!seenConversationEntries.has(answerKey)) {
+            seenConversationEntries.add(answerKey);
+            entries.push({
+              id: `response-answer-${response.id}`,
+              createdAt: response.createdAt,
+              role: 'user',
+              source: response.source || null,
+              text: answerText,
+            });
+          }
         }
 
         return entries;
       });
-      const voiceCallEntries = (contributor.voiceCalls || [])
-        .filter((voiceCall) => voiceCall.callSummary?.trim())
-        .map((voiceCall) => ({
-          id: `voice-call-${voiceCall.id}`,
-          createdAt: voiceCall.startedAt || voiceCall.createdAt,
-          role: 'system',
-          source: 'voice',
-          text: voiceCall.callSummary?.trim() || '',
-          name: contributorName,
-        }));
+      const voiceCallEntries: typeof messageEntries = [];
 
-      return [...voiceCallEntries, ...messageEntries, ...responseEntries];
+      const entries = [...voiceCallEntries, ...messageEntries, ...responseEntries]
+        .filter((entry) => entry.text.trim().length > 0)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+      return { contributorId: contributor.id, isOwner, name: name || 'Contributor', entries };
     })
-    .filter((entry) => entry.text.trim().length > 0)
-    .sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+    .filter((chat) => chat.entries.length > 0);
+  const totalStoryMessages = contributorChats.reduce((sum, chat) => sum + chat.entries.length, 0);
   const isAudioAttachment = (attachment: KipemberAttachment) =>
     attachment.mediaType === 'AUDIO' ||
     isAudioLikeFilename(attachment.filename) ||
@@ -679,20 +765,32 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
-        icon={<Users size={17} />}
-        title="Contributors"
-        complete={Boolean(ownerName || contributors.length)}
+        icon={<ScanEye size={17} />}
+        title="Snapshot"
+        complete={Boolean(detail?.storyCut?.script)}
       >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Owner</p>
+          {detail?.storyCut?.script ? (
+            <p className="text-white/90 text-sm leading-relaxed">{detail.storyCut.script}</p>
+          ) : (
+            <p className="text-white/30 text-sm">No snapshot yet.</p>
+          )}
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
+        icon={<ShieldUser size={17} />}
+        title="Owner"
+        complete={Boolean(ownerName)}
+      >
+        <WikiCard>
           {ownerName ? (
             <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-                style={{ background: 'rgba(255,255,255,0.15)' }}
-              >
-                {initials(ownerName)}
-              </div>
+              <AvatarCircle
+                name={ownerName}
+                avatarUrl={detail?.owner?.avatarFilename ? `/api/uploads/${detail.owner.avatarFilename}` : null}
+                bgColor="rgba(249,115,22,0.6)"
+              />
               <span className="text-white text-sm font-medium">{ownerName}</span>
               <span className="ml-auto text-white/30 text-xs font-medium">Owner</span>
             </div>
@@ -700,10 +798,17 @@ export default function KipemberWikiContent({
             <p className="text-white/30 text-sm">Owner data is not available.</p>
           )}
         </WikiCard>
+      </WikiSection>
 
+      <WikiSection
+        icon={<Users size={17} />}
+        title="Contributors"
+        complete={activeContributors.length > 0 || pendingContributors.length > 0}
+      >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Invited (Accounts Created)</p>
-          {activeContributors.length > 0 ? (
+          {activeContributors.length === 0 && pendingContributors.length === 0 ? (
+            <p className="text-white/30 text-sm">No contributors yet.</p>
+          ) : (
             <div className="flex flex-col gap-2.5">
               {activeContributors.map((contributor) => {
                 const contributorName =
@@ -713,99 +818,120 @@ export default function KipemberWikiContent({
                   contributor.user?.email ||
                   contributor.phoneNumber ||
                   'Contributor';
-
                 return (
                   <div key={contributor.id} className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-                      style={{ background: 'rgba(255,255,255,0.15)' }}
-                    >
-                      {initials(contributorName)}
-                    </div>
+                    <AvatarCircle
+                      name={contributorName}
+                      avatarUrl={contributor.user?.avatarFilename ? `/api/uploads/${contributor.user.avatarFilename}` : null}
+                    />
                     <span className="text-white text-sm font-medium">{contributorName}</span>
                     <span className="ml-auto text-white/30 text-xs">Viewer</span>
                   </div>
                 );
               })}
+              {pendingContributors.map((contributor) => (
+                <div key={contributor.id} className="flex items-center gap-3">
+                  <AvatarCircle
+                    name={contributor.name || contributor.email || contributor.phoneNumber || '?'}
+                    bgColor="rgba(255,255,255,0.08)"
+                  />
+                  <span className="text-white/60 text-sm">{contributor.name || contributor.email || contributor.phoneNumber || 'Pending'}</span>
+                  <span className="ml-auto text-white/30 text-xs">Invited</span>
+                </div>
+              ))}
             </div>
-          ) : (
-            <p className="text-white/30 text-sm">No linked contributor accounts yet.</p>
-          )}
-        </WikiCard>
-
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium">Invited (Accounts Not Created Yet)</p>
-          {pendingContributors.length > 0 ? (
-            pendingContributors.map((contributor) => (
-              <p key={contributor.id} className="text-white/60 text-sm mt-1">
-                {contributor.name || contributor.email || contributor.phoneNumber || 'Pending contributor'}
-              </p>
-            ))
-          ) : (
-            <p className="text-white/30 text-sm">No pending invitations</p>
           )}
         </WikiCard>
       </WikiSection>
 
       <WikiSection
-        icon={<BookOpen size={17} />}
+        icon={<History size={17} />}
         title="Story Circle"
-        complete={storyMessages.length > 0}
+        complete={totalStoryMessages > 0}
       >
-        <div className="flex flex-col gap-3 px-1">
-          {storyMessages.length > 0 ? (
-            storyMessages.map((message) => {
-              const isAi = message.role === 'assistant' || message.source === 'ai';
-              const isSystem = message.role === 'system';
-
-              return (
-                <div
-                  key={message.id}
-                  className={`flex flex-col gap-1 ${
-                    isSystem ? 'items-center' : isAi ? 'items-start' : 'items-end'
-                  }`}
-                >
-                  <div className={`flex items-center gap-1.5 ${isAi ? '' : 'flex-row-reverse'}`}>
-                    <span className="text-white/60 text-xs font-medium">
-                      {isSystem ? 'Story Circle' : isAi ? 'Ember AI' : message.name}
-                    </span>
-                    <span className="text-white/30 text-xs">
-                      {formatLongDate(message.createdAt)}
-                    </span>
-                  </div>
-                  <div
-                    className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed text-white/90 ${
-                      isSystem
-                        ? 'rounded-2xl'
-                        : isAi
-                          ? 'rounded-2xl rounded-tl-sm'
-                          : 'rounded-2xl rounded-tr-sm'
-                    }`}
-                    style={
-                      isSystem
-                        ? {
-                            background: 'rgba(249,115,22,0.12)',
-                            border: '1px solid rgba(249,115,22,0.28)',
-                          }
-                        : isAi
-                        ? {
-                            background: 'var(--bg-ember-bubble)',
-                            border: '1px solid var(--border-ember)',
-                          }
-                        : { background: 'var(--bg-chat-user)' }
-                    }
-                  >
-                    {message.text}
-                  </div>
-                  <span className="text-white/30 text-xs mx-1">
-                    {isSystem ? 'Voice call summary' : isAi ? 'AI Generated' : 'Contributor response'}
-                  </span>
+        <div className="flex flex-col gap-4">
+          {detail?.chatBlocks && detail.chatBlocks.length > 0 ? (
+            detail.chatBlocks.map((block) => (
+              <WikiCard key={block.personName}>
+                <div className="flex items-center gap-2 mb-3">
+                  <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={22} />
+                  <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
                 </div>
-              );
-            })
+                <div className="flex flex-col gap-3">
+                  {/* Synthetic opening message ember always shows first */}
+                  <div className="flex flex-col gap-0.5 items-start">
+                    <span className="text-white text-xs font-bold">ember</span>
+                    <div
+                      className="inline-block max-w-[85%] rounded-2xl rounded-tl-sm px-3 py-2 text-xs leading-relaxed text-white/80"
+                      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                    >
+                      Want to tell me more about this memory? I can call your phone for a quick interview or you can just continue with ember chat.
+                    </div>
+                  </div>
+                  {block.messages.map((msg, i) => {
+                    const isUser = msg.role === 'user';
+                    const isVoice = msg.source === 'voice';
+                    const msgDate = new Date(msg.createdAt);
+                    const prevMsg = block.messages[i - 1];
+                    const prevDate = prevMsg ? new Date(prevMsg.createdAt) : null;
+                    const showDateDivider = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
+                    const timeLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                    const dateDividerLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    return (
+                      <div key={i}>
+                        {showDateDivider && dateDividerLabel ? (
+                          <div className="flex justify-center my-2">
+                            <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
+                          </div>
+                        ) : null}
+                        <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
+                          <span className="flex items-center gap-1 text-white text-xs font-bold">
+                            {isVoice ? <Phone size={9} /> : null}
+                            {isUser ? block.personName.split(' ')[0] : 'ember'}
+                          </span>
+                          {msg.imageFilename ? (
+                            <div className="max-w-[15%] rounded-xl overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={`/api/uploads/${msg.imageFilename}`} alt="Uploaded" className="w-full h-auto object-cover" />
+                            </div>
+                          ) : (
+                            <div
+                              className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
+                              style={{
+                                background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
+                                border: isUser ? 'none' : '1px solid var(--border-ember)',
+                              }}
+                            >
+                              {msg.content}
+                              {msg.audioUrl ? (
+                                <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
+                                  <a
+                                    href={msg.audioUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
+                                    style={{ background: 'rgba(249,115,22,0.85)' }}
+                                  >
+                                    <Play size={9} className="text-white" />
+                                  </a>
+                                  <span className="text-white/30 text-xs">Voice recording</span>
+                                </div>
+                              ) : null}
+                            </div>
+                          )}
+                          {timeLabel ? (
+                            <span className="text-white/25 text-[10px] mt-0.5">{timeLabel}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </WikiCard>
+            ))
           ) : (
             <WikiCard>
-              <p className="text-white/30 text-sm">No story messages yet.</p>
+              <p className="text-white/30 text-sm">No conversations yet.</p>
             </WikiCard>
           )}
         </div>
@@ -837,9 +963,6 @@ export default function KipemberWikiContent({
             <div className="flex flex-col gap-0.5 min-w-0">
               <p className="text-white text-sm font-medium break-words">
                 {detail?.originalName || 'Main media'}
-              </p>
-              <p className="text-white/30 text-xs">
-                {detail?.title ? `Display title: ${detail.title}` : 'Primary Ember media'}
               </p>
               <p className="text-white/30 text-xs">
                 Added: {formatLongDate(detail?.createdAt)}
@@ -936,6 +1059,30 @@ export default function KipemberWikiContent({
       ) : null}
 
       <WikiSection
+        icon={<Users size={17} />}
+        title="Tagged People"
+        complete={Boolean(detail?.tags && detail.tags.length > 0)}
+      >
+        <WikiCard>
+          {detail?.tags && detail.tags.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {detail.tags.map((tag, i) => (
+                <div key={tag.id} className="flex items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: TAG_COLORS[i % TAG_COLORS.length] }}
+                  />
+                  <p className="text-white text-sm">{tag.label}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/30 text-sm">No people tagged yet.</p>
+          )}
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
         icon={<MapPin size={17} />}
         title="Location"
         complete={Boolean(primaryLocationLine || coordinateLine)}
@@ -945,6 +1092,11 @@ export default function KipemberWikiContent({
           <p className="text-white font-medium text-sm">
             {primaryLocationLine || 'No location data available.'}
           </p>
+          {detail?.analysis?.confirmedLocation?.confirmedAt ? (
+            <p className="text-white/30 text-xs mt-1">
+              (edited on {new Date(detail.analysis.confirmedLocation.confirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
+            </p>
+          ) : null}
           {showExactAddress ? (
             <>
               <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Exact Address</p>
@@ -989,7 +1141,24 @@ export default function KipemberWikiContent({
         )}
       >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">AI Image Analysis</p>
+          {detail ? (
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+                style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+              >
+                <MediaPreview
+                  mediaType={detail.mediaType}
+                  filename={detail.filename}
+                  posterFilename={detail.posterFilename}
+                  originalName={detail.originalName}
+                  usePosterForVideo
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <p className="text-white/50 text-xs font-medium break-words">{detail.originalName}</p>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-1">
             {buildStructuredAnalysisText(detail?.analysis || null)
               .split('\n')
@@ -1004,7 +1173,7 @@ export default function KipemberWikiContent({
                 return (
                   <p
                     key={`analysis-line-${index}`}
-                    className={isBold ? 'text-white/60 text-xs font-medium mt-2' : 'text-white/60 text-xs leading-relaxed'}
+                    className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
                   >
                     {cleaned}
                   </p>
@@ -1018,6 +1187,55 @@ export default function KipemberWikiContent({
               : ''}
           </p>
         </WikiCard>
+
+        {visualAttachments
+          .filter((a) => a.analysisText)
+          .map((attachment) => {
+            let parsedAnalysis: KipemberWikiDetail['analysis'] | null = null;
+            try {
+              parsedAnalysis = JSON.parse(attachment.analysisText!) as KipemberWikiDetail['analysis'];
+            } catch {
+              parsedAnalysis = null;
+            }
+            const analysisText = buildStructuredAnalysisText(parsedAnalysis);
+
+            return (
+              <WikiCard key={`analysis-${attachment.id}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+                    style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                  >
+                    <MediaPreview
+                      mediaType={attachment.mediaType}
+                      filename={attachment.filename}
+                      posterFilename={attachment.posterFilename}
+                      originalName={attachment.originalName}
+                      usePosterForVideo
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <p className="text-white/50 text-xs font-medium break-words">{attachment.originalName}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {analysisText.split('\n').map((line, index) => {
+                    const cleaned = line.replace(/\*\*/g, '').trim();
+                    if (!cleaned) return <div key={`att-gap-${attachment.id}-${index}`} className="h-2" />;
+                    const isBold = line.startsWith('**') && line.endsWith('**');
+                    return (
+                      <p
+                        key={`att-line-${attachment.id}-${index}`}
+                        className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
+                      >
+                        {cleaned}
+                      </p>
+                    );
+                  })}
+                </div>
+                <p className="text-white/30 text-xs mt-4">Source: GPT-4o</p>
+              </WikiCard>
+            );
+          })}
       </WikiSection>
 
     </div>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Menu } from 'lucide-react';
 
 type HeaderMenuProps = {
   authMode?: 'signed-in' | 'signed-out' | 'detect';
@@ -12,15 +13,6 @@ type HeaderMenuProps = {
   logoutRedirectTo?: string;
 };
 
-function HamburgerIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className={className}>
-      <path d="M4 7h16" />
-      <path d="M4 12h16" />
-      <path d="M4 17h16" />
-    </svg>
-  );
-}
 
 export default function HeaderMenu({
   authMode = 'detect',
@@ -127,7 +119,7 @@ export default function HeaderMenu({
         aria-label="Open menu"
         aria-expanded={open}
       >
-        <HamburgerIcon className={iconClassName} />
+        <Menu className={iconClassName} />
       </button>
 
       {open ? (

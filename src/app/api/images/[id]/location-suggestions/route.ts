@@ -100,23 +100,30 @@ export async function POST(
       typeof body.detail === 'string' && body.detail.trim() ? body.detail.trim() : null;
     const kind =
       typeof body.kind === 'string' && body.kind.trim() ? body.kind.trim() : 'place';
+    const bodyLat = typeof body.latitude === 'number' ? body.latitude : null;
+    const bodyLng = typeof body.longitude === 'number' ? body.longitude : null;
 
     if (!label) {
       return NextResponse.json({ error: 'A location label is required' }, { status: 400 });
     }
 
+    const resolvedLat = bodyLat ?? analysis?.latitude ?? null;
+    const resolvedLng = bodyLng ?? analysis?.longitude ?? null;
+
     const confirmedLocation: ConfirmedLocationContext = {
       label,
       detail,
       kind,
-      latitude: analysis?.latitude ?? null,
-      longitude: analysis?.longitude ?? null,
+      latitude: resolvedLat,
+      longitude: resolvedLng,
       confirmedAt: new Date().toISOString(),
     };
 
     await prisma.imageAnalysis.upsert({
       where: { imageId: id },
       update: {
+        ...(bodyLat != null ? { latitude: bodyLat } : {}),
+        ...(bodyLng != null ? { longitude: bodyLng } : {}),
         metadataJson: mergeConfirmedLocationContext({
           metadataJson: analysis?.metadataJson,
           context: confirmedLocation,
@@ -125,6 +132,8 @@ export async function POST(
       create: {
         imageId: id,
         status: 'partial',
+        ...(bodyLat != null ? { latitude: bodyLat } : {}),
+        ...(bodyLng != null ? { longitude: bodyLng } : {}),
         metadataJson: mergeConfirmedLocationContext({
           metadataJson: null,
           context: confirmedLocation,

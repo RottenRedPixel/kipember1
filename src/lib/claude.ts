@@ -899,6 +899,66 @@ Should we ask a follow-up question? If yes, what should it be?`;
   return result.trim();
 }
 
+export async function generateSnapshotScript({
+  title,
+  summary,
+  location,
+  durationSeconds = 30,
+  taggedPeople = [],
+  requiredPeople = [],
+  wikiContent = null,
+  contributorMemories = [],
+  callSummaries = [],
+  callHighlights = [],
+}: {
+  title: string;
+  summary: string | null;
+  location: string | null;
+  durationSeconds?: number;
+  taggedPeople?: string[];
+  requiredPeople?: string[];
+  wikiContent?: string | null;
+  contributorMemories?: Array<{ contributorName: string; answer: string }>;
+  callSummaries?: Array<{ contributorName: string; summary: string }>;
+  callHighlights?: Array<{ contributorName: string; title: string; quote: string }>;
+}): Promise<string> {
+  const targetWords = Math.round((durationSeconds / 60) * 150);
+
+  const context = [
+    `MEMORY TITLE\n${title}`,
+    taggedPeople.length > 0
+      ? `PEOPLE IN THIS PHOTO\n${taggedPeople.join(', ')}\n(Use these names when referring to the people in the photo.)`
+      : null,
+    location ? `LOCATION\n${location}` : null,
+    summary ? `WHAT THE IMAGE SHOWS\n${summary}` : null,
+    wikiContent ? `MEMORY WIKI\n${wikiContent.slice(0, 6000)}` : null,
+    contributorMemories.length > 0
+      ? `CONTRIBUTOR MEMORIES\n${contributorMemories.map((m) => `${m.contributorName}: ${m.answer}`).join('\n')}`
+      : null,
+    callSummaries.length > 0
+      ? `VOICE CALL SUMMARIES\n${callSummaries.map((c) => `${c.contributorName}: ${c.summary}`).join('\n')}`
+      : null,
+    callHighlights.length > 0
+      ? `VOICE CALL HIGHLIGHTS\n${callHighlights.map((h) => `${h.contributorName} — ${h.title}: "${h.quote}"`).join('\n')}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  const systemPrompt = `You write warm narration scripts for family memory snapshots.
+Write approximately ${targetWords} words (targeting ${durationSeconds} seconds of spoken audio at a natural pace).
+Use a natural, conversational tone — like a thoughtful friend describing a meaningful moment.
+${taggedPeople.length > 0 ? `The people in this photo are: ${taggedPeople.join(', ')}. Use their names naturally in the narration — this makes the memory feel personal and real.\n` : ''}${requiredPeople.length > 0 ? `REQUIRED: You must mention each of the following people by name at least once in the narration: ${requiredPeople.join(', ')}.\n` : ''}Use all available context: the wiki, contributor memories, voice call highlights, and visual details — not just the image summary.
+Prioritize personal details and real moments over generic descriptions.
+Do not invent facts not present in the context.
+Do not use filler phrases like "In this heartwarming snapshot" or "A beautiful memory".
+Return only the narration text, nothing else.`;
+
+  return chat(systemPrompt, [
+    { role: 'user', content: context },
+  ]);
+}
+
 export async function chatWithImage(
   wikiContent: string,
   rawResponses: { contributorName: string; questionType: string; answer: string }[],

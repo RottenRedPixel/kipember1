@@ -14,12 +14,18 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const userRecord = await prisma.user.findUnique({
+    where: { id: auth.user.id },
+    select: { avatarFilename: true },
+  });
+
   return NextResponse.json({
     user: {
       id: auth.user.id,
       name: auth.user.name,
       email: auth.user.email,
       phoneNumber: auth.user.phoneNumber,
+      avatarUrl: userRecord?.avatarFilename ? `/api/uploads/${userRecord.avatarFilename}` : null,
     },
   });
 }
@@ -68,6 +74,7 @@ export async function PATCH(request: NextRequest) {
         name: true,
         email: true,
         phoneNumber: true,
+        avatarFilename: true,
       },
     });
 
@@ -78,7 +85,15 @@ export async function PATCH(request: NextRequest) {
       phoneNumber: user.phoneNumber,
     });
 
-    return NextResponse.json({ user });
+    return NextResponse.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        avatarUrl: user.avatarFilename ? `/api/uploads/${user.avatarFilename}` : null,
+      },
+    });
   } catch (error) {
     console.error('Profile update error:', error);
     return NextResponse.json(

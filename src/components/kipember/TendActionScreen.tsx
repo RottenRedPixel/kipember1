@@ -1,10 +1,19 @@
 'use client';
 
+declare global {
+  interface Window {
+    FaceDetector?: new (options?: { fastMode?: boolean; maxDetectedFaces?: number }) => {
+      detect: (image: HTMLImageElement) => Promise<{ boundingBox: DOMRectReadOnly }[]>;
+    };
+  }
+}
+
 import Link from 'next/link';
-import { ChevronLeft, MessageSquare, Phone } from 'lucide-react';
+import { ChevronLeft, Lightbulb, MessageSquare, Pencil, Phone, ShieldUser, Users, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
+import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberWikiContent, {
   type KipemberAttachment,
   type KipemberContributor,
@@ -72,7 +81,37 @@ type ContributorVoiceCall = {
 type ImageTag = {
   id: string;
   label: string;
+  leftPct?: number | null;
+  topPct?: number | null;
+  widthPct?: number | null;
+  heightPct?: number | null;
 };
+
+type TitleQuoteSuggestion = {
+  title: string;
+  contributorName: string;
+  quote: string;
+  source: 'voice' | 'text';
+};
+
+type TitleSuggestionResponse = {
+  analysisSuggestions: string[];
+  contextSuggestions: string[];
+  contributorQuotes: TitleQuoteSuggestion[];
+  suggestions: string[];
+};
+
+type FaceTag = {
+  id: string;       // local React key (temp id before save, then db id)
+  dbId: string | null; // null until saved to DB
+  x: number; // center % of image width
+  y: number; // center % of image height
+  color: string;
+  name: string;
+};
+
+const CIRCLE_SIZE = 12; // % of image width
+const TAG_COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
 
 type TendContributor = KipemberContributor & {
   token: string;
@@ -89,6 +128,7 @@ type TendContributor = KipemberContributor & {
 type TendDetail = KipemberWikiDetail & {
   canManage: boolean;
   shareToNetwork: boolean;
+  keepPrivate: boolean;
   storyCut?: {
     title: string;
     style: string;
@@ -103,6 +143,7 @@ type TendDetail = KipemberWikiDetail & {
     selectedContributorIds: string[];
     includeOwner: boolean;
     includeEmberVoice: boolean;
+    emberVoiceId?: string | null;
     updatedAt: string;
   } | null;
   contributors: TendContributor[];
@@ -328,9 +369,36 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [images, setImages] = useState<Array<{ id: string }>>([]);
   const [status, setStatus] = useState('');
   const [titleValue, setTitleValue] = useState('');
+  const [titleSuggestions, setTitleSuggestions] = useState<TitleSuggestionResponse | null>(null);
+  const [titlePreferredPeopleIds, setTitlePreferredPeopleIds] = useState<Set<string>>(new Set());
+  const [titleSuggestionsLoading, setTitleSuggestionsLoading] = useState(false);
+  const [titleSuggestionsRefreshing, setTitleSuggestionsRefreshing] = useState(false);
+  const [titleSuggestionsError, setTitleSuggestionsError] = useState('');
   const [networkValue, setNetworkValue] = useState(false);
+  const [keepPrivateValue, setKeepPrivateValue] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
+  const [timeDateValue, setTimeDateValue] = useState('');
+  const [timeDateSaving, setTimeDateSaving] = useState(false);
+  const [locationLabel, setLocationLabel] = useState('');
+  const [locationAddress, setLocationAddress] = useState('');
+  const [locationCityStateZip, setLocationCityStateZip] = useState('');
+  const [locationCountry, setLocationCountry] = useState('');
+  const [locationLatitude, setLocationLatitude] = useState('');
+  const [locationLongitude, setLocationLongitude] = useState('');
+  const [locationSaving, setLocationSaving] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+  const [detectedFaces, setDetectedFaces] = useState<{ leftPct: number; topPct: number; widthPct: number; heightPct: number }[]>([]);
+  const [imgAspectRatio, setImgAspectRatio] = useState(1);
+  const [faceTags, setFaceTags] = useState<FaceTag[]>([]);
+  const [taggingMode, setTaggingMode] = useState(true);
+  const [draggingTagId, setDraggingTagId] = useState<string | null>(null);
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const tagImgRef = useRef<HTMLImageElement | null>(null);
+  const imageContainerRef = useRef<HTMLDivElement | null>(null);
+  const dragStart = useRef<{ clientX: number; clientY: number; origX: number; origY: number } | null>(null);
+  const faceTagsRef = useRef(faceTags);
+  const savePositionRef = useRef<(tagId: string) => void>(() => {});
 
   useEffect(() => {
     if (imageId) {
@@ -356,8 +424,31 @@ export default function TendActionScreen({ action }: { action: string }) {
 
   function applyDetail(payload: TendDetail) {
     setDetail(payload);
-    setTitleValue(payload.title || '');
+    setTitleValue(payload.title || payload.originalName?.replace(/\.[^.]+$/, '') || '');
     setNetworkValue(Boolean(payload.shareToNetwork));
+    setKeepPrivateValue(Boolean(payload.keepPrivate));
+    // Populate time/date
+    const capturedAt = payload.analysis?.capturedAt;
+    if (capturedAt) {
+      const d = new Date(capturedAt);
+      if (!Number.isNaN(d.getTime())) {
+        // datetime-local expects "YYYY-MM-DDTHH:MM"
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 16);
+        setTimeDateValue(local);
+      }
+    }
+    // Populate location
+    const loc = payload.analysis?.confirmedLocation;
+    setLocationLabel(loc?.label || '');
+    setLocationAddress(loc?.detail || '');
+    setLocationCityStateZip('');
+    setLocationCountry('');
+    const lat = payload.analysis?.latitude ?? loc?.latitude ?? null;
+    const lng = payload.analysis?.longitude ?? loc?.longitude ?? null;
+    setLocationLatitude(lat != null ? String(lat) : '');
+    setLocationLongitude(lng != null ? String(lng) : '');
   }
 
   useEffect(() => {
@@ -374,10 +465,100 @@ export default function TendActionScreen({ action }: { action: string }) {
         if (!response.ok) {
           return;
         }
-        applyDetail((await response.json()) as TendDetail);
+        const payload = (await response.json()) as TendDetail;
+        applyDetail(payload);
+
+        // After applyDetail: if on edit-location and confirmedLocation is absent,
+        // fall back to GPS-resolved suggestions (same source the wiki uses)
+        if (action === 'edit-location' && !payload.analysis?.confirmedLocation?.label) {
+          void fetch(`/api/images/${resolvedImageId}/location-suggestions`)
+            .then((res) => res.json())
+            .then((data: {
+              suggestions?: Array<{ id: string; label: string; detail: string | null; kind: string }>;
+            }) => {
+              const suggestions = data?.suggestions || [];
+              const placeSuggestion =
+                suggestions.find((s) => s.kind === 'place') ||
+                suggestions.find((s) => s.kind === 'neighborhood') ||
+                suggestions.find((s) => s.kind === 'city') ||
+                null;
+              const addressSuggestion = suggestions.find((s) => s.kind === 'address') || null;
+
+              if (placeSuggestion) setLocationLabel(placeSuggestion.label);
+              if (addressSuggestion) setLocationAddress(addressSuggestion.label);
+            })
+            .catch(() => undefined);
+        }
       })
       .catch(() => undefined);
   }, [detailPath, resolvedImageId]);
+
+  useEffect(() => {
+    if (action !== 'edit-title' || !resolvedImageId) {
+      setTitleSuggestions(null);
+      setTitleSuggestionsLoading(false);
+      setTitleSuggestionsRefreshing(false);
+      setTitleSuggestionsError('');
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSuggestions(refresh = false) {
+      if (refresh) {
+        setTitleSuggestionsRefreshing(true);
+      } else {
+        setTitleSuggestionsLoading(true);
+      }
+
+      setTitleSuggestionsError('');
+
+      try {
+        const response = await fetch(
+          `/api/images/${resolvedImageId}/title-suggestions${refresh ? '?refresh=1' : ''}`,
+          { cache: 'no-store' }
+        );
+        const payload = (await response.json().catch(() => null)) as
+          | TitleSuggestionResponse
+          | { error?: string }
+          | null;
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok || !payload || !('suggestions' in payload)) {
+          setTitleSuggestions(null);
+          setTitleSuggestionsError(
+            payload && 'error' in payload
+              ? payload.error || 'Failed to load title suggestions.'
+              : 'Failed to load title suggestions.'
+          );
+          return;
+        }
+
+        setTitleSuggestions(payload);
+      } catch (error) {
+        if (!cancelled) {
+          setTitleSuggestions(null);
+          setTitleSuggestionsError(
+            error instanceof Error ? error.message : 'Failed to load title suggestions.'
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setTitleSuggestionsLoading(false);
+          setTitleSuggestionsRefreshing(false);
+        }
+      }
+    }
+
+    void loadSuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [action, resolvedImageId]);
 
   useEffect(() => {
     if (action !== 'contributors' || !view || view === 'add') {
@@ -432,12 +613,10 @@ export default function TendActionScreen({ action }: { action: string }) {
     };
   }, [action, view]);
 
-  if (!title) {
-    return null;
-  }
-
+  const TendIcon = TEND_ICONS[action];
   const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}` : '/tend/contributors';
-  const backHref = action === 'contributors' && view ? listHref : resolvedImageId ? `/home?id=${resolvedImageId}` : '/home';
+  const tendModalHref = resolvedImageId ? `/home?id=${resolvedImageId}&m=tend` : '/home?m=tend';
+  const backHref = action === 'contributors' && view ? listHref : tendModalHref;
   const contributors: TendContributor[] = detail?.contributors || [];
   const contributor: TendContributor | null =
     contributors.find((item) => item.id === view) || null;
@@ -502,6 +681,105 @@ export default function TendActionScreen({ action }: { action: string }) {
     await refreshDetail();
   }
 
+  async function refreshTitleSuggestions() {
+    if (!resolvedImageId) {
+      return;
+    }
+
+    setTitleSuggestionsRefreshing(true);
+    setTitleSuggestionsError('');
+
+    try {
+      const params = new URLSearchParams({ refresh: '1' });
+      const preferredNames = (detail?.tags || [])
+        .filter((tag) => titlePreferredPeopleIds.has(tag.id))
+        .map((tag) => tag.label)
+        .filter(Boolean);
+      if (preferredNames.length > 0) params.set('preferredPeople', preferredNames.join(','));
+      const response = await fetch(`/api/images/${resolvedImageId}/title-suggestions?${params.toString()}`, {
+        cache: 'no-store',
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | TitleSuggestionResponse
+        | { error?: string }
+        | null;
+
+      if (!response.ok || !payload || !('suggestions' in payload)) {
+        setTitleSuggestions(null);
+        setTitleSuggestionsError(
+          payload && 'error' in payload
+            ? payload.error || 'Failed to refresh title suggestions.'
+            : 'Failed to refresh title suggestions.'
+        );
+        return;
+      }
+
+      setTitleSuggestions(payload);
+      setStatus('Title suggestions refreshed.');
+    } catch (error) {
+      setTitleSuggestionsError(
+        error instanceof Error ? error.message : 'Failed to refresh title suggestions.'
+      );
+    } finally {
+      setTitleSuggestionsRefreshing(false);
+    }
+  }
+
+  async function saveTimeDate() {
+    if (!resolvedImageId || !timeDateValue) return;
+    setTimeDateSaving(true);
+    setStatus('');
+    try {
+      const response = await fetch(`/api/images/${resolvedImageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ capturedAt: new Date(timeDateValue).toISOString() }),
+      });
+      setStatus(response.ok ? 'Time & date saved.' : 'Failed to save time & date.');
+      if (response.ok) await refreshDetail();
+    } catch {
+      setStatus('Failed to save time & date.');
+    } finally {
+      setTimeDateSaving(false);
+    }
+  }
+
+  async function saveLocation() {
+    if (!resolvedImageId || !locationLabel.trim()) {
+      setStatus('A location name is required.');
+      return;
+    }
+    setLocationSaving(true);
+    setStatus('');
+    try {
+      const composedDetail = [locationAddress, locationCityStateZip, locationCountry]
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .join(', ') || null;
+      const body: Record<string, unknown> = {
+        label: locationLabel.trim(),
+        detail: composedDetail,
+        kind: 'place',
+      };
+      const lat = parseFloat(locationLatitude);
+      const lng = parseFloat(locationLongitude);
+      if (!Number.isNaN(lat)) body.latitude = lat;
+      if (!Number.isNaN(lng)) body.longitude = lng;
+
+      const response = await fetch(`/api/images/${resolvedImageId}/location-suggestions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      setStatus(response.ok ? 'Location saved.' : 'Failed to save location.');
+      if (response.ok) await refreshDetail();
+    } catch {
+      setStatus('Failed to save location.');
+    } finally {
+      setLocationSaving(false);
+    }
+  }
+
   async function saveSettings() {
     if (!resolvedImageId) {
       return;
@@ -509,7 +787,7 @@ export default function TendActionScreen({ action }: { action: string }) {
     const response = await fetch(`/api/images/${resolvedImageId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shareToNetwork: networkValue }),
+      body: JSON.stringify({ shareToNetwork: networkValue, keepPrivate: keepPrivateValue }),
     });
     setStatus(response.ok ? 'Settings saved.' : 'Failed to save settings.');
     await refreshDetail();
@@ -662,8 +940,200 @@ export default function TendActionScreen({ action }: { action: string }) {
     await refreshDetail();
   }
 
+  // Keep refs in sync so drag-end closure always has fresh values
+  useEffect(() => { faceTagsRef.current = faceTags; }, [faceTags]);
+  savePositionRef.current = (tagId: string) => {
+    const tag = faceTagsRef.current.find((t) => t.id === tagId);
+    if (!tag?.dbId || !resolvedImageId) return;
+    fetch(`/api/images/${resolvedImageId}/tags/${tag.dbId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        leftPct: tag.x - CIRCLE_SIZE / 2,
+        topPct: tag.y - (CIRCLE_SIZE * imgAspectRatio) / 2,
+        widthPct: CIRCLE_SIZE,
+        heightPct: CIRCLE_SIZE * imgAspectRatio,
+        refreshWiki: false,
+      }),
+    }).catch(() => {});
+  };
+
+  // Load existing tags from detail when slider opens
+  useEffect(() => {
+    if (!detail?.tags) return;
+    const positioned = detail.tags.filter(
+      (t) => t.leftPct != null && t.topPct != null && t.widthPct != null && t.heightPct != null
+    );
+    if (positioned.length === 0) return;
+    setFaceTags(
+      positioned.map((t, i) => ({
+        id: t.id,
+        dbId: t.id,
+        x: t.leftPct! + t.widthPct! / 2,
+        y: t.topPct! + t.heightPct! / 2,
+        color: TAG_COLORS[i % TAG_COLORS.length],
+        name: t.label,
+      }))
+    );
+  }, [detail?.tags]);
+
+  useEffect(() => {
+    if (!draggingTagId) return;
+    const container = imageContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+
+    function onMove(e: PointerEvent) {
+      const d = dragStart.current;
+      if (!d) return;
+      const dx = ((e.clientX - d.clientX) / rect.width) * 100;
+      const dy = ((e.clientY - d.clientY) / rect.height) * 100;
+      setFaceTags((prev) =>
+        prev.map((t) =>
+          t.id === draggingTagId
+            ? { ...t, x: Math.max(0, Math.min(100, d.origX + dx)), y: Math.max(0, Math.min(100, d.origY + dy)) }
+            : t
+        )
+      );
+    }
+
+    function onUp() {
+      const tagId = draggingTagId;
+      setDraggingTagId(null);
+      dragStart.current = null;
+      if (tagId) savePositionRef.current(tagId);
+    }
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [draggingTagId]);
+
+  async function handleImageClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!taggingMode || draggingTagId) return;
+    const container = imageContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    const color = TAG_COLORS[faceTags.length % TAG_COLORS.length];
+    const tempId = `tag-${Date.now()}`;
+    const defaultName = `Person ${faceTags.length + 1}`;
+    setFaceTags((prev) => [...prev, { id: tempId, dbId: null, x, y, color, name: defaultName }]);
+    setEditingTagId(tempId);
+    setEditingName(defaultName);
+
+    if (resolvedImageId) {
+      const ar = imgAspectRatio;
+      const res = await fetch(`/api/images/${resolvedImageId}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: defaultName,
+          leftPct: x - CIRCLE_SIZE / 2,
+          topPct: y - (CIRCLE_SIZE * ar) / 2,
+          widthPct: CIRCLE_SIZE,
+          heightPct: CIRCLE_SIZE * ar,
+          refreshWiki: false,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (res.ok && payload?.tag?.id) {
+        const dbId = payload.tag.id as string;
+        setFaceTags((prev) =>
+          prev.map((t) => (t.id === tempId ? { ...t, id: dbId, dbId } : t))
+        );
+        setEditingTagId((prev) => (prev === tempId ? dbId : prev));
+      }
+    }
+  }
+
+  function handleCirclePointerDown(e: React.PointerEvent<HTMLDivElement>, tag: FaceTag) {
+    if (!taggingMode) return;
+    e.stopPropagation();
+    e.preventDefault();
+    dragStart.current = { clientX: e.clientX, clientY: e.clientY, origX: tag.x, origY: tag.y };
+    setDraggingTagId(tag.id);
+  }
+
+  async function handleDeleteTag(id: string) {
+    const tag = faceTags.find((t) => t.id === id);
+    setFaceTags((prev) => prev.filter((t) => t.id !== id));
+    if (editingTagId === id) setEditingTagId(null);
+    if (tag?.dbId && resolvedImageId) {
+      await fetch(`/api/images/${resolvedImageId}/tags/${tag.dbId}`, { method: 'DELETE' });
+    }
+  }
+
+  function handleEditTag(tag: FaceTag) {
+    setEditingTagId(tag.id);
+    setEditingName(tag.name);
+  }
+
+  async function handleSaveTagName(id: string) {
+    const tag = faceTags.find((t) => t.id === id);
+    const name = editingName.trim() || tag?.name || 'Unknown';
+    setFaceTags((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
+    setEditingTagId(null);
+    if (tag?.dbId && resolvedImageId) {
+      await fetch(`/api/images/${resolvedImageId}/tags/${tag.dbId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: name, refreshWiki: false }),
+      });
+    }
+  }
+
+  const coverPhotoUrl = detail
+    ? getPreviewMediaUrl({ mediaType: detail.mediaType, filename: detail.filename, posterFilename: detail.posterFilename })
+    : null;
+
+  const [detectingFaces, setDetectingFaces] = useState(false);
+
+  async function handleDetectFaces() {
+    const img = tagImgRef.current;
+    if (!img || !resolvedImageId || detectingFaces) return;
+    setDetectingFaces(true);
+    setDetectedFaces([]);
+    setImgAspectRatio(img.naturalWidth / img.naturalHeight);
+    try {
+      if (typeof window !== 'undefined' && window.FaceDetector) {
+        const detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 20 });
+        const faces = await detector.detect(img);
+        setDetectedFaces(faces.map((f) => ({
+          leftPct: (f.boundingBox.x / img.naturalWidth) * 100,
+          topPct: (f.boundingBox.y / img.naturalHeight) * 100,
+          widthPct: (f.boundingBox.width / img.naturalWidth) * 100,
+          heightPct: (f.boundingBox.height / img.naturalHeight) * 100,
+        })));
+      } else {
+        const res = await fetch(`/api/images/${resolvedImageId}/detect-faces`, { method: 'POST' });
+        const payload = await res.json().catch(() => ({}));
+        setDetectedFaces(payload?.faces ?? []);
+      }
+    } catch {
+      // silently skip
+    } finally {
+      setDetectingFaces(false);
+    }
+  }
+
+  if (!title) {
+    return null;
+  }
+
   return (
-    <div className="fixed inset-0 flex">
+    <div
+      className="fixed inset-0 flex"
+      style={coverPhotoUrl ? {
+        backgroundImage: `url(${coverPhotoUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      } : undefined}
+    >
       <Link href={backHref} className="w-[7%] h-full" />
       <div
         className="w-[93%] h-full flex flex-col slide-in-right"
@@ -680,20 +1150,8 @@ export default function TendActionScreen({ action }: { action: string }) {
           >
             <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
           </Link>
-          {TEND_ICONS[action] && !(action === 'contributors' && view) ? (
-            <svg
-              width={24}
-              height={24}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--text-primary)"
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="flex-shrink-0"
-            >
-              {TEND_ICONS[action]}
-            </svg>
+          {TendIcon && !(action === 'contributors' && view) ? (
+            <TendIcon size={22} color="var(--text-primary)" strokeWidth={1.6} className="flex-shrink-0" />
           ) : null}
           <h2 className="text-white font-medium text-base">
             {action === 'contributors' && contributorSource ? contributorName : title}
@@ -703,12 +1161,18 @@ export default function TendActionScreen({ action }: { action: string }) {
         <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
           {action === 'contributors' && !view ? (
             <>
-              {contributors.length === 0 ? (
-                <WikiCard>
-                  <p className="text-white/30 text-sm">No contributors yet.</p>
-                </WikiCard>
-              ) : (
-                contributors.map((item) => {
+              {(() => {
+                const nonOwnerContributors = contributors.filter(
+                  (c) => c.userId !== detail?.owner?.id && c.user?.id !== detail?.owner?.id
+                );
+                if (nonOwnerContributors.length === 0) {
+                  return (
+                    <WikiCard>
+                      <p className="text-white/30 text-sm">No contributors yet.</p>
+                    </WikiCard>
+                  );
+                }
+                return nonOwnerContributors.map((item) => {
                   const label = contributorDisplayName(item);
                   const phoneNumber = contributorPhone(item);
                   const canTextOrCopy = Boolean(phoneNumber || item.token);
@@ -734,7 +1198,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                       >
                         <div
                           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-medium"
-                          style={{ background: 'rgba(249,115,22,0.75)' }}
+                          style={{ background: 'rgba(100,116,139,0.6)' }}
                         >
                           {initials(label)}
                         </div>
@@ -774,15 +1238,17 @@ export default function TendActionScreen({ action }: { action: string }) {
                       </button>
                     </div>
                   );
-                })
-              )}
-              <Link
-                href={`${listHref}&view=add`}
-                className="flex items-center justify-center gap-2 w-full rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
-                style={{ background: '#f97316', minHeight: 44 }}
-              >
-                Add Contributor
-              </Link>
+                });
+              })()}
+              <div className="flex justify-end">
+                <Link
+                  href={`${listHref}&view=add`}
+                  className="w-1/2 flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium can-hover-dim btn-primary"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Add Contributor
+                </Link>
+              </div>
             </>
           ) : null}
 
@@ -846,7 +1312,13 @@ export default function TendActionScreen({ action }: { action: string }) {
                   </div>
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
-                    style={{ background: 'rgba(249,115,22,0.75)' }}
+                    style={{
+                      background:
+                        ('userId' in contributorSource && contributorSource.userId === detail?.owner?.id) ||
+                        contributorSource.user?.id === detail?.owner?.id
+                          ? 'rgba(249,115,22,0.75)'
+                          : 'rgba(100,116,139,0.6)',
+                    }}
                   >
                     {initials(contributorName)}
                   </div>
@@ -904,7 +1376,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                   className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-40"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
-                  Send Now
+                  Send Text Now
                 </button>
               </div>
 
@@ -967,21 +1439,164 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'edit-title' ? (
             <>
-              <input
-                value={titleValue}
-                onChange={(event) => setTitleValue(event.target.value)}
-                placeholder="Ember title"
-                className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                style={fieldStyle}
-              />
-              <button
-                type="button"
-                onClick={saveTitle}
-                className="w-full rounded-full text-white text-sm font-medium btn-primary"
-                style={{ background: '#f97316', minHeight: 44 }}
+              {/* Ember title input — at top */}
+              <div
+                className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
               >
-                Save Title
-              </button>
+                <input
+                  value={titleValue}
+                  onChange={(event) => setTitleValue(event.target.value)}
+                  placeholder="Ember title"
+                  className="w-full px-0 py-2 text-base font-medium text-white placeholder-white/30 outline-none bg-transparent"
+                />
+                {(detail?.titleUpdatedAt || detail?.createdAt) ? (
+                  <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">
+                    {detail.titleUpdatedAt ? 'Last updated' : 'Created'}:{' '}
+                    {new Date(detail.titleUpdatedAt ?? detail.createdAt).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                ) : null}
+              </div>
+
+              {/* Smart title suggestions */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--text-secondary)' }}><Lightbulb size={17} /></span>
+                  <h3 className="text-white font-medium text-base">Smart Title Suggestions</h3>
+                </div>
+              <WikiCard>
+
+                {titleSuggestionsLoading ? (
+                  <p className="text-white/45 text-sm">Loading suggestions...</p>
+                ) : null}
+
+                {titleSuggestionsError ? (
+                  <p className="text-white/45 text-sm">{titleSuggestionsError}</p>
+                ) : null}
+
+                {!titleSuggestionsLoading && !titleSuggestionsError && titleSuggestions ? (
+                  <div className="flex flex-col gap-4">
+                    {[...titleSuggestions.analysisSuggestions, ...titleSuggestions.contextSuggestions].length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {[...titleSuggestions.analysisSuggestions, ...titleSuggestions.contextSuggestions].map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => setTitleValue(suggestion)}
+                            className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
+                            style={{
+                              background:
+                                titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                                  ? 'rgba(249,115,22,0.22)'
+                                  : 'rgba(255,255,255,0.05)',
+                              border:
+                                titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                                  ? '1px solid rgba(249,115,22,0.7)'
+                                  : '1px solid rgba(255,255,255,0.08)',
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {titleSuggestions.contributorQuotes.length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-white/45 text-[11px] uppercase tracking-[0.18em]">
+                          From Real Quotes
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          {titleSuggestions.contributorQuotes.map((suggestion) => (
+                            <button
+                              key={`quote-${suggestion.title}-${suggestion.contributorName}`}
+                              type="button"
+                              onClick={() => setTitleValue(suggestion.title)}
+                              className="w-full rounded-xl px-4 py-3 text-left can-hover"
+                              style={{
+                                background:
+                                  titleValue.trim().toLowerCase() === suggestion.title.trim().toLowerCase()
+                                    ? 'rgba(249,115,22,0.18)'
+                                    : 'rgba(255,255,255,0.05)',
+                                border:
+                                  titleValue.trim().toLowerCase() === suggestion.title.trim().toLowerCase()
+                                    ? '1px solid rgba(249,115,22,0.65)'
+                                    : '1px solid rgba(255,255,255,0.08)',
+                              }}
+                            >
+                              <p className="text-white text-sm font-medium">{suggestion.title}</p>
+                              <p className="text-white/45 text-xs mt-1">
+                                {suggestion.contributorName} via {suggestion.source === 'voice' ? 'voice' : 'text'}
+                              </p>
+                              <p className="text-white/60 text-sm mt-2 leading-relaxed">
+                                {suggestion.quote}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </WikiCard>
+              </div>
+
+              {/* People hints */}
+              {detail?.tags && detail.tags.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span style={{ color: 'var(--text-secondary)' }}><Users size={17} /></span>
+                    <h3 className="text-white font-medium text-base">People</h3>
+                  </div>
+                <WikiCard>
+                  <p className="text-white/40 text-xs mb-3">Check names to prefer in title suggestions.</p>
+                  <div className="flex flex-col gap-2">
+                    {detail.tags.map((tag) => (
+                      <label key={tag.id} className="flex items-center gap-3 cursor-pointer" style={{ minHeight: 36 }}>
+                        <input
+                          type="checkbox"
+                          checked={titlePreferredPeopleIds.has(tag.id)}
+                          onChange={(e) => {
+                            setTitlePreferredPeopleIds((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(tag.id);
+                              else next.delete(tag.id);
+                              return next;
+                            });
+                          }}
+                          className="accent-orange-500 w-4 h-4 shrink-0"
+                        />
+                        <span className="text-white text-sm">{tag.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </WikiCard>
+                </div>
+              ) : null}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={refreshTitleSuggestions}
+                  disabled={titleSuggestionsRefreshing || titleSuggestionsLoading}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  {titleSuggestionsRefreshing ? 'Refreshing...' : 'Refresh Suggestions'}
+                </button>
+                <button
+                  type="button"
+                  onClick={saveTitle}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Save Title
+                </button>
+              </div>
             </>
           ) : null}
 
@@ -1023,19 +1638,70 @@ export default function TendActionScreen({ action }: { action: string }) {
           {action === 'settings' ? (
             <>
               <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <label className="flex items-center justify-between text-white text-sm font-medium">
-                  Share to network
-                  <input type="checkbox" checked={networkValue} onChange={(event) => setNetworkValue(event.target.checked)} />
+                <label className="flex items-center justify-between gap-4 cursor-pointer" style={{ minHeight: 44 }}>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-white text-sm font-medium">Share to Network</span>
+                    <span className="text-white/40 text-xs">Not sure what this does</span>
+                  </span>
+                  <span
+                    className="relative flex-shrink-0"
+                    style={{ width: 48, height: 28 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={networkValue}
+                      onChange={(event) => setNetworkValue(event.target.checked)}
+                      className="sr-only"
+                    />
+                    <span
+                      className="absolute inset-0 rounded-full transition-colors duration-200"
+                      style={{ background: networkValue ? '#f97316' : 'rgba(255,255,255,0.15)' }}
+                    />
+                    <span
+                      className="absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200"
+                      style={{ width: 24, height: 24, transform: networkValue ? 'translateX(20px)' : 'translateX(0)' }}
+                    />
+                  </span>
                 </label>
               </div>
-              <button
-                type="button"
-                onClick={saveSettings}
-                className="w-full rounded-full text-white text-sm font-medium btn-primary"
-                style={{ background: '#f97316', minHeight: 44 }}
-              >
-                Save Settings
-              </button>
+
+              <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                <label className="flex items-center justify-between gap-4 cursor-pointer" style={{ minHeight: 44 }}>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-white text-sm font-medium">Privacy Setting</span>
+                    <span className="text-white/40 text-xs">Allow guest view of this ember</span>
+                  </span>
+                  <span
+                    className="relative flex-shrink-0"
+                    style={{ width: 48, height: 28 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!keepPrivateValue}
+                      onChange={(event) => setKeepPrivateValue(!event.target.checked)}
+                      className="sr-only"
+                    />
+                    <span
+                      className="absolute inset-0 rounded-full transition-colors duration-200"
+                      style={{ background: !keepPrivateValue ? '#f97316' : 'rgba(255,255,255,0.15)' }}
+                    />
+                    <span
+                      className="absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200"
+                      style={{ width: 24, height: 24, transform: !keepPrivateValue ? 'translateX(20px)' : 'translateX(0)' }}
+                    />
+                  </span>
+                </label>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={saveSettings}
+                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-primary"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Save Settings
+                </button>
+              </div>
               {detail?.canManage ? (
                 <div
                   className="rounded-xl px-4 py-4"
@@ -1067,28 +1733,269 @@ export default function TendActionScreen({ action }: { action: string }) {
             </>
           ) : null}
 
-          {action === 'tag-people' ? (
+          {action === 'edit-time-date' ? (
             <>
-              <WikiCard>
-                {(detail?.tags || []).length > 0 ? (
-                  (detail?.tags || []).map((tag) => (
-                    <p key={tag.id} className="text-white/90 text-sm mb-1">
-                      {tag.label}
-                    </p>
-                  ))
-                ) : (
-                  <p className="text-white/30 text-sm">No tags yet.</p>
-                )}
-              </WikiCard>
-              {resolvedImageId ? (
+              <input
+                type="datetime-local"
+                value={timeDateValue}
+                onChange={(e) => setTimeDateValue(e.target.value)}
+                className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                style={{ ...fieldStyle, colorScheme: 'dark' }}
+              />
+              <div className="flex gap-3">
                 <Link
-                  href={`/image/${resolvedImageId}`}
-                  className="w-full rounded-full text-white text-sm font-medium btn-secondary flex items-center justify-center"
+                  href={tendModalHref}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
                   style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
                 >
-                  Open Tag Editor
+                  Cancel
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => void saveTimeDate()}
+                  disabled={timeDateSaving || !timeDateValue}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  {timeDateSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {action === 'edit-location' ? (
+            <>
+              <div className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  value={locationLabel}
+                  onChange={(e) => setLocationLabel(e.target.value)}
+                  placeholder="Name of location"
+                  className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                  style={fieldStyle}
+                />
+                <input
+                  type="text"
+                  value={locationAddress}
+                  onChange={(e) => setLocationAddress(e.target.value)}
+                  placeholder="Address"
+                  className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                  style={fieldStyle}
+                />
+                <input
+                  type="text"
+                  value={locationCityStateZip}
+                  onChange={(e) => setLocationCityStateZip(e.target.value)}
+                  placeholder="City, State ZIP"
+                  className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                  style={fieldStyle}
+                />
+                <input
+                  type="text"
+                  value={locationCountry}
+                  onChange={(e) => setLocationCountry(e.target.value)}
+                  placeholder="Country"
+                  className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                  style={fieldStyle}
+                />
+                <div className="flex gap-3">
+                  <input
+                    type="number"
+                    step="any"
+                    value={locationLatitude}
+                    onChange={(e) => setLocationLatitude(e.target.value)}
+                    placeholder="Latitude"
+                    className="h-11 rounded-xl px-4 text-sm text-white outline-none flex-1"
+                    style={fieldStyle}
+                  />
+                  <input
+                    type="number"
+                    step="any"
+                    value={locationLongitude}
+                    onChange={(e) => setLocationLongitude(e.target.value)}
+                    placeholder="Longitude"
+                    className="h-11 rounded-xl px-4 text-sm text-white outline-none flex-1"
+                    style={fieldStyle}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Link
+                  href={tendModalHref}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void saveLocation()}
+                  disabled={locationSaving || !locationLabel.trim()}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  {locationSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {action === 'tag-people' ? (
+            <>
+              {coverPhotoUrl ? (
+                <div
+                  ref={imageContainerRef}
+                  className="w-full rounded-xl overflow-hidden relative"
+                  style={{ border: '1px solid var(--border-subtle)', cursor: taggingMode ? 'crosshair' : 'default' }}
+                  onClick={handleImageClick}
+                >
+                  <img
+                    ref={tagImgRef}
+                    src={coverPhotoUrl}
+                    alt="Ember"
+                    className="w-full h-auto block"
+                    onLoad={(e) => {
+                      const img = e.currentTarget;
+                      if (img.naturalWidth && img.naturalHeight) {
+                        setImgAspectRatio(img.naturalWidth / img.naturalHeight);
+                      }
+                    }}
+                  />
+                  {/* Detected face circles */}
+                  {detectedFaces.map((face, i) => {
+                    const ar = imgAspectRatio;
+                    const size = Math.max(face.widthPct, face.heightPct / ar);
+                    const cx = face.leftPct + face.widthPct / 2;
+                    const cy = face.topPct + face.heightPct / 2;
+                    return (
+                      <div
+                        key={i}
+                        className="absolute rounded-full pointer-events-none"
+                        style={{
+                          left: `${cx - size / 2}%`,
+                          top: `${cy - (size * ar) / 2}%`,
+                          width: `${size}%`,
+                          aspectRatio: '1 / 1',
+                          border: '2px solid rgba(255,255,255,0.85)',
+                          boxShadow: '0 0 0 1px rgba(0,0,0,0.4)',
+                        }}
+                      />
+                    );
+                  })}
+                  {/* Manual face tags */}
+                  {faceTags.map((tag) => {
+                    const ar = imgAspectRatio;
+                    const left = tag.x - CIRCLE_SIZE / 2;
+                    const top = tag.y - (CIRCLE_SIZE * ar) / 2;
+                    return (
+                      <div key={tag.id}>
+                        <div
+                          className="absolute rounded-full"
+                          style={{
+                            left: `${left}%`,
+                            top: `${top}%`,
+                            width: `${CIRCLE_SIZE}%`,
+                            aspectRatio: '1 / 1',
+                            border: `2.5px solid ${tag.color}`,
+                            boxShadow: '0 0 0 1px rgba(0,0,0,0.5)',
+                            cursor: taggingMode ? 'grab' : 'default',
+                            touchAction: 'none',
+                          }}
+                          onPointerDown={(e) => handleCirclePointerDown(e, tag)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        {tag.name ? (
+                          <div
+                            className="absolute text-xs font-semibold px-1.5 py-0.5 rounded pointer-events-none"
+                            style={{
+                              left: `${tag.x}%`,
+                              top: `${top + CIRCLE_SIZE * ar + 0.5}%`,
+                              transform: 'translateX(-50%)',
+                              background: 'rgba(0,0,0,0.65)',
+                              color: tag.color,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {tag.name}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
               ) : null}
+
+              {/* Tag list */}
+              {faceTags.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {faceTags.map((tag) => (
+                    <div
+                      key={tag.id}
+                      className="flex items-center gap-3 px-4 rounded-xl"
+                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', minHeight: 44 }}
+                    >
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: tag.color }} />
+                      {editingTagId === tag.id ? (
+                        <input
+                          autoFocus
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          onBlur={() => handleSaveTagName(tag.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveTagName(tag.id);
+                            if (e.key === 'Escape') setEditingTagId(null);
+                          }}
+                          className="flex-1 bg-transparent text-white text-sm outline-none"
+                          placeholder="Enter name..."
+                        />
+                      ) : (
+                        <span className="flex-1 text-white text-sm">{tag.name || 'Unnamed'}</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleEditTag(tag)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <Pencil size={13} color="var(--text-primary)" strokeWidth={1.8} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTag(tag.id)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <X size={14} color="#f87171" strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  disabled
+                  className="flex-1 flex items-center justify-center rounded-full text-white/30 text-sm font-medium disabled:opacity-50"
+                  style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: 'not-allowed' }}
+                >
+                  Auto Detect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaggingMode((v) => !v)}
+                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium"
+                  style={{
+                    background: taggingMode ? '#f97316' : 'transparent',
+                    border: taggingMode ? 'none' : '1.5px solid var(--border-btn)',
+                    minHeight: 44,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {taggingMode ? 'Done Tagging' : 'Tag Faces'}
+                </button>
+              </div>
             </>
           ) : null}
 

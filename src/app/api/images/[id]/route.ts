@@ -6,6 +6,7 @@ import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
+import { toTitleCase } from '@/lib/ember-title';
 
 function normalizeLabelKey(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -56,6 +57,7 @@ export async function GET(
           description: true,
           createdAt: true,
           shareToNetwork: true,
+          keepPrivate: true,
           analysis: {
             select: {
               summary: true,
@@ -92,6 +94,7 @@ export async function GET(
         description: image.description,
         createdAt: image.createdAt,
         shareToNetwork: image.shareToNetwork,
+        keepPrivate: image.keepPrivate,
         accessType,
         canManage: accessType === 'owner',
         analysis: image.analysis,
@@ -115,6 +118,7 @@ export async function GET(
             description: true,
             createdAt: true,
             shareToNetwork: true,
+            keepPrivate: true,
             owner: {
               select: {
                 id: true,
@@ -216,6 +220,7 @@ export async function GET(
         description: image.description,
         createdAt: image.createdAt,
         shareToNetwork: image.shareToNetwork,
+        keepPrivate: image.keepPrivate,
         owner: image.owner,
         accessType,
         canManage: accessType === 'owner',
@@ -248,6 +253,7 @@ export async function GET(
               id: true,
               name: true,
               email: true,
+              avatarFilename: true,
             },
           },
           contributors: {
@@ -259,6 +265,7 @@ export async function GET(
                   name: true,
                   email: true,
                   phoneNumber: true,
+                  avatarFilename: true,
                 },
               },
               conversation: {
@@ -362,6 +369,7 @@ export async function GET(
               durationSeconds: true,
               originalName: true,
               description: true,
+              analysisText: true,
               createdAt: true,
               updatedAt: true,
             },
@@ -579,6 +587,48 @@ export async function GET(
 
     const voiceCallClips = await loadVoiceCallClips();
 
+    // Build chatBlocks: one block per person who has a ChatSession for this image
+    let chatBlocks: Array<{
+      personName: string;
+      avatarUrl: string | null;
+      messages: Array<{
+        role: string;
+        content: string;
+        source: string;
+        imageFilename?: string | null;
+        audioUrl?: string | null;
+        createdAt: string;
+      }>;
+    }> = [];
+    try {
+      const chatSessions = await prisma.chatSession.findMany({
+        where: { imageId: id, userId: { not: null } },
+        include: {
+          user: { select: { id: true, name: true, email: true, avatarFilename: true } },
+          messages: { orderBy: { createdAt: 'asc' } },
+        },
+      });
+
+      chatBlocks = chatSessions
+        .filter((session) => session.messages.length > 0)
+        .map((session) => {
+          const personName = session.user?.name || session.user?.email || 'Guest';
+          const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
+          const messages = session.messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+            source: 'web',
+            imageFilename: msg.imageFilename ?? null,
+            audioUrl: null as string | null,
+            createdAt: msg.createdAt.toISOString(),
+          }));
+          return { personName, avatarUrl, messages };
+        });
+    } catch (chatBlocksError) {
+      console.error('Failed to load chatBlocks:', chatBlocksError);
+      chatBlocks = [];
+    }
+
     return NextResponse.json({
       id: image.id,
       filename: image.filename,
@@ -587,9 +637,11 @@ export async function GET(
       durationSeconds: image.durationSeconds,
       originalName: image.originalName,
       title: image.title,
+      titleUpdatedAt: image.titleUpdatedAt ?? null,
       description: image.description,
       createdAt: image.createdAt,
       shareToNetwork: image.shareToNetwork,
+      keepPrivate: image.keepPrivate,
       owner: image.owner,
       accessType,
       canManage: accessType === 'owner',
@@ -650,6 +702,7 @@ export async function GET(
           }
         : null,
       sportsMode: image.sportsMode,
+      chatBlocks,
     });
   } catch (error) {
     console.error('Error fetching image:', error);
@@ -716,13 +769,19 @@ export async function PATCH(
 
     const updateData: {
       shareToNetwork?: boolean;
+      keepPrivate?: boolean;
       title?: string | null;
+      titleUpdatedAt?: Date | null;
       description?: string | null;
     } = {};
     let capturedAtValue: Date | null | undefined;
 
     if (typeof body?.shareToNetwork === 'boolean') {
       updateData.shareToNetwork = body.shareToNetwork;
+    }
+
+    if (typeof body?.keepPrivate === 'boolean') {
+      updateData.keepPrivate = body.keepPrivate;
     }
 
     if (Object.prototype.hasOwnProperty.call(body ?? {}, 'title')) {
@@ -733,7 +792,8 @@ export async function PATCH(
         );
       }
 
-      updateData.title = typeof body.title === 'string' ? body.title.trim() || null : null;
+      updateData.title = typeof body.title === 'string' ? (toTitleCase(body.title) || null) : null;
+      updateData.titleUpdatedAt = new Date();
     }
 
     if (Object.prototype.hasOwnProperty.call(body ?? {}, 'description')) {

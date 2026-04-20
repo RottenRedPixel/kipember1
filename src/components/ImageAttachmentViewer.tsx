@@ -1,5 +1,6 @@
 'use client';
 
+import { X } from 'lucide-react';
 import MediaPreview from '@/components/MediaPreview';
 
 export type ImageAttachmentRecord = {
@@ -14,14 +15,6 @@ export type ImageAttachmentRecord = {
   updatedAt: string;
 };
 
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-      <path d="M6 6 18 18" />
-      <path d="M18 6 6 18" />
-    </svg>
-  );
-}
 
 export default function ImageAttachmentViewer({
   attachment,
@@ -80,7 +73,7 @@ export default function ImageAttachmentViewer({
                 className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ember-line)] bg-white text-[var(--ember-text)]"
                 aria-label="Close attachment viewer"
               >
-                <CloseIcon />
+                <X size={16} />
               </button>
 
               <p className="pr-12 text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--ember-orange-deep)]">

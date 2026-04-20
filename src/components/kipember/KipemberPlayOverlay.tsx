@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { X } from 'lucide-react';
+import { Clock, Pause, Play, RotateCcw, ScanEye, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PLAY_BAR_HEIGHTS = [6, 8, 14, 20, 25, 31, 25, 36, 31, 25, 36, 42, 36, 31, 42, 36, 31, 25, 36, 31, 25, 20, 25, 20, 14, 8, 14, 8, 6, 3].map((height) =>
@@ -13,11 +13,9 @@ const PLAY_BAR_DURATIONS = PLAY_BAR_HEIGHTS.map((_, index) =>
 
 type KipemberPlayOverlayProps = {
   closeHref: string;
-  addHref: string;
   imageId: string | null;
   storyScript: string | null;
-  wikiContent: string | null;
-  fallbackText: string | null;
+  guestToken?: string | null;
 };
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
@@ -25,7 +23,7 @@ type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
 function buildStoryLines(value: string | null | undefined) {
   const text = value?.replace(/\s+/g, ' ').trim();
   if (!text) {
-    return ['Playback will follow this ember', 'as it grows.'];
+    return [];
   }
 
   const sentences = text
@@ -73,18 +71,7 @@ function PlaybackControl({
       style={{ cursor: 'pointer' }}
     >
       <div className="flex flex-col items-center gap-1.5">
-        <svg
-          width={34}
-          height={34}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {children}
-        </svg>
+        {children}
         <span className="text-xs text-center leading-tight">{label}</span>
       </div>
     </button>
@@ -97,24 +84,21 @@ function resetAudioPosition(audio: HTMLAudioElement) {
 
 export default function KipemberPlayOverlay({
   closeHref,
-  addHref,
   imageId,
   storyScript,
-  wikiContent,
-  fallbackText,
+  guestToken,
 }: KipemberPlayOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
-  const autoplayAttemptedRef = useRef(false);
+  const prepareAttemptedRef = useRef(false);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [error, setError] = useState('');
   const [lineIndex, setLineIndex] = useState(0);
   const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
 
-  const transcriptSource = storyScript || fallbackText || wikiContent;
-  const storyLines = useMemo(() => buildStoryLines(transcriptSource), [transcriptSource]);
-  const canGenerateFallbackNarration = Boolean(storyScript || fallbackText || wikiContent);
+  const storyLines = useMemo(() => buildStoryLines(storyScript), [storyScript]);
+  const hasPlayableContent = Boolean(storyScript);
   const shouldAnimate = playbackState === 'playing' && !done;
 
   const disposeAudio = useCallback(() => {
@@ -168,46 +152,26 @@ export default function KipemberPlayOverlay({
   }, [fading, storyLines.length]);
 
   const fetchAudioBlob = useCallback(async () => {
-    let storyCutError = '';
-
-    if (imageId && storyScript) {
-      const response = await fetch(`/api/images/${imageId}/story-cut-audio`, {
-        cache: 'no-store',
-      });
-
-      if (response.ok) {
-        return await response.blob();
-      }
-
-      const payload = await response.json().catch(() => null);
-      storyCutError =
-        typeof payload?.error === 'string' ? payload.error : 'Story audio is not available yet.';
+    if (!imageId || !storyScript) {
+      throw new Error('This ember does not have a snapshot yet.');
     }
 
-    if (!canGenerateFallbackNarration) {
-      throw new Error(storyCutError || 'This ember does not have playable audio yet.');
-    }
-
-    const narrationResponse = await fetch('/api/narration', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: wikiContent || fallbackText || storyScript || '',
-        script: storyScript || undefined,
-      }),
+    const audioUrl = guestToken
+      ? `/api/images/${imageId}/story-cut-audio?token=${encodeURIComponent(guestToken)}`
+      : `/api/images/${imageId}/story-cut-audio`;
+    const response = await fetch(audioUrl, {
+      cache: 'no-store',
     });
 
-    if (!narrationResponse.ok) {
-      const payload = await narrationResponse.json().catch(() => null);
-      throw new Error(
-        typeof payload?.error === 'string'
-          ? payload.error
-          : storyCutError || 'Audio is not available yet.'
-      );
+    if (response.ok) {
+      return await response.blob();
     }
 
-    return await narrationResponse.blob();
-  }, [canGenerateFallbackNarration, fallbackText, imageId, storyScript, wikiContent]);
+    const payload = await response.json().catch(() => null);
+    throw new Error(
+      typeof payload?.error === 'string' ? payload.error : 'Story audio is not available yet.'
+    );
+  }, [imageId, storyScript]);
 
   const buildAudio = useCallback(async () => {
     const audioBlob = await fetchAudioBlob();
@@ -238,7 +202,7 @@ export default function KipemberPlayOverlay({
 
   const startPlayback = useCallback(
     async ({ restart = false, allowAutoplay = false }: { restart?: boolean; allowAutoplay?: boolean } = {}) => {
-      if (!imageId) {
+      if (!imageId || !hasPlayableContent) {
         return;
       }
 
@@ -274,18 +238,15 @@ export default function KipemberPlayOverlay({
     [buildAudio, imageId]
   );
 
+  // Silently pre-fetch audio in the background so playback starts instantly on user press
   useEffect(() => {
-    if (autoplayAttemptedRef.current || !imageId) {
+    if (prepareAttemptedRef.current || !imageId || !hasPlayableContent) {
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      autoplayAttemptedRef.current = true;
-      void startPlayback({ allowAutoplay: true });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [imageId, startPlayback]);
+    prepareAttemptedRef.current = true;
+    void buildAudio().catch(() => undefined);
+  }, [imageId, hasPlayableContent, buildAudio]);
 
   const handleToggle = useCallback(() => {
     const audio = audioRef.current;
@@ -321,11 +282,10 @@ export default function KipemberPlayOverlay({
   return (
     <>
       <style>{'@keyframes vizPulse { from { transform: scaleY(0.15); } to { transform: scaleY(1); } }'}</style>
-      <div className="absolute left-0 right-0 z-30 flex justify-center" style={{ bottom: 88 }}>
+      <div className="absolute left-0 right-0 z-30 flex justify-center px-4" style={{ bottom: 88 }}>
         <div
-          className="relative flex flex-col items-center px-6 pt-8 pb-6 rounded-2xl"
+          className="relative w-full max-w-sm flex flex-col items-center px-6 pt-8 pb-6 rounded-2xl"
           style={{
-            width: 320,
             background: 'var(--bg-modal)',
             WebkitBackdropFilter: 'blur(5px)',
             backdropFilter: 'blur(5px)',
@@ -338,6 +298,14 @@ export default function KipemberPlayOverlay({
           >
             <X size={18} />
           </Link>
+
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: 'rgba(249,115,22,0.85)' }}>
+              <ScanEye size={28} color="white" strokeWidth={1.6} />
+            </div>
+            <span className="text-white text-base font-medium">Play snapshot of this ember</span>
+          </div>
+          <div className="w-full mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
 
           <div className="flex items-center gap-[3px]" style={{ height: 34 }}>
             {PLAY_BAR_HEIGHTS.map((height, index) => (
@@ -371,7 +339,7 @@ export default function KipemberPlayOverlay({
                 transition: 'color 0.8s ease',
               }}
             >
-              {storyLines[lineIndex + 1] ?? '\u00A0'}
+              {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : '\u00A0'}
             </p>
           </div>
 
@@ -385,51 +353,20 @@ export default function KipemberPlayOverlay({
 
           <div className="flex justify-center gap-8 mt-5">
             <PlaybackControl label="back" onClick={handleRestart}>
-              <circle cx="12" cy="12" r="10" />
-              <polyline
-                points="13,8 9,12 13,16"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
+              <RotateCcw size={34} strokeWidth={1.6} />
             </PlaybackControl>
             <PlaybackControl
               label={playbackState === 'playing' ? 'pause' : playbackState === 'loading' ? 'wait' : 'play'}
               onClick={handleToggle}
             >
-              <circle cx="12" cy="12" r="10" />
               {playbackState === 'playing' ? (
-                <>
-                  <line x1="10" y1="15" x2="10" y2="9" />
-                  <line x1="14" y1="15" x2="14" y2="9" />
-                </>
+                <Pause size={34} strokeWidth={1.6} />
               ) : playbackState === 'loading' ? (
-                <path d="M12 8v4l2.5 1.5" />
+                <Clock size={34} strokeWidth={1.6} />
               ) : (
-                <polygon points="10,8 17,12 10,16" fill="currentColor" stroke="none" />
+                <Play size={34} strokeWidth={1.6} />
               )}
             </PlaybackControl>
-            <Link href={addHref} className="svg-item">
-              <div className="flex flex-col items-center gap-1.5">
-                <svg
-                  width={34}
-                  height={34}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.6}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="16" />
-                  <line x1="8" y1="12" x2="16" y2="12" />
-                </svg>
-                <span className="text-xs text-center leading-tight">add</span>
-              </div>
-            </Link>
           </div>
         </div>
       </div>

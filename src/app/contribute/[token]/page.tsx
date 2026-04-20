@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 import HeaderMenu from '@/components/HeaderMenu';
+import { X } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -129,10 +130,7 @@ function PanelCloseButton({ onClick }: { onClick: () => void }) {
       className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/6 text-white"
       aria-label="Close"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
-        <path d="M6 6 18 18" />
-        <path d="M18 6 6 18" />
-      </svg>
+      <X className="h-5 w-5" strokeWidth={2.5} />
     </button>
   );
 }

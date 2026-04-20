@@ -2,18 +2,32 @@
 
 import Link from 'next/link';
 import {
+  BookOpen,
   ChevronDown,
   ChevronLeft,
-  Home,
+  Clock,
+  Copy,
+  LogOut,
+  MapPin,
+  Moon,
+  MoreHorizontal,
+  PencilLine,
+  Plus,
+  PlusCircle,
+  ScanEye,
+  Settings,
   Leaf,
   Link2,
   Mail,
   MessageCircle,
-  MoreHorizontal,
-  Play,
   Share2,
+  Sun,
+  UserStar,
+  User,
+  Users,
   X,
 } from 'lucide-react';
+import AppHeader from '@/components/kipember/AppHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -24,16 +38,29 @@ import OwnerAddFlow from '@/components/kipember/workflows/OwnerAddFlow';
 import OwnerAddMoreFlow from '@/components/kipember/workflows/OwnerAddMoreFlow';
 import WelcomeFlow from '@/components/kipember/workflows/WelcomeFlow';
 import type { AccessibleImageSummary } from '@/lib/image-summaries';
+import { getEmberTitle } from '@/lib/ember-title';
 
 type AuthUser = {
   id: string;
   name: string | null;
   email: string;
   phoneNumber: string | null;
+  avatarUrl?: string | null;
 };
 
 type ImageSummary = AccessibleImageSummary & {
   createdAt: string | Date;
+  capturedAt: string | Date | null;
+};
+
+type ImageAttachment = {
+  id: string;
+  filename: string;
+  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
+  posterFilename: string | null;
+  durationSeconds: number | null;
+  originalName: string;
+  description: string | null;
 };
 
 type ImageDetail = ImageSummary & {
@@ -81,13 +108,13 @@ function stripExtension(value: string) {
   return value.replace(/\.[^.]+$/, '');
 }
 
-function Modal({ children, closeHref }: { children: React.ReactNode; closeHref: string }) {
+function Modal({ children, closeHref, cardStyle }: { children: React.ReactNode; closeHref: string; cardStyle?: React.CSSProperties }) {
   return (
     <div className="absolute inset-0 z-40 flex items-end justify-center pb-24">
       <Link href={closeHref} className="absolute inset-0" />
       <div
         className="relative w-full max-w-sm mx-4 rounded-2xl overflow-hidden"
-        style={{
+        style={cardStyle ?? {
           background: 'var(--bg-modal)',
           WebkitBackdropFilter: 'blur(5px)',
           backdropFilter: 'blur(5px)',
@@ -107,18 +134,16 @@ function SvgItem({
   label,
   href,
   onClick,
-  children,
+  icon: Icon,
 }: {
   label: string;
   href?: string;
   onClick?: () => void;
-  children: React.ReactNode;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
 }) {
   const inner = (
     <div className="flex flex-col items-center gap-1.5">
-      <svg width={34} height={34} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-        {children}
-      </svg>
+      <Icon size={28} strokeWidth={1.6} />
       <span className="text-xs text-center leading-tight">{label}</span>
     </div>
   );
@@ -186,7 +211,9 @@ function WorkflowSlot({
         <WelcomeFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
       ) : null;
     case 'owner-add':
-      return <OwnerAddFlow />;
+      return imageId ? (
+        <WelcomeFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+      ) : null;
     case 'contrib-add':
       return <ContributorAddFlow />;
     case 'owner-add-more':
@@ -229,9 +256,10 @@ export default function HomeScreen({
   const step = params.get('step');
   const firstEmber = mode === 'first-ember';
   const emberOpen = flow !== null;
-  const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play' || modal === 'user';
+  const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
 
   const [profile, setProfile] = useState<AuthUser | null>(initialProfile ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
   const [images, setImages] = useState<ImageSummary[]>(initialImages);
   const [selectedImage, setSelectedImage] = useState<ImageDetail | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -242,18 +270,24 @@ export default function HomeScreen({
   const [uploadError, setUploadError] = useState('');
   const [storedTheme, setStoredTheme] = useState<string | null>(null);
   const [hasConversationHistory, setHasConversationHistory] = useState(false);
+  const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [photoOpacity, setPhotoOpacity] = useState(1);
+  const [photoIsLandscape, setPhotoIsLandscape] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedImageId = params.get('id') || images[0]?.id || null;
   const hasExistingEmbers = images.length > 0;
   const selectedSummary = images.find((image) => image.id === selectedImageId) || null;
   const displayImage = selectedImage || selectedSummary;
-  const title = displayImage?.title || (displayImage ? stripExtension(displayImage.originalName) : 'Beach Day');
-  const subtitle = selectedImage?.analysis?.capturedAt
-    ? new Date(selectedImage.analysis.capturedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    : displayImage?.createdAt
-      ? new Date(displayImage.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-      : '';
+  const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
+  const capturedAt = selectedImage?.analysis?.capturedAt ?? displayImage?.capturedAt ?? null;
+  const subtitle = displayImage
+    ? capturedAt
+      ? new Date(capturedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      : 'Date Unknown'
+    : '';
   const mediaUrl = displayImage
       ? getPreviewMediaUrl({
         mediaType: displayImage.mediaType,
@@ -261,6 +295,17 @@ export default function HomeScreen({
         posterFilename: displayImage.posterFilename,
       })
     : '';
+
+  const allMedia = mediaUrl
+    ? [
+        { url: mediaUrl },
+        ...attachments.map((a) => ({
+          url: getPreviewMediaUrl({ mediaType: a.mediaType, filename: a.filename, posterFilename: a.posterFilename }),
+        })),
+      ]
+    : [];
+  const currentPhotoUrl = allMedia[photoIndex]?.url ?? mediaUrl;
+  const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
 
   const buildHomeHref = useCallback((updates: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
@@ -295,6 +340,18 @@ export default function HomeScreen({
   }, [profile]);
 
   useEffect(() => {
+    void fetch('/api/profile', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const payload = await res.json();
+        if (typeof payload?.user?.avatarUrl === 'string') {
+          setAvatarUrl(payload.user.avatarUrl);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (createdImageId === null && initialImages.length > 0) {
       return;
     }
@@ -306,9 +363,6 @@ export default function HomeScreen({
         }
         const payload = (await response.json()) as ImageSummary[];
         setImages(payload);
-        if (!firstEmber && payload.length === 0) {
-          router.replace('/home?mode=first-ember');
-        }
       })
       .catch(() => undefined);
   }, [createdImageId, firstEmber, initialImages.length, router]);
@@ -329,6 +383,22 @@ export default function HomeScreen({
       })
       .catch(() => undefined);
   }, [modal, selectedImageId]);
+
+  useEffect(() => {
+    setPhotoIndex(0);
+    setPhotoOpacity(1);
+    if (!selectedImageId || firstEmber) {
+      setAttachments([]);
+      return;
+    }
+    void fetch(`/api/images/${encodeURIComponent(selectedImageId)}/attachments`, { cache: 'no-store' })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const payload = await r.json() as { attachments: ImageAttachment[] };
+        setAttachments(payload.attachments ?? []);
+      })
+      .catch(() => undefined);
+  }, [selectedImageId, firstEmber]);
 
   useEffect(() => {
     if (!selectedImageId || firstEmber) {
@@ -374,6 +444,22 @@ export default function HomeScreen({
       }
     };
   }, [selectedPreviewUrl]);
+
+  useEffect(() => {
+    if (modal !== 'share' || !selectedImageId) {
+      setShareToken(null);
+      return;
+    }
+
+    void fetch(`/api/images/${selectedImageId}/share-token`, { method: 'POST' })
+      .then(async (res) => {
+        const payload = await res.json().catch(() => null);
+        if (typeof payload?.token === 'string') {
+          setShareToken(payload.token);
+        }
+      })
+      .catch(() => undefined);
+  }, [modal, selectedImageId]);
 
   useEffect(() => {
     const stored = localStorage.getItem('ember-theme');
@@ -437,7 +523,7 @@ export default function HomeScreen({
       setSelectedFile(null);
       setSelectedPreviewUrl('');
       router.replace(`/home?id=${createdImageId}&ember=welcome`);
-    }, 2400);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [createdImageId, router, step]);
@@ -464,29 +550,36 @@ export default function HomeScreen({
         }}
       />
 
-      {!firstEmber && mediaUrl ? (
+      {!firstEmber && currentPhotoUrl ? (
         <>
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url(${mediaUrl})`,
+              backgroundImage: `url(${currentPhotoUrl})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               filter: 'blur(24px)',
               transform: 'scale(1.08)',
-              opacity: 0.7,
+              opacity: photoOpacity * 0.7,
+              transition: 'opacity 0.22s ease',
             }}
           />
           <img
-            src={mediaUrl}
+            src={currentPhotoUrl}
             alt=""
             className="absolute left-0 right-0 pointer-events-none w-full"
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              setPhotoIsLandscape(img.naturalWidth > img.naturalHeight);
+            }}
             style={{
-              top: 72,
+              top: 56,
               bottom: 72,
-              height: 'calc(100% - 144px)',
-              objectFit: 'cover',
+              height: 'calc(100% - 128px)',
+              objectFit: photoIsLandscape ? 'contain' : 'cover',
               objectPosition: 'center center',
+              opacity: photoOpacity,
+              transition: 'opacity 0.22s ease',
             }}
           />
           <div
@@ -496,33 +589,30 @@ export default function HomeScreen({
         </>
       ) : null}
 
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-4 pt-4 pb-4">
-        <Link
-          href="/"
-          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--bg-rail-btn)', WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}
-        >
-          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
-        </Link>
-        {!firstEmber ? (
-          <div className="pointer-events-none flex-1">
-            <p className="text-white font-medium text-base leading-tight">{title}</p>
-            <p className="text-white/60 text-xs">{subtitle}</p>
-          </div>
-        ) : null}
-      </div>
+      <AppHeader
+        avatarUrl={avatarUrl}
+        userInitials={initials(profile?.name || profile?.email || 'ST')}
+        userModalHref={selectedImageId ? `/account?imageId=${selectedImageId}` : '/account'}
+      />
+
+      {!firstEmber && displayImage ? (
+        <div className="absolute left-4 z-20 pointer-events-none" style={{ top: 64 }}>
+          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{title}</p>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{subtitle}</p>
+        </div>
+      ) : null}
 
       {firstEmber ? (
         <div
-          className="absolute left-0 right-0 flex flex-col items-center justify-center gap-5"
-          style={{ top: 72, bottom: 0 }}
+          className="absolute left-0 right-0 flex flex-col items-center justify-center px-5"
+          style={{ top: 56, bottom: 0 }}
         >
           <div
-            className="flex flex-col items-center gap-4 mx-8 px-8 py-10 rounded-2xl"
-            style={{ border: '1.5px dashed rgba(255,255,255,0.25)', background: 'rgba(0,0,0,0.6)' }}
+            className="w-full flex flex-col items-center gap-3 rounded-2xl px-6 py-8"
+            style={{ maxWidth: 420, background: 'var(--bg-surface)' }}
           >
-            <EmberMark size={56} />
-            <div className="flex flex-col items-center gap-1.5 text-center">
+            <EmberMark size={44} />
+            <div className="flex flex-col items-center gap-1 text-center">
               <p className="text-white font-medium text-base">
                 {hasExistingEmbers ? 'Create a new ember' : 'Create your first ember'}
               </p>
@@ -535,7 +625,7 @@ export default function HomeScreen({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="mt-1 px-6 rounded-full text-white text-sm font-medium flex items-center justify-center can-hover-dim"
+              className="px-8 rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
               style={{ background: '#f97316', minHeight: 44 }}
             >
               Choose Photo
@@ -610,74 +700,79 @@ export default function HomeScreen({
         }`}
         style={{ bottom: '11%' }}
       >
-        <Link
-          href={buildHomeHref({ m: 'user' })}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
-            modal === 'user' ? 'bg-white/20' : 'hover:bg-white/10 active:bg-white/20'
-          }`}
-        >
-          <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(249,115,22,0.85)' }}>
-            <span className="text-white text-sm font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
-          </div>
-          <span className="text-white text-xs font-medium lowercase">user</span>
-        </Link>
+        {allMedia.length > 1 && nextPhotoUrl ? (
+          <button
+            type="button"
+            onClick={() => {
+              setPhotoOpacity(0);
+              setTimeout(() => {
+                setPhotoIndex((i) => (i + 1) % allMedia.length);
+                setPhotoIsLandscape(false);
+                setPhotoOpacity(1);
+              }, 220);
+            }}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 active:bg-white/20 cursor-pointer"
+          >
+            <div className="relative w-11 h-11">
+              <div className="w-11 h-11 rounded-full overflow-hidden">
+                <img src={nextPhotoUrl} alt="" className="w-full h-full object-cover" />
+              </div>
+              {allMedia.length > 1 ? (
+                <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center px-1" style={{ background: '#f97316', fontSize: 10, fontWeight: 600, color: '#fff', lineHeight: 1 }}>
+                  {allMedia.length}
+                </div>
+              ) : null}
+            </div>
+            <span className="text-white text-xs font-medium lowercase">more</span>
+          </button>
+        ) : null}
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
         <RailBtn icon={Leaf} label="tend" href={buildHomeHref({ m: 'tend' })} active={modal === 'tend'} />
-        <RailBtn icon={Play} label="play" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
+        <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
-
-      {modal === 'user' ? (
-        <Modal closeHref={buildHomeHref({ m: null })}>
-          <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'rgba(249,115,22,0.85)' }}>
-              <span className="text-white text-base font-medium">{initials(profile?.name || profile?.email || 'ST')}</span>
-            </div>
-            <span className="text-white text-base font-medium">{profile?.name || profile?.email || 'Ember User'}</span>
-          </div>
-          <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-          <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-            <SvgItem label="My Embers" href="/home"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></SvgItem>
-            <SvgItem label="Shared Embers" href="/user/shared-embers"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></SvgItem>
-            <SvgItem label="Create Ember" href="/home?mode=first-ember"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></SvgItem>
-            <SvgItem label="Profile" href="/user/profile"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></SvgItem>
-            <SvgItem label={isDarkTheme ? 'Light Mode' : 'Dark Mode'} href={buildHomeHref({ m: 'user', theme: isDarkTheme ? 'light' : 'dark' })}>
-              {isDarkTheme ? (
-                <>
-                  <circle cx="12" cy="12" r="4" />
-                  <line x1="12" y1="2" x2="12" y2="4" />
-                  <line x1="12" y1="20" x2="12" y2="22" />
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                  <line x1="2" y1="12" x2="4" y2="12" />
-                  <line x1="20" y1="12" x2="22" y2="12" />
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                </>
-              ) : (
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              )}
-            </SvgItem>
-            <SvgItem label="Logout" onClick={handleLogout}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></SvgItem>
-          </div>
-        </Modal>
-      ) : null}
 
       {modal === 'share' ? (
         <Modal closeHref={buildHomeHref({ m: null })}>
           <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'var(--bg-surface)' }}>
-              <Share2 size={28} color="var(--text-primary)" strokeWidth={1.6} />
+            <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#4a6172' }}>
+              <Share2 size={28} color="#c8dce8" strokeWidth={1.6} />
             </div>
             <span className="text-white text-base font-medium">Share this ember</span>
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="p-5 grid grid-cols-3 gap-1">
-            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => selectedImageId ? void navigator.clipboard.writeText(`${window.location.origin}/home?id=${selectedImageId}`) : undefined}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
-            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => selectedImageId ? window.location.assign(`sms:?&body=${encodeURIComponent(`${window.location.origin}/home?id=${selectedImageId}`)}`) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
-            <a href={selectedImageId ? `mailto:?body=${encodeURIComponent(`${window.location.origin}/home?id=${selectedImageId}`)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
-            <a href={selectedImageId ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`${window.location.origin}/home?id=${selectedImageId}`)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><FacebookIcon /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
-            <a href={selectedImageId ? `https://twitter.com/intent/tweet?url=${encodeURIComponent(`${window.location.origin}/home?id=${selectedImageId}`)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><XIcon /></div><span className="text-white text-xs font-medium tracking-wide">X / Twitter</span></a>
-            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => selectedImageId ? navigator.share?.({ title, url: `${window.location.origin}/home?id=${selectedImageId}` }) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MoreHorizontal size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">More</span></button>
+            {(() => {
+              const shareUrl = shareToken ? `${window.location.origin}/guest/${shareToken}` : null;
+              return (
+                <>
+                  <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? void navigator.clipboard.writeText(shareUrl) : undefined}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
+                  <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? window.location.assign(`sms:?&body=${encodeURIComponent(shareUrl)}`) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
+                  <a href={shareUrl ? `mailto:?body=${encodeURIComponent(shareUrl)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
+                  <a href={shareUrl ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><FacebookIcon /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
+                  <a href={shareUrl ? `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><XIcon /></div><span className="text-white text-xs font-medium tracking-wide">X / Twitter</span></a>
+                  <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? navigator.share?.({ title, url: shareUrl }) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MoreHorizontal size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">More</span></button>
+                </>
+              );
+            })()}
+          </div>
+          <div className="mx-5 mb-5">
+            <div
+              className="flex items-center gap-2 rounded-xl px-3 py-2.5"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+            >
+              <span className="flex-1 text-xs text-white/50 truncate">
+                {shareToken ? `${window.location.origin}/guest/${shareToken}` : 'Generating link…'}
+              </span>
+              {shareToken ? (
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(`${window.location.origin}/guest/${shareToken}`)}
+                  className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md cursor-pointer"
+                >
+                  <Copy size={16} color="white" strokeWidth={1.8} />
+                </button>
+              ) : null}
+            </div>
           </div>
         </Modal>
       ) : null}
@@ -685,22 +780,32 @@ export default function HomeScreen({
       {modal === 'tend' ? (
         <Modal closeHref={buildHomeHref({ m: null })}>
           <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 66, height: 66, background: 'var(--bg-surface)' }}>
-              <Leaf size={28} color="var(--text-primary)" strokeWidth={1.6} />
+            <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#6a7c5c' }}>
+              <Leaf size={28} color="#d4e8c2" strokeWidth={1.6} />
             </div>
             <span className="text-white text-base font-medium">Tend &amp; grow this ember</span>
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-            <SvgItem label="Add Content" href={selectedImageId ? `/tend/add-content?id=${selectedImageId}` : '/tend/add-content'}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></SvgItem>
-            <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'}><path d="M4 19V6a2 2 0 0 1 2-2h13" /><path d="M4 19a2 2 0 0 0 2 2h13V8H6a2 2 0 0 0-2 2" /></SvgItem>
-            <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'}><rect x="3" y="3" width="18" height="14" rx="2" /><path d="M8 21h8M12 17v4" /><path d="M7 7l3.5 3.5L15 6" /></SvgItem>
-            <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'}><circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" /></SvgItem>
-            <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></SvgItem>
-            <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'}><circle cx="9" cy="8" r="3" /><circle cx="17" cy="8" r="3" /><path d="M2 20c0-3.3 3.1-6 7-6" /><path d="M22 20c0-3.3-3.1-6-7-6" /><path d="M12 20c0-3.3 2-5 4-5" /></SvgItem>
-            <div className="col-span-3 flex justify-center">
-              <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></SvgItem>
-            </div>
+            {displayImage?.accessType === 'contributor' ? (
+              <>
+                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
+                <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
+                <SvgItem label="View Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
+              </>
+            ) : (
+              <>
+                <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
+                <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
+                <SvgItem label="Edit Location" href={selectedImageId ? `/tend/edit-location?id=${selectedImageId}` : '/tend/edit-location'} icon={MapPin} />
+                <SvgItem label="Edit Time & Date" href={selectedImageId ? `/tend/edit-time-date?id=${selectedImageId}` : '/tend/edit-time-date'} icon={Clock} />
+                <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
+                <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
+                <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
+                <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
+              </>
+            )}
           </div>
         </Modal>
       ) : null}
@@ -709,11 +814,8 @@ export default function HomeScreen({
         <KipemberPlayOverlay
           key={`${selectedImageId || 'empty'}:${selectedImage?.wiki?.updatedAt || 'wiki'}:${selectedImage?.storyCut?.script ? 'story-cut' : 'fallback'}`}
           closeHref={buildHomeHref({ m: null })}
-          addHref={selectedImageId ? `/tend/add-content?id=${selectedImageId}` : '/tend/add-content'}
           imageId={selectedImageId}
           storyScript={selectedImage?.storyCut?.script || null}
-          wikiContent={selectedImage?.wiki?.content || null}
-          fallbackText={selectedImage?.analysis?.summary || displayImage?.description || null}
         />
       ) : null}
 
@@ -734,11 +836,7 @@ export default function HomeScreen({
               <span className="flex items-center gap-2">
                 <EmberMark />
                 <span className="text-base font-medium text-white">
-                  {flow
-                    ? 'Ember Chat'
-                    : hasConversationHistory
-                      ? 'Continue your journey here'
-                      : 'Start your journey here'}
+                  <span style={{ color: '#f97316' }}>Ember</span> Chat
                 </span>
               </span>
             </Link>
@@ -754,10 +852,7 @@ export default function HomeScreen({
               {flow ? (
                 <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
               ) : (
-                <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
+                <Plus size={20} color="white" strokeWidth={2} />
               )}
             </Link>
           </div>

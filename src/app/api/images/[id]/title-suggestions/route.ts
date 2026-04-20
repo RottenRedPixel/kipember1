@@ -71,6 +71,12 @@ Consider:
 - Emotional undertones or significance mentioned
 - Specific details that make this memory unique
 
+PRIORITY (in order):
+- If specific people are tagged in the photo, strongly prefer a title that names them or captures their relationship (e.g. "Zia and Anna at the Beach" or "Mom's First La Jolla Visit")
+- Use real wording or emotional details from contributor memories and voice call highlights when present
+- Draw on wiki content for specific personal details that make this memory unique
+- Fall back to visual scene details only when no personal context is available
+
 Generate ONE thoughtful, evocative title between 2 and 8 words.
 Return ONLY the title, with no explanation.`;
 
@@ -212,7 +218,7 @@ function parseSmartTitleSuggestionCache(value: string | null | undefined): Smart
   }
 }
 
-async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'context') {
+async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'context', preferredPeople?: string[]) {
   const openai = getOpenAIClient();
   const modeInstruction =
     mode === 'analysis'
@@ -224,23 +230,35 @@ async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'con
 - Prefer memorable details from typed memories, voice statements, call highlights, and wiki context.
 - Use real wording or emotional details from the people involved when possible.
 - Avoid titles that only restate the visual scene if a richer human story is present.`;
-  const prompt = await renderPromptTemplate(
+  const preferredPeopleHint =
+    preferredPeople && preferredPeople.length > 0
+      ? `Preferred people to mention (use their names in the title if possible): ${preferredPeople.join(', ')}`
+      : '';
+  const basePrompt = await renderPromptTemplate(
     mode === 'analysis' ? 'title_suggestions.analysis' : 'title_suggestions.context',
-    TITLE_SUGGESTIONS_BASE_PROMPT(modeInstruction)
+    TITLE_SUGGESTIONS_BASE_PROMPT(modeInstruction),
+    {
+      modeInstruction,
+      preferredPeopleHint,
+    }
   );
+  const prompt =
+    preferredPeopleHint && !basePrompt.includes(preferredPeopleHint)
+      ? `${basePrompt}\n\n${preferredPeopleHint}`
+      : basePrompt;
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
       {
         role: 'developer',
         type: 'message',
-          content: [
-            {
-              type: 'input_text',
-              text: prompt,
-            },
-          ],
-        },
+        content: [
+          {
+            type: 'input_text',
+            text: prompt,
+          },
+        ],
+      },
       {
         role: 'user',
         type: 'message',
@@ -375,13 +393,13 @@ async function generateSingleTitle(emberContext: string) {
       {
         role: 'developer',
         type: 'message',
-          content: [
-            {
-              type: 'input_text',
-              text: prompt,
-            },
-          ],
-        },
+        content: [
+          {
+            type: 'input_text',
+            text: prompt,
+          },
+        ],
+      },
       {
         role: 'user',
         type: 'message',
@@ -420,6 +438,10 @@ export async function GET(
     }
 
     const forceRefresh = request.nextUrl.searchParams.get('refresh') === '1';
+    const preferredPeopleParam = request.nextUrl.searchParams.get('preferredPeople');
+    const preferredPeople = preferredPeopleParam
+      ? preferredPeopleParam.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
     const cachedImage = await prisma.image.findUnique({
       where: { id },
       select: {
@@ -427,7 +449,7 @@ export async function GET(
       },
     });
 
-    if (!forceRefresh) {
+    if (!forceRefresh && preferredPeople.length === 0) {
       const cachedSuggestions = parseSmartTitleSuggestionCache(
         cachedImage?.smartTitleSuggestionsJson
       );
@@ -541,8 +563,8 @@ export async function GET(
       ).values()
     );
     const [analysisSuggestions, contextSuggestions, contributorQuotes] = await Promise.all([
-      generateThreeTitles(analysisContext || context.promptContext, 'analysis'),
-      generateThreeTitles(humanContext || context.promptContext, 'context'),
+      generateThreeTitles(analysisContext || context.promptContext, 'analysis', preferredPeople.length > 0 ? preferredPeople : undefined),
+      generateThreeTitles(humanContext || context.promptContext, 'context', preferredPeople.length > 0 ? preferredPeople : undefined),
       generateQuotedTitleSuggestions(quoteSourceEntries),
     ]);
     const suggestions = Array.from(

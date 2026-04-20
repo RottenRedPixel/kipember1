@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { LayoutGrid, Plus, User } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import HeaderMenu from '@/components/HeaderMenu';
 
@@ -12,17 +13,6 @@ type EmberMobileTopBarProps = {
   menuAuthMode?: 'signed-in' | 'signed-out' | 'detect';
   variant?: 'auto' | 'text' | 'icons';
 };
-
-function GridDotsIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <circle cx="8" cy="8" r="2.15" />
-      <circle cx="16" cy="8" r="2.15" />
-      <circle cx="8" cy="16" r="2.15" />
-      <circle cx="16" cy="16" r="2.15" />
-    </svg>
-  );
-}
 
 function EmberSparkIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
@@ -36,24 +26,6 @@ function EmberSparkIcon({ className = 'h-5 w-5' }: { className?: string }) {
       <path d="M15.2 15.2a.9.9 0 0 1 1.27 0l2.16 2.16a.9.9 0 1 1-1.27 1.27L15.2 16.47a.9.9 0 0 1 0-1.27Z" />
       <path d="M18.63 5.37a.9.9 0 0 1 0 1.27L16.47 8.8A.9.9 0 1 1 15.2 7.53l2.16-2.16a.9.9 0 0 1 1.27 0Z" />
       <path d="M8.8 15.2a.9.9 0 0 1 0 1.27l-2.16 2.16a.9.9 0 1 1-1.27-1.27l2.16-2.16a.9.9 0 0 1 1.27 0Z" />
-    </svg>
-  );
-}
-
-function PlusIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M12 5v14" />
-      <path d="M5 12h14" />
-    </svg>
-  );
-}
-
-function PersonIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M12 12.25a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" />
-      <path d="M5 19.25c1.35-2.8 3.78-4.25 7-4.25s5.65 1.45 7 4.25" />
     </svg>
   );
 }
@@ -132,7 +104,7 @@ export default function EmberMobileTopBar({
         </Link>
 
         <Link href={embersHref} className={iconButtonClass} aria-label="Your Embers">
-          <GridDotsIcon className="h-[0.98rem] w-[0.98rem]" />
+          <LayoutGrid className="h-[0.98rem] w-[0.98rem]" />
         </Link>
 
         <button
@@ -141,12 +113,12 @@ export default function EmberMobileTopBar({
           className={iconButtonClass}
           aria-label="Add Ember"
         >
-          <PlusIcon className="h-[1rem] w-[1rem]" />
+          <Plus className="h-[1rem] w-[1rem]" />
         </button>
         </div>
 
         <Link href={accountHref} className={iconButtonClass} aria-label="Account">
-          <PersonIcon className="h-[0.96rem] w-[0.96rem]" />
+          <User className="h-[0.96rem] w-[0.96rem]" />
         </Link>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@/generated/prisma/client';
 import { requireApiUser } from '@/lib/auth-server';
 import { retriever } from '@/lib/context-retrieval';
 import { isFeatureEnabled, renderPromptTemplate } from '@/lib/control-plane';
@@ -68,9 +69,9 @@ Rules:
 - If different sources disagree, say that the information is mixed.
 - If the answer is not supported by the context, say you do not know yet.
 - When useful, attribute details to contributors by name.
-- Keep answers clear, conversational, and concise.
-- If the user shares a new memory detail in their latest message, you may acknowledge it as something they just told you.
-- If the user shares a concrete new detail without asking a direct question, respond briefly and ask at most one short follow-up question that would deepen the memory.
+- Keep answers very short — 1 to 2 sentences maximum. Never write more than 2 sentences.
+- Do not use lists, headers, or multiple paragraphs.
+- If the user shares a new memory detail, acknowledge it in one sentence and ask one short follow-up question at most.
 
 CONTEXT:
 {{context}}`;
@@ -223,6 +224,13 @@ function getStoredQuestion(questionType: AskMemoryTopic) {
     : 'Additional detail shared in Ask Ember';
 }
 
+function isUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  );
+}
+
 async function analyzeAskMemoryCapture({
   context,
   recentTurns,
@@ -307,17 +315,164 @@ ${message}`,
 }
 
 async function ensureContributorConversation(contributorId: string) {
-  return prisma.conversation.upsert({
+  const existing = await prisma.conversation.findUnique({
     where: {
       contributorId,
     },
-    update: {},
-    create: {
-      contributorId,
-      status: 'active',
-      currentStep: 'followup',
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    return await prisma.conversation.create({
+      data: {
+        contributorId,
+        status: 'active',
+        currentStep: 'followup',
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const racedConversation = await prisma.conversation.findUnique({
+      where: {
+        contributorId,
+      },
+    });
+
+    if (!racedConversation) {
+      throw error;
+    }
+
+    return racedConversation;
+  }
+}
+
+async function ensureChatSession({
+  browserId,
+  imageId,
+  userId,
+}: {
+  browserId: string;
+  imageId: string;
+  userId: string;
+}) {
+  const existingUserSession = await prisma.chatSession.findUnique({
+    where: {
+      userId_imageId: {
+        userId,
+        imageId,
+      },
     },
   });
+
+  if (existingUserSession) {
+    return existingUserSession;
+  }
+
+  try {
+    return await prisma.chatSession.create({
+      data: {
+        browserId,
+        imageId,
+        userId,
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const racedUserSession = await prisma.chatSession.findUnique({
+      where: {
+        userId_imageId: {
+          userId,
+          imageId,
+        },
+      },
+    });
+
+    if (racedUserSession) {
+      return racedUserSession;
+    }
+
+    const existingBrowserSession = await prisma.chatSession.findUnique({
+      where: {
+        browserId_imageId: {
+          browserId,
+          imageId,
+        },
+      },
+    });
+
+    if (existingBrowserSession) {
+      if (existingBrowserSession.userId === userId) {
+        return existingBrowserSession;
+      }
+
+      if (!existingBrowserSession.userId) {
+        try {
+          return await prisma.chatSession.update({
+            where: { id: existingBrowserSession.id },
+            data: { userId },
+          });
+        } catch (updateError) {
+          if (!isUniqueConstraintError(updateError)) {
+            throw updateError;
+          }
+
+          const racedUpdatedSession = await prisma.chatSession.findUnique({
+            where: {
+              userId_imageId: {
+                userId,
+                imageId,
+              },
+            },
+          });
+
+          if (racedUpdatedSession) {
+            return racedUpdatedSession;
+          }
+
+          throw updateError;
+        }
+      }
+    }
+
+    const replacementBrowserId = randomUUID();
+    try {
+      return await prisma.chatSession.create({
+        data: {
+          browserId: replacementBrowserId,
+          imageId,
+          userId,
+        },
+      });
+    } catch (retryError) {
+      if (!isUniqueConstraintError(retryError)) {
+        throw retryError;
+      }
+
+      const finalUserSession = await prisma.chatSession.findUnique({
+        where: {
+          userId_imageId: {
+            userId,
+            imageId,
+          },
+        },
+      });
+
+      if (finalUserSession) {
+        return finalUserSession;
+      }
+
+      throw retryError;
+    }
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -358,20 +513,9 @@ export async function POST(request: NextRequest) {
 
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
+    const userId = auth.user.id;
 
-    const session = await prisma.chatSession.upsert({
-      where: {
-        browserId_imageId: {
-          browserId,
-          imageId,
-        },
-      },
-      create: {
-        browserId,
-        imageId,
-      },
-      update: {},
-    });
+    const session = await ensureChatSession({ browserId, imageId, userId });
 
     const history = await prisma.chatMessage.findMany({
       where: { sessionId: session.id },
@@ -379,10 +523,12 @@ export async function POST(request: NextRequest) {
       take: HISTORY_LIMIT,
     });
 
-    const conversationHistory = history.map((entry) => ({
-      role: entry.role as 'user' | 'assistant',
-      content: entry.content,
-    }));
+    const conversationHistory = history
+      .filter((entry) => !entry.imageFilename) // skip image-only messages from AI context
+      .map((entry) => ({
+        role: entry.role as 'user' | 'assistant',
+        content: entry.content,
+      }));
 
     await prisma.chatMessage.create({
       data: {
@@ -501,8 +647,8 @@ export async function POST(request: NextRequest) {
       response,
       storedMemory,
     });
-    if (!existingBrowserId) {
-      nextResponse.cookies.set(COOKIE_NAME, browserId, {
+    if (!existingBrowserId || session.browserId !== browserId) {
+      nextResponse.cookies.set(COOKIE_NAME, session.browserId, {
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
@@ -547,41 +693,162 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    const browserId = request.cookies.get(COOKIE_NAME)?.value;
-    if (!browserId) {
-      return NextResponse.json({ messages: [] });
-    }
+    const userId = auth.user.id;
 
-    const session = await prisma.chatSession.findUnique({
-      where: {
-        browserId_imageId: {
-          browserId,
-          imageId,
+    const [session, contributor] = await Promise.all([
+      prisma.chatSession.findUnique({
+        where: { userId_imageId: { userId, imageId } },
+      }),
+      prisma.contributor.findFirst({
+        where: { imageId, userId },
+        select: {
+          id: true,
+          conversation: {
+            select: {
+              responses: {
+                where: { source: 'voice' },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, question: true, answer: true, createdAt: true },
+              },
+            },
+          },
         },
-      },
+      }),
+    ]);
+
+    // Load chat messages (may be null if no session yet)
+    const history = session
+      ? await prisma.chatMessage.findMany({
+          where: { sessionId: session.id },
+          orderBy: { createdAt: 'asc' },
+          take: HISTORY_LIMIT,
+        })
+      : [];
+
+    // Load voice clips for this contributor so we can attach audioUrl to responses
+    const clips = contributor
+      ? await prisma.voiceCallClip.findMany({
+          where: { imageId, contributorId: contributor.id },
+          select: { quote: true, audioUrl: true },
+        })
+      : [];
+
+    // Build chat message entries
+    type MergedEntry = {
+      role: string;
+      content: string;
+      source: 'web' | 'voice';
+      imageFilename: string | null;
+      audioUrl: string | null;
+      createdAt: string;
+    };
+
+    const chatEntries: MergedEntry[] = history.map((entry) => ({
+      role: entry.role,
+      content: entry.content,
+      source: 'web',
+      imageFilename: entry.imageFilename ?? null,
+      audioUrl: null,
+      createdAt: entry.createdAt.toISOString(),
+    }));
+
+    // Build voice response entries (each Response = one assistant Q + one user A)
+    const voiceResponses = contributor?.conversation?.responses ?? [];
+    const voiceEntries: MergedEntry[] = voiceResponses.flatMap((response) => {
+      // Try to find a matching clip whose quote appears in the answer
+      const matchedClip = clips.find(
+        (clip) =>
+          clip.audioUrl &&
+          clip.quote.trim().length > 10 &&
+          response.answer.includes(clip.quote.trim().slice(0, 40))
+      );
+      const audioUrl = matchedClip?.audioUrl ?? null;
+
+      return [
+        {
+          role: 'assistant',
+          content: response.question,
+          source: 'voice' as const,
+          imageFilename: null,
+          audioUrl: null,
+          createdAt: response.createdAt.toISOString(),
+        },
+        {
+          role: 'user',
+          content: response.answer,
+          source: 'voice' as const,
+          imageFilename: null,
+          audioUrl,
+          createdAt: response.createdAt.toISOString(),
+        },
+      ];
     });
 
-    if (!session) {
-      return NextResponse.json({ messages: [] });
-    }
+    // Merge and sort by createdAt
+    const merged = [...chatEntries, ...voiceEntries].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
 
-    const history = await prisma.chatMessage.findMany({
-      where: { sessionId: session.id },
-      orderBy: { createdAt: 'asc' },
-      take: HISTORY_LIMIT,
-    });
-
-    return NextResponse.json({
-      messages: history.map((entry) => ({
-        role: entry.role,
-        content: entry.content,
-      })),
-    });
+    return NextResponse.json({ messages: merged });
   } catch (error) {
     console.error('Chat history error:', error);
     return NextResponse.json(
       { error: 'Failed to load chat history' },
       { status: 500 }
     );
+  }
+}
+
+// PATCH — record an image upload event in chat history (no AI response)
+export async function PATCH(request: NextRequest) {
+  try {
+    const auth = await requireApiUser();
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { imageId, imageFilename } = await request.json();
+    if (!imageId || !imageFilename) {
+      return NextResponse.json({ error: 'imageId and imageFilename are required' }, { status: 400 });
+    }
+
+    const accessType = await getImageAccessType(auth.user.id, imageId);
+    if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+
+    const userId = auth.user.id;
+    const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
+    const browserId = existingBrowserId || randomUUID();
+
+    const session = await ensureChatSession({ browserId, imageId, userId });
+
+    await prisma.chatMessage.createMany({
+      data: [
+        {
+          sessionId: session.id,
+          role: 'user',
+          content: '',
+          imageFilename,
+        },
+        {
+          sessionId: session.id,
+          role: 'assistant',
+          content: "Got it! I received your photo and I'm starting to analyze it.",
+        },
+      ],
+    });
+
+    const response = NextResponse.json({ ok: true });
+    if (!existingBrowserId || session.browserId !== browserId) {
+      response.cookies.set(COOKIE_NAME, session.browserId, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: COOKIE_MAX_AGE,
+        path: '/',
+      });
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Chat image record error:', error);
+    return NextResponse.json({ error: 'Failed to record image' }, { status: 500 });
   }
 }

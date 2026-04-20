@@ -1,8 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { ensureImageOwnerAccess, getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { persistUploadedMedia } from '@/lib/media-upload';
+import { analyzeAttachmentImage } from '@/lib/image-analysis';
+import { generateWikiForImage } from '@/lib/wiki-generator';
+
+export const runtime = 'nodejs';
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await requireApiUser();
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { id } = await params;
+    const accessType = await getImageAccessType(auth.user.id, id);
+    if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+
+    const attachments = await prisma.imageAttachment.findMany({
+      where: { imageId: id },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        filename: true,
+        mediaType: true,
+        posterFilename: true,
+        durationSeconds: true,
+        originalName: true,
+        description: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ attachments });
+  } catch (error) {
+    console.error('Attachment fetch error:', error);
+    return NextResponse.json({ error: 'Failed to fetch attachments' }, { status: 500 });
+  }
+}
 
 export async function POST(
   request: NextRequest,
@@ -90,6 +128,29 @@ export async function POST(
 
       if (persistedMedia.warning) {
         warnings.push(`${file.name}: ${persistedMedia.warning}`);
+      }
+
+      // For image/video attachments, run visual analysis in the background
+      if (persistedMedia.mediaType === 'IMAGE' || persistedMedia.mediaType === 'VIDEO') {
+        const analyzeFilename =
+          persistedMedia.mediaType === 'VIDEO' && persistedMedia.posterFilename
+            ? persistedMedia.posterFilename
+            : persistedMedia.filename;
+        const attachmentId = attachment.id;
+        const imageId = image.id;
+
+        void (async () => {
+          const analysisText = await analyzeAttachmentImage(analyzeFilename, file.name);
+          if (analysisText) {
+            await prisma.imageAttachment.update({
+              where: { id: attachmentId },
+              data: { analysisText },
+            });
+            await generateWikiForImage(imageId).catch((err) => {
+              console.error('Wiki regen after attachment analysis failed:', err);
+            });
+          }
+        })();
       }
     }
 

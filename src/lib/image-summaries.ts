@@ -14,8 +14,10 @@ export type AccessibleImageSummary = {
   title: string | null;
   description: string | null;
   createdAt: Date;
+  capturedAt: Date | null;
   shareToNetwork: boolean;
   accessType: 'owner' | 'contributor' | 'network';
+  photoCount: number; // total photos including main (1 + image/video attachments)
 };
 
 const globalForImageSummaries = globalThis as unknown as {
@@ -73,6 +75,13 @@ export async function getAccessibleImagesForUser(userId: string) {
         select: { id: true },
         take: 1,
       },
+      analysis: {
+        select: { capturedAt: true },
+      },
+      attachments: {
+        where: { mediaType: { in: ['IMAGE', 'VIDEO'] } },
+        select: { id: true },
+      },
     },
   });
 
@@ -86,7 +95,9 @@ export async function getAccessibleImagesForUser(userId: string) {
     title: image.title,
     description: image.description,
     createdAt: image.createdAt,
+    capturedAt: image.analysis?.capturedAt ?? null,
     shareToNetwork: image.shareToNetwork,
+    photoCount: 1 + image.attachments.length,
     accessType:
       image.ownerId === userId
         ? 'owner'

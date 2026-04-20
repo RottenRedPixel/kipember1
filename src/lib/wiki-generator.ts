@@ -234,12 +234,14 @@ function extractAskVoiceNoteText(description: string | null | undefined) {
 function buildFallbackStorySnapshot({
   imageTitle,
   imageDescription,
+  confirmedPeople,
   responses,
   callSummaries,
   callHighlights,
 }: {
   imageTitle: string;
   imageDescription: string | null;
+  confirmedPeople: string[];
   responses: Array<{
     contributorName: string;
     questionType: string;
@@ -279,6 +281,7 @@ function buildFallbackStorySnapshot({
 
   const parts = [
     contextAnswer ? excerptText(contextAnswer, 320) : null,
+    confirmedPeople.length > 0 ? `People identified: ${confirmedPeople.join(', ')}` : null,
     whereAnswer ? `Location noted: ${excerptText(whereAnswer, 140)}` : null,
     whenAnswer ? `Timing noted: ${excerptText(whenAnswer, 140)}` : null,
     whyAnswer ? `Why it mattered: ${excerptText(whyAnswer, 180)}` : null,
@@ -332,6 +335,7 @@ async function fetchImageForWiki(imageId: string) {
           originalName: true,
           mediaType: true,
           description: true,
+          analysisText: true,
           createdAt: true,
         },
       },
@@ -627,6 +631,21 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         } => Boolean(note.answer)
       );
 
+    const askConversationTextSet = new Set(
+      (contributor.conversation?.messages || [])
+        .filter((message) => {
+          const source = cleanInlineText(message.source)?.toLowerCase();
+          return source === 'web' || source === 'voice';
+        })
+        .map((message) => normalizeMemoryText(message.content))
+        .filter((text) => Boolean(text))
+    );
+
+    const dedupedAskNotes = askDerivedNotes.filter((note) => {
+      const normalizedAnswer = normalizeMemoryText(note.answer);
+      return normalizedAnswer ? !askConversationTextSet.has(normalizedAnswer) : true;
+    });
+
     const askConversationMessages =
       contributor.conversation?.messages
         ?.filter((message) => {
@@ -642,12 +661,12 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         .filter((line): line is string => Boolean(line))
         .join('\n') || null;
 
-    if (askDerivedNotes.length > 0 || askConversationMessages) {
+    if (dedupedAskNotes.length > 0 || askConversationMessages) {
       storyCircleEntries.push({
         contributorLabel,
         kind: getContributorKind(contributor),
         createdAt:
-          askDerivedNotes[askDerivedNotes.length - 1]?.createdAt ||
+          dedupedAskNotes[dedupedAskNotes.length - 1]?.createdAt ||
           contributor.conversation?.updatedAt ||
           contributor.createdAt,
         summary: null,
@@ -656,7 +675,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         sourceLabel: 'Ask Ember memory notes',
         askConversationExcerpt: askConversationMessages,
         clips: [],
-        askNotes: askDerivedNotes.map((note) => ({
+        askNotes: dedupedAskNotes.map((note) => ({
           topic: note.questionType,
           answer: note.answer,
           source: note.source,
@@ -830,6 +849,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     storySnapshot = buildFallbackStorySnapshot({
       imageTitle,
       imageDescription: image.description,
+      confirmedPeople,
       responses: allResponses,
       callSummaries,
       callHighlights,
@@ -972,7 +992,11 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
                   ? 'Audio'
                   : 'Photo';
             const note = cleanInlineText(attachment.description);
-            return `- ${typeLabel} ${index + 1}: ${attachment.originalName}${note ? ` — ${note}` : ''}`;
+            const listLine = `- ${typeLabel} ${index + 1}: ${attachment.originalName}${note ? ` — ${note}` : ''}`;
+            const analysis = attachment.mediaType !== 'AUDIO' && attachment.analysisText?.trim()
+              ? `\n\n### ${typeLabel} ${index + 1}: ${attachment.originalName}\n\n${attachment.analysisText.trim()}`
+              : '';
+            return listLine + analysis;
           })
           .join('\n')
       : 'No supporting media has been added yet.';

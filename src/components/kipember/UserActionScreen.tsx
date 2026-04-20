@@ -1,14 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, ChevronLeft, Plus, User, Users } from 'lucide-react';
+import { Camera, ChevronDown, ChevronLeft, FileStack, Plus, User, Users } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { USER_ACTIONS, USER_ICONS } from '@/app/user/constants';
 import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
 import type { FriendNetworkPayload } from '@/lib/friend-network';
 import type { AccessibleImageSummary } from '@/lib/image-summaries';
+import AvatarCropModal from '@/components/kipember/AvatarCropModal';
 
 type ImageSummary = AccessibleImageSummary & {
   mediaType: EmberMediaType;
@@ -20,7 +21,12 @@ type Profile = {
   name: string | null;
   email: string;
   phoneNumber: string | null;
+  avatarUrl?: string | null;
 };
+
+function initials(value: string) {
+  return value.split(/\s+/).filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+}
 
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A-Z', 'Z-A'];
 
@@ -63,6 +69,10 @@ export default function UserActionScreen({
     email: initialProfile?.email || '',
     phoneNumber: initialProfile?.phoneNumber || '',
   });
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [friendEmail, setFriendEmail] = useState('');
   const [status, setStatus] = useState('');
   const isEmberList = action === 'my-embers' || action === 'shared-embers';
@@ -98,6 +108,7 @@ export default function UserActionScreen({
             email: payload.user.email,
             phoneNumber: payload.user.phoneNumber || '',
           });
+          setAvatarUrl(payload.user.avatarUrl ?? null);
         })
         .catch(() => undefined);
     }
@@ -118,6 +129,7 @@ export default function UserActionScreen({
     return null;
   }
 
+  const UserIcon = USER_ICONS[action];
   const sort = searchParams.get('sort') ?? 'Newest';
   const showSort = searchParams.get('sort-open') === '1';
   const emberSet =
@@ -169,6 +181,26 @@ export default function UserActionScreen({
     }
   }
 
+  async function handleAvatarUpload(blob: Blob) {
+    setAvatarUploading(true);
+    setCropSrc(null);
+    const formData = new FormData();
+    formData.append('file', blob, 'avatar.jpg');
+    try {
+      const response = await fetch('/api/profile/avatar', { method: 'POST', body: formData });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && typeof payload.avatarUrl === 'string') {
+        setAvatarUrl(payload.avatarUrl + '?t=' + Date.now());
+      } else {
+        setStatus(payload?.error || 'Failed to upload avatar.');
+      }
+    } catch {
+      setStatus('Failed to upload avatar.');
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
   return (
     <div className={`fixed inset-0 flex ${rootView ? 'flex-col' : ''}`}>
       {!rootView ? <Link href="/home" className="w-[7%] h-full" /> : null}
@@ -185,18 +217,7 @@ export default function UserActionScreen({
         >
           {rootView ? (
             <div className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full" style={{ background: 'var(--bg-surface)' }}>
-              <svg
-                width={24}
-                height={24}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="var(--text-primary)"
-                strokeWidth={1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {USER_ICONS[action]}
-              </svg>
+              {UserIcon ? <UserIcon size={24} color="var(--text-primary)" strokeWidth={1.6} /> : null}
             </div>
           ) : (
             <Link
@@ -207,20 +228,8 @@ export default function UserActionScreen({
               <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
             </Link>
           )}
-          {!rootView && USER_ICONS[action] ? (
-            <svg
-              width={24}
-              height={24}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="var(--text-primary)"
-              strokeWidth={1.6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="flex-shrink-0"
-            >
-              {USER_ICONS[action]}
-            </svg>
+          {!rootView && UserIcon ? (
+            <UserIcon size={24} color="var(--text-primary)" strokeWidth={1.6} className="flex-shrink-0" />
           ) : null}
           <h2 className="text-white font-medium text-base">{title}</h2>
           {rootView ? (
@@ -301,6 +310,11 @@ export default function UserActionScreen({
                         alt={image.title || image.originalName}
                         className="absolute inset-0 h-full w-full object-cover"
                       />
+                      {image.photoCount > 1 ? (
+                        <div className="absolute top-1.5 right-1.5 z-10">
+                          <FileStack size={16} className="text-white drop-shadow-md" />
+                        </div>
+                      ) : null}
                     </Link>
                   ))}
                 </div>
@@ -308,14 +322,59 @@ export default function UserActionScreen({
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto no-scrollbar py-5 flex flex-col gap-4">
+              <div className="flex flex-col items-center gap-3 py-4">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.currentTarget.value = '';
+                    if (!file) return;
+                    const url = URL.createObjectURL(file);
+                    setCropSrc(url);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative cursor-pointer"
+                  style={{ width: 80, height: 80 }}
+                >
+                  <div
+                    className="w-full h-full rounded-full flex items-center justify-center overflow-hidden"
+                    style={{ background: 'rgba(249,115,22,0.85)' }}
+                  >
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-white text-xl font-medium">
+                        {initials(form.name || form.email || 'U')}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ background: '#f97316', border: '2px solid var(--bg-screen)' }}
+                  >
+                    <Camera size={12} color="white" strokeWidth={2} />
+                  </div>
+                </button>
+                {avatarUploading ? (
+                  <span className="text-xs text-white/50">Uploading...</span>
+                ) : (
+                  <span className="text-xs text-white/40">Tap to change photo</span>
+                )}
+              </div>
               <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <p className="text-white/30 text-xs font-medium mb-3">Profile</p>
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col">
                   {[
                     { key: 'name', placeholder: 'Your name' },
                     { key: 'email', placeholder: 'Email address' },
                     { key: 'phoneNumber', placeholder: 'Phone number' },
-                  ].map((field) => (
+                  ].map((field, index) => (
                     <input
                       key={field.key}
                       value={form[field.key as keyof typeof form]}
@@ -323,15 +382,17 @@ export default function UserActionScreen({
                         setForm((current) => ({ ...current, [field.key]: event.target.value }))
                       }
                       placeholder={field.placeholder}
-                      className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                      style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
+                      className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                      style={{ borderTop: index > 0 ? '1px solid var(--border-subtle)' : 'none' }}
                     />
                   ))}
                 </div>
+              </div>
+              <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={saveProfile}
-                  className="mt-4 w-full rounded-full text-white text-sm font-medium btn-primary"
+                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-primary"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
                   Save Profile
@@ -340,23 +401,22 @@ export default function UserActionScreen({
 
               <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <p className="text-white/30 text-xs font-medium mb-3">Add to Your Network</p>
-                <div className="flex gap-2">
-                  <input
-                    value={friendEmail}
-                    onChange={(event) => setFriendEmail(event.target.value)}
-                    placeholder="Friend email"
-                    className="flex-1 h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={addFriend}
-                    className="rounded-full px-4 text-white text-sm font-medium btn-secondary"
-                    style={{ border: '1.5px solid var(--border-btn)' }}
-                  >
-                    Add
-                  </button>
-                </div>
+                <input
+                  value={friendEmail}
+                  onChange={(event) => setFriendEmail(event.target.value)}
+                  placeholder="Friend email"
+                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                />
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={addFriend}
+                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-secondary"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Add Friend
+                </button>
               </div>
 
               {status ? <p className="text-sm text-white/60">{status}</p> : null}
@@ -378,6 +438,13 @@ export default function UserActionScreen({
           )}
         </div>
       </div>
+      {cropSrc ? (
+        <AvatarCropModal
+          imageSrc={cropSrc}
+          onConfirm={(blob) => { void handleAvatarUpload(blob); }}
+          onCancel={() => { URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+        />
+      ) : null}
     </div>
   );
 }

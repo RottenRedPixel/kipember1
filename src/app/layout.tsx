@@ -26,6 +26,7 @@ export default function RootLayout({
       lang="en"
       className={`${ubuntu.variable} h-full antialiased`}
       style={{ fontFamily: 'var(--font-ubuntu), sans-serif' }}
+      suppressHydrationWarning
     >
       <head>
         <script

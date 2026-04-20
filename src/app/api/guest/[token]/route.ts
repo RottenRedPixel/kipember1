@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { isGuestUserEmail } from '@/lib/guest-embers';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
 export async function GET(
@@ -38,11 +37,6 @@ export async function GET(
         },
         image: {
           include: {
-            owner: {
-              select: {
-                email: true,
-              },
-            },
             analysis: {
               select: {
                 status: true,
@@ -65,15 +59,17 @@ export async function GET(
       },
     });
 
-    if (!contributor || !isGuestUserEmail(contributor.image.owner.email)) {
+    if (!contributor) {
       return NextResponse.json(
         { error: 'Guest memory not found' },
-        {
-          status: 404,
-          headers: {
-            'Cache-Control': 'no-store',
-          },
-        }
+        { status: 404, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    if (contributor.image.keepPrivate) {
+      return NextResponse.json(
+        { error: 'This ember is private.' },
+        { status: 403, headers: { 'Cache-Control': 'no-store' } }
       );
     }
 
@@ -113,11 +109,6 @@ export async function GET(
         },
         image: {
           include: {
-            owner: {
-              select: {
-                email: true,
-              },
-            },
             analysis: {
               select: {
                 status: true,
@@ -140,7 +131,7 @@ export async function GET(
       },
     });
 
-    if (!refreshedContributor || !isGuestUserEmail(refreshedContributor.image.owner.email)) {
+    if (!refreshedContributor) {
       return NextResponse.json(
         { error: 'Guest memory not found' },
         {
@@ -181,6 +172,17 @@ export async function GET(
           : null,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
         wiki: refreshedContributor.image.wiki,
+        attachments: await prisma.imageAttachment
+          .findMany({
+            where: { imageId: refreshedContributor.image.id },
+            select: { id: true, filename: true, mediaType: true, posterFilename: true },
+            orderBy: { createdAt: 'asc' },
+          })
+          .catch(() => []),
+        storyCutScript: await prisma.storyCut
+          .findUnique({ where: { imageId: refreshedContributor.image.id }, select: { script: true } })
+          .then((sc) => sc?.script ?? null)
+          .catch(() => null),
       },
       {
         headers: {

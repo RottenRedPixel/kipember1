@@ -220,19 +220,31 @@ async function getOrCreateTtsSegmentPath({
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireApiUser();
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const accessType = await getImageAccessType(auth.user.id, id);
-    if (!accessType) {
-      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+
+    // Allow guest access via contributor token
+    const guestToken = request.nextUrl.searchParams.get('token');
+    if (guestToken) {
+      const contributor = await prisma.contributor.findUnique({
+        where: { token: guestToken },
+        select: { imageId: true },
+      });
+      if (!contributor || contributor.imageId !== id) {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
+    } else {
+      const auth = await requireApiUser();
+      if (!auth) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const accessType = await getImageAccessType(auth.user.id, id);
+      if (!accessType) {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
     }
 
     const image = await prisma.image.findUnique({

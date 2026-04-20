@@ -1,6 +1,5 @@
-import AuthTopNav from '@/components/AuthTopNav';
-import GuestMemoryExperience from '@/components/GuestMemoryExperience';
-import { getCurrentAuth } from '@/lib/auth-server';
+import { Suspense } from 'react';
+import GuestEmberScreen from '@/components/kipember/GuestEmberScreen';
 
 export default async function GuestMemoryPage({
   params,
@@ -8,16 +7,10 @@ export default async function GuestMemoryPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const auth = await getCurrentAuth();
 
   return (
-    <main className="ember-page">
-      <AuthTopNav
-        signedIn={Boolean(auth)}
-        userName={auth?.user.name || null}
-        userEmail={auth?.user.email || null}
-      />
-      <GuestMemoryExperience token={token} />
-    </main>
+    <Suspense>
+      <GuestEmberScreen token={token} />
+    </Suspense>
   );
 }

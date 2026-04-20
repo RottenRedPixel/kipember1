@@ -1,5 +1,7 @@
 'use client';
 
+import { Loader2 } from 'lucide-react';
+
 type UploadProcessingOverlayProps = {
   open: boolean;
   stageIndex: number;
@@ -21,25 +23,6 @@ const PROCESSING_STAGES = [
   },
 ] as const;
 
-function SpinnerCycleIcon() {
-  return (
-    <svg
-      viewBox="0 0 120 120"
-      fill="none"
-      className="h-28 w-28 animate-[spin_5s_linear_infinite]"
-      aria-hidden="true"
-    >
-      <path d="M38 24c9-5 24-5 33 0" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
-      <path d="M66 14l10 10-13 2" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M86 39c6 8 9 21 4 31" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
-      <path d="m94 63-1 14-11-7" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M77 88c-8 7-20 11-31 7" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
-      <path d="m53 98-13-2 8-10" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M32 81c-7-8-10-20-6-31" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
-      <path d="m24 57 2-13 10 7" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 export default function UploadProcessingOverlay({
   open,
@@ -61,7 +44,7 @@ export default function UploadProcessingOverlay({
 
           <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center text-center">
             <div className="text-[var(--ember-orange-deep)]">
-              <SpinnerCycleIcon />
+              <Loader2 className="h-28 w-28 animate-spin" aria-hidden="true" />
             </div>
 
             <span className="kip-pill mt-8">{currentMediaLabel}</span>

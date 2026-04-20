@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 import type { NarrationPreference } from '@/lib/elevenlabs';
+import { Play, BookOpen, Sparkles, Globe } from 'lucide-react';
 
 type PlayPageData = {
   id: string;
@@ -26,41 +27,6 @@ type PlayPageData = {
   } | null;
 };
 
-function PlayIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="m8 5.75 10 6.25L8 18.25V5.75Z" />
-    </svg>
-  );
-}
-
-function BookIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="M5.75 5.5a2.25 2.25 0 0 1 2.25-2.25h10.25v15.5H8a2.25 2.25 0 0 0-2.25 2.25V5.5Z" />
-      <path d="M5.75 5.5a2.25 2.25 0 0 1 2.25-2.25H18.5v15.5H8a2.25 2.25 0 0 0-2.25 2.25" />
-    </svg>
-  );
-}
-
-function SparkIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <path d="m12 2.75 1.85 5.38 5.4 1.87-5.4 1.86L12 17.25l-1.85-5.39-5.4-1.86 5.4-1.87L12 2.75Z" />
-    </svg>
-  );
-}
-
-function BallIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-      <circle cx="12" cy="12" r="8.25" />
-      <path d="M12 3.75c2.35 2.2 3.52 4.95 3.52 8.25s-1.17 6.05-3.52 8.25" />
-      <path d="M12 3.75c-2.35 2.2-3.52 4.95-3.52 8.25s1.17 6.05 3.52 8.25" />
-      <path d="M4 12h16" />
-    </svg>
-  );
-}
 
 export default function PlayEmberPage() {
   const params = useParams<{ id: string }>();
@@ -319,7 +285,7 @@ export default function PlayEmberPage() {
           href={`/image/${imageId}/kids`}
           className="ember-card rounded-[1.8rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
         >
-          <BookIcon className="h-5 w-5 text-[var(--ember-orange)]" />
+          <BookOpen className="h-5 w-5 text-[var(--ember-orange)]" />
           <div className="mt-4 text-xl font-semibold text-[var(--ember-text)]">Kids Mode</div>
           <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
             Turn the memory into an illustrated storybook.
@@ -332,7 +298,7 @@ export default function PlayEmberPage() {
           disabled={!data.wiki?.content}
           className="ember-card rounded-[1.8rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <PlayIcon className="h-5 w-5 text-[var(--ember-orange)]" />
+          <Play className="h-5 w-5 text-[var(--ember-orange)]" />
           <div className="mt-4 text-xl font-semibold text-[var(--ember-text)]">
             {narrationState === 'loading'
               ? 'Generating narration'
@@ -349,7 +315,7 @@ export default function PlayEmberPage() {
           href={`/image/${imageId}/story-circle`}
           className="ember-card rounded-[1.8rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
         >
-          <SparkIcon className="h-5 w-5 text-[var(--ember-orange)]" />
+          <Sparkles className="h-5 w-5 text-[var(--ember-orange)]" />
           <div className="mt-4 text-xl font-semibold text-[var(--ember-text)]">Story Circle</div>
           <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
             See the full conversation trail behind the memory.
@@ -360,7 +326,7 @@ export default function PlayEmberPage() {
           href={`/image/${imageId}/sports`}
           className="ember-card rounded-[1.8rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
         >
-          <BallIcon className="h-5 w-5 text-[var(--ember-orange)]" />
+          <Globe className="h-5 w-5 text-[var(--ember-orange)]" />
           <div className="mt-4 text-xl font-semibold text-[var(--ember-text)]">Sports Mode</div>
           <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
             Add structured stats and the game story when the memory is sports-related.
