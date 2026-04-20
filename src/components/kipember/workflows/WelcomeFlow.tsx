@@ -294,14 +294,16 @@ export default function WelcomeFlow({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageId, imageFilename: uploadedFilename }),
         });
-        // Swap the transient blob URL message for a persisted filename message
-        setMessages((prev) =>
-          prev.map((m) =>
+        // Swap the transient blob URL for the persisted filename, then add Ember's acknowledgment
+        setMessages((prev) => [
+          ...prev.map((m) =>
             m.imageUrl === previewUrl
               ? { ...m, imageUrl: undefined, imageFilename: uploadedFilename }
               : m
-          )
-        );
+          ),
+          { role: 'assistant' as const, content: "Got it! I received your photo and I'm starting to analyze it." },
+        ]);
+        onConversationStateChange?.(true);
       }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Failed to add content.');
@@ -394,22 +396,33 @@ export default function WelcomeFlow({
 
       {!isLoadingHistory ? (
         <>
-          {/* Always-visible call prompt */}
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              type="button"
-              onClick={() => void triggerSelfInvite()}
-              disabled={isCalling || hasPhoneNumber === false || hasPhoneNumber === null}
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-white/60 transition disabled:opacity-40 cursor-pointer"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
-            >
-              <Phone size={11} />
-              {isCalling ? 'Calling...' : 'Get a phone call'}
-            </button>
-          </div>
-
           <div className="max-h-[30vh] overflow-y-auto pb-4 pr-1 no-scrollbar">
             <div className="flex flex-col gap-4">
+
+            {/* New session — Ember opens with a call offer */}
+            {messages.length === 0 && !welcomeBack ? (
+              <div className="flex flex-col gap-2 items-start">
+                <span className="pl-1 text-xs font-medium text-white">ember</span>
+                <div
+                  className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
+                  style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                >
+                  <p className="text-sm leading-relaxed text-white/90">
+                    Want to tell me more about this memory? I can call your phone for a quick interview.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void triggerSelfInvite()}
+                    disabled={isCalling || hasPhoneNumber === false || hasPhoneNumber === null}
+                    className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-white transition disabled:opacity-40 cursor-pointer"
+                    style={{ background: 'rgba(249,115,22,0.85)' }}
+                  >
+                    <Phone size={11} />
+                    {isCalling ? 'Calling...' : 'Call my phone'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {messages.map((message, index) => {
               const isUser = message.role === 'user';

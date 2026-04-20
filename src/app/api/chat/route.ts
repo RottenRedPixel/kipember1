@@ -797,13 +797,20 @@ export async function PATCH(request: NextRequest) {
 
     const session = await ensureChatSession({ browserId, imageId, userId });
 
-    await prisma.chatMessage.create({
-      data: {
-        sessionId: session.id,
-        role: 'user',
-        content: '',
-        imageFilename,
-      },
+    await prisma.chatMessage.createMany({
+      data: [
+        {
+          sessionId: session.id,
+          role: 'user',
+          content: '',
+          imageFilename,
+        },
+        {
+          sessionId: session.id,
+          role: 'assistant',
+          content: "Got it! I received your photo and I'm starting to analyze it.",
+        },
+      ],
     });
 
     const response = NextResponse.json({ ok: true });
