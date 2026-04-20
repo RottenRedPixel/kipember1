@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, Plus, FileStack } from 'lucide-react';
+import { ChevronDown, Plus, FileStack, LayoutGrid, LayoutList, Users, BookOpen } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import AppHeader from '@/components/kipember/AppHeader';
@@ -71,6 +71,16 @@ export default function MyEmbersScreen({
   const showSort = searchParams.get('sort-open') === '1';
   const isShared = view === 'shared';
 
+  const [isRowLayout, setIsRowLayout] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('embers-layout') === 'row';
+  });
+
+  function setLayout(row: boolean) {
+    setIsRowLayout(row);
+    localStorage.setItem('embers-layout', row ? 'row' : 'grid');
+  }
+
   const buildHref = (updates: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams.toString());
     Object.entries(updates).forEach(([key, value]) => {
@@ -120,6 +130,7 @@ export default function MyEmbersScreen({
                 Shared
               </Link>
             </div>
+
             <Link
               href="/home"
               className="flex items-center justify-center rounded-full can-hover-dim"
@@ -130,7 +141,30 @@ export default function MyEmbersScreen({
             </Link>
           </div>
 
-          {/* Sort dropdown */}
+          {/* Layout toggle + Sort dropdown */}
+          <div className="flex items-center gap-2">
+            {/* Layout toggle */}
+            <div className="flex items-center gap-0.5 rounded-xl p-1" style={{ background: 'var(--bg-surface)' }}>
+              <button
+                type="button"
+                onClick={() => setLayout(false)}
+                className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors cursor-pointer"
+                style={{ background: !isRowLayout ? 'var(--bg-screen)' : 'transparent' }}
+                aria-label="Grid view"
+              >
+                <LayoutGrid size={14} color={!isRowLayout ? '#ffffff' : 'var(--text-secondary)'} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayout(true)}
+                className="flex items-center justify-center w-7 h-7 rounded-lg transition-colors cursor-pointer"
+                style={{ background: isRowLayout ? 'var(--bg-screen)' : 'transparent' }}
+                aria-label="Row view"
+              >
+                <LayoutList size={14} color={isRowLayout ? '#ffffff' : 'var(--text-secondary)'} />
+              </button>
+            </div>
+
           <div className="relative">
             <Link
               href={buildHref({ 'sort-open': showSort ? '0' : '1' })}
@@ -157,6 +191,7 @@ export default function MyEmbersScreen({
                 ))}
               </div>
             ) : null}
+          </div>
           </div>
         </div>
 
@@ -214,6 +249,91 @@ export default function MyEmbersScreen({
                   </>
                 ) : null}
               </div>
+            </div>
+          ) : isRowLayout ? (
+            <div className="flex flex-col gap-2">
+              {sorted.map((image) => {
+                const completenessScore = [
+                  Boolean(image.title),
+                  Boolean(image.description),
+                  Boolean(image.capturedAt),
+                  image.hasLocation,
+                  image.contributorCount > 0,
+                  image.hasVoiceCall,
+                  image.hasWiki,
+                ].filter(Boolean).length;
+                const completenessPercent = (completenessScore / 7) * 100;
+                const displayDate = image.capturedAt ?? image.createdAt;
+                return (
+                  <Link
+                    key={image.id}
+                    href={`/home?id=${image.id}`}
+                    className="flex rounded-xl overflow-hidden can-hover-card"
+                    style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+                  >
+                    {/* Photo */}
+                    <div className="relative flex-shrink-0" style={{ width: 148, height: 148 }}>
+                      <img
+                        src={getPreviewMediaUrl({
+                          mediaType: image.mediaType,
+                          filename: image.filename,
+                          posterFilename: image.posterFilename,
+                        })}
+                        alt={image.title || image.originalName}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      {image.photoCount > 1 ? (
+                        <div className="absolute top-1.5 right-1.5">
+                          <FileStack size={13} className="text-white drop-shadow-md" />
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex flex-col justify-between flex-1 min-w-0 px-3 py-2.5">
+                      {/* Title + date */}
+                      <div>
+                        <p className="text-white text-sm font-medium leading-snug truncate">
+                          {image.title || image.originalName}
+                        </p>
+                        <p className="text-white/40 text-xs mt-0.5">
+                          {new Date(displayDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
+
+                      {/* Contributors + wiki completeness */}
+                      <div className="flex items-center gap-3 mt-2">
+                        {/* Contributor count */}
+                        <div className="flex items-center gap-1">
+                          <Users size={12} style={{ color: image.contributorCount > 0 ? '#f97316' : 'var(--text-secondary)' }} />
+                          <span className="text-xs" style={{ color: image.contributorCount > 0 ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)' }}>
+                            {image.contributorCount}
+                          </span>
+                        </div>
+
+                        {/* Wiki completeness bar */}
+                        <div className="flex items-center gap-1.5 flex-1">
+                          <BookOpen size={12} style={{ color: image.hasWiki ? '#f97316' : 'var(--text-secondary)', flexShrink: 0 }} />
+                          <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: 'rgba(255,255,255,0.08)' }}>
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${completenessPercent}%`,
+                                background: completenessPercent === 100
+                                  ? '#f97316'
+                                  : completenessPercent >= 60
+                                    ? 'rgba(249,115,22,0.6)'
+                                    : 'rgba(255,255,255,0.25)',
+                              }}
+                            />
+                          </div>
+                          <span className="text-white/30 text-[10px] flex-shrink-0">{completenessScore}/7</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-1.5">

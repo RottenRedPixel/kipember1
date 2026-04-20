@@ -17,7 +17,11 @@ export type AccessibleImageSummary = {
   capturedAt: Date | null;
   shareToNetwork: boolean;
   accessType: 'owner' | 'contributor' | 'network';
-  photoCount: number; // total photos including main (1 + image/video attachments)
+  photoCount: number;
+  contributorCount: number;
+  hasWiki: boolean;
+  hasLocation: boolean;
+  hasVoiceCall: boolean;
 };
 
 const globalForImageSummaries = globalThis as unknown as {
@@ -71,40 +75,54 @@ export async function getAccessibleImagesForUser(userId: string) {
       createdAt: true,
       shareToNetwork: true,
       contributors: {
-        where: { userId },
-        select: { id: true },
-        take: 1,
+        select: {
+          id: true,
+          userId: true,
+          voiceCalls: { select: { id: true }, take: 1 },
+        },
       },
       analysis: {
-        select: { capturedAt: true },
+        select: { capturedAt: true, latitude: true },
       },
       attachments: {
         where: { mediaType: { in: ['IMAGE', 'VIDEO'] } },
         select: { id: true },
       },
+      wiki: {
+        select: { id: true },
+      },
     },
   });
 
-  const value = images.map<AccessibleImageSummary>((image) => ({
-    id: image.id,
-    filename: image.filename,
-    mediaType: image.mediaType,
-    posterFilename: image.posterFilename,
-    durationSeconds: image.durationSeconds,
-    originalName: image.originalName,
-    title: image.title,
-    description: image.description,
-    createdAt: image.createdAt,
-    capturedAt: image.analysis?.capturedAt ?? null,
-    shareToNetwork: image.shareToNetwork,
-    photoCount: 1 + image.attachments.length,
-    accessType:
-      image.ownerId === userId
-        ? 'owner'
-        : image.contributors.length > 0
-          ? 'contributor'
-          : 'network',
-  }));
+  const value = images.map<AccessibleImageSummary>((image) => {
+    const nonOwnerContributors = image.contributors.filter(
+      (c) => c.userId !== image.ownerId
+    );
+    return {
+      id: image.id,
+      filename: image.filename,
+      mediaType: image.mediaType,
+      posterFilename: image.posterFilename,
+      durationSeconds: image.durationSeconds,
+      originalName: image.originalName,
+      title: image.title,
+      description: image.description,
+      createdAt: image.createdAt,
+      capturedAt: image.analysis?.capturedAt ?? null,
+      shareToNetwork: image.shareToNetwork,
+      photoCount: 1 + image.attachments.length,
+      contributorCount: nonOwnerContributors.length,
+      hasWiki: image.wiki != null,
+      hasLocation: image.analysis?.latitude != null,
+      hasVoiceCall: image.contributors.some((c) => c.voiceCalls.length > 0),
+      accessType:
+        image.ownerId === userId
+          ? 'owner'
+          : image.contributors.some((c) => c.userId === userId)
+            ? 'contributor'
+            : 'network',
+    };
+  });
 
   accessibleImageSummaryCache.set(userId, {
     expiresAt: Date.now() + IMAGE_SUMMARY_CACHE_TTL_MS,
