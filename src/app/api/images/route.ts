@@ -9,8 +9,7 @@ import {
   invalidateAccessibleImagesForUser,
 } from '@/lib/image-summaries';
 import { generateSnapshotScript } from '@/lib/claude';
-import { getEmberTitle } from '@/lib/ember-title';
-import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
+import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,15 +68,22 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const imageForSnapshot = await prisma.image.findUnique({
-          where: { id: image.id },
-          include: { analysis: { select: { summary: true, metadataJson: true } } },
-        });
-        if (imageForSnapshot) {
-          const title = getEmberTitle(imageForSnapshot);
-          const summary = imageForSnapshot.analysis?.summary || null;
-          const location = parseConfirmedLocationContext(imageForSnapshot.analysis?.metadataJson ?? null)?.label ?? null;
-          const script = await generateSnapshotScript({ title, summary, location });
+        const context = await loadEmberSetupContext(image.id);
+        if (context) {
+          const { imageTitle: title, image: imageRecord, confirmedPeople, confirmedLocation, contributorMemories, callSummaries, callHighlights } = context;
+          const summary = imageRecord.analysis?.summary || null;
+          const location = confirmedLocation?.label ?? null;
+          const script = await generateSnapshotScript({
+            title,
+            summary,
+            location,
+            durationSeconds: 10,
+            taggedPeople: confirmedPeople,
+            wikiContent: imageRecord.wiki?.content ?? null,
+            contributorMemories: contributorMemories.map((m) => ({ contributorName: m.contributorName, answer: m.answer })),
+            callSummaries: callSummaries.map((c) => ({ contributorName: c.contributorName, summary: c.summary })),
+            callHighlights: callHighlights.map((h) => ({ contributorName: h.contributorName, title: h.title, quote: h.quote })),
+          });
           if (script.trim()) {
             await prisma.storyCut.create({
               data: {
