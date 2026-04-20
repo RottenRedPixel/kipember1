@@ -53,6 +53,10 @@ function getContributorLabel(name: string | null, index: number): string {
   return trimmed || `Contributor ${index + 1}`;
 }
 
+function normalizeStoryEntryText(value: string | null | undefined) {
+  return value?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
+}
+
 export async function getStoryCircleForImage(imageId: string): Promise<StoryCircleData | null> {
   const image = await prisma.image.findUnique({
     where: { id: imageId },
@@ -92,6 +96,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
 
   image.contributors.forEach((contributor, contributorIndex) => {
     const contributorLabel = getContributorLabel(contributor.name, contributorIndex);
+    const existingConversationKeys = new Set<string>();
 
     for (const voiceCall of contributor.voiceCalls) {
       const summary = voiceCall.callSummary?.trim();
@@ -110,6 +115,13 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
     }
 
     for (const message of contributor.conversation?.messages || []) {
+      const normalizedText = normalizeStoryEntryText(message.content);
+      if (normalizedText) {
+        existingConversationKeys.add(
+          `${message.role === 'assistant' ? 'ember' : 'contributor'}::${normalizedText}`
+        );
+      }
+
       entries.push({
         id: `message-${message.id}`,
         actor: message.role === 'assistant' ? 'ember' : 'contributor',
@@ -131,28 +143,36 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
       const questionSortOrder = 100 + sequence * 2;
 
       if (response.question.trim()) {
-        entries.push({
-          id: `voice-question-${response.id}`,
-          actor: 'ember',
-          source: 'voice',
-          contributorName: contributor.name,
-          participantLabel: 'Ember',
-          content: response.question,
-          timestamp: response.createdAt,
-          sortOrder: questionSortOrder,
-        });
+        const questionKey = `ember::${normalizeStoryEntryText(response.question)}`;
+        if (!existingConversationKeys.has(questionKey)) {
+          existingConversationKeys.add(questionKey);
+          entries.push({
+            id: `voice-question-${response.id}`,
+            actor: 'ember',
+            source: 'voice',
+            contributorName: contributor.name,
+            participantLabel: 'Ember',
+            content: response.question,
+            timestamp: response.createdAt,
+            sortOrder: questionSortOrder,
+          });
+        }
       }
 
-      entries.push({
-        id: `voice-answer-${response.id}`,
-        actor: 'contributor',
-        source: 'voice',
-        contributorName: contributor.name,
-        participantLabel: contributorLabel,
-        content: response.answer,
-        timestamp: response.createdAt,
-        sortOrder: questionSortOrder + 1,
-      });
+      const answerKey = `contributor::${normalizeStoryEntryText(response.answer)}`;
+      if (!existingConversationKeys.has(answerKey)) {
+        existingConversationKeys.add(answerKey);
+        entries.push({
+          id: `voice-answer-${response.id}`,
+          actor: 'contributor',
+          source: 'voice',
+          contributorName: contributor.name,
+          participantLabel: contributorLabel,
+          content: response.answer,
+          timestamp: response.createdAt,
+          sortOrder: questionSortOrder + 1,
+        });
+      }
     }
   });
 

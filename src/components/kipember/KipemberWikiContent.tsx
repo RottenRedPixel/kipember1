@@ -218,6 +218,10 @@ function initials(value: string) {
     .toUpperCase();
 }
 
+function normalizeStoryText(value: string | null | undefined) {
+  return value?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
+}
+
 function formatCoordinates(
   latitude: number | null | undefined,
   longitude: number | null | undefined
@@ -541,6 +545,18 @@ export default function KipemberWikiContent({
         text: message.content,
       }));
       const hasMessages = messageEntries.length > 0;
+      const seenConversationEntries = new Set(
+        messageEntries
+          .map((entry) => {
+            const normalizedText = normalizeStoryText(entry.text);
+            if (!normalizedText) {
+              return null;
+            }
+
+            return `${entry.role || 'unknown'}::${normalizedText}`;
+          })
+          .filter((entry): entry is string => Boolean(entry))
+      );
       const responseEntries = (contributor.conversation?.responses || []).flatMap((response) => {
         const entries: Array<{
           id: string;
@@ -552,23 +568,35 @@ export default function KipemberWikiContent({
         const shouldExpandPair = response.source === 'voice' || !hasMessages;
 
         if (shouldExpandPair && response.question?.trim()) {
-          entries.push({
-            id: `response-question-${response.id}`,
-            createdAt: response.createdAt,
-            role: 'assistant',
-            source: response.source || null,
-            text: response.question.trim(),
-          });
+          const questionText = response.question.trim();
+          const questionKey = `assistant::${normalizeStoryText(questionText)}`;
+
+          if (!seenConversationEntries.has(questionKey)) {
+            seenConversationEntries.add(questionKey);
+            entries.push({
+              id: `response-question-${response.id}`,
+              createdAt: response.createdAt,
+              role: 'assistant',
+              source: response.source || null,
+              text: questionText,
+            });
+          }
         }
 
         if (response.answer?.trim()) {
-          entries.push({
-            id: `response-answer-${response.id}`,
-            createdAt: response.createdAt,
-            role: 'user',
-            source: response.source || null,
-            text: response.answer.trim(),
-          });
+          const answerText = response.answer.trim();
+          const answerKey = `user::${normalizeStoryText(answerText)}`;
+
+          if (!seenConversationEntries.has(answerKey)) {
+            seenConversationEntries.add(answerKey);
+            entries.push({
+              id: `response-answer-${response.id}`,
+              createdAt: response.createdAt,
+              role: 'user',
+              source: response.source || null,
+              text: answerText,
+            });
+          }
         }
 
         return entries;
