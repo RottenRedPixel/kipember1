@@ -144,19 +144,42 @@ export default function MyEmbersScreen({
         {/* Grid */}
         <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-6">
           {sorted.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-3">
-              <p className="text-white/40 text-sm">
-                {isShared ? 'No shared embers yet.' : 'No embers yet.'}
-              </p>
-              {!isShared ? (
-                <Link
-                  href="/home?mode=first-ember"
-                  className="px-6 rounded-full text-white text-sm font-medium"
-                  style={{ background: '#f97316', minHeight: 44, display: 'flex', alignItems: 'center' }}
-                >
-                  Create your first ember
-                </Link>
-              ) : null}
+            <div className="flex flex-col items-center pt-4">
+              <div
+                className="flex flex-col items-center gap-4 rounded-2xl px-8 py-8 mx-4 text-center"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+              >
+                <svg width="48" height="48" viewBox="0 0 72 72" fill="white">
+                  <circle cx="36" cy="36" r="7.2" fill="#f97316" />
+                  <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+                  <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+                  <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
+                  <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(22.02 94.02) rotate(-90)" />
+                  <rect x="47.97" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(29.55 -30.48) rotate(45)" />
+                  <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(42.45 .66) rotate(45)" />
+                  <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
+                  <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
+                </svg>
+                <div className="flex flex-col gap-2">
+                  <p className="text-white font-semibold text-base">
+                    {isShared ? 'No shared embers yet.' : 'Create your first ember'}
+                  </p>
+                  {!isShared ? (
+                    <p className="text-white/50 text-sm leading-relaxed">
+                      Let&apos;s start with a photo that will help build this memory into a glowing ember.
+                    </p>
+                  ) : null}
+                </div>
+                {!isShared ? (
+                  <Link
+                    href="/home?mode=first-ember"
+                    className="w-full flex items-center justify-center rounded-full text-white text-sm font-semibold"
+                    style={{ background: '#f97316', minHeight: 44 }}
+                  >
+                    Choose Photo
+                  </Link>
+                ) : null}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-1.5">
