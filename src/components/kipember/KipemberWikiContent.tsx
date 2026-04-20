@@ -185,6 +185,7 @@ export type KipemberWikiDetail = {
       kind?: string;
       latitude?: number | null;
       longitude?: number | null;
+      confirmedAt?: string | null;
     } | null;
   } | null;
   contributors: KipemberContributor[];
@@ -1065,6 +1066,11 @@ export default function KipemberWikiContent({
           <p className="text-white font-medium text-sm">
             {primaryLocationLine || 'No location data available.'}
           </p>
+          {detail?.analysis?.confirmedLocation?.confirmedAt ? (
+            <p className="text-white/30 text-xs mt-1">
+              (edited on {new Date(detail.analysis.confirmedLocation.confirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
+            </p>
+          ) : null}
           {showExactAddress ? (
             <>
               <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Exact Address</p>
