@@ -1416,7 +1416,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                   value={titleValue}
                   onChange={(event) => setTitleValue(event.target.value)}
                   placeholder="Ember title"
-                  className="w-full px-0 py-2 text-sm text-white placeholder-white/30 outline-none bg-transparent border-t border-white/10"
+                  className="w-full px-0 py-2 text-base font-medium text-white placeholder-white/30 outline-none bg-transparent border-t border-white/10"
                 />
               </div>
 
