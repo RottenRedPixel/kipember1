@@ -2,14 +2,10 @@ import 'dotenv/config';
 import Retell from 'retell-sdk';
 
 const apiKey = process.env.RETELL_API_KEY;
-const agentId = process.env.RETELL_AGENT_ID;
+const fallbackAgentId = process.env.RETELL_AGENT_ID;
 
 if (!apiKey) {
   throw new Error('RETELL_API_KEY is required');
-}
-
-if (!agentId) {
-  throw new Error('RETELL_AGENT_ID is required');
 }
 
 const client = new Retell({ apiKey });
@@ -84,21 +80,115 @@ If the caller shared a real memory, summarize:
 If some details are missing, say that naturally.
 If the call did not collect a real memory because it was a wrong number, voicemail, refusal, or failed conversation, say that clearly.`;
 
+const MEMORY_CLOSING_MESSAGE_PROMPT = `Say exactly one short closing message and do not ask any more questions. If the caller shared memories, thank them for sharing and say their memories will help preserve this moment. If they declined, it was a wrong number, or little was collected, thank them for their time instead. End the spoken message with goodbye as the final word.`;
+
 const MEMORY_SUCCESS_PROMPT = `Mark this call successful if the caller shared meaningful memory details or clearly completed the interview after providing useful information.
 
 Mark it unsuccessful if it was voicemail, a wrong number, spam, a refusal, or the call ended before any useful memory details were gathered.`;
 
 const MEMORY_SENTIMENT_PROMPT = `Evaluate the caller's overall emotional tone during the memory interview and return Positive, Neutral, Negative, or Unknown.`;
 
-function buildFlowPayload() {
+function normalizeBaseUrl(url) {
+  return url.replace(/\/$/, '');
+}
+
+function readObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+}
+
+function readString(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : '';
+}
+
+function getControlPlaneTimeoutMs() {
+  const parsed = Number.parseInt(process.env.CONTROL_PLANE_TIMEOUT_MS || '5000', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5000;
+}
+
+async function fetchControlPlaneSnapshot() {
+  const baseUrl = process.env.CONTROL_PLANE_BASE_URL?.trim();
+  const runtimeApiKey = process.env.CONTROL_PLANE_API_KEY?.trim();
+
+  if (!baseUrl || !runtimeApiKey) {
+    return null;
+  }
+
+  const response = await fetch(`${normalizeBaseUrl(baseUrl)}/api/runtime/config`, {
+    method: 'GET',
+    headers: {
+      'x-runtime-api-key': runtimeApiKey,
+    },
+    signal: AbortSignal.timeout(getControlPlaneTimeoutMs()),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Control plane responded with ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function loadRetellRuntimeConfig() {
+  try {
+    const snapshot = await fetchControlPlaneSnapshot();
+    const remoteAgent = snapshot?.remoteAgents?.['retell.memory_interviewer'];
+    const remoteAgentConfig = readObject(remoteAgent?.configJson);
+    const routedModel = readString(snapshot?.modelRoutes?.['voice_agent.retell']?.model);
+    const fallbackModel = readString(remoteAgent?.model);
+
+    return {
+      agentId: readString(remoteAgent?.remoteIdentifier) || fallbackAgentId,
+      model: routedModel || fallbackModel || 'gpt-4.1',
+      agentName:
+        readString(remoteAgentConfig?.agentName) || 'Memory Wiki Interviewer',
+      versionDescription:
+        readString(remoteAgentConfig?.versionDescription) ||
+        'Memory Wiki oral-history interview flow',
+      prompts: {
+        interview:
+          snapshot?.prompts?.['retell.memory_interview']?.body || MEMORY_INTERVIEW_PROMPT,
+        global:
+          snapshot?.prompts?.['retell.global_prompt']?.body || MEMORY_GLOBAL_PROMPT,
+        summary:
+          snapshot?.prompts?.['retell.summary_prompt']?.body || MEMORY_SUMMARY_PROMPT,
+        closing:
+          snapshot?.prompts?.['retell.memory_closing_message']?.body ||
+          MEMORY_CLOSING_MESSAGE_PROMPT,
+        success:
+          snapshot?.prompts?.['retell.success_prompt']?.body || MEMORY_SUCCESS_PROMPT,
+        sentiment:
+          snapshot?.prompts?.['retell.sentiment_prompt']?.body || MEMORY_SENTIMENT_PROMPT,
+      },
+    };
+  } catch (error) {
+    console.error('Control plane runtime fetch failed for Retell sync:', error);
+    return {
+      agentId: fallbackAgentId,
+      model: 'gpt-4.1',
+      agentName: 'Memory Wiki Interviewer',
+      versionDescription: 'Memory Wiki oral-history interview flow',
+      prompts: {
+        interview: MEMORY_INTERVIEW_PROMPT,
+        global: MEMORY_GLOBAL_PROMPT,
+        summary: MEMORY_SUMMARY_PROMPT,
+        closing: MEMORY_CLOSING_MESSAGE_PROMPT,
+        success: MEMORY_SUCCESS_PROMPT,
+        sentiment: MEMORY_SENTIMENT_PROMPT,
+      },
+    };
+  }
+}
+
+function buildFlowPayload(config) {
   return {
     model_choice: {
       type: 'cascading',
-      model: 'gpt-4.1',
+      model: config.model,
     },
     tool_call_strict_mode: true,
     start_speaker: 'agent',
-    global_prompt: MEMORY_GLOBAL_PROMPT,
+    global_prompt: config.prompts.global,
     default_dynamic_variables: {
       contributor_name: '',
       image_title: '',
@@ -123,7 +213,7 @@ function buildFlowPayload() {
         },
         instruction: {
           type: 'prompt',
-          text: MEMORY_INTERVIEW_PROMPT,
+          text: config.prompts.interview,
         },
         edges: [
           {
@@ -147,8 +237,7 @@ function buildFlowPayload() {
         },
         instruction: {
           type: 'prompt',
-          text:
-            'Say exactly one short closing message and do not ask any more questions. If the caller shared memories, thank them for sharing and say their memories will help preserve this moment. If they declined, it was a wrong number, or little was collected, thank them for their time instead. End the spoken message with goodbye as the final word.',
+          text: config.prompts.closing,
         },
         edges: [
           {
@@ -176,11 +265,16 @@ function buildFlowPayload() {
 }
 
 async function main() {
-  const agent = await client.agent.retrieve(agentId);
+  const runtimeConfig = await loadRetellRuntimeConfig();
+  if (!runtimeConfig.agentId) {
+    throw new Error('RETELL_AGENT_ID is required');
+  }
+
+  const agent = await client.agent.retrieve(runtimeConfig.agentId);
 
   if (agent.response_engine.type !== 'conversation-flow') {
     throw new Error(
-      `Agent ${agentId} is ${agent.response_engine.type}, but this sync script expects a conversation-flow agent.`
+      `Agent ${runtimeConfig.agentId} is ${agent.response_engine.type}, but this sync script expects a conversation-flow agent.`
     );
   }
 
@@ -188,22 +282,22 @@ async function main() {
 
   const updatedFlow = await client.conversationFlow.update(
     flowId,
-    buildFlowPayload()
+    buildFlowPayload(runtimeConfig)
   );
 
-  const updatedAgent = await client.agent.update(agentId, {
-    agent_name: 'Memory Wiki Interviewer',
+  const updatedAgent = await client.agent.update(runtimeConfig.agentId, {
+    agent_name: runtimeConfig.agentName,
     response_engine: {
       type: 'conversation-flow',
       conversation_flow_id: flowId,
       version: updatedFlow.version,
     },
-    analysis_summary_prompt: MEMORY_SUMMARY_PROMPT,
-    analysis_successful_prompt: MEMORY_SUCCESS_PROMPT,
-    analysis_user_sentiment_prompt: MEMORY_SENTIMENT_PROMPT,
+    analysis_summary_prompt: runtimeConfig.prompts.summary,
+    analysis_successful_prompt: runtimeConfig.prompts.success,
+    analysis_user_sentiment_prompt: runtimeConfig.prompts.sentiment,
     begin_message_delay_ms: 1000,
     enable_dynamic_responsiveness: true,
-    version_description: 'Memory Wiki oral-history interview flow',
+    version_description: runtimeConfig.versionDescription,
   });
 
   console.log(
