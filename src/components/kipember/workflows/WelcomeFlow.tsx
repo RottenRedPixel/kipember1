@@ -408,7 +408,7 @@ export default function WelcomeFlow({
                   style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
                 >
                   <p className="text-sm leading-relaxed text-white/90">
-                    Want to tell me more about this memory? I can call your phone for a quick interview.
+                    Want to tell me more about this memory? I can call your phone for a quick interview or you can just continue with ember chat.
                   </p>
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <Phone size={12} className="text-white/40" />

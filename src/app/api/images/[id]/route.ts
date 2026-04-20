@@ -249,6 +249,7 @@ export async function GET(
               id: true,
               name: true,
               email: true,
+              avatarFilename: true,
             },
           },
           contributors: {
@@ -260,6 +261,7 @@ export async function GET(
                   name: true,
                   email: true,
                   phoneNumber: true,
+                  avatarFilename: true,
                 },
               },
               conversation: {
@@ -584,6 +586,7 @@ export async function GET(
     // Build chatBlocks: one block per person who has a ChatSession for this image
     let chatBlocks: Array<{
       personName: string;
+      avatarUrl: string | null;
       messages: Array<{
         role: string;
         content: string;
@@ -597,7 +600,7 @@ export async function GET(
       const chatSessions = await prisma.chatSession.findMany({
         where: { imageId: id, userId: { not: null } },
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, name: true, email: true, avatarFilename: true } },
           messages: { orderBy: { createdAt: 'asc' } },
         },
       });
@@ -606,6 +609,7 @@ export async function GET(
         .filter((session) => session.messages.length > 0)
         .map((session) => {
           const personName = session.user?.name || session.user?.email || 'Guest';
+          const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
           const messages = session.messages.map((msg) => ({
             role: msg.role,
             content: msg.content,
@@ -614,7 +618,7 @@ export async function GET(
             audioUrl: null as string | null,
             createdAt: msg.createdAt.toISOString(),
           }));
-          return { personName, messages };
+          return { personName, avatarUrl, messages };
         });
     } catch (chatBlocksError) {
       console.error('Failed to load chatBlocks:', chatBlocksError);

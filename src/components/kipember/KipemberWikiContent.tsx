@@ -106,6 +106,7 @@ export type KipemberContributor = {
     name: string | null;
     email: string;
     phoneNumber: string | null;
+    avatarFilename?: string | null;
   } | null;
   voiceCalls?: ContributorVoiceCall[];
   conversation: {
@@ -164,6 +165,7 @@ export type KipemberWikiDetail = {
     id: string;
     name: string | null;
     email: string;
+    avatarFilename?: string | null;
   } | null;
   analysis: {
     status?: string;
@@ -191,6 +193,7 @@ export type KipemberWikiDetail = {
   voiceCallClips?: KipemberVoiceCallClip[];
   chatBlocks?: Array<{
     personName: string;
+    avatarUrl?: string | null;
     messages: Array<{
       role: string;
       content: string;
@@ -229,6 +232,34 @@ function initials(value: string) {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+}
+
+function AvatarCircle({
+  name,
+  avatarUrl,
+  size = 32,
+  bgColor = 'rgba(255,255,255,0.15)',
+}: {
+  name: string;
+  avatarUrl?: string | null;
+  size?: number;
+  bgColor?: string;
+}) {
+  return avatarUrl ? (
+    <img
+      src={avatarUrl}
+      alt={name}
+      className="rounded-full object-cover flex-shrink-0"
+      style={{ width: size, height: size }}
+    />
+  ) : (
+    <div
+      className="rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+      style={{ width: size, height: size, background: bgColor }}
+    >
+      {initials(name)}
+    </div>
+  );
 }
 
 function normalizeStoryText(value: string | null | undefined) {
@@ -733,6 +764,20 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
+        icon={<ScanEye size={17} />}
+        title="Snapshot"
+        complete={Boolean(detail?.storyCut?.script)}
+      >
+        <WikiCard>
+          {detail?.storyCut?.script ? (
+            <p className="text-white/90 text-sm leading-relaxed">{detail.storyCut.script}</p>
+          ) : (
+            <p className="text-white/30 text-sm">No snapshot yet.</p>
+          )}
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
         icon={<ShieldUser size={17} />}
         title="Owner"
         complete={Boolean(ownerName)}
@@ -740,12 +785,11 @@ export default function KipemberWikiContent({
         <WikiCard>
           {ownerName ? (
             <div className="flex items-center gap-3">
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-                style={{ background: 'rgba(249,115,22,0.6)' }}
-              >
-                {initials(ownerName)}
-              </div>
+              <AvatarCircle
+                name={ownerName}
+                avatarUrl={detail?.owner?.avatarFilename ? `/api/uploads/${detail.owner.avatarFilename}` : null}
+                bgColor="rgba(249,115,22,0.6)"
+              />
               <span className="text-white text-sm font-medium">{ownerName}</span>
               <span className="ml-auto text-white/30 text-xs font-medium">Owner</span>
             </div>
@@ -775,12 +819,10 @@ export default function KipemberWikiContent({
                   'Contributor';
                 return (
                   <div key={contributor.id} className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-                      style={{ background: 'rgba(255,255,255,0.15)' }}
-                    >
-                      {initials(contributorName)}
-                    </div>
+                    <AvatarCircle
+                      name={contributorName}
+                      avatarUrl={contributor.user?.avatarFilename ? `/api/uploads/${contributor.user.avatarFilename}` : null}
+                    />
                     <span className="text-white text-sm font-medium">{contributorName}</span>
                     <span className="ml-auto text-white/30 text-xs">Viewer</span>
                   </div>
@@ -788,31 +830,15 @@ export default function KipemberWikiContent({
               })}
               {pendingContributors.map((contributor) => (
                 <div key={contributor.id} className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white/30 text-xs font-medium flex-shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.08)' }}
-                  >
-                    {initials(contributor.name || contributor.email || contributor.phoneNumber || '?')}
-                  </div>
+                  <AvatarCircle
+                    name={contributor.name || contributor.email || contributor.phoneNumber || '?'}
+                    bgColor="rgba(255,255,255,0.08)"
+                  />
                   <span className="text-white/60 text-sm">{contributor.name || contributor.email || contributor.phoneNumber || 'Pending'}</span>
                   <span className="ml-auto text-white/30 text-xs">Invited</span>
                 </div>
               ))}
             </div>
-          )}
-        </WikiCard>
-      </WikiSection>
-
-      <WikiSection
-        icon={<ScanEye size={17} />}
-        title="Snapshot"
-        complete={Boolean(detail?.storyCut?.script)}
-      >
-        <WikiCard>
-          {detail?.storyCut?.script ? (
-            <p className="text-white/90 text-sm leading-relaxed">{detail.storyCut.script}</p>
-          ) : (
-            <p className="text-white/30 text-sm">No snapshot yet.</p>
           )}
         </WikiCard>
       </WikiSection>
@@ -826,7 +852,10 @@ export default function KipemberWikiContent({
           {detail?.chatBlocks && detail.chatBlocks.length > 0 ? (
             detail.chatBlocks.map((block) => (
               <WikiCard key={block.personName}>
-                <p className="text-white/30 text-xs font-medium mb-3">{block.personName}&apos;s Ember Chat</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={22} />
+                  <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
+                </div>
                 <div className="flex flex-col gap-3">
                   {block.messages.map((msg, i) => {
                     const isUser = msg.role === 'user';
