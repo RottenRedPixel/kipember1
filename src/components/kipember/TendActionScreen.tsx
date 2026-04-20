@@ -128,6 +128,7 @@ type TendContributor = KipemberContributor & {
 type TendDetail = KipemberWikiDetail & {
   canManage: boolean;
   shareToNetwork: boolean;
+  keepPrivate: boolean;
   storyCut?: {
     title: string;
     style: string;
@@ -373,6 +374,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [titleSuggestionsRefreshing, setTitleSuggestionsRefreshing] = useState(false);
   const [titleSuggestionsError, setTitleSuggestionsError] = useState('');
   const [networkValue, setNetworkValue] = useState(false);
+  const [keepPrivateValue, setKeepPrivateValue] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
   const [timeDateValue, setTimeDateValue] = useState('');
   const [timeDateSaving, setTimeDateSaving] = useState(false);
@@ -421,6 +423,7 @@ export default function TendActionScreen({ action }: { action: string }) {
     setDetail(payload);
     setTitleValue(payload.title || payload.originalName?.replace(/\.[^.]+$/, '') || '');
     setNetworkValue(Boolean(payload.shareToNetwork));
+    setKeepPrivateValue(Boolean(payload.keepPrivate));
     // Populate time/date
     const capturedAt = payload.analysis?.capturedAt;
     if (capturedAt) {
@@ -769,7 +772,7 @@ export default function TendActionScreen({ action }: { action: string }) {
     const response = await fetch(`/api/images/${resolvedImageId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shareToNetwork: networkValue }),
+      body: JSON.stringify({ shareToNetwork: networkValue, keepPrivate: keepPrivateValue }),
     });
     setStatus(response.ok ? 'Settings saved.' : 'Failed to save settings.');
     await refreshDetail();
@@ -1358,7 +1361,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                   className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-40"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
-                  Send Now
+                  Send Text Now
                 </button>
               </div>
 
@@ -1581,10 +1584,17 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'settings' ? (
             <>
-              <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+              <div className="rounded-xl px-4 py-4 flex flex-col gap-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <label className="flex items-center justify-between text-white text-sm font-medium">
-                  Share to network
+                  Share to Network
                   <input type="checkbox" checked={networkValue} onChange={(event) => setNetworkValue(event.target.checked)} />
+                </label>
+                <label className="flex items-center justify-between text-white text-sm font-medium">
+                  <span className="flex flex-col gap-0.5">
+                    <span>Keep Private</span>
+                    <span className="text-white/40 text-xs font-normal">No guest view allowed</span>
+                  </span>
+                  <input type="checkbox" checked={keepPrivateValue} onChange={(event) => setKeepPrivateValue(event.target.checked)} />
                 </label>
               </div>
               <div className="flex justify-end">

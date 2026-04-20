@@ -57,6 +57,7 @@ export async function GET(
           description: true,
           createdAt: true,
           shareToNetwork: true,
+          keepPrivate: true,
           analysis: {
             select: {
               summary: true,
@@ -93,6 +94,7 @@ export async function GET(
         description: image.description,
         createdAt: image.createdAt,
         shareToNetwork: image.shareToNetwork,
+        keepPrivate: image.keepPrivate,
         accessType,
         canManage: accessType === 'owner',
         analysis: image.analysis,
@@ -116,6 +118,7 @@ export async function GET(
             description: true,
             createdAt: true,
             shareToNetwork: true,
+            keepPrivate: true,
             owner: {
               select: {
                 id: true,
@@ -217,6 +220,7 @@ export async function GET(
         description: image.description,
         createdAt: image.createdAt,
         shareToNetwork: image.shareToNetwork,
+        keepPrivate: image.keepPrivate,
         owner: image.owner,
         accessType,
         canManage: accessType === 'owner',
@@ -764,6 +768,7 @@ export async function PATCH(
 
     const updateData: {
       shareToNetwork?: boolean;
+      keepPrivate?: boolean;
       title?: string | null;
       titleUpdatedAt?: Date | null;
       description?: string | null;
@@ -772,6 +777,10 @@ export async function PATCH(
 
     if (typeof body?.shareToNetwork === 'boolean') {
       updateData.shareToNetwork = body.shareToNetwork;
+    }
+
+    if (typeof body?.keepPrivate === 'boolean') {
+      updateData.keepPrivate = body.keepPrivate;
     }
 
     if (Object.prototype.hasOwnProperty.call(body ?? {}, 'title')) {

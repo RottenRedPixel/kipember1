@@ -62,12 +62,14 @@ export async function GET(
     if (!contributor) {
       return NextResponse.json(
         { error: 'Guest memory not found' },
-        {
-          status: 404,
-          headers: {
-            'Cache-Control': 'no-store',
-          },
-        }
+        { status: 404, headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
+
+    if (contributor.image.keepPrivate) {
+      return NextResponse.json(
+        { error: 'This ember is private.' },
+        { status: 403, headers: { 'Cache-Control': 'no-store' } }
       );
     }
 

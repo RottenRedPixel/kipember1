@@ -25,6 +25,7 @@ model Image {
   visibility   Visibility    @default(PRIVATE)
   ownerId      String
   shareToNetwork Boolean     @default(false)
+  keepPrivate    Boolean     @default(false)
   createdAt    DateTime      @default(now())
   owner        User          @relation("OwnedImages", fields: [ownerId], references: [id], onDelete: Cascade)
   analysis     ImageAnalysis?
