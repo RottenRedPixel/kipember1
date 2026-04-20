@@ -5,8 +5,10 @@ import {
   BookOpen,
   ChevronDown,
   ChevronLeft,
+  Clock,
   Copy,
   LogOut,
+  MapPin,
   Moon,
   MoreHorizontal,
   PencilLine,
@@ -793,15 +795,15 @@ export default function HomeScreen({
               </>
             ) : (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
-                <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
-                <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
-                <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
+                <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
+                <SvgItem label="Edit Location" href={selectedImageId ? `/tend/edit-location?id=${selectedImageId}` : '/tend/edit-location'} icon={MapPin} />
+                <SvgItem label="Edit Time & Date" href={selectedImageId ? `/tend/edit-time-date?id=${selectedImageId}` : '/tend/edit-time-date'} icon={Clock} />
+                <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
+                <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
+                <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
                 <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
-                <div className="col-span-3 flex justify-center">
-                  <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
-                </div>
               </>
             )}
           </div>

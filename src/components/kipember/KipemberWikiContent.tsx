@@ -938,9 +938,6 @@ export default function KipemberWikiContent({
                 {detail?.originalName || 'Main media'}
               </p>
               <p className="text-white/30 text-xs">
-                {detail?.title ? `Display title: ${detail.title}` : 'Primary Ember media'}
-              </p>
-              <p className="text-white/30 text-xs">
                 Added: {formatLongDate(detail?.createdAt)}
               </p>
             </div>
@@ -1144,7 +1141,7 @@ export default function KipemberWikiContent({
                 return (
                   <p
                     key={`analysis-line-${index}`}
-                    className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white text-sm leading-relaxed'}
+                    className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
                   >
                     {cleaned}
                   </p>
@@ -1196,7 +1193,7 @@ export default function KipemberWikiContent({
                     return (
                       <p
                         key={`att-line-${attachment.id}-${index}`}
-                        className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white text-sm leading-relaxed'}
+                        className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
                       >
                         {cleaned}
                       </p>

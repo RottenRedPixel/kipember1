@@ -374,6 +374,13 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [titleSuggestionsError, setTitleSuggestionsError] = useState('');
   const [networkValue, setNetworkValue] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
+  const [timeDateValue, setTimeDateValue] = useState('');
+  const [timeDateSaving, setTimeDateSaving] = useState(false);
+  const [locationLabel, setLocationLabel] = useState('');
+  const [locationDetail, setLocationDetail] = useState('');
+  const [locationLatitude, setLocationLatitude] = useState('');
+  const [locationLongitude, setLocationLongitude] = useState('');
+  const [locationSaving, setLocationSaving] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [detectedFaces, setDetectedFaces] = useState<{ leftPct: number; topPct: number; widthPct: number; heightPct: number }[]>([]);
   const [imgAspectRatio, setImgAspectRatio] = useState(1);
@@ -412,8 +419,28 @@ export default function TendActionScreen({ action }: { action: string }) {
 
   function applyDetail(payload: TendDetail) {
     setDetail(payload);
-    setTitleValue(payload.title || '');
+    setTitleValue(payload.title || payload.originalName?.replace(/\.[^.]+$/, '') || '');
     setNetworkValue(Boolean(payload.shareToNetwork));
+    // Populate time/date
+    const capturedAt = payload.analysis?.capturedAt;
+    if (capturedAt) {
+      const d = new Date(capturedAt);
+      if (!Number.isNaN(d.getTime())) {
+        // datetime-local expects "YYYY-MM-DDTHH:MM"
+        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 16);
+        setTimeDateValue(local);
+      }
+    }
+    // Populate location
+    const loc = payload.analysis?.confirmedLocation;
+    setLocationLabel(loc?.label || '');
+    setLocationDetail(loc?.detail || '');
+    const lat = payload.analysis?.latitude ?? loc?.latitude ?? null;
+    const lng = payload.analysis?.longitude ?? loc?.longitude ?? null;
+    setLocationLatitude(lat != null ? String(lat) : '');
+    setLocationLongitude(lng != null ? String(lng) : '');
   }
 
   useEffect(() => {
@@ -557,7 +584,8 @@ export default function TendActionScreen({ action }: { action: string }) {
 
   const TendIcon = TEND_ICONS[action];
   const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}` : '/tend/contributors';
-  const backHref = action === 'contributors' && view ? listHref : resolvedImageId ? `/home?id=${resolvedImageId}` : '/home';
+  const tendModalHref = resolvedImageId ? `/home?id=${resolvedImageId}&m=tend` : '/home?m=tend';
+  const backHref = action === 'contributors' && view ? listHref : tendModalHref;
   const contributors: TendContributor[] = detail?.contributors || [];
   const contributor: TendContributor | null =
     contributors.find((item) => item.id === view) || null;
@@ -657,6 +685,57 @@ export default function TendActionScreen({ action }: { action: string }) {
       );
     } finally {
       setTitleSuggestionsRefreshing(false);
+    }
+  }
+
+  async function saveTimeDate() {
+    if (!resolvedImageId || !timeDateValue) return;
+    setTimeDateSaving(true);
+    setStatus('');
+    try {
+      const response = await fetch(`/api/images/${resolvedImageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ capturedAt: new Date(timeDateValue).toISOString() }),
+      });
+      setStatus(response.ok ? 'Time & date saved.' : 'Failed to save time & date.');
+      if (response.ok) await refreshDetail();
+    } catch {
+      setStatus('Failed to save time & date.');
+    } finally {
+      setTimeDateSaving(false);
+    }
+  }
+
+  async function saveLocation() {
+    if (!resolvedImageId || !locationLabel.trim()) {
+      setStatus('A location name is required.');
+      return;
+    }
+    setLocationSaving(true);
+    setStatus('');
+    try {
+      const body: Record<string, unknown> = {
+        label: locationLabel.trim(),
+        detail: locationDetail.trim() || null,
+        kind: 'place',
+      };
+      const lat = parseFloat(locationLatitude);
+      const lng = parseFloat(locationLongitude);
+      if (!Number.isNaN(lat)) body.latitude = lat;
+      if (!Number.isNaN(lng)) body.longitude = lng;
+
+      const response = await fetch(`/api/images/${resolvedImageId}/location-suggestions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      setStatus(response.ok ? 'Location saved.' : 'Failed to save location.');
+      if (response.ok) await refreshDetail();
+    } catch {
+      setStatus('Failed to save location.');
+    } finally {
+      setLocationSaving(false);
     }
   }
 
@@ -1318,96 +1397,65 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'edit-title' ? (
             <>
+              {/* Ember title input — above suggestions */}
+              <div
+                className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+              >
+                {detail?.titleUpdatedAt ? (
+                  <p className="text-white/30 text-xs mb-2">
+                    Last updated:{' '}
+                    {new Date(detail.titleUpdatedAt).toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                ) : null}
+                <input
+                  value={titleValue}
+                  onChange={(event) => setTitleValue(event.target.value)}
+                  placeholder="Ember title"
+                  className="w-full px-0 py-2 text-sm text-white placeholder-white/30 outline-none bg-transparent border-t border-white/10"
+                />
+              </div>
+
+              {/* Smart title suggestions */}
               <WikiCard>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex flex-col gap-1">
-                    <p className="text-white text-sm font-medium">Smart title suggestions</p>
-                    <p className="text-white/45 text-xs leading-relaxed">
-                      Tagged people, contributor memories, and voice call details are used here.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={refreshTitleSuggestions}
-                    disabled={titleSuggestionsRefreshing || titleSuggestionsLoading}
-                    className="rounded-full px-3 py-2 text-xs font-medium text-white btn-secondary disabled:opacity-40"
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid var(--border-btn)',
-                      minHeight: 36,
-                    }}
-                  >
-                    {titleSuggestionsRefreshing ? 'Refreshing...' : 'Refresh'}
-                  </button>
-                </div>
+                <p className="text-white text-sm font-medium mb-3">Smart title suggestions</p>
 
                 {titleSuggestionsLoading ? (
-                  <p className="text-white/45 text-sm mt-2">Loading suggestions...</p>
+                  <p className="text-white/45 text-sm">Loading suggestions...</p>
                 ) : null}
 
                 {titleSuggestionsError ? (
-                  <p className="text-white/45 text-sm mt-2">{titleSuggestionsError}</p>
+                  <p className="text-white/45 text-sm">{titleSuggestionsError}</p>
                 ) : null}
 
                 {!titleSuggestionsLoading && !titleSuggestionsError && titleSuggestions ? (
-                  <div className="flex flex-col gap-4 mt-3">
-                    {titleSuggestions.analysisSuggestions.length > 0 ? (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-white/45 text-[11px] uppercase tracking-[0.18em]">
-                          From The Image
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {titleSuggestions.analysisSuggestions.map((suggestion) => (
-                            <button
-                              key={`analysis-${suggestion}`}
-                              type="button"
-                              onClick={() => setTitleValue(suggestion)}
-                              className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
-                              style={{
-                                background:
-                                  titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
-                                    ? 'rgba(249,115,22,0.22)'
-                                    : 'rgba(255,255,255,0.05)',
-                                border:
-                                  titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
-                                    ? '1px solid rgba(249,115,22,0.7)'
-                                    : '1px solid rgba(255,255,255,0.08)',
-                              }}
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {titleSuggestions.contextSuggestions.length > 0 ? (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-white/45 text-[11px] uppercase tracking-[0.18em]">
-                          From The Story
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {titleSuggestions.contextSuggestions.map((suggestion) => (
-                            <button
-                              key={`context-${suggestion}`}
-                              type="button"
-                              onClick={() => setTitleValue(suggestion)}
-                              className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
-                              style={{
-                                background:
-                                  titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
-                                    ? 'rgba(249,115,22,0.22)'
-                                    : 'rgba(255,255,255,0.05)',
-                                border:
-                                  titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
-                                    ? '1px solid rgba(249,115,22,0.7)'
-                                    : '1px solid rgba(255,255,255,0.08)',
-                              }}
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
-                        </div>
+                  <div className="flex flex-col gap-4">
+                    {[...titleSuggestions.analysisSuggestions, ...titleSuggestions.contextSuggestions].length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {[...titleSuggestions.analysisSuggestions, ...titleSuggestions.contextSuggestions].map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            onClick={() => setTitleValue(suggestion)}
+                            className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
+                            style={{
+                              background:
+                                titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                                  ? 'rgba(249,115,22,0.22)'
+                                  : 'rgba(255,255,255,0.05)',
+                              border:
+                                titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                                  ? '1px solid rgba(249,115,22,0.7)'
+                                  : '1px solid rgba(255,255,255,0.08)',
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
                       </div>
                     ) : null}
 
@@ -1449,27 +1497,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                   </div>
                 ) : null}
               </WikiCard>
-              <div
-                className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-              >
-                {detail?.titleUpdatedAt ? (
-                  <p className="text-white/30 text-xs mb-2">
-                    Last updated:{' '}
-                    {new Date(detail.titleUpdatedAt).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </p>
-                ) : null}
-                <input
-                  value={titleValue}
-                  onChange={(event) => setTitleValue(event.target.value)}
-                  placeholder="Ember title"
-                  className="w-full px-0 py-2 text-sm text-white placeholder-white/30 outline-none bg-transparent border-t border-white/10"
-                />
-              </div>
+
               <div className="flex gap-3">
                 <button
                   type="button"
@@ -1573,6 +1601,122 @@ export default function TendActionScreen({ action }: { action: string }) {
                   </button>
                 </div>
               ) : null}
+            </>
+          ) : null}
+
+          {action === 'edit-time-date' ? (
+            <>
+              <WikiCard>
+                <p className="text-white/45 text-xs leading-relaxed mb-3">
+                  Set the date and time this photo was taken. This updates the timestamp used across the wiki and snapshot.
+                </p>
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-white/45 text-xs font-medium uppercase tracking-wider">Date & Time</span>
+                  <input
+                    type="datetime-local"
+                    value={timeDateValue}
+                    onChange={(e) => setTimeDateValue(e.target.value)}
+                    className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                    style={fieldStyle}
+                  />
+                </label>
+              </WikiCard>
+              <div className="flex gap-3">
+                <Link
+                  href={tendModalHref}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void saveTimeDate()}
+                  disabled={timeDateSaving || !timeDateValue}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  {timeDateSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </>
+          ) : null}
+
+          {action === 'edit-location' ? (
+            <>
+              <WikiCard>
+                <p className="text-white/45 text-xs leading-relaxed mb-3">
+                  Set or correct the location for this ember. The name is required; coordinates and detail are optional.
+                </p>
+                <div className="flex flex-col gap-4">
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-white/45 text-xs font-medium uppercase tracking-wider">Location Name</span>
+                    <input
+                      type="text"
+                      value={locationLabel}
+                      onChange={(e) => setLocationLabel(e.target.value)}
+                      placeholder="e.g. Franklin Township, New Jersey"
+                      className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                      style={fieldStyle}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-white/45 text-xs font-medium uppercase tracking-wider">Detail (optional)</span>
+                    <input
+                      type="text"
+                      value={locationDetail}
+                      onChange={(e) => setLocationDetail(e.target.value)}
+                      placeholder="e.g. Tamarack Road"
+                      className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                      style={fieldStyle}
+                    />
+                  </label>
+                  <div className="flex gap-3">
+                    <label className="flex flex-col gap-1.5 flex-1">
+                      <span className="text-white/45 text-xs font-medium uppercase tracking-wider">Latitude</span>
+                      <input
+                        type="number"
+                        step="any"
+                        value={locationLatitude}
+                        onChange={(e) => setLocationLatitude(e.target.value)}
+                        placeholder="40.49973"
+                        className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                        style={fieldStyle}
+                      />
+                    </label>
+                    <label className="flex flex-col gap-1.5 flex-1">
+                      <span className="text-white/45 text-xs font-medium uppercase tracking-wider">Longitude</span>
+                      <input
+                        type="number"
+                        step="any"
+                        value={locationLongitude}
+                        onChange={(e) => setLocationLongitude(e.target.value)}
+                        placeholder="-74.50159"
+                        className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
+                        style={fieldStyle}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </WikiCard>
+              <div className="flex gap-3">
+                <Link
+                  href={tendModalHref}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Cancel
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => void saveLocation()}
+                  disabled={locationSaving || !locationLabel.trim()}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  {locationSaving ? 'Saving...' : 'Save'}
+                </button>
+              </div>
             </>
           ) : null}
 
