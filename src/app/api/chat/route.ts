@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@/generated/prisma/client';
 import { requireApiUser } from '@/lib/auth-server';
 import { retriever } from '@/lib/context-retrieval';
 import { prisma } from '@/lib/db';
@@ -202,6 +203,13 @@ function getStoredQuestion(questionType: AskMemoryTopic) {
     : 'Additional detail shared in Ask Ember';
 }
 
+function isUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === 'P2002'
+  );
+}
+
 async function analyzeAskMemoryCapture({
   context,
   recentTurns,
@@ -293,17 +301,84 @@ ${message}`,
 }
 
 async function ensureContributorConversation(contributorId: string) {
-  return prisma.conversation.upsert({
+  const existing = await prisma.conversation.findUnique({
     where: {
       contributorId,
     },
-    update: {},
-    create: {
-      contributorId,
-      status: 'active',
-      currentStep: 'followup',
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    return await prisma.conversation.create({
+      data: {
+        contributorId,
+        status: 'active',
+        currentStep: 'followup',
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const racedConversation = await prisma.conversation.findUnique({
+      where: {
+        contributorId,
+      },
+    });
+
+    if (!racedConversation) {
+      throw error;
+    }
+
+    return racedConversation;
+  }
+}
+
+async function ensureChatSession(browserId: string, imageId: string) {
+  const existing = await prisma.chatSession.findUnique({
+    where: {
+      browserId_imageId: {
+        browserId,
+        imageId,
+      },
     },
   });
+
+  if (existing) {
+    return existing;
+  }
+
+  try {
+    return await prisma.chatSession.create({
+      data: {
+        browserId,
+        imageId,
+      },
+    });
+  } catch (error) {
+    if (!isUniqueConstraintError(error)) {
+      throw error;
+    }
+
+    const racedSession = await prisma.chatSession.findUnique({
+      where: {
+        browserId_imageId: {
+          browserId,
+          imageId,
+        },
+      },
+    });
+
+    if (!racedSession) {
+      throw error;
+    }
+
+    return racedSession;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -341,19 +416,7 @@ export async function POST(request: NextRequest) {
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
 
-    const session = await prisma.chatSession.upsert({
-      where: {
-        browserId_imageId: {
-          browserId,
-          imageId,
-        },
-      },
-      create: {
-        browserId,
-        imageId,
-      },
-      update: {},
-    });
+    const session = await ensureChatSession(browserId, imageId);
 
     const history = await prisma.chatMessage.findMany({
       where: { sessionId: session.id },
