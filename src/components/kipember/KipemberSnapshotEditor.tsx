@@ -119,7 +119,7 @@ export default function KipemberSnapshotEditor({
 
   useEffect(() => {
     setScriptDraft(detail?.storyCut?.script || '');
-    setDurationSeconds(detail?.storyCut?.durationSeconds ?? 30);
+    setDurationSeconds(detail?.storyCut?.durationSeconds ?? 10);
     setStyle(detail?.storyCut?.style || 'documentary');
     setVoiceId(detail?.storyCut?.emberVoiceId || '');
   }, [detail]);

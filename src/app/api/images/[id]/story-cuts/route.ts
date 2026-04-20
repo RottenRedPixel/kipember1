@@ -23,7 +23,7 @@ export async function POST(
 
     const body = await request.json().catch(() => ({}));
     const manualScript = typeof body?.script === 'string' && body.script.trim() ? body.script.trim() : null;
-    const durationSeconds = typeof body?.durationSeconds === 'number' && body.durationSeconds >= 5 ? body.durationSeconds : 30;
+    const durationSeconds = typeof body?.durationSeconds === 'number' && body.durationSeconds >= 5 ? body.durationSeconds : 10;
     const style = typeof body?.style === 'string' && body.style.trim() ? body.style.trim() : 'documentary';
     const emberVoiceId = body?.emberVoiceId === null ? null : (typeof body?.emberVoiceId === 'string' && body.emberVoiceId.trim() ? body.emberVoiceId.trim() : undefined);
 
