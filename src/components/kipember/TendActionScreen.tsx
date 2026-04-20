@@ -1584,17 +1584,59 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'settings' ? (
             <>
-              <div className="rounded-xl px-4 py-4 flex flex-col gap-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <label className="flex items-center justify-between text-white text-sm font-medium">
-                  Share to Network
-                  <input type="checkbox" checked={networkValue} onChange={(event) => setNetworkValue(event.target.checked)} />
-                </label>
-                <label className="flex items-center justify-between text-white text-sm font-medium">
+              <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                <label className="flex items-center justify-between gap-4 cursor-pointer" style={{ minHeight: 44 }}>
                   <span className="flex flex-col gap-0.5">
-                    <span>Keep Private</span>
-                    <span className="text-white/40 text-xs font-normal">No guest view allowed</span>
+                    <span className="text-white text-sm font-medium">Share to Network</span>
+                    <span className="text-white/40 text-xs">Not sure what this does</span>
                   </span>
-                  <input type="checkbox" checked={keepPrivateValue} onChange={(event) => setKeepPrivateValue(event.target.checked)} />
+                  <span
+                    className="relative flex-shrink-0"
+                    style={{ width: 48, height: 28 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={networkValue}
+                      onChange={(event) => setNetworkValue(event.target.checked)}
+                      className="sr-only"
+                    />
+                    <span
+                      className="absolute inset-0 rounded-full transition-colors duration-200"
+                      style={{ background: networkValue ? '#f97316' : 'rgba(255,255,255,0.15)' }}
+                    />
+                    <span
+                      className="absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200"
+                      style={{ width: 24, height: 24, transform: networkValue ? 'translateX(20px)' : 'translateX(0)' }}
+                    />
+                  </span>
+                </label>
+              </div>
+
+              <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                <label className="flex items-center justify-between gap-4 cursor-pointer" style={{ minHeight: 44 }}>
+                  <span className="flex flex-col gap-0.5">
+                    <span className="text-white text-sm font-medium">Privacy Setting</span>
+                    <span className="text-white/40 text-xs">Allow guest view of this ember</span>
+                  </span>
+                  <span
+                    className="relative flex-shrink-0"
+                    style={{ width: 48, height: 28 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!keepPrivateValue}
+                      onChange={(event) => setKeepPrivateValue(!event.target.checked)}
+                      className="sr-only"
+                    />
+                    <span
+                      className="absolute inset-0 rounded-full transition-colors duration-200"
+                      style={{ background: !keepPrivateValue ? '#f97316' : 'rgba(255,255,255,0.15)' }}
+                    />
+                    <span
+                      className="absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200"
+                      style={{ width: 24, height: 24, transform: !keepPrivateValue ? 'translateX(20px)' : 'translateX(0)' }}
+                    />
+                  </span>
                 </label>
               </div>
               <div className="flex justify-end">
