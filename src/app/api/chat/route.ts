@@ -338,11 +338,19 @@ async function ensureContributorConversation(contributorId: string) {
   }
 }
 
-async function ensureChatSession(browserId: string, imageId: string) {
+async function ensureChatSession({
+  browserId,
+  imageId,
+  userId,
+}: {
+  browserId: string;
+  imageId: string;
+  userId: string;
+}) {
   const existing = await prisma.chatSession.findUnique({
     where: {
-      browserId_imageId: {
-        browserId,
+      userId_imageId: {
+        userId,
         imageId,
       },
     },
@@ -357,6 +365,7 @@ async function ensureChatSession(browserId: string, imageId: string) {
       data: {
         browserId,
         imageId,
+        userId,
       },
     });
   } catch (error) {
@@ -366,8 +375,8 @@ async function ensureChatSession(browserId: string, imageId: string) {
 
     const racedSession = await prisma.chatSession.findUnique({
       where: {
-        browserId_imageId: {
-          browserId,
+        userId_imageId: {
+          userId,
           imageId,
         },
       },
@@ -415,8 +424,9 @@ export async function POST(request: NextRequest) {
 
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
+    const userId = auth.user.id;
 
-    const session = await ensureChatSession(browserId, imageId);
+    const session = await ensureChatSession({ browserId, imageId, userId });
 
     const history = await prisma.chatMessage.findMany({
       where: { sessionId: session.id },
@@ -424,10 +434,12 @@ export async function POST(request: NextRequest) {
       take: HISTORY_LIMIT,
     });
 
-    const conversationHistory = history.map((entry) => ({
-      role: entry.role as 'user' | 'assistant',
-      content: entry.content,
-    }));
+    const conversationHistory = history
+      .filter((entry) => !entry.imageFilename) // skip image-only messages from AI context
+      .map((entry) => ({
+        role: entry.role as 'user' | 'assistant',
+        content: entry.content,
+      }));
 
     await prisma.chatMessage.create({
       data: {
@@ -588,41 +600,143 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    const browserId = request.cookies.get(COOKIE_NAME)?.value;
-    if (!browserId) {
-      return NextResponse.json({ messages: [] });
-    }
+    const userId = auth.user.id;
 
-    const session = await prisma.chatSession.findUnique({
-      where: {
-        browserId_imageId: {
-          browserId,
-          imageId,
+    const [session, contributor] = await Promise.all([
+      prisma.chatSession.findUnique({
+        where: { userId_imageId: { userId, imageId } },
+      }),
+      prisma.contributor.findFirst({
+        where: { imageId, userId },
+        select: {
+          id: true,
+          conversation: {
+            select: {
+              responses: {
+                where: { source: 'voice' },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, question: true, answer: true, createdAt: true },
+              },
+            },
+          },
         },
-      },
+      }),
+    ]);
+
+    // Load chat messages (may be null if no session yet)
+    const history = session
+      ? await prisma.chatMessage.findMany({
+          where: { sessionId: session.id },
+          orderBy: { createdAt: 'asc' },
+          take: HISTORY_LIMIT,
+        })
+      : [];
+
+    // Load voice clips for this contributor so we can attach audioUrl to responses
+    const clips = contributor
+      ? await prisma.voiceCallClip.findMany({
+          where: { imageId, contributorId: contributor.id },
+          select: { quote: true, audioUrl: true },
+        })
+      : [];
+
+    // Build chat message entries
+    type MergedEntry = {
+      role: string;
+      content: string;
+      source: 'web' | 'voice';
+      imageFilename: string | null;
+      audioUrl: string | null;
+      createdAt: string;
+    };
+
+    const chatEntries: MergedEntry[] = history.map((entry) => ({
+      role: entry.role,
+      content: entry.content,
+      source: 'web',
+      imageFilename: entry.imageFilename ?? null,
+      audioUrl: null,
+      createdAt: entry.createdAt.toISOString(),
+    }));
+
+    // Build voice response entries (each Response = one assistant Q + one user A)
+    const voiceResponses = contributor?.conversation?.responses ?? [];
+    const voiceEntries: MergedEntry[] = voiceResponses.flatMap((response) => {
+      // Try to find a matching clip whose quote appears in the answer
+      const matchedClip = clips.find(
+        (clip) =>
+          clip.audioUrl &&
+          clip.quote.trim().length > 10 &&
+          response.answer.includes(clip.quote.trim().slice(0, 40))
+      );
+      const audioUrl = matchedClip?.audioUrl ?? null;
+
+      return [
+        {
+          role: 'assistant',
+          content: response.question,
+          source: 'voice' as const,
+          imageFilename: null,
+          audioUrl: null,
+          createdAt: response.createdAt.toISOString(),
+        },
+        {
+          role: 'user',
+          content: response.answer,
+          source: 'voice' as const,
+          imageFilename: null,
+          audioUrl,
+          createdAt: response.createdAt.toISOString(),
+        },
+      ];
     });
 
-    if (!session) {
-      return NextResponse.json({ messages: [] });
-    }
+    // Merge and sort by createdAt
+    const merged = [...chatEntries, ...voiceEntries].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
 
-    const history = await prisma.chatMessage.findMany({
-      where: { sessionId: session.id },
-      orderBy: { createdAt: 'asc' },
-      take: HISTORY_LIMIT,
-    });
-
-    return NextResponse.json({
-      messages: history.map((entry) => ({
-        role: entry.role,
-        content: entry.content,
-      })),
-    });
+    return NextResponse.json({ messages: merged });
   } catch (error) {
     console.error('Chat history error:', error);
     return NextResponse.json(
       { error: 'Failed to load chat history' },
       { status: 500 }
     );
+  }
+}
+
+// PATCH — record an image upload event in chat history (no AI response)
+export async function PATCH(request: NextRequest) {
+  try {
+    const auth = await requireApiUser();
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { imageId, imageFilename } = await request.json();
+    if (!imageId || !imageFilename) {
+      return NextResponse.json({ error: 'imageId and imageFilename are required' }, { status: 400 });
+    }
+
+    const accessType = await getImageAccessType(auth.user.id, imageId);
+    if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+
+    const userId = auth.user.id;
+    const browserId = request.cookies.get(COOKIE_NAME)?.value || randomUUID();
+
+    const session = await ensureChatSession({ browserId, imageId, userId });
+
+    await prisma.chatMessage.create({
+      data: {
+        sessionId: session.id,
+        role: 'user',
+        content: '',
+        imageFilename,
+      },
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('Chat image record error:', error);
+    return NextResponse.json({ error: 'Failed to record image' }, { status: 500 });
   }
 }

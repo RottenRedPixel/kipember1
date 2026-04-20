@@ -1352,3 +1352,32 @@ export async function ensureImageAnalysisForImage(imageId: string) {
     throw error;
   }
 }
+
+/**
+ * Full visual analysis for an image attachment uploaded via ember chat.
+ * Returns a JSON-serialized ParsedVisionAnalysis for rich wiki display.
+ */
+export async function analyzeAttachmentImage(
+  filename: string,
+  originalName: string
+): Promise<string | null> {
+  try {
+    const filePath = getUploadPath(filename);
+    const buffer = await readFile(filePath);
+    const mimeType = inferImageMimeType(filename) || inferImageMimeType(originalName);
+
+    if (!mimeType) return null;
+
+    const vision = await analyzeImageVisually({
+      buffer,
+      mimeType,
+      originalName,
+      userDescription: null,
+      metadataSummary: null,
+    });
+
+    return JSON.stringify(vision);
+  } catch {
+    return null;
+  }
+}

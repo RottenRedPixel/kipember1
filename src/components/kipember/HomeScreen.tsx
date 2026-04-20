@@ -826,9 +826,7 @@ export default function HomeScreen({
                 <span className="text-base font-medium text-white">
                   {flow
                     ? 'Ember Chat'
-                    : hasConversationHistory
-                      ? 'Continue your journey here'
-                      : 'Start your journey here'}
+                    : 'Ember Chat'}
                 </span>
               </span>
             </Link>

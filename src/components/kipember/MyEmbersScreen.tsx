@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, Plus, FileStack } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AppHeader from '@/components/kipember/AppHeader';
@@ -176,6 +176,11 @@ export default function MyEmbersScreen({
                     alt={image.title || image.originalName}
                     className="absolute inset-0 h-full w-full object-cover"
                   />
+                  {image.photoCount > 1 ? (
+                    <div className="absolute top-1.5 right-1.5 z-10">
+                      <FileStack size={16} className="text-white drop-shadow-md" />
+                    </div>
+                  ) : null}
                 </Link>
               ))}
             </div>

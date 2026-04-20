@@ -112,6 +112,15 @@ export type KipemberContributor = {
   } | null;
 };
 
+export type KipemberTag = {
+  id: string;
+  label: string;
+  leftPct?: number | null;
+  topPct?: number | null;
+  widthPct?: number | null;
+  heightPct?: number | null;
+};
+
 export type KipemberAttachment = {
   id: string;
   filename: string;
@@ -120,6 +129,7 @@ export type KipemberAttachment = {
   durationSeconds: number | null;
   originalName: string;
   description: string | null;
+  analysisText?: string | null;
   createdAt: string;
 };
 
@@ -175,6 +185,7 @@ export type KipemberWikiDetail = {
   } | null;
   contributors: KipemberContributor[];
   attachments: KipemberAttachment[];
+  tags?: KipemberTag[];
   voiceCallClips?: KipemberVoiceCallClip[];
 };
 
@@ -490,6 +501,8 @@ function WikiCard({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+const TAG_COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
 
 export default function KipemberWikiContent({
   detail,
@@ -996,6 +1009,30 @@ export default function KipemberWikiContent({
       ) : null}
 
       <WikiSection
+        icon={<Users size={17} />}
+        title="Tagged People"
+        complete={Boolean(detail?.tags && detail.tags.length > 0)}
+      >
+        <WikiCard>
+          {detail?.tags && detail.tags.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {detail.tags.map((tag, i) => (
+                <div key={tag.id} className="flex items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: TAG_COLORS[i % TAG_COLORS.length] }}
+                  />
+                  <p className="text-white text-sm">{tag.label}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/30 text-sm">No people tagged yet.</p>
+          )}
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
         icon={<MapPin size={17} />}
         title="Location"
         complete={Boolean(primaryLocationLine || coordinateLine)}
@@ -1049,7 +1086,24 @@ export default function KipemberWikiContent({
         )}
       >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">AI Image Analysis</p>
+          {detail ? (
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+                style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+              >
+                <MediaPreview
+                  mediaType={detail.mediaType}
+                  filename={detail.filename}
+                  posterFilename={detail.posterFilename}
+                  originalName={detail.originalName}
+                  usePosterForVideo
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <p className="text-white/50 text-xs font-medium break-words">{detail.originalName}</p>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-1">
             {buildStructuredAnalysisText(detail?.analysis || null)
               .split('\n')
@@ -1078,6 +1132,55 @@ export default function KipemberWikiContent({
               : ''}
           </p>
         </WikiCard>
+
+        {visualAttachments
+          .filter((a) => a.analysisText)
+          .map((attachment) => {
+            let parsedAnalysis: KipemberWikiDetail['analysis'] | null = null;
+            try {
+              parsedAnalysis = JSON.parse(attachment.analysisText!) as KipemberWikiDetail['analysis'];
+            } catch {
+              parsedAnalysis = null;
+            }
+            const analysisText = buildStructuredAnalysisText(parsedAnalysis);
+
+            return (
+              <WikiCard key={`analysis-${attachment.id}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+                    style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                  >
+                    <MediaPreview
+                      mediaType={attachment.mediaType}
+                      filename={attachment.filename}
+                      posterFilename={attachment.posterFilename}
+                      originalName={attachment.originalName}
+                      usePosterForVideo
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <p className="text-white/50 text-xs font-medium break-words">{attachment.originalName}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {analysisText.split('\n').map((line, index) => {
+                    const cleaned = line.replace(/\*\*/g, '').trim();
+                    if (!cleaned) return <div key={`att-gap-${attachment.id}-${index}`} className="h-2" />;
+                    const isBold = line.startsWith('**') && line.endsWith('**');
+                    return (
+                      <p
+                        key={`att-line-${attachment.id}-${index}`}
+                        className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white text-sm leading-relaxed'}
+                      >
+                        {cleaned}
+                      </p>
+                    );
+                  })}
+                </div>
+                <p className="text-white/30 text-xs mt-4">Source: GPT-4o</p>
+              </WikiCard>
+            );
+          })}
       </WikiSection>
 
     </div>

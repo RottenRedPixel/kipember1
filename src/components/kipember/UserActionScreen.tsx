@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Camera, ChevronDown, ChevronLeft, Plus, User, Users } from 'lucide-react';
+import { Camera, ChevronDown, ChevronLeft, FileStack, Plus, User, Users } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { USER_ACTIONS, USER_ICONS } from '@/app/user/constants';
@@ -310,6 +310,11 @@ export default function UserActionScreen({
                         alt={image.title || image.originalName}
                         className="absolute inset-0 h-full w-full object-cover"
                       />
+                      {image.photoCount > 1 ? (
+                        <div className="absolute top-1.5 right-1.5 z-10">
+                          <FileStack size={16} className="text-white drop-shadow-md" />
+                        </div>
+                      ) : null}
                     </Link>
                   ))}
                 </div>

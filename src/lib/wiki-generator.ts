@@ -335,6 +335,7 @@ async function fetchImageForWiki(imageId: string) {
           originalName: true,
           mediaType: true,
           description: true,
+          analysisText: true,
           createdAt: true,
         },
       },
@@ -991,7 +992,11 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
                   ? 'Audio'
                   : 'Photo';
             const note = cleanInlineText(attachment.description);
-            return `- ${typeLabel} ${index + 1}: ${attachment.originalName}${note ? ` — ${note}` : ''}`;
+            const listLine = `- ${typeLabel} ${index + 1}: ${attachment.originalName}${note ? ` — ${note}` : ''}`;
+            const analysis = attachment.mediaType !== 'AUDIO' && attachment.analysisText?.trim()
+              ? `\n\n### ${typeLabel} ${index + 1}: ${attachment.originalName}\n\n${attachment.analysisText.trim()}`
+              : '';
+            return listLine + analysis;
           })
           .join('\n')
       : 'No supporting media has been added yet.';

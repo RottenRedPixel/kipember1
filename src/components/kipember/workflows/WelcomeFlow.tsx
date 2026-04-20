@@ -1,11 +1,16 @@
 'use client';
 
-import { Image as ImageIcon, Mic, Phone, SendHorizontal } from 'lucide-react';
+import { Image as ImageIcon, Mic, Pause, Phone, Play, SendHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type Message = {
   role: 'user' | 'assistant';
   content: string;
+  source?: 'web' | 'voice';
+  imageUrl?: string;             // transient local blob URL (upload preview)
+  imageFilename?: string | null; // persisted filename from DB
+  audioUrl?: string | null;
+  createdAt?: string;
 };
 
 type BrowserSpeechRecognition = {
@@ -33,6 +38,44 @@ declare global {
     SpeechRecognition?: new () => BrowserSpeechRecognition;
     webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
   }
+}
+
+function AudioPlayer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  function toggle() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+    } else {
+      void audio.play();
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10">
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio
+        ref={audioRef}
+        src={src}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+      />
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex h-6 w-6 items-center justify-center rounded-full cursor-pointer flex-shrink-0"
+        style={{ background: 'rgba(249,115,22,0.85)' }}
+        aria-label={playing ? 'Pause' : 'Play'}
+      >
+        {playing ? <Pause size={11} className="text-white" /> : <Play size={11} className="text-white" />}
+      </button>
+      <span className="text-white/40 text-xs">Voice recording</span>
+    </div>
+  );
 }
 
 export default function WelcomeFlow({
@@ -222,6 +265,14 @@ export default function WelcomeFlow({
     setError('');
     setStatus('');
 
+    const isVideo = file.type.startsWith('video/');
+    const previewUrl = URL.createObjectURL(file);
+
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: isVideo ? 'Video' : 'Photo', imageUrl: previewUrl },
+    ]);
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -237,10 +288,27 @@ export default function WelcomeFlow({
         throw new Error(payload?.error || 'Failed to add content.');
       }
 
-      setStatus(file.type.startsWith('video/') ? 'Video added to this memory.' : 'Photo added to this memory.');
+      // Persist the image message in chat history so it survives page reloads
+      const uploadedFilename: string | null = payload?.attachment?.filename ?? null;
+      if (uploadedFilename) {
+        void fetch('/api/chat', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageId, imageFilename: uploadedFilename }),
+        });
+        // Swap the transient blob URL message for a persisted filename message
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.imageUrl === previewUrl
+              ? { ...m, imageUrl: undefined, imageFilename: uploadedFilename }
+              : m
+          )
+        );
+      }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'Failed to add content.');
     } finally {
+      URL.revokeObjectURL(previewUrl);
       setIsUploading(false);
     }
   }
@@ -411,27 +479,43 @@ export default function WelcomeFlow({
 
             {messages.map((message, index) => {
               const isUser = message.role === 'user';
+              const isVoice = message.source === 'voice';
               return (
                 <div
                   key={`${message.role}-${index}-${message.content.slice(0, 24)}`}
                   className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}
                 >
-                  <span className={`text-xs font-medium ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}>
+                  <span className={`flex items-center gap-1 text-xs font-medium ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}>
+                    {isVoice ? <Phone size={10} className={isUser ? 'text-white/30' : 'text-white/60'} /> : null}
                     {isUser ? 'you' : 'ember'}
                   </span>
-                  <div
-                    className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${
-                      isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
-                    }`}
-                    style={{
-                      background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
-                      border: isUser ? 'none' : '1px solid var(--border-ember)',
-                    }}
-                  >
-                    <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
-                      {message.content}
-                    </p>
-                  </div>
+                  {(message.imageUrl || message.imageFilename) ? (
+                    <div className="max-w-[30%] rounded-2xl rounded-tr-sm overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={message.imageUrl ?? `/api/uploads/${message.imageFilename}`}
+                        alt="Uploaded photo"
+                        className="w-full h-auto object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                        isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
+                      }`}
+                      style={{
+                        background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
+                        border: isUser ? 'none' : '1px solid var(--border-ember)',
+                      }}
+                    >
+                      <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
+                        {message.content}
+                      </p>
+                      {message.audioUrl ? (
+                        <AudioPlayer src={message.audioUrl} />
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -488,17 +572,6 @@ export default function WelcomeFlow({
 
           <button
             type="button"
-            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-            disabled={isSending}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40"
-            style={{ background: isRecording ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
-            aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
-          >
-            <Mic size={18} />
-          </button>
-
-          <button
-            type="button"
             onClick={() => void triggerSelfInvite('call')}
             disabled={invitingMode !== null || hasPhoneNumber === false || hasPhoneNumber === null}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
@@ -506,6 +579,17 @@ export default function WelcomeFlow({
             aria-label="Call my phone"
           >
             <Phone size={18} />
+          </button>
+
+          <button
+            type="button"
+            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+            disabled={isSending}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40"
+            style={{ background: isRecording ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
+            aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
+          >
+            <Mic size={18} />
           </button>
 
           <input
