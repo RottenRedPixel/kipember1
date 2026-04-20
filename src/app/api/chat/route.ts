@@ -523,27 +523,101 @@ export async function GET(request: NextRequest) {
 
     const userId = auth.user.id;
 
-    const session = await prisma.chatSession.findUnique({
-      where: { userId_imageId: { userId, imageId } },
+    const [session, contributor] = await Promise.all([
+      prisma.chatSession.findUnique({
+        where: { userId_imageId: { userId, imageId } },
+      }),
+      prisma.contributor.findFirst({
+        where: { imageId, userId },
+        select: {
+          id: true,
+          conversation: {
+            select: {
+              responses: {
+                where: { source: 'voice' },
+                orderBy: { createdAt: 'asc' },
+                select: { id: true, question: true, answer: true, createdAt: true },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    // Load chat messages (may be null if no session yet)
+    const history = session
+      ? await prisma.chatMessage.findMany({
+          where: { sessionId: session.id },
+          orderBy: { createdAt: 'asc' },
+          take: HISTORY_LIMIT,
+        })
+      : [];
+
+    // Load voice clips for this contributor so we can attach audioUrl to responses
+    const clips = contributor
+      ? await prisma.voiceCallClip.findMany({
+          where: { imageId, contributorId: contributor.id },
+          select: { quote: true, audioUrl: true },
+        })
+      : [];
+
+    // Build chat message entries
+    type MergedEntry = {
+      role: string;
+      content: string;
+      source: 'web' | 'voice';
+      imageFilename: string | null;
+      audioUrl: string | null;
+      createdAt: string;
+    };
+
+    const chatEntries: MergedEntry[] = history.map((entry) => ({
+      role: entry.role,
+      content: entry.content,
+      source: 'web',
+      imageFilename: entry.imageFilename ?? null,
+      audioUrl: null,
+      createdAt: entry.createdAt.toISOString(),
+    }));
+
+    // Build voice response entries (each Response = one assistant Q + one user A)
+    const voiceResponses = contributor?.conversation?.responses ?? [];
+    const voiceEntries: MergedEntry[] = voiceResponses.flatMap((response) => {
+      // Try to find a matching clip whose quote appears in the answer
+      const matchedClip = clips.find(
+        (clip) =>
+          clip.audioUrl &&
+          clip.quote.trim().length > 10 &&
+          response.answer.includes(clip.quote.trim().slice(0, 40))
+      );
+      const audioUrl = matchedClip?.audioUrl ?? null;
+
+      return [
+        {
+          role: 'assistant',
+          content: response.question,
+          source: 'voice' as const,
+          imageFilename: null,
+          audioUrl: null,
+          createdAt: response.createdAt.toISOString(),
+        },
+        {
+          role: 'user',
+          content: response.answer,
+          source: 'voice' as const,
+          imageFilename: null,
+          audioUrl,
+          createdAt: response.createdAt.toISOString(),
+        },
+      ];
     });
 
-    if (!session) {
-      return NextResponse.json({ messages: [] });
-    }
+    // Merge and sort by createdAt
+    const merged = [...chatEntries, ...voiceEntries].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
 
-    const history = await prisma.chatMessage.findMany({
-      where: { sessionId: session.id },
-      orderBy: { createdAt: 'asc' },
-      take: HISTORY_LIMIT,
-    });
-
-    return NextResponse.json({
-      messages: history.map((entry) => ({
-        role: entry.role,
-        content: entry.content,
-        imageFilename: entry.imageFilename ?? null,
-      })),
-    });
+    return NextResponse.json({ messages: merged });
   } catch (error) {
     console.error('Chat history error:', error);
     return NextResponse.json(

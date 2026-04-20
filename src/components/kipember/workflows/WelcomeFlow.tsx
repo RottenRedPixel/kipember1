@@ -1,13 +1,16 @@
 'use client';
 
-import { Image as ImageIcon, Mic, Phone, SendHorizontal } from 'lucide-react';
+import { Image as ImageIcon, Mic, Pause, Phone, Play, SendHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type Message = {
   role: 'user' | 'assistant';
   content: string;
-  imageUrl?: string;        // transient local blob URL (upload preview)
+  source?: 'web' | 'voice';
+  imageUrl?: string;             // transient local blob URL (upload preview)
   imageFilename?: string | null; // persisted filename from DB
+  audioUrl?: string | null;
+  createdAt?: string;
 };
 
 type BrowserSpeechRecognition = {
@@ -35,6 +38,44 @@ declare global {
     SpeechRecognition?: new () => BrowserSpeechRecognition;
     webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
   }
+}
+
+function AudioPlayer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  function toggle() {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) {
+      audio.pause();
+    } else {
+      void audio.play();
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10">
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio
+        ref={audioRef}
+        src={src}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+      />
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex h-6 w-6 items-center justify-center rounded-full cursor-pointer flex-shrink-0"
+        style={{ background: 'rgba(249,115,22,0.85)' }}
+        aria-label={playing ? 'Pause' : 'Play'}
+      >
+        {playing ? <Pause size={11} className="text-white" /> : <Play size={11} className="text-white" />}
+      </button>
+      <span className="text-white/40 text-xs">Voice recording</span>
+    </div>
+  );
 }
 
 export default function WelcomeFlow({
@@ -438,12 +479,14 @@ export default function WelcomeFlow({
 
             {messages.map((message, index) => {
               const isUser = message.role === 'user';
+              const isVoice = message.source === 'voice';
               return (
                 <div
                   key={`${message.role}-${index}-${message.content.slice(0, 24)}`}
                   className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}
                 >
-                  <span className={`text-xs font-medium ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}>
+                  <span className={`flex items-center gap-1 text-xs font-medium ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}>
+                    {isVoice ? <Phone size={10} className={isUser ? 'text-white/30' : 'text-white/60'} /> : null}
                     {isUser ? 'you' : 'ember'}
                   </span>
                   {(message.imageUrl || message.imageFilename) ? (
@@ -468,6 +511,9 @@ export default function WelcomeFlow({
                       <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
                         {message.content}
                       </p>
+                      {message.audioUrl ? (
+                        <AudioPlayer src={message.audioUrl} />
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -526,17 +572,6 @@ export default function WelcomeFlow({
 
           <button
             type="button"
-            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-            disabled={isSending}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40"
-            style={{ background: isRecording ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
-            aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
-          >
-            <Mic size={18} />
-          </button>
-
-          <button
-            type="button"
             onClick={() => void triggerSelfInvite('call')}
             disabled={invitingMode !== null || hasPhoneNumber === false || hasPhoneNumber === null}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
@@ -544,6 +579,17 @@ export default function WelcomeFlow({
             aria-label="Call my phone"
           >
             <Phone size={18} />
+          </button>
+
+          <button
+            type="button"
+            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+            disabled={isSending}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40"
+            style={{ background: isRecording ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
+            aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
+          >
+            <Mic size={18} />
           </button>
 
           <input
