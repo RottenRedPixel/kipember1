@@ -641,6 +641,7 @@ export async function GET(
       description: image.description,
       createdAt: image.createdAt,
       shareToNetwork: image.shareToNetwork,
+      keepPrivate: image.keepPrivate,
       owner: image.owner,
       accessType,
       canManage: accessType === 'owner',
