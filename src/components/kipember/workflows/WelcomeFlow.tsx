@@ -447,7 +447,7 @@ export default function WelcomeFlow({
                     {isUser ? 'you' : 'ember'}
                   </span>
                   {(message.imageUrl || message.imageFilename) ? (
-                    <div className="max-w-[60%] rounded-2xl rounded-tr-sm overflow-hidden">
+                    <div className="max-w-[30%] rounded-2xl rounded-tr-sm overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={message.imageUrl ?? `/api/uploads/${message.imageFilename}`}
