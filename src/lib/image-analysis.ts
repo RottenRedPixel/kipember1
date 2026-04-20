@@ -2,7 +2,7 @@ import { readFile } from 'fs/promises';
 import exifr from 'exifr';
 import sharp from 'sharp';
 import { prisma } from '@/lib/db';
-import { getImageAnalysisModel, getOpenAIClient } from '@/lib/openai';
+import { getConfiguredOpenAIModel, getImageAnalysisModel, getOpenAIClient } from '@/lib/openai';
 import { getUploadPath, inferImageMimeType } from '@/lib/uploads';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -907,7 +907,7 @@ async function repairVisionJson(responseText: string): Promise<unknown> {
   const repairSource = extractBalancedJsonObject(responseText) || sanitizeJsonCandidate(responseText);
   const openai = getOpenAIClient();
   const repairMessage = await openai.responses.create({
-    model: getImageAnalysisModel(),
+    model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
     input: [
       {
         role: 'developer',
@@ -968,7 +968,7 @@ async function requestVisionAnalysisText({
   const openai = getOpenAIClient();
 
   const response = await openai.responses.create({
-    model: getImageAnalysisModel(),
+    model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
     input: [
       {
         role: 'developer',

@@ -1,4 +1,5 @@
-import { getOpenAIClient, getStoryCutsModel } from '@/lib/openai';
+import { renderPromptTemplate } from '@/lib/control-plane';
+import { getConfiguredOpenAIModel, getOpenAIClient, getStoryCutsModel } from '@/lib/openai';
 
 type SetupContext = Awaited<ReturnType<typeof import('@/lib/ember-setup-context').loadEmberSetupContext>>;
 
@@ -280,6 +281,14 @@ Focus:
   },
 };
 
+const STORY_CUT_PROMPT_KEYS: Record<StoryCutStyle, string> = {
+  documentary: 'story_cuts.documentary',
+  publicRadio: 'story_cuts.public_radio',
+  newsReport: 'story_cuts.news_report',
+  podcastNarrative: 'story_cuts.podcast_narrative',
+  movieTrailer: 'story_cuts.movie_trailer',
+};
+
 function clampDuration(value: number) {
   if (!Number.isFinite(value)) {
     return 10;
@@ -494,6 +503,10 @@ export async function generateStoryCut(
   const durationSeconds = clampDuration(options.durationSeconds);
   const wordCount = estimateWordCount(durationSeconds);
   const styleConfig = STORY_CUT_STYLE_PROMPTS[options.style] || STORY_CUT_STYLE_PROMPTS.documentary;
+  const stylePrompt = await renderPromptTemplate(
+    STORY_CUT_PROMPT_KEYS[options.style] || STORY_CUT_PROMPT_KEYS.documentary,
+    styleConfig.prompt
+  );
   const storyFocus = options.storyFocus.trim() || 'The emotional heart of the moment';
   const storyTitle = options.storyTitle?.trim() || context.imageTitle;
   const selectedContributorIds = new Set(options.selectedContributorIds || []);
@@ -631,7 +644,7 @@ export async function generateStoryCut(
 
   const openai = getOpenAIClient();
   const response = await openai.responses.create({
-    model: getStoryCutsModel(),
+    model: await getConfiguredOpenAIModel('story_cuts.generate', getStoryCutsModel()),
     input: [
       {
         role: 'developer',
@@ -643,7 +656,7 @@ export async function generateStoryCut(
 
 Snapshots are NOT generic wiki narration. They are short trailer-like memory playbacks.
 
-${styleConfig.prompt}
+${stylePrompt}
 
 Rules:
 - Use only the provided Ember context, Story Circle conversations, contributor quotes, media, and call summaries.

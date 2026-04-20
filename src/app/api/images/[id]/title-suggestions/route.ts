@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
+import { renderPromptTemplate } from '@/lib/control-plane';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
-import { getOpenAIClient, getWikiModel } from '@/lib/openai';
+import { getConfiguredOpenAIModel, getOpenAIClient, getWikiModel } from '@/lib/openai';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 import { prisma } from '@/lib/db';
 
@@ -17,6 +18,67 @@ type SmartTitleSuggestionCache = {
   contextSuggestions: string[];
   contributorQuotes: ContributorQuoteSuggestion[];
 };
+
+const TITLE_SUGGESTIONS_BASE_PROMPT = (modeInstruction: string) => `You are generating Ember titles.
+
+Based on the context above, generate 3 creative and memorable titles for this moment.
+
+${modeInstruction}
+
+Each title should:
+- Be 2-6 words long
+- Capture the essence of the memory
+- Feel personal and meaningful
+- Avoid generic phrases
+- Use specific details when possible
+- Prefer distinctive phrases or emotional beats from voice-call highlights when they are present
+
+Return the titles as a simple list, one per line, without numbers or bullets.`;
+
+const QUOTED_TITLE_PROMPT = `You are generating quote-based Ember title options from real owner and contributor wording.
+
+Choose up to 3 of the strongest quote snippets below and turn each one into a short title.
+
+Rules:
+- Use the speaker's actual wording as much as possible.
+- Light trimming is allowed, but do not invent facts or rewrite the meaning.
+- Each title must be 2-8 words.
+- Each title must be wrapped in double quotes.
+- Prefer vivid, memorable, title-worthy wording.
+- Prefer statements over questions when possible.
+- Return strict JSON only.
+
+Return a JSON array like:
+[{"index":1,"title":"\\"Best Coffee Ever\\""}]`;
+
+const SINGLE_TITLE_PROMPT = `You are analyzing a rich memory wiki called an "Ember" to create the perfect title.
+
+This Ember contains layered stories, conversations, and context from multiple contributors.
+
+TASK:
+Analyze all the context deeply and generate ONE perfect title that:
+1. Captures the emotional essence
+2. Reflects the key narrative
+3. Incorporates unique details
+4. Resonates personally
+5. Still feels meaningful years from now
+
+Consider:
+- The story conversations and how people are talking about this moment
+- Any important quoted moment pulled from a voice call
+- The relationships between tagged people
+- The setting and context from image analysis
+- Emotional undertones or significance mentioned
+- Specific details that make this memory unique
+
+PRIORITY (in order):
+- If specific people are tagged in the photo, strongly prefer a title that names them or captures their relationship (e.g. "Zia and Anna at the Beach" or "Mom's First La Jolla Visit")
+- Use real wording or emotional details from contributor memories and voice call highlights when present
+- Draw on wiki content for specific personal details that make this memory unique
+- Fall back to visual scene details only when no personal context is available
+
+Generate ONE thoughtful, evocative title between 2 and 8 words.
+Return ONLY the title, with no explanation.`;
 
 function normalizeTitleLine(value: string) {
   return value
@@ -170,10 +232,22 @@ async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'con
 - Avoid titles that only restate the visual scene if a richer human story is present.`;
   const preferredPeopleHint =
     preferredPeople && preferredPeople.length > 0
-      ? `\nPreferred people to mention (use their names in the title if possible): ${preferredPeople.join(', ')}`
+      ? `Preferred people to mention (use their names in the title if possible): ${preferredPeople.join(', ')}`
       : '';
+  const basePrompt = await renderPromptTemplate(
+    mode === 'analysis' ? 'title_suggestions.analysis' : 'title_suggestions.context',
+    TITLE_SUGGESTIONS_BASE_PROMPT(modeInstruction),
+    {
+      modeInstruction,
+      preferredPeopleHint,
+    }
+  );
+  const prompt =
+    preferredPeopleHint && !basePrompt.includes(preferredPeopleHint)
+      ? `${basePrompt}\n\n${preferredPeopleHint}`
+      : basePrompt;
   const response = await openai.responses.create({
-    model: getWikiModel(),
+    model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
       {
         role: 'developer',
@@ -181,21 +255,7 @@ async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'con
         content: [
           {
             type: 'input_text',
-            text: `You are generating Ember titles.
-
-Based on the context above, generate 3 creative and memorable titles for this moment.
-${preferredPeopleHint}
-${modeInstruction}
-
-Each title should:
-- Be 2-6 words long
-- Capture the essence of the memory
-- Feel personal and meaningful
-- Avoid generic phrases
-- Use specific details when possible
-- Prefer distinctive phrases or emotional beats from voice-call highlights when they are present
-
-Return the titles as a simple list, one per line, without numbers or bullets.`,
+            text: prompt,
           },
         ],
       },
@@ -231,10 +291,11 @@ async function generateQuotedTitleSuggestions(
 
   const limitedEntries = entries.slice(0, 12);
   const openai = getOpenAIClient();
+  const prompt = await renderPromptTemplate('title_suggestions.quote', QUOTED_TITLE_PROMPT);
 
   try {
     const response = await openai.responses.create({
-      model: getWikiModel(),
+      model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
       input: [
         {
           role: 'developer',
@@ -242,21 +303,7 @@ async function generateQuotedTitleSuggestions(
           content: [
             {
               type: 'input_text',
-              text: `You are generating quote-based Ember title options from real owner and contributor wording.
-
-Choose up to 3 of the strongest quote snippets below and turn each one into a short title.
-
-Rules:
-- Use the speaker's actual wording as much as possible.
-- Light trimming is allowed, but do not invent facts or rewrite the meaning.
-- Each title must be 2-8 words.
-- Each title must be wrapped in double quotes.
-- Prefer vivid, memorable, title-worthy wording.
-- Prefer statements over questions when possible.
-- Return strict JSON only.
-
-Return a JSON array like:
-[{"index":1,"title":"\\"Best Coffee Ever\\""}]`,
+              text: prompt,
             },
           ],
         },
@@ -339,8 +386,9 @@ Return a JSON array like:
 
 async function generateSingleTitle(emberContext: string) {
   const openai = getOpenAIClient();
+  const prompt = await renderPromptTemplate('title_suggestions.single', SINGLE_TITLE_PROMPT);
   const response = await openai.responses.create({
-    model: getWikiModel(),
+    model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
       {
         role: 'developer',
@@ -348,26 +396,7 @@ async function generateSingleTitle(emberContext: string) {
         content: [
           {
             type: 'input_text',
-            text: `You are analyzing a rich memory wiki called an "Ember" to create the perfect title.
-
-This Ember contains layered stories, conversations, and context from multiple contributors.
-
-TASK:
-Analyze all the context deeply and generate ONE perfect title that:
-1. Captures the emotional essence
-2. Reflects the key narrative
-3. Incorporates unique details
-4. Resonates personally
-5. Still feels meaningful years from now
-
-PRIORITY (in order):
-- If specific people are tagged in the photo, strongly prefer a title that names them or captures their relationship (e.g. "Zia and Anna at the Beach" or "Mom's First La Jolla Visit")
-- Use real wording or emotional details from contributor memories and voice call highlights when present
-- Draw on wiki content for specific personal details that make this memory unique
-- Fall back to visual scene details only when no personal context is available
-
-Generate ONE thoughtful, evocative title between 2 and 8 words.
-Return ONLY the title, with no explanation.`,
+            text: prompt,
           },
         ],
       },

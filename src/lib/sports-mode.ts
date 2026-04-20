@@ -1,4 +1,32 @@
 import { chat } from '@/lib/claude';
+import { renderPromptTemplate } from '@/lib/control-plane';
+
+const SPORTS_PARSE_PROMPT = `You extract structured sports memory data from a user's description.
+
+Return ONLY valid JSON in this shape:
+{
+  "sportType": "string or null",
+  "subjectName": "string or null",
+  "teamName": "string or null",
+  "opponentName": "string or null",
+  "eventName": "string or null",
+  "season": "string or null",
+  "outcome": "win|loss|tie|unknown",
+  "finalScore": "string or null",
+  "summary": "1-2 sentence grounded recap",
+  "statLines": [
+    { "label": "stat label", "value": "stat value" }
+  ],
+  "highlights": ["short bullet", "short bullet"]
+}
+
+Rules:
+- Use only what is explicitly stated or a direct restatement of the input.
+- Do not invent teams, opponents, dates, or stats.
+- Convert common sports shorthand into readable stat labels.
+- Keep stat values as short strings so they can handle any sport.
+- If the outcome cannot be determined, use "unknown".
+- Summary should be concise and factual.`;
 
 export type SportsStatLine = {
   label: string;
@@ -97,32 +125,7 @@ export async function parseSportsModeInput({
   seasonHint: string | null;
   rawDetails: string;
 }): Promise<ParsedSportsMode> {
-  const systemPrompt = `You extract structured sports memory data from a user's description.
-
-Return ONLY valid JSON in this shape:
-{
-  "sportType": "string or null",
-  "subjectName": "string or null",
-  "teamName": "string or null",
-  "opponentName": "string or null",
-  "eventName": "string or null",
-  "season": "string or null",
-  "outcome": "win|loss|tie|unknown",
-  "finalScore": "string or null",
-  "summary": "1-2 sentence grounded recap",
-  "statLines": [
-    { "label": "stat label", "value": "stat value" }
-  ],
-  "highlights": ["short bullet", "short bullet"]
-}
-
-Rules:
-- Use only what is explicitly stated or a direct restatement of the input.
-- Do not invent teams, opponents, dates, or stats.
-- Convert common sports shorthand into readable stat labels.
-- Keep stat values as short strings so they can handle any sport.
-- If the outcome cannot be determined, use "unknown".
-- Summary should be concise and factual.`;
+  const systemPrompt = await renderPromptTemplate('sports.parse', SPORTS_PARSE_PROMPT);
 
   const userMessage = [
     `Sport hint: ${sportTypeHint || 'None'}`,
@@ -134,7 +137,9 @@ Rules:
     `Raw sports details: ${rawDetails}`,
   ].join('\n');
 
-  const response = await chat(systemPrompt, [{ role: 'user', content: userMessage }]);
+  const response = await chat(systemPrompt, [{ role: 'user', content: userMessage }], {
+    capabilityKey: 'sports.parse',
+  });
   const parsed = JSON.parse(extractJsonObject(response)) as Record<string, unknown>;
 
   return {

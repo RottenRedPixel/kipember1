@@ -2,6 +2,7 @@ import { readFile } from 'fs/promises';
 import Anthropic from '@anthropic-ai/sdk';
 import sharp from 'sharp';
 import { normalizeEmail, normalizePhone } from '@/lib/auth-server';
+import { getCapabilityModel } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
 
@@ -47,6 +48,15 @@ type CropVariant = 'tight' | 'expanded';
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+const DEFAULT_FACE_MATCH_MODEL = 'claude-sonnet-4-20250514';
+
+async function getFaceMatchModel() {
+  return getCapabilityModel(
+    'face_match',
+    process.env.ANTHROPIC_FACE_MATCH_MODEL || DEFAULT_FACE_MATCH_MODEL
+  );
+}
 
 const MAX_FACES_PER_IMAGE = 4;
 const MAX_PEOPLE_TO_COMPARE = 4;
@@ -377,7 +387,7 @@ async function loadCandidatesWithReferences(referenceCandidates: CandidateGroup[
 
 async function repairFaceMatchJson(responseText: string): Promise<unknown> {
   const repairMessage = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
+    model: await getFaceMatchModel(),
     max_tokens: 800,
     system: `You repair malformed JSON responses for a face-match suggestion pipeline.
 
@@ -408,7 +418,7 @@ ${JSON.stringify(FACE_MATCH_SCHEMA)}`,
 
 async function repairFaceVerifyJson(responseText: string): Promise<unknown> {
   const repairMessage = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
+    model: await getFaceMatchModel(),
     max_tokens: 800,
     system: `You repair malformed JSON responses for a face-match verification pipeline.
 
@@ -439,7 +449,7 @@ ${JSON.stringify(FACE_VERIFY_SCHEMA)}`,
 
 async function repairAutoTagJson(responseText: string): Promise<unknown> {
   const repairMessage = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
+    model: await getFaceMatchModel(),
     max_tokens: 1000,
     system: `You repair malformed JSON responses for an auto-tag suggestion pipeline.
 
@@ -526,7 +536,7 @@ async function compareFaceToCandidates(
   });
 
   const response = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
+    model: await getFaceMatchModel(),
     max_tokens: 900,
     system: `You compare one target face crop against a shortlist of confirmed face references from a private family archive.
 
@@ -627,7 +637,7 @@ async function verifyFaceAgainstCandidate(
   });
 
   const response = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
+    model: await getFaceMatchModel(),
     max_tokens: 900,
     system: `You verify whether target face crops and reference face crops are the same person in a private family archive.
 
@@ -835,7 +845,7 @@ async function locateCandidateMatchesInImage(
   });
 
   const response = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
+    model: await getFaceMatchModel(),
     max_tokens: 1400,
     system: `You are identifying known family members inside a target photo.
 

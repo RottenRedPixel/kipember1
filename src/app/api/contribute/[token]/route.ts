@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { chat } from '@/lib/claude';
+import { renderPromptTemplate } from '@/lib/control-plane';
 import { isGuestUserEmail } from '@/lib/guest-embers';
 import {
   buildInterviewKnownContextFromImage,
@@ -12,6 +13,39 @@ import {
 } from '@/lib/interview-flow';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
+
+const CONTRIBUTOR_FOLLOWUP_PROMPT = `You are Ember collecting one more memory detail after an interview was already completed.
+
+Your job:
+1. Briefly acknowledge the new detail without embellishing it.
+2. Invite one more small detail only if it feels natural.
+
+Rules:
+- Do not add facts the contributor did not say.
+- Keep it to at most 2 short sentences.
+- Sound warm and concise.
+- End by making it clear they can add more or stop whenever they want.`;
+
+const CONTRIBUTOR_CORE_PROMPT_TEMPLATE = `You are Ember, guiding someone through a short memory interview about a photo.
+You just received their answer to the "{{currentStep}}" topic.
+
+Your job:
+1. Briefly acknowledge only what they actually said.
+2. Ask the next useful question naturally, or wrap up if the interview is complete.
+
+Rules:
+- Do not embellish, dramatize, or add facts the contributor did not say.
+- Do not reinterpret objects or people. If the contributor says "statue", "doll", "decoration", or similar, keep that wording.
+- Do not ask for facts already known from metadata, tags, or earlier answers.
+- Do not ask for date/time if metadata already provides it.
+- Do not ask for location if metadata already provides it.
+- Keep the whole response to at most 2 short sentences.
+- Sound warm, but restrained and grounded.
+
+Known context:
+{{knownFacts}}
+
+{{nextStepInstructions}}`;
 
 // GET - Fetch contributor info and conversation
 export async function GET(
@@ -459,22 +493,18 @@ async function generateInterviewResponse(
       };
     }
 
-    const followupPrompt = `You are Ember collecting one more memory detail after an interview was already completed.
-
-Your job:
-1. Briefly acknowledge the new detail without embellishing it.
-2. Invite one more small detail only if it feels natural.
-
-Rules:
-- Do not add facts the contributor did not say.
-- Keep it to at most 2 short sentences.
-- Sound warm and concise.
-- End by making it clear they can add more or stop whenever they want.`;
+    const followupPrompt = await renderPromptTemplate(
+      'contributor_interview.followup',
+      CONTRIBUTOR_FOLLOWUP_PROMPT
+    );
 
     const followupResponse = await chat(followupPrompt, [
       ...conversationHistory,
       { role: 'user', content: userMessage },
-    ]);
+    ], {
+      capabilityKey: 'voice.transcript_extract',
+      maxTokens: 256,
+    });
 
     return {
       message: followupResponse,
@@ -524,35 +554,29 @@ Rules:
     .filter(Boolean)
     .join('\n');
 
-  const systemPrompt = `You are Ember, guiding someone through a short memory interview about a photo.
-You just received their answer to the "${currentStep}" topic.
-
-Your job:
-1. Briefly acknowledge only what they actually said.
-2. Ask the next useful question naturally, or wrap up if the interview is complete.
-
-Rules:
-- Do not embellish, dramatize, or add facts the contributor did not say.
-- Do not reinterpret objects or people. If the contributor says "statue", "doll", "decoration", or similar, keep that wording.
-- Do not ask for facts already known from metadata, tags, or earlier answers.
-- Do not ask for date/time if metadata already provides it.
-- Do not ask for location if metadata already provides it.
-- Keep the whole response to at most 2 short sentences.
-- Sound warm, but restrained and grounded.
-
-Known context:
-${knownFacts || 'No extra confirmed context.'}
-
-${nextStep !== 'completed'
-  ? `Next question topic: "${nextStep}"
+  const nextStepInstructions =
+    nextStep !== 'completed'
+      ? `Next question topic: "${nextStep}"
 Standard question intent: "${INTERVIEW_QUESTIONS[nextStep]}"
 Rephrase it naturally based on the conversation flow and known context.`
-  : 'The interview is complete. Thank them briefly and say Ember will update the memory with what they shared.'}`;
+      : 'The interview is complete. Thank them briefly and say Ember will update the memory with what they shared.';
+  const systemPrompt = await renderPromptTemplate(
+    'contributor_interview.core',
+    CONTRIBUTOR_CORE_PROMPT_TEMPLATE,
+    {
+      currentStep,
+      knownFacts: knownFacts || 'No extra confirmed context.',
+      nextStepInstructions,
+    }
+  );
 
   const aiResponse = await chat(systemPrompt, [
     ...conversationHistory,
     { role: 'user', content: userMessage },
-  ]);
+  ], {
+    capabilityKey: 'voice.transcript_extract',
+    maxTokens: 256,
+  });
 
   return {
     message: aiResponse,

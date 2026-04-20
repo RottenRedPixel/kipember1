@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
+import { renderPromptTemplate } from '@/lib/control-plane';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
-import { getOpenAIClient, getWikiModel } from '@/lib/openai';
+import { getConfiguredOpenAIModel, getOpenAIClient, getWikiModel } from '@/lib/openai';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
+
+const SMART_CAPTION_PROMPT = `You are generating a Smart Caption for an Ember memory.
+
+Write a short, human, emotionally grounded caption for this memory.
+
+Rules:
+- Use only details supported by the provided context.
+- Make it feel like a memory, not metadata or analysis.
+- No headings, bullets, labels, or explanations.
+- Keep it concise: 2-4 short paragraphs or lines total.
+- If the date is clearly supported, you may open with a short date line.
+- Avoid generic phrases like "This image shows".
+- The caption may later be narrated aloud, so it should sound natural when spoken.
+- Optional voice instruction: {{voiceInstruction}}
+
+Return only the caption text.`;
 
 function normalizeCaption(value: string) {
   return value
@@ -38,9 +55,16 @@ export async function POST(
       return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
     }
 
+    const prompt = await renderPromptTemplate('caption.smart', SMART_CAPTION_PROMPT, {
+      voiceStyle: requestedVoice || '',
+      voiceInstruction: requestedVoice
+        ? `Write it so it sounds natural in the voice style of "${requestedVoice}".`
+        : 'None.',
+    });
+
     const openai = getOpenAIClient();
     const response = await openai.responses.create({
-      model: getWikiModel(),
+      model: await getConfiguredOpenAIModel('caption_generation', getWikiModel()),
       input: [
         {
           role: 'developer',
@@ -48,21 +72,7 @@ export async function POST(
           content: [
             {
               type: 'input_text',
-              text: `You are generating a Smart Caption for an Ember memory.
-
-Write a short, human, emotionally grounded caption for this memory.
-
-Rules:
-- Use only details supported by the provided context.
-- Make it feel like a memory, not metadata or analysis.
-- No headings, bullets, labels, or explanations.
-- Keep it concise: 2-4 short paragraphs or lines total.
-- If the date is clearly supported, you may open with a short date line.
-- Avoid generic phrases like "This image shows".
-- The caption may later be narrated aloud, so it should sound natural when spoken.
-${requestedVoice ? `- Write it so it sounds natural in the voice style of "${requestedVoice}".` : ''}
-
-Return only the caption text.`,
+              text: prompt,
             },
           ],
         },

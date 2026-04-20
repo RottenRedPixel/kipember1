@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { getOpenAIClient, getWikiStructureModel } from './openai';
+import { renderPromptTemplate, getCapabilityModel } from '@/lib/control-plane';
+import { getConfiguredOpenAIModel, getOpenAIClient, getWikiStructureModel } from './openai';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -603,13 +604,69 @@ function parseStructuredMemoryResponse(responseText: string): StructuredMemory {
   return parsed;
 }
 
+const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+
+const DEFAULT_WIKI_REWRITE_PROMPT = `You are Ember's memory writer. Rewrite a structured memory object into a warm, readable story snapshot.
+
+Rules:
+- Use only the structured memory object below.
+- Do not add facts, identities, motives, or background not present in the object.
+- Make it feel like a memory someone would want to revisit, not a report.
+- Let the human memory details lead. If contributor details are present, they should shape the voice of the page more than metadata or visual-analysis leftovers.
+- Prefer short paragraphs and avoid repeating the same detail across sections.
+- If a tagged name is ambiguous, mention it naturally as tagged in the image instead of assigning it by sight.
+- Do not reintroduce weaker visual ambiguity if the structured memory already resolved it from tags or contributor memories.
+- Do not turn obvious corrections into standalone lines. If a clarification matters, weave it into the story naturally and positively.
+- Do not include low-value observations that do not deepen the memory, such as ordinary clothing notes, unless the structured memory makes them meaningful.
+- Keep the output to 2-4 short paragraphs.
+- Do not write headings, bullet lists, labels, or markdown sections.
+- Do not repeat the title as a heading.
+- Keep the output concise and high-signal.
+
+Write plain text only.`;
+
+const DEFAULT_WIKI_FOLLOWUP_PROMPT = `You are an interviewer gathering memories about an image. Based on the conversation so far, determine if there's an important follow-up question to ask.
+
+If the responses so far are comprehensive enough, return exactly "COMPLETE" (nothing else).
+If there's a valuable follow-up to ask, return just the follow-up question.
+
+Keep questions conversational and friendly. Focus on getting vivid details and personal perspectives.`;
+
+const DEFAULT_WIKI_ASK_PHOTO_PROMPT = `You answer questions about a specific photo using only the information below.
+
+Rules:
+- Do not roleplay as a person, character, memory, or living being.
+- Do not pretend to be inside the photo.
+- Do not invent names, relationships, events, motives, dialogue, or backstory.
+- Treat contributor memories as strong evidence and call out when details are uncertain or inferred.
+- If the answer is not supported by the wiki or contributor responses, say you do not know yet.
+- When useful, attribute details to contributors by name.
+- Keep answers clear, conversational, and concise.
+
+WIKI CONTENT:
+{{wikiContent}}
+
+RAW CONTRIBUTOR RESPONSES:
+{{responsesContext}}`;
+
+type ClaudeChatOptions = {
+  capabilityKey?: string;
+  fallbackModel?: string;
+  maxTokens?: number;
+};
+
 export async function chat(
   systemPrompt: string,
-  messages: { role: 'user' | 'assistant'; content: string }[]
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  options: ClaudeChatOptions = {}
 ): Promise<string> {
+  const model = await getCapabilityModel(
+    options.capabilityKey || 'ask_ember.answer',
+    options.fallbackModel || DEFAULT_CLAUDE_MODEL
+  );
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1024,
+    model,
+    max_tokens: options.maxTokens || 1024,
     system: systemPrompt,
     messages: messages,
   });
@@ -714,7 +771,7 @@ export async function generateWiki({
 
   const openai = getOpenAIClient();
   const structuredResponse = await openai.responses.create({
-    model: getWikiStructureModel(),
+    model: await getConfiguredOpenAIModel('wiki.structure', getWikiStructureModel()),
     input: [
       {
         role: 'developer',
@@ -788,38 +845,35 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
     analysis,
   });
 
-  // Assemble the snapshot directly from structured fields — no LLM rewrite needed
-  const parts: string[] = [
-    structuredMemory.overview,
-    structuredMemory.story.main,
-    structuredMemory.story.significance,
-    structuredMemory.whenAndWhere,
-    structuredMemory.detailsWorthKeeping.length > 0
-      ? structuredMemory.detailsWorthKeeping.join(' ')
-      : null,
-    structuredMemory.quotes.length > 0
-      ? structuredMemory.quotes.map((q) => `"${q.quote}" — ${q.speaker}`).join(' ')
-      : null,
-  ].filter((s): s is string => Boolean(s?.trim()));
+  const systemPrompt = await renderPromptTemplate('wiki.rewrite', DEFAULT_WIKI_REWRITE_PROMPT);
 
-  const assembled = parts.join('\n\n').trim();
-  if (!assembled) {
-    throw new Error('Structured memory pass produced no usable snapshot text');
+  const output = await chat(systemPrompt, [
+    {
+      role: 'user',
+      content: `Structured memory JSON:
+${JSON.stringify(structuredMemory, null, 2)}`,
+    },
+  ], {
+    capabilityKey: 'wiki.rewrite',
+    fallbackModel: DEFAULT_CLAUDE_MODEL,
+  });
+
+  const trimmedOutput = output.trim();
+  if (!trimmedOutput) {
+    throw new Error('Anthropic wiki rewrite returned an empty response');
   }
 
-  return assembled;
+  return trimmedOutput;
 }
 
 export async function generateFollowUpQuestion(
   conversationHistory: { role: 'user' | 'assistant'; content: string }[],
   collectedResponses: { questionType: string; answer: string }[]
 ): Promise<string | null> {
-  const systemPrompt = `You are an interviewer gathering memories about an image. Based on the conversation so far, determine if there's an important follow-up question to ask.
-
-If the responses so far are comprehensive enough, return exactly "COMPLETE" (nothing else).
-If there's a valuable follow-up to ask, return just the follow-up question.
-
-Keep questions conversational and friendly. Focus on getting vivid details and personal perspectives.`;
+  const systemPrompt = await renderPromptTemplate(
+    'wiki.followup_question',
+    DEFAULT_WIKI_FOLLOWUP_PROMPT
+  );
 
   const responseSummary = collectedResponses
     .map((r) => `${r.questionType}: ${r.answer}`)
@@ -833,7 +887,10 @@ Should we ask a follow-up question? If yes, what should it be?`;
   const result = await chat(systemPrompt, [
     ...conversationHistory.slice(-4), // Last few messages for context
     { role: 'user', content: userMessage },
-  ]);
+  ], {
+    capabilityKey: 'wiki.rewrite',
+    fallbackModel: DEFAULT_CLAUDE_MODEL,
+  });
 
   if (result.trim().toUpperCase() === 'COMPLETE') {
     return null;
@@ -912,25 +969,20 @@ export async function chatWithImage(
     .map((r) => `[${r.contributorName || 'Anonymous'}] ${r.questionType}: ${r.answer}`)
     .join('\n');
 
-  const systemPrompt = `You answer questions about a specific photo using only the information below.
-
-Rules:
-- Do not roleplay as a person, character, memory, or living being.
-- Do not pretend to be inside the photo.
-- Do not invent names, relationships, events, motives, dialogue, or backstory.
-- Treat contributor memories as strong evidence and call out when details are uncertain or inferred.
-- If the answer is not supported by the wiki or contributor responses, say you do not know yet.
-- When useful, attribute details to contributors by name.
-- Keep answers clear, conversational, and concise.
-
-WIKI CONTENT:
-${wikiContent}
-
-RAW CONTRIBUTOR RESPONSES:
-${responsesContext}`;
+  const systemPrompt = await renderPromptTemplate(
+    'wiki.ask_photo_answer',
+    DEFAULT_WIKI_ASK_PHOTO_PROMPT,
+    {
+      wikiContent,
+      responsesContext,
+    }
+  );
 
   return chat(systemPrompt, [
     ...conversationHistory,
     { role: 'user', content: userQuestion },
-  ]);
+  ], {
+    capabilityKey: 'wiki.rewrite',
+    fallbackModel: DEFAULT_CLAUDE_MODEL,
+  });
 }

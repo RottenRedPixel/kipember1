@@ -1,15 +1,16 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { getSettingValue } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 
 const COOKIE_NAME = 'mw_access';
 
-export function isAccessLockEnabled(): boolean {
-  return process.env.ACCESS_LOCK_ENABLED === 'true';
+export async function isAccessLockEnabled(): Promise<boolean> {
+  return getSettingValue('security.access_lock_enabled', process.env.ACCESS_LOCK_ENABLED === 'true');
 }
 
 export async function requireAccess(): Promise<NextResponse | null> {
-  if (!isAccessLockEnabled()) {
+  if (!(await isAccessLockEnabled())) {
     return null;
   }
 
