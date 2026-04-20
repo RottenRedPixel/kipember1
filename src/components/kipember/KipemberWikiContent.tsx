@@ -1086,7 +1086,24 @@ export default function KipemberWikiContent({
         )}
       >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">AI Image Analysis</p>
+          {detail ? (
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+                style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+              >
+                <MediaPreview
+                  mediaType={detail.mediaType}
+                  filename={detail.filename}
+                  posterFilename={detail.posterFilename}
+                  originalName={detail.originalName}
+                  usePosterForVideo
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <p className="text-white/50 text-xs font-medium break-words">{detail.originalName}</p>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-1">
             {buildStructuredAnalysisText(detail?.analysis || null)
               .split('\n')
