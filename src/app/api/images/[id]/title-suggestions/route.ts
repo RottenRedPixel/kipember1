@@ -156,7 +156,7 @@ function parseSmartTitleSuggestionCache(value: string | null | undefined): Smart
   }
 }
 
-async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'context') {
+async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'context', preferredPeople?: string[]) {
   const openai = getOpenAIClient();
   const modeInstruction =
     mode === 'analysis'
@@ -168,6 +168,10 @@ async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'con
 - Prefer memorable details from typed memories, voice statements, call highlights, and wiki context.
 - Use real wording or emotional details from the people involved when possible.
 - Avoid titles that only restate the visual scene if a richer human story is present.`;
+  const preferredPeopleHint =
+    preferredPeople && preferredPeople.length > 0
+      ? `\nPreferred people to mention (use their names in the title if possible): ${preferredPeople.join(', ')}`
+      : '';
   const response = await openai.responses.create({
     model: getWikiModel(),
     input: [
@@ -180,7 +184,7 @@ async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'con
             text: `You are generating Ember titles.
 
 Based on the context above, generate 3 creative and memorable titles for this moment.
-
+${preferredPeopleHint}
 ${modeInstruction}
 
 Each title should:
@@ -405,6 +409,10 @@ export async function GET(
     }
 
     const forceRefresh = request.nextUrl.searchParams.get('refresh') === '1';
+    const preferredPeopleParam = request.nextUrl.searchParams.get('preferredPeople');
+    const preferredPeople = preferredPeopleParam
+      ? preferredPeopleParam.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
     const cachedImage = await prisma.image.findUnique({
       where: { id },
       select: {
@@ -412,7 +420,7 @@ export async function GET(
       },
     });
 
-    if (!forceRefresh) {
+    if (!forceRefresh && preferredPeople.length === 0) {
       const cachedSuggestions = parseSmartTitleSuggestionCache(
         cachedImage?.smartTitleSuggestionsJson
       );
@@ -526,8 +534,8 @@ export async function GET(
       ).values()
     );
     const [analysisSuggestions, contextSuggestions, contributorQuotes] = await Promise.all([
-      generateThreeTitles(analysisContext || context.promptContext, 'analysis'),
-      generateThreeTitles(humanContext || context.promptContext, 'context'),
+      generateThreeTitles(analysisContext || context.promptContext, 'analysis', preferredPeople.length > 0 ? preferredPeople : undefined),
+      generateThreeTitles(humanContext || context.promptContext, 'context', preferredPeople.length > 0 ? preferredPeople : undefined),
       generateQuotedTitleSuggestions(quoteSourceEntries),
     ]);
     const suggestions = Array.from(

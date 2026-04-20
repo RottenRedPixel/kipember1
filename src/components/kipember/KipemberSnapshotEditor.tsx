@@ -230,25 +230,23 @@ export default function KipemberSnapshotEditor({
   return (
     <div className="flex flex-col gap-6">
       {/* Snapshot Text */}
-      <SnapshotSection icon={<FileText size={17} />} title="Text">
-        <SnapshotCard>
-          {detail.storyCut?.updatedAt ? (
-            <p className="text-white/30 text-xs mb-2">Last updated: {formatDate(detail.storyCut.updatedAt)}</p>
-          ) : (
-            <p className="text-white/30 text-xs mb-2">No snapshot yet — regenerate to create one.</p>
-          )}
-          <textarea
-            ref={textareaRef}
-            value={scriptDraft}
-            onChange={(event) => setScriptDraft(event.target.value)}
-            disabled={!detail.canManage}
-            className="w-full px-0 py-2 text-sm text-white outline-none disabled:opacity-70 bg-transparent border-t border-white/10 resize-none overflow-hidden"
-            style={{ minHeight: '4rem' }}
-            placeholder="Snapshot text will appear here..."
-          />
-          {error ? <p className="text-rose-300 text-xs mt-1">{error}</p> : null}
-        </SnapshotCard>
-      </SnapshotSection>
+      <SnapshotCard>
+        <textarea
+          ref={textareaRef}
+          value={scriptDraft}
+          onChange={(event) => setScriptDraft(event.target.value)}
+          disabled={!detail.canManage}
+          className="w-full px-0 py-2 text-base font-medium text-white outline-none disabled:opacity-70 bg-transparent resize-none overflow-hidden"
+          style={{ minHeight: '4rem' }}
+          placeholder="Snapshot text will appear here..."
+        />
+        {error ? <p className="text-rose-300 text-xs mt-1">{error}</p> : null}
+        {detail.storyCut?.updatedAt ? (
+          <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">Last updated: {formatDate(detail.storyCut.updatedAt)}</p>
+        ) : (
+          <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">No snapshot yet — regenerate to create one.</p>
+        )}
+      </SnapshotCard>
 
       {/* Snapshot Length */}
       <SnapshotSection icon={<Clock size={17} />} title="Length">

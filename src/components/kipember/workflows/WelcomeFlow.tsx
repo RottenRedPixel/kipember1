@@ -1,6 +1,6 @@
 'use client';
 
-import { Image as ImageIcon, Mic, Pause, Phone, Play, SendHorizontal } from 'lucide-react';
+import { ImagePlus, Mic, Pause, Phone, Play, SendHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type Message = {
@@ -539,28 +539,29 @@ export default function WelcomeFlow({
             style={{ background: 'rgba(255,255,255,0.08)' }}
             aria-label="Add photo"
           >
-            <ImageIcon size={18} />
+            <ImagePlus size={18} />
           </button>
 
-          <button
-            type="button"
-            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-            disabled={isSending}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40"
-            style={{ background: isRecording ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
-            aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
-          >
-            <Mic size={18} />
-          </button>
-
-          <input
-            type="text"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="Chat with ember about this memory..."
-            className="min-w-0 flex-1 rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]"
-            disabled={isSending}
-          />
+          <div className="relative min-w-0 flex-1">
+            <input
+              type="text"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Chat with ember about this memory..."
+              className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]"
+              disabled={isSending}
+            />
+            <button
+              type="button"
+              onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+              disabled={isSending}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
+              style={{ color: isRecording ? 'white' : 'rgba(255,255,255,0.5)', background: isRecording ? 'rgba(249,115,22,0.95)' : 'transparent' }}
+              aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
+            >
+              <Mic size={15} />
+            </button>
+          </div>
 
           <button
             type="submit"
