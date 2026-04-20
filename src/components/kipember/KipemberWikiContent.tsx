@@ -838,7 +838,7 @@ export default function KipemberWikiContent({
                           {isUser ? block.personName.split(' ')[0] : 'ember'}
                         </span>
                         {msg.imageFilename ? (
-                          <div className="max-w-[30%] rounded-xl overflow-hidden">
+                          <div className="max-w-[15%] rounded-xl overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={`/api/uploads/${msg.imageFilename}`} alt="Uploaded" className="w-full h-auto object-cover" />
                           </div>

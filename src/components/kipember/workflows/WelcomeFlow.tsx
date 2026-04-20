@@ -468,6 +468,10 @@ export default function WelcomeFlow({
                   style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
                 >
                   <p className="text-sm leading-relaxed text-white/90">{welcomeBack}</p>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Phone size={12} className="text-white/40" />
+                    <span className="text-white/30 text-xs">Tap the phone button to get a call</span>
+                  </div>
                 </div>
               </div>
             ) : null}
