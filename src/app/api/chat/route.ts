@@ -347,7 +347,7 @@ async function ensureChatSession({
   imageId: string;
   userId: string;
 }) {
-  const existing = await prisma.chatSession.findUnique({
+  const existingUserSession = await prisma.chatSession.findUnique({
     where: {
       userId_imageId: {
         userId,
@@ -356,8 +356,8 @@ async function ensureChatSession({
     },
   });
 
-  if (existing) {
-    return existing;
+  if (existingUserSession) {
+    return existingUserSession;
   }
 
   try {
@@ -373,7 +373,7 @@ async function ensureChatSession({
       throw error;
     }
 
-    const racedSession = await prisma.chatSession.findUnique({
+    const racedUserSession = await prisma.chatSession.findUnique({
       where: {
         userId_imageId: {
           userId,
@@ -382,11 +382,82 @@ async function ensureChatSession({
       },
     });
 
-    if (!racedSession) {
-      throw error;
+    if (racedUserSession) {
+      return racedUserSession;
     }
 
-    return racedSession;
+    const existingBrowserSession = await prisma.chatSession.findUnique({
+      where: {
+        browserId_imageId: {
+          browserId,
+          imageId,
+        },
+      },
+    });
+
+    if (existingBrowserSession) {
+      if (existingBrowserSession.userId === userId) {
+        return existingBrowserSession;
+      }
+
+      if (!existingBrowserSession.userId) {
+        try {
+          return await prisma.chatSession.update({
+            where: { id: existingBrowserSession.id },
+            data: { userId },
+          });
+        } catch (updateError) {
+          if (!isUniqueConstraintError(updateError)) {
+            throw updateError;
+          }
+
+          const racedUpdatedSession = await prisma.chatSession.findUnique({
+            where: {
+              userId_imageId: {
+                userId,
+                imageId,
+              },
+            },
+          });
+
+          if (racedUpdatedSession) {
+            return racedUpdatedSession;
+          }
+
+          throw updateError;
+        }
+      }
+    }
+
+    const replacementBrowserId = randomUUID();
+    try {
+      return await prisma.chatSession.create({
+        data: {
+          browserId: replacementBrowserId,
+          imageId,
+          userId,
+        },
+      });
+    } catch (retryError) {
+      if (!isUniqueConstraintError(retryError)) {
+        throw retryError;
+      }
+
+      const finalUserSession = await prisma.chatSession.findUnique({
+        where: {
+          userId_imageId: {
+            userId,
+            imageId,
+          },
+        },
+      });
+
+      if (finalUserSession) {
+        return finalUserSession;
+      }
+
+      throw retryError;
+    }
   }
 }
 
@@ -558,8 +629,8 @@ export async function POST(request: NextRequest) {
       response,
       storedMemory,
     });
-    if (!existingBrowserId) {
-      nextResponse.cookies.set(COOKIE_NAME, browserId, {
+    if (!existingBrowserId || session.browserId !== browserId) {
+      nextResponse.cookies.set(COOKIE_NAME, session.browserId, {
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
@@ -721,7 +792,8 @@ export async function PATCH(request: NextRequest) {
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;
-    const browserId = request.cookies.get(COOKIE_NAME)?.value || randomUUID();
+    const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
+    const browserId = existingBrowserId || randomUUID();
 
     const session = await ensureChatSession({ browserId, imageId, userId });
 
@@ -734,7 +806,18 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ ok: true });
+    const response = NextResponse.json({ ok: true });
+    if (!existingBrowserId || session.browserId !== browserId) {
+      response.cookies.set(COOKIE_NAME, session.browserId, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: COOKIE_MAX_AGE,
+        path: '/',
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error('Chat image record error:', error);
     return NextResponse.json({ error: 'Failed to record image' }, { status: 500 });
