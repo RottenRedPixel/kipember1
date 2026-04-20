@@ -848,6 +848,7 @@ export async function generateSnapshotScript({
   location,
   durationSeconds = 30,
   taggedPeople = [],
+  requiredPeople = [],
   wikiContent = null,
   contributorMemories = [],
   callSummaries = [],
@@ -858,6 +859,7 @@ export async function generateSnapshotScript({
   location: string | null;
   durationSeconds?: number;
   taggedPeople?: string[];
+  requiredPeople?: string[];
   wikiContent?: string | null;
   contributorMemories?: Array<{ contributorName: string; answer: string }>;
   callSummaries?: Array<{ contributorName: string; summary: string }>;
@@ -889,7 +891,7 @@ export async function generateSnapshotScript({
   const systemPrompt = `You write warm narration scripts for family memory snapshots.
 Write approximately ${targetWords} words (targeting ${durationSeconds} seconds of spoken audio at a natural pace).
 Use a natural, conversational tone — like a thoughtful friend describing a meaningful moment.
-${taggedPeople.length > 0 ? `The people in this photo are: ${taggedPeople.join(', ')}. Use their names naturally in the narration — this makes the memory feel personal and real.\n` : ''}Use all available context: the wiki, contributor memories, voice call highlights, and visual details — not just the image summary.
+${taggedPeople.length > 0 ? `The people in this photo are: ${taggedPeople.join(', ')}. Use their names naturally in the narration — this makes the memory feel personal and real.\n` : ''}${requiredPeople.length > 0 ? `REQUIRED: You must mention each of the following people by name at least once in the narration: ${requiredPeople.join(', ')}.\n` : ''}Use all available context: the wiki, contributor memories, voice call highlights, and visual details — not just the image summary.
 Prioritize personal details and real moments over generic descriptions.
 Do not invent facts not present in the context.
 Do not use filler phrases like "In this heartwarming snapshot" or "A beautiful memory".

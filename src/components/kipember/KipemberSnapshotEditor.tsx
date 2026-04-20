@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, FileText, Mic, Sliders } from 'lucide-react';
+import { Clock, FileText, Mic, Sliders, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
   KipemberAttachment,
@@ -32,6 +32,7 @@ type SnapshotDetail = {
   attachments: KipemberAttachment[];
   contributors: KipemberContributor[];
   voiceCallClips?: KipemberVoiceCallClip[];
+  tags?: Array<{ id: string; label: string }>;
   storyCut?: {
     script: string;
     style?: string;
@@ -111,6 +112,7 @@ export default function KipemberSnapshotEditor({
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState('');
+  const [requiredPeopleIds, setRequiredPeopleIds] = useState<Set<string>>(new Set());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const emberTitle = detail?.title || (detail ? stripExtension(detail.originalName) : 'Ember');
@@ -192,10 +194,14 @@ export default function KipemberSnapshotEditor({
     onStatus?.('');
 
     try {
+      const requiredPeople = (detail.tags || [])
+        .filter((t) => requiredPeopleIds.has(t.id))
+        .map((t) => t.label);
+
       const response = await fetch(`/api/images/${imageId}/story-cuts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: emberTitle, regenerate: true, durationSeconds, style, emberVoiceId: voiceId || null }),
+        body: JSON.stringify({ title: emberTitle, regenerate: true, durationSeconds, style, emberVoiceId: voiceId || null, requiredPeople }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || 'Failed to regenerate snapshot');
@@ -266,6 +272,36 @@ export default function KipemberSnapshotEditor({
           </div>
         </div>
       </SnapshotSection>
+
+      {/* Tagged People */}
+      {detail.tags && detail.tags.length > 0 && (
+        <SnapshotSection icon={<Users size={17} />} title="People">
+          <SnapshotCard>
+            <p className="text-white/40 text-xs mb-2">Check a person to require their name in the regenerated snapshot.</p>
+            <div className="flex flex-col gap-2">
+              {detail.tags.map((tag) => (
+                <label key={tag.id} className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={requiredPeopleIds.has(tag.id)}
+                    onChange={(e) => {
+                      setRequiredPeopleIds((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) next.add(tag.id);
+                        else next.delete(tag.id);
+                        return next;
+                      });
+                    }}
+                    disabled={!detail.canManage}
+                    className="accent-orange-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-white text-sm">{tag.label}</span>
+                </label>
+              ))}
+            </div>
+          </SnapshotCard>
+        </SnapshotSection>
+      )}
 
       {/* Snapshot Style */}
       <SnapshotSection icon={<Sliders size={17} />} title="Style">

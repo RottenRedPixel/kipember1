@@ -26,6 +26,9 @@ export async function POST(
     const durationSeconds = typeof body?.durationSeconds === 'number' && body.durationSeconds >= 5 ? body.durationSeconds : 10;
     const style = typeof body?.style === 'string' && body.style.trim() ? body.style.trim() : 'documentary';
     const emberVoiceId = body?.emberVoiceId === null ? null : (typeof body?.emberVoiceId === 'string' && body.emberVoiceId.trim() ? body.emberVoiceId.trim() : undefined);
+    const requiredPeople: string[] = Array.isArray(body?.requiredPeople)
+      ? (body.requiredPeople as unknown[]).filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+      : [];
 
     const context = await loadEmberSetupContext(id);
     if (!context) return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
@@ -40,6 +43,7 @@ export async function POST(
       location,
       durationSeconds,
       taggedPeople: confirmedPeople,
+      requiredPeople,
       wikiContent: imageRecord.wiki?.content ?? null,
       contributorMemories: contributorMemories.map((m) => ({ contributorName: m.contributorName, answer: m.answer })),
       callSummaries: callSummaries.map((c) => ({ contributorName: c.contributorName, summary: c.summary })),
