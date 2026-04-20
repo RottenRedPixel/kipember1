@@ -393,23 +393,23 @@ export default function WelcomeFlow({
       />
 
       {!isLoadingHistory ? (
-        <div className="max-h-[34vh] overflow-y-auto pb-4 pr-1 no-scrollbar">
-          <div className="flex flex-col gap-4">
-            {messages.length === 0 && !welcomeBack ? (
-              <div className="flex flex-col gap-2 items-start">
-                <span className="pl-1 text-xs font-medium text-white">ember</span>
-                <div
-                  className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
-                  style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-                >
-                  <p className="text-sm leading-relaxed text-white/90">Chat with me about this memory.</p>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <Phone size={12} className="text-white/40" />
-                    <span className="text-white/30 text-xs">Tap the phone to get a call</span>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+        <>
+          {/* Always-visible call prompt */}
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => void triggerSelfInvite()}
+              disabled={isCalling || hasPhoneNumber === false || hasPhoneNumber === null}
+              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-white/60 transition disabled:opacity-40 cursor-pointer"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              <Phone size={11} />
+              {isCalling ? 'Calling...' : 'Get a phone call'}
+            </button>
+          </div>
+
+          <div className="max-h-[30vh] overflow-y-auto pb-4 pr-1 no-scrollbar">
+            <div className="flex flex-col gap-4">
 
             {messages.map((message, index) => {
               const isUser = message.role === 'user';
@@ -487,9 +487,8 @@ export default function WelcomeFlow({
             ) : null}
             <div ref={messagesEndRef} />
           </div>
-        </div>
-      ) : !isLoadingHistory ? (
-        <div className="h-2" />
+          </div>
+        </>
       ) : null}
 
       <form onSubmit={handleSubmit} className="flex items-end gap-2">
