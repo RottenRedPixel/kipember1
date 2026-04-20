@@ -1354,8 +1354,8 @@ export async function ensureImageAnalysisForImage(imageId: string) {
 }
 
 /**
- * Lightweight visual analysis for an image attachment.
- * Returns a descriptive paragraph suitable for embedding in the wiki.
+ * Full visual analysis for an image attachment uploaded via ember chat.
+ * Returns a JSON-serialized ParsedVisionAnalysis for rich wiki display.
  */
 export async function analyzeAttachmentImage(
   filename: string,
@@ -1368,33 +1368,15 @@ export async function analyzeAttachmentImage(
 
     if (!mimeType) return null;
 
-    const imageSource = await toBase64ImageSource(buffer, mimeType);
-    if (!imageSource) return null;
-
-    const openai = getOpenAIClient();
-    const response = await openai.responses.create({
-      model: getImageAnalysisModel(),
-      input: [
-        {
-          role: 'user',
-          type: 'message',
-          content: [
-            {
-              type: 'input_image',
-              image_url: imageSource,
-              detail: 'auto',
-            },
-            {
-              type: 'input_text',
-              text: `Describe this photo in 2–4 sentences. Note who is in it (describe people by appearance if unnamed), what is happening, the setting, and any notable details. Be specific and factual — do not invent names or relationships. Return only the description, no preamble.`,
-            },
-          ],
-        },
-      ],
+    const vision = await analyzeImageVisually({
+      buffer,
+      mimeType,
+      originalName,
+      userDescription: null,
+      metadataSummary: null,
     });
 
-    const text = response.output_text?.trim();
-    return text || null;
+    return JSON.stringify(vision);
   } catch {
     return null;
   }

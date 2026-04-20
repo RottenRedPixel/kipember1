@@ -924,11 +924,6 @@ export default function KipemberWikiContent({
                         {attachment.description}
                       </p>
                     ) : null}
-                    {attachment.analysisText ? (
-                      <p className="text-white/60 text-xs break-words mt-1">
-                        {attachment.analysisText}
-                      </p>
-                    ) : null}
                   </div>
                 </div>
               ))}
@@ -1092,6 +1087,55 @@ export default function KipemberWikiContent({
               : ''}
           </p>
         </WikiCard>
+
+        {visualAttachments
+          .filter((a) => a.analysisText)
+          .map((attachment) => {
+            let parsedAnalysis: KipemberWikiDetail['analysis'] | null = null;
+            try {
+              parsedAnalysis = JSON.parse(attachment.analysisText!) as KipemberWikiDetail['analysis'];
+            } catch {
+              parsedAnalysis = null;
+            }
+            const analysisText = buildStructuredAnalysisText(parsedAnalysis);
+
+            return (
+              <WikiCard key={`analysis-${attachment.id}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+                    style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                  >
+                    <MediaPreview
+                      mediaType={attachment.mediaType}
+                      filename={attachment.filename}
+                      posterFilename={attachment.posterFilename}
+                      originalName={attachment.originalName}
+                      usePosterForVideo
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <p className="text-white/50 text-xs font-medium break-words">{attachment.originalName}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {analysisText.split('\n').map((line, index) => {
+                    const cleaned = line.replace(/\*\*/g, '').trim();
+                    if (!cleaned) return <div key={`att-gap-${attachment.id}-${index}`} className="h-2" />;
+                    const isBold = line.startsWith('**') && line.endsWith('**');
+                    return (
+                      <p
+                        key={`att-line-${attachment.id}-${index}`}
+                        className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white text-sm leading-relaxed'}
+                      >
+                        {cleaned}
+                      </p>
+                    );
+                  })}
+                </div>
+                <p className="text-white/30 text-xs mt-4">Source: GPT-4o</p>
+              </WikiCard>
+            );
+          })}
       </WikiSection>
 
     </div>
