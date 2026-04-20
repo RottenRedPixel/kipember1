@@ -581,6 +581,46 @@ export async function GET(
 
     const voiceCallClips = await loadVoiceCallClips();
 
+    // Build chatBlocks: one block per person who has a ChatSession for this image
+    let chatBlocks: Array<{
+      personName: string;
+      messages: Array<{
+        role: string;
+        content: string;
+        source: string;
+        imageFilename?: string | null;
+        audioUrl?: string | null;
+        createdAt: string;
+      }>;
+    }> = [];
+    try {
+      const chatSessions = await prisma.chatSession.findMany({
+        where: { imageId: id, userId: { not: null } },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          messages: { orderBy: { createdAt: 'asc' } },
+        },
+      });
+
+      chatBlocks = chatSessions
+        .filter((session) => session.messages.length > 0)
+        .map((session) => {
+          const personName = session.user?.name || session.user?.email || 'Guest';
+          const messages = session.messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+            source: 'web',
+            imageFilename: msg.imageFilename ?? null,
+            audioUrl: null as string | null,
+            createdAt: msg.createdAt.toISOString(),
+          }));
+          return { personName, messages };
+        });
+    } catch (chatBlocksError) {
+      console.error('Failed to load chatBlocks:', chatBlocksError);
+      chatBlocks = [];
+    }
+
     return NextResponse.json({
       id: image.id,
       filename: image.filename,
@@ -653,6 +693,7 @@ export async function GET(
           }
         : null,
       sportsMode: image.sportsMode,
+      chatBlocks,
     });
   } catch (error) {
     console.error('Error fetching image:', error);

@@ -785,15 +785,25 @@ export default function HomeScreen({
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-            <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
-            <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
-            <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
-            <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
-            <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
-            <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
-            <div className="col-span-3 flex justify-center">
-              <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
-            </div>
+            {displayImage?.accessType === 'contributor' ? (
+              <>
+                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
+                <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
+                <SvgItem label="View Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
+              </>
+            ) : (
+              <>
+                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
+                <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
+                <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
+                <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
+                <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
+                <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
+                <div className="col-span-3 flex justify-center">
+                  <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       ) : null}

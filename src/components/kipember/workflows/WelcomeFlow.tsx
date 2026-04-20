@@ -95,9 +95,7 @@ export default function WelcomeFlow({
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [hasPhoneNumber, setHasPhoneNumber] = useState<boolean | null>(null);
-  const [invitingMode, setInvitingMode] = useState<'call' | 'text' | null>(null);
-  const [inviteError, setInviteError] = useState('');
-  const [inviteNotice, setInviteNotice] = useState('');
+  const [isCalling, setIsCalling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const transcriptRef = useRef('');
@@ -173,30 +171,30 @@ export default function WelcomeFlow({
 
   useEffect(() => {
     let cancelled = false;
-
-    async function loadProfilePhone() {
-      try {
-        const response = await fetch('/api/profile', { cache: 'no-store' });
-        if (!response.ok) {
-          if (!cancelled) setHasPhoneNumber(false);
-          return;
-        }
-        const payload = await response.json();
-        const phone = payload?.user?.phoneNumber;
-        if (!cancelled) {
-          setHasPhoneNumber(typeof phone === 'string' && phone.trim().length > 0);
-        }
-      } catch {
-        if (!cancelled) setHasPhoneNumber(false);
-      }
-    }
-
-    void loadProfilePhone();
-
-    return () => {
-      cancelled = true;
-    };
+    fetch('/api/profile', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled) setHasPhoneNumber(Boolean(data?.phoneNumber)); })
+      .catch(() => { if (!cancelled) setHasPhoneNumber(false); });
+    return () => { cancelled = true; };
   }, []);
+
+  async function triggerSelfInvite() {
+    if (isCalling || hasPhoneNumber === false || hasPhoneNumber === null) return;
+    setIsCalling(true);
+    try {
+      const response = await fetch(`/api/images/${encodeURIComponent(imageId)}/self-invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'call' }),
+      });
+      if (!response.ok) throw new Error('Could not start the call.');
+      setStatus('Calling you now — Ember will dial your phone in a moment.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setIsCalling(false);
+    }
+  }
 
   async function sendMessage(message: string, inputMode: 'web' | 'voice' = 'web') {
     const trimmed = message.trim();
@@ -378,45 +376,6 @@ export default function WelcomeFlow({
     setIsRecording(false);
   }
 
-  async function triggerSelfInvite(mode: 'call' | 'text') {
-    if (invitingMode || hasPhoneNumber === false) return;
-
-    setInvitingMode(mode);
-    setInviteError('');
-    setInviteNotice('');
-
-    try {
-      const response = await fetch(`/api/images/${encodeURIComponent(imageId)}/self-invite`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode }),
-      });
-
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(
-          payload?.error ||
-            (mode === 'call'
-              ? 'Could not start the call.'
-              : 'Could not send the text.')
-        );
-      }
-
-      setInviteNotice(
-        mode === 'call'
-          ? "Calling you now — Ember will dial your phone in a moment."
-          : "Text sent. Check your phone for the link."
-      );
-    } catch (submitError) {
-      setInviteError(
-        submitError instanceof Error ? submitError.message : 'Something went wrong.'
-      );
-    } finally {
-      setInvitingMode(null);
-    }
-  }
-
   return (
     <div className="relative z-[1] pl-4 pr-[22px] pb-4 pt-1">
       <input
@@ -436,46 +395,21 @@ export default function WelcomeFlow({
       {!isLoadingHistory ? (
         <div className="max-h-[34vh] overflow-y-auto pb-4 pr-1 no-scrollbar">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2 items-start">
-              <span className="pl-1 text-xs font-medium text-white">ember</span>
-              <div
-                className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
-                style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-              >
-                <p className="text-sm leading-relaxed text-white/90">
-                  Want to add to this memory? Call your phone for a quick interview or start chatting below
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 pt-1 pl-1">
-                <button
-                  type="button"
-                  onClick={() => void triggerSelfInvite('call')}
-                  disabled={invitingMode !== null || hasPhoneNumber === false || hasPhoneNumber === null}
-                  aria-label={
-                    hasPhoneNumber === false
-                      ? 'Add a phone number in your profile to get a call'
-                      : 'Get a Phone Call'
-                  }
-                  className="inline-flex items-center justify-center rounded-full px-5 text-sm font-medium text-white transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer btn-primary"
-                  style={{ background: '#f97316', border: 'none', minHeight: 44 }}
+            {messages.length === 0 && !welcomeBack ? (
+              <div className="flex flex-col gap-2 items-start">
+                <span className="pl-1 text-xs font-medium text-white">ember</span>
+                <div
+                  className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
+                  style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
                 >
-                  {invitingMode === 'call' ? 'Calling...' : 'Call My Phone'}
-                </button>
+                  <p className="text-sm leading-relaxed text-white/90">Chat with me about this memory.</p>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Phone size={12} className="text-white/40" />
+                    <span className="text-white/30 text-xs">Tap the phone to get a call</span>
+                  </div>
+                </div>
               </div>
-
-              {hasPhoneNumber === false ? (
-                <p className="pl-1 text-xs text-white/50">
-                  Add a phone number in your profile to enable these.
-                </p>
-              ) : null}
-              {inviteError ? (
-                <p className="pl-1 text-xs text-[rgba(255,180,180,0.92)]">{inviteError}</p>
-              ) : null}
-              {inviteNotice ? (
-                <p className="pl-1 text-xs text-white/60">{inviteNotice}</p>
-              ) : null}
-            </div>
+            ) : null}
 
             {messages.map((message, index) => {
               const isUser = message.role === 'user';
@@ -572,10 +506,10 @@ export default function WelcomeFlow({
 
           <button
             type="button"
-            onClick={() => void triggerSelfInvite('call')}
-            disabled={invitingMode !== null || hasPhoneNumber === false || hasPhoneNumber === null}
+            onClick={() => void triggerSelfInvite()}
+            disabled={isCalling || hasPhoneNumber === false || hasPhoneNumber === null}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
-            style={{ background: invitingMode === 'call' ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
+            style={{ background: isCalling ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
             aria-label="Call my phone"
           >
             <Phone size={18} />

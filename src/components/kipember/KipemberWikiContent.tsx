@@ -8,6 +8,8 @@ import {
   Image as ImageIcon,
   MapPin,
   Mic,
+  Phone,
+  Play,
   ScanEye,
   ShieldUser,
   Sparkles,
@@ -187,6 +189,17 @@ export type KipemberWikiDetail = {
   attachments: KipemberAttachment[];
   tags?: KipemberTag[];
   voiceCallClips?: KipemberVoiceCallClip[];
+  chatBlocks?: Array<{
+    personName: string;
+    messages: Array<{
+      role: string;
+      content: string;
+      source: string;
+      imageFilename?: string | null;
+      audioUrl?: string | null;
+      createdAt: string;
+    }>;
+  }>;
 };
 
 function formatLongDate(value: string | null | undefined) {
@@ -810,75 +823,59 @@ export default function KipemberWikiContent({
         complete={totalStoryMessages > 0}
       >
         <div className="flex flex-col gap-4">
-          {contributorChats.length > 0 ? (
-            contributorChats.map((chat, chatIndex) => (
-              <div key={chat.contributorId}>
-                {chatIndex > 0 && (
-                  <div className="mb-4" style={{ borderTop: '1px solid var(--border-subtle)' }} />
-                )}
-                {/* Participant header */}
-                <div className="flex items-center gap-2 px-1 mb-3">
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-medium"
-                    style={{ background: chat.isOwner ? 'rgba(249,115,22,0.85)' : 'var(--bg-surface)', border: chat.isOwner ? 'none' : '1px solid var(--border-default)' }}
-                  >
-                    {initials(chat.name)}
-                  </div>
-                  <span className="text-white/80 text-xs font-medium">{chat.name}</span>
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ background: chat.isOwner ? 'rgba(249,115,22,0.15)' : 'var(--bg-surface)', color: chat.isOwner ? 'rgba(249,115,22,0.9)' : 'var(--text-muted)', border: chat.isOwner ? '1px solid rgba(249,115,22,0.25)' : '1px solid var(--border-subtle)' }}
-                  >
-                    {chat.isOwner ? 'owner' : 'contributor'}
-                  </span>
-                </div>
-                {/* Messages */}
-                <div className="flex flex-col gap-2 px-1">
-                  {chat.entries.map((message) => {
-                    const isAi = message.role === 'assistant' || message.source === 'ai';
-                    const isSystem = message.role === 'system';
+          {detail?.chatBlocks && detail.chatBlocks.length > 0 ? (
+            detail.chatBlocks.map((block) => (
+              <WikiCard key={block.personName}>
+                <p className="text-white/30 text-xs font-medium mb-3">{block.personName}&apos;s Ember Chat</p>
+                <div className="flex flex-col gap-3">
+                  {block.messages.map((msg, i) => {
+                    const isUser = msg.role === 'user';
+                    const isVoice = msg.source === 'voice';
                     return (
-                      <div
-                        key={message.id}
-                        className={`flex flex-col gap-1 ${
-                          isSystem ? 'items-center' : isAi ? 'items-start' : 'items-end'
-                        }`}
-                      >
-                        <div className={`flex items-center gap-1.5 ${isAi ? '' : 'flex-row-reverse'}`}>
-                          <span className="text-white/40 text-xs font-medium">
-                            {isSystem ? 'Summary' : isAi ? 'ember' : 'you'}
-                          </span>
-                          <span className="text-white/20 text-xs">
-                            {formatLongDate(message.createdAt)}
-                          </span>
-                        </div>
-                        <div
-                          className={`max-w-[85%] px-4 py-2.5 text-sm leading-relaxed text-white/90 ${
-                            isSystem
-                              ? 'rounded-2xl'
-                              : isAi
-                                ? 'rounded-2xl rounded-tl-sm'
-                                : 'rounded-2xl rounded-tr-sm'
-                          }`}
-                          style={
-                            isSystem
-                              ? { background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.28)' }
-                              : isAi
-                              ? { background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }
-                              : { background: 'var(--bg-chat-user)' }
-                          }
-                        >
-                          {message.text}
-                        </div>
+                      <div key={i} className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
+                        <span className="flex items-center gap-1 text-white/30 text-xs">
+                          {isVoice ? <Phone size={9} /> : null}
+                          {isUser ? block.personName.split(' ')[0] : 'ember'}
+                        </span>
+                        {msg.imageFilename ? (
+                          <div className="max-w-[30%] rounded-xl overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={`/api/uploads/${msg.imageFilename}`} alt="Uploaded" className="w-full h-auto object-cover" />
+                          </div>
+                        ) : (
+                          <div
+                            className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
+                            style={{
+                              background: isUser ? 'rgba(255,255,255,0.08)' : 'var(--bg-ember-bubble)',
+                              border: isUser ? 'none' : '1px solid var(--border-ember)',
+                            }}
+                          >
+                            {msg.content}
+                            {msg.audioUrl ? (
+                              <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
+                                <a
+                                  href={msg.audioUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
+                                  style={{ background: 'rgba(249,115,22,0.85)' }}
+                                >
+                                  <Play size={9} className="text-white" />
+                                </a>
+                                <span className="text-white/30 text-xs">Voice recording</span>
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-              </div>
+              </WikiCard>
             ))
           ) : (
             <WikiCard>
-              <p className="text-white/30 text-sm">No story messages yet.</p>
+              <p className="text-white/30 text-sm">No conversations yet.</p>
             </WikiCard>
           )}
         </div>

@@ -69,9 +69,9 @@ Rules:
 - If different sources disagree, say that the information is mixed.
 - If the answer is not supported by the context, say you do not know yet.
 - When useful, attribute details to contributors by name.
-- Keep answers clear, conversational, and concise.
-- If the user shares a new memory detail in their latest message, you may acknowledge it as something they just told you.
-- If the user shares a concrete new detail without asking a direct question, respond briefly and ask at most one short follow-up question that would deepen the memory.
+- Keep answers very short — 1 to 2 sentences maximum. Never write more than 2 sentences.
+- Do not use lists, headers, or multiple paragraphs.
+- If the user shares a new memory detail, acknowledge it in one sentence and ask one short follow-up question at most.
 
 CONTEXT:
 ${context}`;
