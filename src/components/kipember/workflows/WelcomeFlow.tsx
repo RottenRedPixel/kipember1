@@ -410,16 +410,10 @@ export default function WelcomeFlow({
                   <p className="text-sm leading-relaxed text-white/90">
                     Want to tell me more about this memory? I can call your phone for a quick interview.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => void triggerSelfInvite()}
-                    disabled={isCalling || hasPhoneNumber === false || hasPhoneNumber === null}
-                    className="mt-2 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs text-white transition disabled:opacity-40 cursor-pointer"
-                    style={{ background: 'rgba(249,115,22,0.85)' }}
-                  >
-                    <Phone size={11} />
-                    {isCalling ? 'Calling...' : 'Call my phone'}
-                  </button>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Phone size={12} className="text-white/40" />
+                    <span className="text-white/30 text-xs">Tap the phone button to get a call</span>
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -519,7 +513,7 @@ export default function WelcomeFlow({
           <button
             type="button"
             onClick={() => void triggerSelfInvite()}
-            disabled={isCalling || hasPhoneNumber === false || hasPhoneNumber === null}
+            disabled={isCalling || hasPhoneNumber === false}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
             style={{ background: isCalling ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
             aria-label="Call my phone"
