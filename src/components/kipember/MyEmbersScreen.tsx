@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { ChevronDown, Plus, FileStack } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import AppHeader from '@/components/kipember/AppHeader';
 import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -34,8 +34,27 @@ export default function MyEmbersScreen({
   avatarUrl?: string | null;
   userInitials?: string;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [images, setImages] = useState<ImageSummary[]>(initialImages);
+  const [creating, setCreating] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleFileSelect(file: File) {
+    setCreating(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/images', { method: 'POST', body: formData });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || typeof payload?.id !== 'string') {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
+      }
+      router.push(`/home?id=${payload.id}&ember=welcome`);
+    } catch {
+      setCreating(false);
+    }
+  }
 
   useEffect(() => {
     if (initialImages.length > 0) return;
@@ -171,13 +190,28 @@ export default function MyEmbersScreen({
                   ) : null}
                 </div>
                 {!isShared ? (
-                  <Link
-                    href="/home?mode=first-ember"
-                    className="w-full flex items-center justify-center rounded-full text-white text-sm font-semibold"
-                    style={{ background: '#f97316', minHeight: 44 }}
-                  >
-                    Choose Photo
-                  </Link>
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.currentTarget.value = '';
+                        if (file) void handleFileSelect(file);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={creating}
+                      className="w-full flex items-center justify-center rounded-full text-white text-sm font-semibold cursor-pointer disabled:opacity-60"
+                      style={{ background: '#f97316', minHeight: 44 }}
+                    >
+                      {creating ? 'Creating...' : 'Choose Photo'}
+                    </button>
+                  </>
                 ) : null}
               </div>
             </div>
