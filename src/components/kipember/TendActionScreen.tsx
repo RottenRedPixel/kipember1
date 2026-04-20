@@ -1143,12 +1143,18 @@ export default function TendActionScreen({ action }: { action: string }) {
         <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
           {action === 'contributors' && !view ? (
             <>
-              {contributors.length === 0 ? (
-                <WikiCard>
-                  <p className="text-white/30 text-sm">No contributors yet.</p>
-                </WikiCard>
-              ) : (
-                contributors.map((item) => {
+              {(() => {
+                const nonOwnerContributors = contributors.filter(
+                  (c) => c.userId !== detail?.owner?.id && c.user?.id !== detail?.owner?.id
+                );
+                if (nonOwnerContributors.length === 0) {
+                  return (
+                    <WikiCard>
+                      <p className="text-white/30 text-sm">No contributors yet.</p>
+                    </WikiCard>
+                  );
+                }
+                return nonOwnerContributors.map((item) => {
                   const label = contributorDisplayName(item);
                   const phoneNumber = contributorPhone(item);
                   const canTextOrCopy = Boolean(phoneNumber || item.token);
@@ -1160,8 +1166,6 @@ export default function TendActionScreen({ action }: { action: string }) {
                     !canManageContributors ||
                     !canTextOrCopy ||
                     callingContributorId === item.id;
-
-                  const isOwner = item.userId === detail?.owner?.id || item.user?.id === detail?.owner?.id;
 
                   return (
                     <div
@@ -1176,14 +1180,11 @@ export default function TendActionScreen({ action }: { action: string }) {
                       >
                         <div
                           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-medium"
-                          style={{ background: isOwner ? 'rgba(249,115,22,0.75)' : 'rgba(100,116,139,0.6)' }}
+                          style={{ background: 'rgba(100,116,139,0.6)' }}
                         >
                           {initials(label)}
                         </div>
                         <span className="text-white text-sm font-medium">{label}</span>
-                        {isOwner ? (
-                          <ShieldUser size={15} className="ml-auto flex-shrink-0" style={{ color: 'rgba(249,115,22,0.8)' }} />
-                        ) : null}
                       </Link>
                       <button
                         type="button"
@@ -1219,8 +1220,8 @@ export default function TendActionScreen({ action }: { action: string }) {
                       </button>
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
               <div className="flex justify-end">
                 <Link
                   href={`${listHref}&view=add`}
