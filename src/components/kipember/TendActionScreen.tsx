@@ -457,47 +457,33 @@ export default function TendActionScreen({ action }: { action: string }) {
         if (!response.ok) {
           return;
         }
-        applyDetail((await response.json()) as TendDetail);
+        const payload = (await response.json()) as TendDetail;
+        applyDetail(payload);
+
+        // After applyDetail: if on edit-location and confirmedLocation is absent,
+        // fall back to GPS-resolved suggestions (same source the wiki uses)
+        if (action === 'edit-location' && !payload.analysis?.confirmedLocation?.label) {
+          void fetch(`/api/images/${resolvedImageId}/location-suggestions`)
+            .then((res) => res.json())
+            .then((data: {
+              suggestions?: Array<{ id: string; label: string; detail: string | null; kind: string }>;
+            }) => {
+              const suggestions = data?.suggestions || [];
+              const placeSuggestion =
+                suggestions.find((s) => s.kind === 'place') ||
+                suggestions.find((s) => s.kind === 'neighborhood') ||
+                suggestions.find((s) => s.kind === 'city') ||
+                null;
+              const addressSuggestion = suggestions.find((s) => s.kind === 'address') || null;
+
+              if (placeSuggestion) setLocationLabel(placeSuggestion.label);
+              if (addressSuggestion) setLocationDetail(addressSuggestion.label);
+            })
+            .catch(() => undefined);
+        }
       })
       .catch(() => undefined);
   }, [detailPath, resolvedImageId]);
-
-  // Auto-fill Edit Location from GPS-resolved suggestions when confirmedLocation is absent
-  useEffect(() => {
-    if (action !== 'edit-location' || !resolvedImageId) return;
-
-    void fetch(`/api/images/${resolvedImageId}/location-suggestions`)
-      .then((res) => res.json())
-      .then((data: {
-        suggestions?: Array<{ id: string; label: string; detail: string | null; kind: string }>;
-        confirmedLocation?: { label?: string; detail?: string | null } | null;
-      }) => {
-        const confirmed = data?.confirmedLocation;
-        if (confirmed?.label) {
-          setLocationLabel((prev) => prev || confirmed.label || '');
-          setLocationDetail((prev) => prev || confirmed.detail || '');
-          return;
-        }
-
-        // No confirmedLocation — fall back to GPS-resolved reverse-geocode suggestions
-        const suggestions = data?.suggestions || [];
-        const placeSuggestion =
-          suggestions.find((s) => s.kind === 'place') ||
-          suggestions.find((s) => s.kind === 'neighborhood') ||
-          suggestions.find((s) => s.kind === 'city') ||
-          null;
-        const addressSuggestion = suggestions.find((s) => s.kind === 'address') || null;
-
-        if (placeSuggestion) {
-          setLocationLabel((prev) => prev || placeSuggestion.label);
-        }
-        if (addressSuggestion) {
-          // address suggestion label becomes the detail field
-          setLocationDetail((prev) => prev || addressSuggestion.label);
-        }
-      })
-      .catch(() => undefined);
-  }, [action, resolvedImageId]);
 
   useEffect(() => {
     if (action !== 'edit-title' || !resolvedImageId) {
