@@ -4,7 +4,11 @@ import { getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { persistUploadedMedia } from '@/lib/media-upload';
 import { ensureUserContributorForImage } from '@/lib/owner-contributor';
-import { getAudioTranscriptionModel, getOpenAIClient } from '@/lib/openai';
+import {
+  getAudioTranscriptionModel,
+  getConfiguredOpenAIModel,
+  getOpenAIClient,
+} from '@/lib/openai';
 
 function buildAttachmentDescription(transcript: string | null) {
   const prefix = 'Ask Ember voice note';
@@ -32,7 +36,10 @@ async function transcribeUploadedAudio(file: File) {
     const client = getOpenAIClient();
     const transcription = await client.audio.transcriptions.create({
       file,
-      model: getAudioTranscriptionModel(),
+      model: await getConfiguredOpenAIModel(
+        'audio.transcription',
+        getAudioTranscriptionModel()
+      ),
     });
 
     const text = transcription.text?.replace(/\s+/g, ' ').trim() || '';

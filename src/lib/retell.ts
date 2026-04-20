@@ -1,5 +1,6 @@
 import Retell, { verify } from 'retell-sdk';
 import { getAppBaseUrl } from '@/lib/app-url';
+import { getRemoteAgentConfig, getSettingValue, isFeatureEnabled } from '@/lib/control-plane';
 
 const DEFAULT_WEBHOOK_EVENTS = ['call_started', 'call_ended', 'call_analyzed'] as const;
 
@@ -45,13 +46,26 @@ export function getRetellClient(): Retell {
   return client;
 }
 
-export function getRetellWebhookUrl(): string {
+function normalizeBaseUrl(url: string): string {
+  return url.replace(/\/$/, '');
+}
+
+async function getConfiguredRetellAgentId(): Promise<string> {
+  const configuredAgent = await getRemoteAgentConfig('retell.memory_interviewer');
+  return configuredAgent?.remoteIdentifier?.trim() || requiredEnv('RETELL_AGENT_ID');
+}
+
+export async function getRetellWebhookUrl(): Promise<string> {
   const explicitWebhookUrl = process.env.RETELL_WEBHOOK_URL;
   if (explicitWebhookUrl) {
     return explicitWebhookUrl;
   }
 
-  const baseUrl = getAppBaseUrl();
+  const controlPlaneBaseUrl = await getSettingValue('links.base_url', '');
+  const baseUrl =
+    typeof controlPlaneBaseUrl === 'string' && controlPlaneBaseUrl.trim()
+      ? normalizeBaseUrl(controlPlaneBaseUrl)
+      : getAppBaseUrl();
   return `${baseUrl}/api/retell/webhook`;
 }
 
@@ -80,19 +94,27 @@ export async function createRetellPhoneCall({
   metadata: Record<string, string>;
   dynamicVariables: Record<string, string>;
 }): Promise<Retell.PhoneCallResponse> {
+  if (!(await isFeatureEnabled('voice_calls', true))) {
+    throw new Error('Voice calls are disabled');
+  }
+
   const client = getRetellClient();
+  const [agentId, webhookUrl] = await Promise.all([
+    getConfiguredRetellAgentId(),
+    getRetellWebhookUrl(),
+  ]);
 
   return client.call.createPhoneCall({
     from_number: formatPhoneNumberE164(requiredEnv('RETELL_FROM_NUMBER')),
     to_number: formatPhoneNumberE164(toNumber),
-    override_agent_id: requiredEnv('RETELL_AGENT_ID'),
+    override_agent_id: agentId,
     metadata,
     retell_llm_dynamic_variables: dynamicVariables,
     agent_override: {
       agent: {
         webhook_events: [...DEFAULT_WEBHOOK_EVENTS],
         webhook_timeout_ms: 10000,
-        webhook_url: getRetellWebhookUrl(),
+        webhook_url: webhookUrl,
       },
     },
   });
@@ -105,17 +127,25 @@ export async function createRetellWebCall({
   metadata: Record<string, string>;
   dynamicVariables: Record<string, string>;
 }): Promise<Retell.WebCallResponse> {
+  if (!(await isFeatureEnabled('voice_calls', true))) {
+    throw new Error('Voice calls are disabled');
+  }
+
   const client = getRetellClient();
+  const [agentId, webhookUrl] = await Promise.all([
+    getConfiguredRetellAgentId(),
+    getRetellWebhookUrl(),
+  ]);
 
   return client.call.createWebCall({
-    agent_id: requiredEnv('RETELL_AGENT_ID'),
+    agent_id: agentId,
     metadata,
     retell_llm_dynamic_variables: dynamicVariables,
     agent_override: {
       agent: {
         webhook_events: [...DEFAULT_WEBHOOK_EVENTS],
         webhook_timeout_ms: 10000,
-        webhook_url: getRetellWebhookUrl(),
+        webhook_url: webhookUrl,
       },
     },
   });

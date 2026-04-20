@@ -2,15 +2,45 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { chat } from '@/lib/claude';
+import { renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
-import { getKidsImageModel, getOpenAIClient } from '@/lib/openai';
+import { getConfiguredOpenAIModel, getKidsImageModel, getOpenAIClient } from '@/lib/openai';
 import { uploadLocalFileToObjectStorage } from '@/lib/object-storage';
 import { getUploadsDir } from '@/lib/uploads';
 
 const PANEL_COUNT = 5;
 const PANEL_SIZE = '1536x1024';
 const PANEL_OUTPUT_FORMAT = 'webp';
+
+const KIDS_STORYBOARD_PROMPT = `Turn a memory wiki into a five-panel kids flipbook storyboard.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "title": "short title",
+  "subtitle": "short subtitle",
+  "summary": "1-2 sentence summary",
+  "visualStyle": "shared recurring character and world description",
+  "panels": [
+    {
+      "title": "panel title",
+      "caption": "1-2 sentence child-friendly caption",
+      "scene": "visual scene description with characters, action, setting, and continuity cues",
+      "mood": "emotional tone",
+      "camera": "shot framing"
+    }
+  ]
+}
+
+Rules:
+- Exactly 5 panels.
+- Make it suitable for kids while staying faithful to the underlying memory.
+- Keep the emotional truth, but soften grief, conflict, or adult themes into warmth and wonder.
+- Keep recurring characters visually consistent across all panels.
+- Describe an original toy-adventure 3D animated look without naming existing movies, brands, or copyrighted characters.
+- No on-image text, speech bubbles, logos, or watermarks.
+- Preserve real-world specifics like season, location, relationships, and key events when known.
+- Each caption should feel like a page in a flipbook a child would enjoy.`;
 
 type StoryboardPanel = {
   title: string;
@@ -104,34 +134,10 @@ async function buildStoryboardFromWiki({
   imageDescription: string | null;
   wikiContent: string;
 }): Promise<Storyboard> {
-  const systemPrompt = `Turn a memory wiki into a five-panel kids flipbook storyboard.
-
-Return ONLY valid JSON with this exact shape:
-{
-  "title": "short title",
-  "subtitle": "short subtitle",
-  "summary": "1-2 sentence summary",
-  "visualStyle": "shared recurring character and world description",
-  "panels": [
-    {
-      "title": "panel title",
-      "caption": "1-2 sentence child-friendly caption",
-      "scene": "visual scene description with characters, action, setting, and continuity cues",
-      "mood": "emotional tone",
-      "camera": "shot framing"
-    }
-  ]
-}
-
-Rules:
-- Exactly 5 panels.
-- Make it suitable for kids while staying faithful to the underlying memory.
-- Keep the emotional truth, but soften grief, conflict, or adult themes into warmth and wonder.
-- Keep recurring characters visually consistent across all panels.
-- Describe an original toy-adventure 3D animated look without naming existing movies, brands, or copyrighted characters.
-- No on-image text, speech bubbles, logos, or watermarks.
-- Preserve real-world specifics like season, location, relationships, and key events when known.
-- Each caption should feel like a page in a flipbook a child would enjoy.`;
+  const systemPrompt = await renderPromptTemplate(
+    'kids_story.storyboard',
+    KIDS_STORYBOARD_PROMPT
+  );
 
   const response = await chat(systemPrompt, [
     {
@@ -142,7 +148,9 @@ Image description: ${imageDescription || 'None provided'}
 Wiki content:
 ${wikiContent}`,
     },
-  ]);
+  ], {
+    capabilityKey: 'kids_story.storyboard',
+  });
 
   return normalizeStoryboard(
     JSON.parse(extractJsonObject(response)) as Partial<Storyboard>
@@ -178,7 +186,7 @@ function buildPanelPrompt({
 
 async function renderPanelImage(prompt: string): Promise<Buffer> {
   const response = await getOpenAIClient().images.generate({
-    model: getKidsImageModel(),
+    model: await getConfiguredOpenAIModel('kids_story.panel_render', getKidsImageModel()),
     prompt,
     size: PANEL_SIZE,
     quality: 'medium',

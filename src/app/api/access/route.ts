@@ -8,7 +8,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isAccessLockEnabled()) {
+    if (!(await isAccessLockEnabled())) {
       return NextResponse.json({ success: true, unlocked: true });
     }
 

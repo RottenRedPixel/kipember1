@@ -1,4 +1,8 @@
-import { getNarrationCleanupModel, getOpenAIClient } from '@/lib/openai';
+import {
+  getConfiguredOpenAIModel,
+  getNarrationCleanupModel,
+  getOpenAIClient,
+} from '@/lib/openai';
 
 function stripInlineMarkdown(value: string) {
   return value
@@ -179,7 +183,10 @@ export async function cleanNarrationScript(narrationText: string) {
   try {
     const openai = getOpenAIClient();
     const response = await openai.responses.create({
-      model: getNarrationCleanupModel(),
+      model: await getConfiguredOpenAIModel(
+        'narration.cleanup',
+        getNarrationCleanupModel()
+      ),
       input: [
         {
           role: 'developer',

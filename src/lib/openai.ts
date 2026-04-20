@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { getCapabilityModel } from '@/lib/control-plane';
 
 let client: OpenAI | null = null;
 
@@ -50,4 +51,11 @@ export function getAskCaptureModel(): string {
 
 export function getAudioTranscriptionModel(): string {
   return process.env.OPENAI_AUDIO_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
+}
+
+export async function getConfiguredOpenAIModel(
+  capabilityKey: string,
+  fallbackModel: string
+): Promise<string> {
+  return getCapabilityModel(capabilityKey, fallbackModel);
 }

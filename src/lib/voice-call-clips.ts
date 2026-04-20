@@ -1,4 +1,4 @@
-import { getOpenAIClient, getWikiStructureModel } from '@/lib/openai';
+import { getConfiguredOpenAIModel, getOpenAIClient, getWikiStructureModel } from '@/lib/openai';
 
 type TranscriptRole = 'agent' | 'user' | 'transfer_target';
 
@@ -271,7 +271,7 @@ export async function extractImportantVoiceCallClips({
     }));
 
   const response = await openai.responses.create({
-    model: getWikiStructureModel(),
+    model: await getConfiguredOpenAIModel('voice.clip_extract', getWikiStructureModel()),
     input: [
       {
         role: 'developer',

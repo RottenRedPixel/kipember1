@@ -2,10 +2,11 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
 import { retriever } from '@/lib/context-retrieval';
+import { isFeatureEnabled, renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getImageAccessType } from '@/lib/ember-access';
 import { chat } from '@/lib/claude';
-import { getAskCaptureModel, getOpenAIClient } from '@/lib/openai';
+import { getAskCaptureModel, getConfiguredOpenAIModel, getOpenAIClient } from '@/lib/openai';
 import { ensureUserContributorForImage } from '@/lib/owner-contributor';
 import { INTERVIEW_QUESTIONS, isInterviewQuestionType } from '@/lib/interview-flow';
 
@@ -54,8 +55,7 @@ const ASK_MEMORY_CAPTURE_SCHEMA = {
   },
 } as const;
 
-function buildSystemPrompt(context: string): string {
-  return `You answer questions about a specific photo using only the verified or clearly labeled information in the context below.
+const ASK_RESPONSE_PROMPT_TEMPLATE = `You answer questions about a specific photo using only the verified or clearly labeled information in the context below.
 
 The context may include wiki content, image analysis, metadata, contributor memories, and important voice-call highlights.
 
@@ -73,7 +73,25 @@ Rules:
 - If the user shares a concrete new detail without asking a direct question, respond briefly and ask at most one short follow-up question that would deepen the memory.
 
 CONTEXT:
-${context}`;
+{{context}}`;
+
+const ASK_MEMORY_CAPTURE_PROMPT = `You decide whether the user's newest Ask Ember message contains a durable memory detail that should be saved to Ember.
+
+Rules:
+- shouldStoreMemory should be true only when the user is clearly sharing, correcting, or confirming information about the memory, photo, people, place, timing, feelings, relationships, or what happened.
+- If the message is only a question, greeting, reaction, or guess, return shouldStoreMemory false.
+- If the message both asks something and shares a real memory detail, return shouldStoreMemory true.
+- Do not store details that are already plainly present in KNOWN CONTEXT unless the user is adding nuance, correcting them, or making them more specific.
+- memorySummary should be one concise sentence describing only the newly shared durable detail.
+- memorySummary must not include the user's question unless the question itself contains the memory detail.
+- memoryTopic should be the best fit: context, who, what, when, where, why, how, or followup.
+- If you are unsure, return shouldStoreMemory false and nulls for the other fields.
+- Return JSON only.`;
+
+async function buildSystemPrompt(context: string): Promise<string> {
+  return renderPromptTemplate('ask_ember.answer', ASK_RESPONSE_PROMPT_TEMPLATE, {
+    context,
+  });
 }
 
 async function generateAskResponse({
@@ -86,7 +104,10 @@ async function generateAskResponse({
   subjectNoun?: 'photo' | 'video';
 }) {
   try {
-    const response = await chat(buildSystemPrompt(context), conversationHistory);
+    const systemPrompt = await buildSystemPrompt(context);
+    const response = await chat(systemPrompt, conversationHistory, {
+      capabilityKey: 'ask_ember.answer',
+    });
     return response.trim() || `I don't know enough yet to answer that about this ${subjectNoun}.`;
   } catch (error) {
     console.error('Ask Ember primary response failed:', error);
@@ -98,10 +119,10 @@ async function generateAskResponse({
       : context;
 
   try {
-    const response = await chat(
-      buildSystemPrompt(reducedContext),
-      conversationHistory.slice(-RECENT_TURNS_LIMIT)
-    );
+    const systemPrompt = await buildSystemPrompt(reducedContext);
+    const response = await chat(systemPrompt, conversationHistory.slice(-RECENT_TURNS_LIMIT), {
+      capabilityKey: 'ask_ember.answer',
+    });
     return (
       response.trim() ||
       `I couldn't fully answer that right now, but I can still keep learning about this ${subjectNoun}.`
@@ -217,9 +238,13 @@ async function analyzeAskMemoryCapture({
     .slice(-RECENT_TURNS_LIMIT)
     .map((turn) => `${turn.role.toUpperCase()}: ${turn.content}`)
     .join('\n');
+  const capturePrompt = await renderPromptTemplate(
+    'ask_ember.memory_capture',
+    ASK_MEMORY_CAPTURE_PROMPT
+  );
 
   const response = await openai.responses.create({
-    model: getAskCaptureModel(),
+    model: await getConfiguredOpenAIModel('ask_ember.memory_capture', getAskCaptureModel()),
     input: [
       {
         role: 'developer',
@@ -227,18 +252,7 @@ async function analyzeAskMemoryCapture({
         content: [
           {
             type: 'input_text',
-            text: `You decide whether the user's newest Ask Ember message contains a durable memory detail that should be saved to Ember.
-
-Rules:
-- shouldStoreMemory should be true only when the user is clearly sharing, correcting, or confirming information about the memory, photo, people, place, timing, feelings, relationships, or what happened.
-- If the message is only a question, greeting, reaction, or guess, return shouldStoreMemory false.
-- If the message both asks something and shares a real memory detail, return shouldStoreMemory true.
-- Do not store details that are already plainly present in KNOWN CONTEXT unless the user is adding nuance, correcting them, or making them more specific.
-- memorySummary should be one concise sentence describing only the newly shared durable detail.
-- memorySummary must not include the user's question unless the question itself contains the memory detail.
-- memoryTopic should be the best fit: context, who, what, when, where, why, how, or followup.
-- If you are unsure, return shouldStoreMemory false and nulls for the other fields.
-- Return JSON only.`,
+            text: capturePrompt,
           },
         ],
       },
@@ -311,6 +325,10 @@ export async function POST(request: NextRequest) {
     const auth = await requireApiUser();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(await isFeatureEnabled('ask_ember', true))) {
+      return NextResponse.json({ error: 'Ask Ember is currently disabled' }, { status: 503 });
     }
 
     const { imageId, message, inputMode } = await request.json();
@@ -508,6 +526,10 @@ export async function GET(request: NextRequest) {
     const auth = await requireApiUser();
     if (!auth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!(await isFeatureEnabled('ask_ember', true))) {
+      return NextResponse.json({ error: 'Ask Ember is currently disabled' }, { status: 503 });
     }
 
     const { searchParams } = new URL(request.url);

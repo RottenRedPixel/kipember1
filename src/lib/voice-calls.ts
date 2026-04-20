@@ -1,5 +1,6 @@
 import type Retell from 'retell-sdk';
 import { chat } from '@/lib/claude';
+import { renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
 import { createRetellPhoneCall, createRetellWebCall, retrieveRetellCall } from '@/lib/retell';
@@ -29,6 +30,27 @@ type ExtractedInterview = {
     answer: string;
   }>;
 };
+
+const VOICE_TRANSCRIPT_EXTRACT_PROMPT = `You convert a phone interview transcript about a personal memory into structured answers for a memory archive.
+
+Return ONLY valid JSON with this exact shape:
+{
+  "isComplete": true,
+  "summary": "1-2 sentence summary",
+  "responses": [
+    { "questionType": "context", "answer": "..." },
+    { "questionType": "who", "answer": "..." }
+  ]
+}
+
+Rules:
+- Only use questionType values from: context, who, when, where, what, why, how
+- Extract only information the human contributor actually provided
+- Ignore filler, greetings, and agent instructions
+- Merge repeated details into one concise answer per questionType
+- Omit question types with no meaningful answer
+- Mark isComplete true only if the interview covers most of the story in a useful way
+- Do not invent facts`;
 
 type RetellWebhookPayload = {
   event?: unknown;
@@ -381,33 +403,19 @@ function extractJsonObject(text: string): string {
 }
 
 async function extractInterviewFromTranscript(transcript: string): Promise<ExtractedInterview> {
-  const systemPrompt = `You convert a phone interview transcript about a personal memory into structured answers for a memory archive.
-
-Return ONLY valid JSON with this exact shape:
-{
-  "isComplete": true,
-  "summary": "1-2 sentence summary",
-  "responses": [
-    { "questionType": "context", "answer": "..." },
-    { "questionType": "who", "answer": "..." }
-  ]
-}
-
-Rules:
-- Only use questionType values from: context, who, when, where, what, why, how
-- Extract only information the human contributor actually provided
-- Ignore filler, greetings, and agent instructions
-- Merge repeated details into one concise answer per questionType
-- Omit question types with no meaningful answer
-- Mark isComplete true only if the interview covers most of the story in a useful way
-- Do not invent facts`;
+  const systemPrompt = await renderPromptTemplate(
+    'voice.transcript_extract',
+    VOICE_TRANSCRIPT_EXTRACT_PROMPT
+  );
 
   const responseText = await chat(systemPrompt, [
     {
       role: 'user',
       content: `Transcript:\n${transcript}`,
     },
-  ]);
+  ], {
+    capabilityKey: 'voice.transcript_extract',
+  });
 
   const parsed = JSON.parse(extractJsonObject(responseText)) as Partial<ExtractedInterview>;
 
