@@ -9,7 +9,7 @@ declare global {
 }
 
 import Link from 'next/link';
-import { ChevronLeft, Lightbulb, MessageSquare, Pencil, Phone, ShieldUser, Users, X } from 'lucide-react';
+import { ChevronLeft, Lightbulb, MessageSquarePlus, Pencil, Phone, ShieldUser, UserRound, Users, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
@@ -1244,38 +1244,20 @@ export default function TendActionScreen({ action }: { action: string }) {
                         </div>
                         <span className="text-white text-sm font-medium">{label}</span>
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (phoneNumber) {
-                            void handleStartVoiceCall(item.id);
-                          } else {
-                            void copyLink(item.token);
-                          }
-                        }}
-                        disabled={callDisabled}
-                        className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0 disabled:opacity-30"
-                        style={{ opacity: callDisabled ? 0.3 : 0.75 }}
-                        aria-label={`Call ${label}`}
-                      >
+                      <div className="w-11 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
                         <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (phoneNumber) {
-                            void handleSendInvite(item.id);
-                          } else {
-                            void copyLink(item.token);
-                          }
-                        }}
-                        disabled={textDisabled}
-                        className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0 mr-2 disabled:opacity-30"
-                        style={{ opacity: textDisabled ? 0.3 : 0.75 }}
-                        aria-label={`Text ${label}`}
+                      </div>
+                      <div className="w-11 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
+                        <MessageSquarePlus size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                      </div>
+                      <Link
+                        href={`${listHref}&view=${item.id}`}
+                        className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0 mr-2"
+                        style={{ opacity: 0.4 }}
+                        aria-label={`View ${label}`}
                       >
-                        <MessageSquare size={15} color="var(--text-primary)" strokeWidth={1.8} />
-                      </button>
+                        <UserRound size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                      </Link>
                     </div>
                   );
                 });
