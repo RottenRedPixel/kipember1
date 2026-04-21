@@ -390,6 +390,13 @@ async function fetchImageForWiki(imageId: string) {
               callSummary: true,
               transcript: true,
               recordingUrl: true,
+              emberSession: {
+                include: {
+                  messages: {
+                    orderBy: { createdAt: 'asc' },
+                  },
+                },
+              },
             },
           },
           user: {
@@ -539,7 +546,11 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   for (const contributor of image.contributors) {
     const contributorLabel = getContributorLabel(contributor);
-    const conversationResponses = (contributor.emberSession?.messages || []).filter(
+    const contributorSessionMessages = [
+      ...(contributor.emberSession?.messages || []),
+      ...contributor.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
+    ];
+    const conversationResponses = contributorSessionMessages.filter(
       (m) => m.role === 'user' && m.questionType
     );
 
@@ -630,7 +641,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         } => Boolean(note.answer)
       );
 
-    const allSessionMessages = contributor.emberSession?.messages || [];
+    const allSessionMessages = contributorSessionMessages;
     const askConversationTextSet = new Set(
       allSessionMessages
         .filter((message) => {
@@ -667,6 +678,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         kind: getContributorKind(contributor),
         createdAt:
           dedupedAskNotes[dedupedAskNotes.length - 1]?.createdAt ||
+          contributor.voiceCalls.find((voiceCall) => voiceCall.emberSession)?.emberSession?.updatedAt ||
           contributor.emberSession?.updatedAt ||
           contributor.createdAt,
         summary: null,
@@ -923,7 +935,10 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   ) => {
     const blocks = contributors.flatMap((contributor) => {
       const label = getContributorLabel(contributor);
-      const allMessages = contributor.emberSession?.messages || [];
+      const allMessages = [
+        ...(contributor.emberSession?.messages || []),
+        ...contributor.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
+      ];
       const conversationMessages = allMessages
         .map((message) => ({
           speaker: message.role === 'assistant' ? 'Ember' : label,

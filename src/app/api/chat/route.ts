@@ -235,7 +235,15 @@ async function ensureContributorSession(contributorId: string, imageId: string) 
 
   try {
     return await prisma.emberSession.create({
-      data: { imageId, contributorId, sessionType: 'chat', status: 'active', currentStep: 'followup' },
+      data: {
+        imageId,
+        contributorId,
+        participantType: 'contributor',
+        participantId: contributorId,
+        sessionType: 'chat',
+        status: 'active',
+        currentStep: 'followup',
+      },
     });
   } catch (error) {
     if (!isUniqueConstraintError(error)) throw error;
@@ -246,6 +254,16 @@ async function ensureContributorSession(contributorId: string, imageId: string) 
 }
 
 async function ensureChatSession({ browserId, imageId, userId }: { browserId: string; imageId: string; userId: string }) {
+  const image = await prisma.image.findUnique({
+    where: { id: imageId },
+    select: { ownerId: true },
+  });
+  const participantType = image?.ownerId === userId ? 'owner' : 'contributor';
+  const participantData = {
+    participantType,
+    participantId: userId,
+  };
+
   const existingUserSession = await prisma.emberSession.findUnique({
     where: { userId_imageId: { userId, imageId } },
   });
@@ -253,7 +271,7 @@ async function ensureChatSession({ browserId, imageId, userId }: { browserId: st
 
   try {
     return await prisma.emberSession.create({
-      data: { browserId, imageId, userId, sessionType: 'chat', status: 'active' },
+      data: { browserId, imageId, userId, ...participantData, sessionType: 'chat', status: 'active' },
     });
   } catch (error) {
     if (!isUniqueConstraintError(error)) throw error;
@@ -274,7 +292,7 @@ async function ensureChatSession({ browserId, imageId, userId }: { browserId: st
         try {
           return await prisma.emberSession.update({
             where: { id: existingBrowserSession.id },
-            data: { userId },
+            data: { userId, ...participantData },
           });
         } catch (updateError) {
           if (!isUniqueConstraintError(updateError)) throw updateError;
@@ -290,7 +308,7 @@ async function ensureChatSession({ browserId, imageId, userId }: { browserId: st
     const replacementBrowserId = randomUUID();
     try {
       return await prisma.emberSession.create({
-        data: { browserId: replacementBrowserId, imageId, userId, sessionType: 'chat', status: 'active' },
+        data: { browserId: replacementBrowserId, imageId, userId, ...participantData, sessionType: 'chat', status: 'active' },
       });
     } catch (retryError) {
       if (!isUniqueConstraintError(retryError)) throw retryError;
@@ -459,6 +477,24 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          voiceCalls: {
+            where: {
+              emberSessionId: {
+                not: null,
+              },
+            },
+            select: {
+              emberSession: {
+                select: {
+                  messages: {
+                    where: { source: 'voice', questionType: { not: null } },
+                    orderBy: { createdAt: 'asc' },
+                    select: { id: true, question: true, content: true, questionType: true, createdAt: true },
+                  },
+                },
+              },
+            },
+          },
         },
       }),
     ]);
@@ -496,7 +532,10 @@ export async function GET(request: NextRequest) {
       createdAt: entry.createdAt.toISOString(),
     }));
 
-    const voiceMessages = contributor?.emberSession?.messages ?? [];
+    const voiceMessages = [
+      ...(contributor?.emberSession?.messages ?? []),
+      ...(contributor?.voiceCalls.flatMap((call) => call.emberSession?.messages ?? []) ?? []),
+    ];
     const voiceEntries: MergedEntry[] = voiceMessages.flatMap((msg) => {
       const matchedClip = clips.find(
         (clip) => clip.audioUrl && clip.quote.trim().length > 10 && msg.content.includes(clip.quote.trim().slice(0, 40))

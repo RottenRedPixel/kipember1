@@ -196,6 +196,13 @@ const ONGOING_REFRESH_MS = 15 * 1000;
 const ENDED_REFRESH_MS = 8 * 1000;
 const ENDED_REFRESH_WINDOW_MS = 90 * 1000;
 
+type CallSessionContributor = {
+  id: string;
+  imageId: string;
+  userId: string | null;
+  imageOwnerId: string;
+};
+
 function toTimestamp(value: Date | string | null | undefined): number | null {
   if (!value) {
     return null;
@@ -274,26 +281,31 @@ async function buildPriorMemoryContext({
   contributorId: string;
   emberSessionId?: string | null;
 }): Promise<PriorMemoryContext> {
-  const [session, voiceCalls] = await Promise.all([
-    emberSessionId
-      ? prisma.emberSession.findUnique({
-          where: { id: emberSessionId },
-          include: {
-            messages: {
-              where: { role: 'user', questionType: { not: null } },
-              orderBy: { createdAt: 'asc' },
-            },
-          },
-        })
-      : prisma.emberSession.findUnique({
-          where: { contributorId },
-          include: {
-            messages: {
-              where: { role: 'user', questionType: { not: null } },
-              orderBy: { createdAt: 'asc' },
-            },
-          },
-        }),
+  const sessionFilters = [
+    { contributorId },
+    ...(emberSessionId ? [{ id: emberSessionId }] : []),
+    {
+      voiceCalls: {
+        some: {
+          contributorId,
+        },
+      },
+    },
+  ];
+
+  const [sessions, voiceCalls] = await Promise.all([
+    prisma.emberSession.findMany({
+      where: {
+        OR: sessionFilters,
+      },
+      include: {
+        messages: {
+          where: { role: 'user', questionType: { not: null } },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    }),
     prisma.voiceCall.findMany({
       where: {
         contributorId,
@@ -312,12 +324,14 @@ async function buildPriorMemoryContext({
 
   const latestResponseByQuestion = new Map<QuestionType, string>();
 
-  for (const message of session?.messages || []) {
-    if (message.questionType && message.questionType in QUESTION_PROMPTS && message.content.trim()) {
-      latestResponseByQuestion.set(
-        message.questionType as QuestionType,
-        message.content.trim()
-      );
+  for (const session of sessions) {
+    for (const message of session.messages) {
+      if (message.questionType && message.questionType in QUESTION_PROMPTS && message.content.trim()) {
+        latestResponseByQuestion.set(
+          message.questionType as QuestionType,
+          message.content.trim()
+        );
+      }
     }
   }
 
@@ -366,47 +380,66 @@ async function buildPriorMemoryContext({
   };
 }
 
-async function ensureEmberSession(contributorId: string, emberSessionId?: string | null) {
+function getCallParticipantType(contributor: CallSessionContributor) {
+  return contributor.userId && contributor.userId === contributor.imageOwnerId
+    ? 'owner'
+    : 'contributor';
+}
+
+async function ensureCallEmberSession({
+  contributor,
+  emberSessionId,
+}: {
+  contributor: CallSessionContributor;
+  emberSessionId?: string | null;
+}) {
   if (emberSessionId) {
     const existing = await prisma.emberSession.findUnique({
       where: { id: emberSessionId },
     });
 
-    if (existing) {
+    if (existing?.sessionType === 'call') {
       return existing;
     }
   }
 
-  const existingForContributor = await prisma.emberSession.findUnique({
-    where: { contributorId },
+  const participantType = getCallParticipantType(contributor);
+  const participantId = contributor.id;
+
+  const existingCallSession = await prisma.emberSession.findFirst({
+    where: {
+      imageId: contributor.imageId,
+      sessionType: 'call',
+      participantType,
+      participantId,
+    },
   });
 
-  if (existingForContributor) {
-    return existingForContributor;
-  }
-
-  const contributor = await prisma.contributor.findUnique({
-    where: { id: contributorId },
-    select: { imageId: true },
-  });
-
-  if (!contributor) {
-    throw new Error('Contributor not found');
+  if (existingCallSession) {
+    return existingCallSession;
   }
 
   try {
     return await prisma.emberSession.create({
       data: {
-        contributorId,
         imageId: contributor.imageId,
-        sessionType: 'chat',
+        participantType,
+        participantId,
+        sessionType: 'call',
         currentStep: 'context',
         status: 'active',
       },
     });
   } catch (e: unknown) {
     if ((e as { code?: string }).code === 'P2002') {
-      const race = await prisma.emberSession.findUnique({ where: { contributorId } });
+      const race = await prisma.emberSession.findFirst({
+        where: {
+          imageId: contributor.imageId,
+          sessionType: 'call',
+          participantType,
+          participantId,
+        },
+      });
       if (race) return race;
     }
     throw e;
@@ -569,10 +602,15 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     return;
   }
 
-  const session = await ensureEmberSession(
-    voiceCall.contributorId,
-    voiceCall.emberSessionId
-  );
+  const session = await ensureCallEmberSession({
+    contributor: {
+      id: voiceCall.contributorId,
+      imageId: voiceCall.contributor.imageId,
+      userId: voiceCall.contributor.userId,
+      imageOwnerId: voiceCall.contributor.image.ownerId,
+    },
+    emberSessionId: voiceCall.emberSessionId,
+  });
 
   const extracted = await extractInterviewFromTranscript(voiceCall.transcript);
   const contributorLabel =
@@ -706,11 +744,6 @@ async function prepareVoiceCallContext(contributorId: string) {
     where: { id: contributorId },
     include: {
       image: true,
-      emberSession: {
-        select: {
-          id: true,
-        },
-      },
       voiceCalls: {
         orderBy: { createdAt: 'desc' },
         take: 1,
@@ -735,10 +768,14 @@ async function prepareVoiceCallContext(contributorId: string) {
     throw new Error('A voice call is already being started or is in progress');
   }
 
-  const session = await ensureEmberSession(
-    contributor.id,
-    contributor.emberSession?.id
-  );
+  const session = await ensureCallEmberSession({
+    contributor: {
+      id: contributor.id,
+      imageId: contributor.imageId,
+      userId: contributor.userId,
+      imageOwnerId: contributor.image.ownerId,
+    },
+  });
 
   const priorMemoryContext = await buildPriorMemoryContext({
     contributorId: contributor.id,

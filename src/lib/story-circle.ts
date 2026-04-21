@@ -78,6 +78,13 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
               createdAt: true,
               startedAt: true,
               callSummary: true,
+              emberSession: {
+                include: {
+                  messages: {
+                    orderBy: { createdAt: 'asc' },
+                  },
+                },
+              },
             },
           },
         },
@@ -111,7 +118,12 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
       });
     }
 
-    for (const message of contributor.emberSession?.messages || []) {
+    const conversationMessages = [
+      ...(contributor.emberSession?.messages || []),
+      ...contributor.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
+    ];
+
+    for (const message of conversationMessages) {
       const normalizedText = normalizeStoryEntryText(message.content);
       if (normalizedText) {
         existingConversationKeys.add(
@@ -131,7 +143,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
       });
     }
 
-    const voiceAnswers = (contributor.emberSession?.messages || []).filter(
+    const voiceAnswers = conversationMessages.filter(
       (m) => m.role === 'user' && m.questionType && m.source === 'voice'
     );
 
