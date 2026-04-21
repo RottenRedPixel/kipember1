@@ -90,9 +90,7 @@ Rules:
 - Return JSON only.`;
 
 async function buildSystemPrompt(context: string): Promise<string> {
-  return renderPromptTemplate('ask_ember.answer', ASK_RESPONSE_PROMPT_TEMPLATE, {
-    context,
-  });
+  return renderPromptTemplate('ask_ember.answer', ASK_RESPONSE_PROMPT_TEMPLATE, { context });
 }
 
 async function generateAskResponse({
@@ -106,28 +104,20 @@ async function generateAskResponse({
 }) {
   try {
     const systemPrompt = await buildSystemPrompt(context);
-    const response = await chat(systemPrompt, conversationHistory, {
-      capabilityKey: 'ask_ember.answer',
-    });
+    const response = await chat(systemPrompt, conversationHistory, { capabilityKey: 'ask_ember.answer' });
     return response.trim() || `I don't know enough yet to answer that about this ${subjectNoun}.`;
   } catch (error) {
     console.error('Ask Ember primary response failed:', error);
   }
 
-  const reducedContext =
-    context.length > ASK_RETRY_CONTEXT_LIMIT
-      ? `${context.slice(0, ASK_RETRY_CONTEXT_LIMIT - 3).trimEnd()}...`
-      : context;
+  const reducedContext = context.length > ASK_RETRY_CONTEXT_LIMIT
+    ? `${context.slice(0, ASK_RETRY_CONTEXT_LIMIT - 3).trimEnd()}...`
+    : context;
 
   try {
     const systemPrompt = await buildSystemPrompt(reducedContext);
-    const response = await chat(systemPrompt, conversationHistory.slice(-RECENT_TURNS_LIMIT), {
-      capabilityKey: 'ask_ember.answer',
-    });
-    return (
-      response.trim() ||
-      `I couldn't fully answer that right now, but I can still keep learning about this ${subjectNoun}.`
-    );
+    const response = await chat(systemPrompt, conversationHistory.slice(-RECENT_TURNS_LIMIT), { capabilityKey: 'ask_ember.answer' });
+    return response.trim() || `I couldn't fully answer that right now, but I can still keep learning about this ${subjectNoun}.`;
   } catch (retryError) {
     console.error('Ask Ember retry response failed:', retryError);
   }
@@ -137,104 +127,54 @@ async function generateAskResponse({
 
 function trimMemorySummary(value: string | null | undefined) {
   const cleaned = value?.replace(/\s+/g, ' ').trim() || null;
-  if (!cleaned) {
-    return null;
-  }
-
-  if (cleaned.length <= 360) {
-    return cleaned;
-  }
-
+  if (!cleaned) return null;
+  if (cleaned.length <= 360) return cleaned;
   return `${cleaned.slice(0, 357).trimEnd()}...`;
 }
 
 function isAskMemoryTopic(value: string | null | undefined): value is AskMemoryTopic {
-  return (
-    value === 'context' ||
-    value === 'who' ||
-    value === 'what' ||
-    value === 'when' ||
-    value === 'where' ||
-    value === 'why' ||
-    value === 'how' ||
-    value === 'followup'
-  );
+  return value === 'context' || value === 'who' || value === 'what' || value === 'when' ||
+    value === 'where' || value === 'why' || value === 'how' || value === 'followup';
 }
 
 function buildFallbackAskMemoryCapture(message: string): AskMemoryCapture {
   const cleaned = trimMemorySummary(message);
-  if (!cleaned) {
-    return {
-      shouldStoreMemory: false,
-      memoryTopic: null,
-      memorySummary: null,
-    };
-  }
+  if (!cleaned) return { shouldStoreMemory: false, memoryTopic: null, memorySummary: null };
 
   const normalized = cleaned.toLowerCase();
   const shortReactionPatterns = [
-    /^ok[.!]*$/,
-    /^okay[.!]*$/,
-    /^thanks?[.!]*$/,
-    /^thank you[.!]*$/,
-    /^cool[.!]*$/,
-    /^great[.!]*$/,
-    /^wow[.!]*$/,
-    /^nice[.!]*$/,
-    /^hi[.!]*$/,
-    /^hello[.!]*$/,
+    /^ok[.!]*$/, /^okay[.!]*$/, /^thanks?[.!]*$/, /^thank you[.!]*$/, /^cool[.!]*$/,
+    /^great[.!]*$/, /^wow[.!]*$/, /^nice[.!]*$/, /^hi[.!]*$/, /^hello[.!]*$/,
   ];
 
   if (shortReactionPatterns.some((pattern) => pattern.test(normalized))) {
-    return {
-      shouldStoreMemory: false,
-      memoryTopic: null,
-      memorySummary: null,
-    };
+    return { shouldStoreMemory: false, memoryTopic: null, memorySummary: null };
   }
 
   const looksLikeQuestion =
     cleaned.includes('?') ||
-    /^(who|what|when|where|why|how|is|are|was|were|did|does|do|can|could|would|should)\b/i.test(
-      cleaned
-    );
+    /^(who|what|when|where|why|how|is|are|was|were|did|does|do|can|could|would|should)\b/i.test(cleaned);
 
   if (looksLikeQuestion || cleaned.length < 18) {
-    return {
-      shouldStoreMemory: false,
-      memoryTopic: null,
-      memorySummary: null,
-    };
+    return { shouldStoreMemory: false, memoryTopic: null, memorySummary: null };
   }
 
-  return {
-    shouldStoreMemory: true,
-    memoryTopic: 'followup',
-    memorySummary: cleaned,
-  };
+  return { shouldStoreMemory: true, memoryTopic: 'followup', memorySummary: cleaned };
 }
 
 function getStoredQuestion(questionType: AskMemoryTopic) {
-  if (questionType === 'followup') {
-    return 'What else would you like Ember to remember about this moment?';
-  }
-
+  if (questionType === 'followup') return 'What else would you like Ember to remember about this moment?';
   return isInterviewQuestionType(questionType)
     ? INTERVIEW_QUESTIONS[questionType]
     : 'Additional detail shared in Ask Ember';
 }
 
 function isUniqueConstraintError(error: unknown) {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === 'P2002'
-  );
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
 }
 
 async function analyzeAskMemoryCapture({
-  context,
-  recentTurns,
-  message,
+  context, recentTurns, message,
 }: {
   context: string;
   recentTurns: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -246,10 +186,7 @@ async function analyzeAskMemoryCapture({
     .slice(-RECENT_TURNS_LIMIT)
     .map((turn) => `${turn.role.toUpperCase()}: ${turn.content}`)
     .join('\n');
-  const capturePrompt = await renderPromptTemplate(
-    'ask_ember.memory_capture',
-    ASK_MEMORY_CAPTURE_PROMPT
-  );
+  const capturePrompt = await renderPromptTemplate('ask_ember.memory_capture', ASK_MEMORY_CAPTURE_PROMPT);
 
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('ask_ember.memory_capture', getAskCaptureModel()),
@@ -257,29 +194,15 @@ async function analyzeAskMemoryCapture({
       {
         role: 'developer',
         type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: capturePrompt,
-          },
-        ],
+        content: [{ type: 'input_text', text: capturePrompt }],
       },
       {
         role: 'user',
         type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: `KNOWN CONTEXT
-${trimmedContext || 'None yet'}
-
-RECENT ASK EMBER TURNS
-${recentConversation || 'None yet'}
-
-NEWEST USER MESSAGE
-${message}`,
-          },
-        ],
+        content: [{
+          type: 'input_text',
+          text: `KNOWN CONTEXT\n${trimmedContext || 'None yet'}\n\nRECENT ASK EMBER TURNS\n${recentConversation || 'None yet'}\n\nNEWEST USER MESSAGE\n${message}`,
+        }],
       },
     ],
     text: {
@@ -300,144 +223,65 @@ ${message}`,
   const memorySummary = trimMemorySummary(parsed.memorySummary);
 
   if (!shouldStoreMemory || !memorySummary) {
-    return {
-      shouldStoreMemory: false,
-      memoryTopic: null,
-      memorySummary: null,
-    };
+    return { shouldStoreMemory: false, memoryTopic: null, memorySummary: null };
   }
 
-  return {
-    shouldStoreMemory: true,
-    memoryTopic: memoryTopic || 'followup',
-    memorySummary,
-  };
+  return { shouldStoreMemory: true, memoryTopic: memoryTopic || 'followup', memorySummary };
 }
 
-async function ensureContributorConversation(contributorId: string) {
-  const existing = await prisma.conversation.findUnique({
-    where: {
-      contributorId,
-    },
-  });
-
-  if (existing) {
-    return existing;
-  }
+async function ensureContributorSession(contributorId: string, imageId: string) {
+  const existing = await prisma.emberSession.findUnique({ where: { contributorId } });
+  if (existing) return existing;
 
   try {
-    return await prisma.conversation.create({
-      data: {
-        contributorId,
-        status: 'active',
-        currentStep: 'followup',
-      },
+    return await prisma.emberSession.create({
+      data: { imageId, contributorId, sessionType: 'chat', status: 'active', currentStep: 'followup' },
     });
   } catch (error) {
-    if (!isUniqueConstraintError(error)) {
-      throw error;
-    }
-
-    const racedConversation = await prisma.conversation.findUnique({
-      where: {
-        contributorId,
-      },
-    });
-
-    if (!racedConversation) {
-      throw error;
-    }
-
-    return racedConversation;
+    if (!isUniqueConstraintError(error)) throw error;
+    const raced = await prisma.emberSession.findUnique({ where: { contributorId } });
+    if (!raced) throw error;
+    return raced;
   }
 }
 
-async function ensureChatSession({
-  browserId,
-  imageId,
-  userId,
-}: {
-  browserId: string;
-  imageId: string;
-  userId: string;
-}) {
-  const existingUserSession = await prisma.chatSession.findUnique({
-    where: {
-      userId_imageId: {
-        userId,
-        imageId,
-      },
-    },
+async function ensureChatSession({ browserId, imageId, userId }: { browserId: string; imageId: string; userId: string }) {
+  const existingUserSession = await prisma.emberSession.findUnique({
+    where: { userId_imageId: { userId, imageId } },
   });
-
-  if (existingUserSession) {
-    return existingUserSession;
-  }
+  if (existingUserSession) return existingUserSession;
 
   try {
-    return await prisma.chatSession.create({
-      data: {
-        browserId,
-        imageId,
-        userId,
-      },
+    return await prisma.emberSession.create({
+      data: { browserId, imageId, userId, sessionType: 'chat', status: 'active' },
     });
   } catch (error) {
-    if (!isUniqueConstraintError(error)) {
-      throw error;
-    }
+    if (!isUniqueConstraintError(error)) throw error;
 
-    const racedUserSession = await prisma.chatSession.findUnique({
-      where: {
-        userId_imageId: {
-          userId,
-          imageId,
-        },
-      },
+    const racedUserSession = await prisma.emberSession.findUnique({
+      where: { userId_imageId: { userId, imageId } },
     });
+    if (racedUserSession) return racedUserSession;
 
-    if (racedUserSession) {
-      return racedUserSession;
-    }
-
-    const existingBrowserSession = await prisma.chatSession.findUnique({
-      where: {
-        browserId_imageId: {
-          browserId,
-          imageId,
-        },
-      },
+    const existingBrowserSession = await prisma.emberSession.findUnique({
+      where: { browserId_imageId: { browserId, imageId } },
     });
 
     if (existingBrowserSession) {
-      if (existingBrowserSession.userId === userId) {
-        return existingBrowserSession;
-      }
+      if (existingBrowserSession.userId === userId) return existingBrowserSession;
 
       if (!existingBrowserSession.userId) {
         try {
-          return await prisma.chatSession.update({
+          return await prisma.emberSession.update({
             where: { id: existingBrowserSession.id },
             data: { userId },
           });
         } catch (updateError) {
-          if (!isUniqueConstraintError(updateError)) {
-            throw updateError;
-          }
-
-          const racedUpdatedSession = await prisma.chatSession.findUnique({
-            where: {
-              userId_imageId: {
-                userId,
-                imageId,
-              },
-            },
+          if (!isUniqueConstraintError(updateError)) throw updateError;
+          const racedUpdated = await prisma.emberSession.findUnique({
+            where: { userId_imageId: { userId, imageId } },
           });
-
-          if (racedUpdatedSession) {
-            return racedUpdatedSession;
-          }
-
+          if (racedUpdated) return racedUpdated;
           throw updateError;
         }
       }
@@ -445,31 +289,15 @@ async function ensureChatSession({
 
     const replacementBrowserId = randomUUID();
     try {
-      return await prisma.chatSession.create({
-        data: {
-          browserId: replacementBrowserId,
-          imageId,
-          userId,
-        },
+      return await prisma.emberSession.create({
+        data: { browserId: replacementBrowserId, imageId, userId, sessionType: 'chat', status: 'active' },
       });
     } catch (retryError) {
-      if (!isUniqueConstraintError(retryError)) {
-        throw retryError;
-      }
-
-      const finalUserSession = await prisma.chatSession.findUnique({
-        where: {
-          userId_imageId: {
-            userId,
-            imageId,
-          },
-        },
+      if (!isUniqueConstraintError(retryError)) throw retryError;
+      const finalUserSession = await prisma.emberSession.findUnique({
+        where: { userId_imageId: { userId, imageId } },
       });
-
-      if (finalUserSession) {
-        return finalUserSession;
-      }
-
+      if (finalUserSession) return finalUserSession;
       throw retryError;
     }
   }
@@ -478,36 +306,25 @@ async function ensureChatSession({
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireApiUser();
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!(await isFeatureEnabled('ask_ember', true))) {
       return NextResponse.json({ error: 'Ask Ember is currently disabled' }, { status: 503 });
     }
 
     const { imageId, message, inputMode } = await request.json();
-
     if (!imageId || !message) {
-      return NextResponse.json(
-        { error: 'imageId and message are required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'imageId and message are required' }, { status: 400 });
     }
 
     const normalizedInputMode = inputMode === 'voice' ? 'voice' : 'web';
-
     const accessType = await getImageAccessType(auth.user.id, imageId);
-    if (!accessType) {
-      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
-    }
+    if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const context = await retriever.retrieve(imageId, message, ASK_CONTEXT_LIMIT);
-
     if (!context) {
       return NextResponse.json({
-        response:
-          "I don't have enough verified information about this photo yet. Try again after the wiki is generated or more contributor details are added.",
+        response: "I don't have enough verified information about this photo yet. Try again after the wiki is generated or more contributor details are added.",
       });
     }
 
@@ -517,25 +334,18 @@ export async function POST(request: NextRequest) {
 
     const session = await ensureChatSession({ browserId, imageId, userId });
 
-    const history = await prisma.chatMessage.findMany({
+    const history = await prisma.emberMessage.findMany({
       where: { sessionId: session.id },
       orderBy: { createdAt: 'asc' },
       take: HISTORY_LIMIT,
     });
 
     const conversationHistory = history
-      .filter((entry) => !entry.imageFilename) // skip image-only messages from AI context
-      .map((entry) => ({
-        role: entry.role as 'user' | 'assistant',
-        content: entry.content,
-      }));
+      .filter((entry) => !entry.imageFilename)
+      .map((entry) => ({ role: entry.role as 'user' | 'assistant', content: entry.content }));
 
-    await prisma.chatMessage.create({
-      data: {
-        sessionId: session.id,
-        role: 'user',
-        content: message,
-      },
+    await prisma.emberMessage.create({
+      data: { sessionId: session.id, role: 'user', content: message },
     });
 
     conversationHistory.push({ role: 'user', content: message });
@@ -545,134 +355,81 @@ export async function POST(request: NextRequest) {
       select: { mediaType: true },
     });
     const subjectNoun = imageRecord?.mediaType === 'VIDEO' ? 'video' : 'photo';
-    const response = await generateAskResponse({
-      context,
-      conversationHistory,
-      subjectNoun,
-    });
-    let contributorConversation:
-      | {
-          contributorId: string;
-          conversationId: string;
-        }
-      | null = null;
-    let storedMemory: {
-      saved: boolean;
-      summary: string | null;
-      topic: AskMemoryTopic | null;
-    } = {
-      saved: false,
-      summary: null,
-      topic: null,
+    const response = await generateAskResponse({ context, conversationHistory, subjectNoun });
+
+    let contributorSessionId: string | null = null;
+    let storedMemory: { saved: boolean; summary: string | null; topic: AskMemoryTopic | null } = {
+      saved: false, summary: null, topic: null,
     };
 
     try {
       const contributorRecord = await ensureUserContributorForImage(imageId, auth.user.id);
-
       if (contributorRecord) {
-        const conversation = await ensureContributorConversation(contributorRecord.id);
-        contributorConversation = {
-          contributorId: contributorRecord.id,
-          conversationId: conversation.id,
-        };
+        const contributorSession = await ensureContributorSession(contributorRecord.id, imageId);
+        contributorSessionId = contributorSession.id;
 
-        await prisma.message.createMany({
+        await prisma.emberMessage.createMany({
           data: [
-            {
-              conversationId: conversation.id,
-              role: 'user',
-              content: message,
-              source: normalizedInputMode,
-            },
-            {
-              conversationId: conversation.id,
-              role: 'assistant',
-              content: response,
-              source: 'web',
-            },
+            { sessionId: contributorSession.id, role: 'user', content: message, source: normalizedInputMode },
+            { sessionId: contributorSession.id, role: 'assistant', content: response, source: 'web' },
           ],
         });
       }
-    } catch (conversationPersistError) {
-      console.error('Ask Ember conversation persist error:', conversationPersistError);
+    } catch (persistError) {
+      console.error('Ask Ember conversation persist error:', persistError);
     }
 
     try {
-      const analyzedCapture = await analyzeAskMemoryCapture({
-        context,
-        recentTurns: conversationHistory,
-        message,
-      });
-      const memoryCapture = analyzedCapture.shouldStoreMemory
-        ? analyzedCapture
-        : buildFallbackAskMemoryCapture(message);
+      const analyzedCapture = await analyzeAskMemoryCapture({ context, recentTurns: conversationHistory, message });
+      const memoryCapture = analyzedCapture.shouldStoreMemory ? analyzedCapture : buildFallbackAskMemoryCapture(message);
 
-      if (memoryCapture.shouldStoreMemory && contributorConversation) {
+      if (memoryCapture.shouldStoreMemory && contributorSessionId) {
         const memorySummary = memoryCapture.memorySummary;
         const memoryTopic = memoryCapture.memoryTopic || 'followup';
 
-        if (!memorySummary) {
-          throw new Error('Memory capture indicated storage without a summary');
-        }
+        if (!memorySummary) throw new Error('Memory capture indicated storage without a summary');
 
-        await prisma.response.create({
+        await prisma.emberMessage.create({
           data: {
-            conversationId: contributorConversation.conversationId,
-            questionType: memoryTopic,
-            question: getStoredQuestion(memoryTopic),
-            answer: memorySummary,
+            sessionId: contributorSessionId,
+            role: 'user',
+            content: memorySummary,
             source: normalizedInputMode,
+            question: getStoredQuestion(memoryTopic),
+            questionType: memoryTopic,
           },
         });
 
-        storedMemory = {
-          saved: true,
-          summary: memorySummary,
-          topic: memoryTopic,
-        };
+        storedMemory = { saved: true, summary: memorySummary, topic: memoryTopic };
       }
     } catch (captureError) {
       console.error('Ask Ember memory capture error:', captureError);
     }
 
-    await prisma.chatMessage.create({
-      data: {
-        sessionId: session.id,
-        role: 'assistant',
-        content: response,
-      },
+    await prisma.emberMessage.create({
+      data: { sessionId: session.id, role: 'assistant', content: response },
     });
 
-    const nextResponse = NextResponse.json({
-      response,
-      storedMemory,
-    });
+    const nextResponse = NextResponse.json({ response, storedMemory });
     if (!existingBrowserId || session.browserId !== browserId) {
-      nextResponse.cookies.set(COOKIE_NAME, session.browserId, {
-        httpOnly: true,
-        sameSite: 'lax',
+      nextResponse.cookies.set(COOKIE_NAME, session.browserId ?? browserId, {
+        httpOnly: true, sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
-        maxAge: COOKIE_MAX_AGE,
-        path: '/',
+        maxAge: COOKIE_MAX_AGE, path: '/',
       });
     }
 
     return nextResponse;
   } catch (error) {
     console.error('Chat error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process chat message' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to process chat message' }, { status: 500 });
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireApiUser();
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     if (!(await isFeatureEnabled('ask_ember', true))) {
       return NextResponse.json({ error: 'Ask Ember is currently disabled' }, { status: 503 });
@@ -680,35 +437,25 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const imageId = searchParams.get('imageId');
-
-    if (!imageId) {
-      return NextResponse.json(
-        { error: 'imageId is required' },
-        { status: 400 }
-      );
-    }
+    if (!imageId) return NextResponse.json({ error: 'imageId is required' }, { status: 400 });
 
     const accessType = await getImageAccessType(auth.user.id, imageId);
-    if (!accessType) {
-      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
-    }
+    if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;
 
     const [session, contributor] = await Promise.all([
-      prisma.chatSession.findUnique({
-        where: { userId_imageId: { userId, imageId } },
-      }),
+      prisma.emberSession.findUnique({ where: { userId_imageId: { userId, imageId } } }),
       prisma.contributor.findFirst({
         where: { imageId, userId },
         select: {
           id: true,
-          conversation: {
+          emberSession: {
             select: {
-              responses: {
-                where: { source: 'voice' },
+              messages: {
+                where: { source: 'voice', questionType: { not: null } },
                 orderBy: { createdAt: 'asc' },
-                select: { id: true, question: true, answer: true, createdAt: true },
+                select: { id: true, question: true, content: true, questionType: true, createdAt: true },
               },
             },
           },
@@ -716,16 +463,14 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Load chat messages (may be null if no session yet)
     const history = session
-      ? await prisma.chatMessage.findMany({
+      ? await prisma.emberMessage.findMany({
           where: { sessionId: session.id },
           orderBy: { createdAt: 'asc' },
           take: HISTORY_LIMIT,
         })
       : [];
 
-    // Load voice clips for this contributor so we can attach audioUrl to responses
     const clips = contributor
       ? await prisma.voiceCallClip.findMany({
           where: { imageId, contributorId: contributor.id },
@@ -733,7 +478,6 @@ export async function GET(request: NextRequest) {
         })
       : [];
 
-    // Build chat message entries
     type MergedEntry = {
       role: string;
       content: string;
@@ -752,39 +496,18 @@ export async function GET(request: NextRequest) {
       createdAt: entry.createdAt.toISOString(),
     }));
 
-    // Build voice response entries (each Response = one assistant Q + one user A)
-    const voiceResponses = contributor?.conversation?.responses ?? [];
-    const voiceEntries: MergedEntry[] = voiceResponses.flatMap((response) => {
-      // Try to find a matching clip whose quote appears in the answer
+    const voiceMessages = contributor?.emberSession?.messages ?? [];
+    const voiceEntries: MergedEntry[] = voiceMessages.flatMap((msg) => {
       const matchedClip = clips.find(
-        (clip) =>
-          clip.audioUrl &&
-          clip.quote.trim().length > 10 &&
-          response.answer.includes(clip.quote.trim().slice(0, 40))
+        (clip) => clip.audioUrl && clip.quote.trim().length > 10 && msg.content.includes(clip.quote.trim().slice(0, 40))
       );
       const audioUrl = matchedClip?.audioUrl ?? null;
-
       return [
-        {
-          role: 'assistant',
-          content: response.question,
-          source: 'voice' as const,
-          imageFilename: null,
-          audioUrl: null,
-          createdAt: response.createdAt.toISOString(),
-        },
-        {
-          role: 'user',
-          content: response.answer,
-          source: 'voice' as const,
-          imageFilename: null,
-          audioUrl,
-          createdAt: response.createdAt.toISOString(),
-        },
+        { role: 'assistant', content: msg.question ?? '', source: 'voice' as const, imageFilename: null, audioUrl: null, createdAt: msg.createdAt.toISOString() },
+        { role: 'user', content: msg.content, source: 'voice' as const, imageFilename: null, audioUrl, createdAt: msg.createdAt.toISOString() },
       ];
     });
 
-    // Merge and sort by createdAt
     const merged = [...chatEntries, ...voiceEntries].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
@@ -792,14 +515,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ messages: merged });
   } catch (error) {
     console.error('Chat history error:', error);
-    return NextResponse.json(
-      { error: 'Failed to load chat history' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to load chat history' }, { status: 500 });
   }
 }
 
-// PATCH — record an image upload event in chat history (no AI response)
 export async function PATCH(request: NextRequest) {
   try {
     const auth = await requireApiUser();
@@ -819,30 +538,19 @@ export async function PATCH(request: NextRequest) {
 
     const session = await ensureChatSession({ browserId, imageId, userId });
 
-    await prisma.chatMessage.createMany({
+    await prisma.emberMessage.createMany({
       data: [
-        {
-          sessionId: session.id,
-          role: 'user',
-          content: '',
-          imageFilename,
-        },
-        {
-          sessionId: session.id,
-          role: 'assistant',
-          content: "Got it! I received your photo and I'm starting to analyze it.",
-        },
+        { sessionId: session.id, role: 'user', content: '', imageFilename },
+        { sessionId: session.id, role: 'assistant', content: "Got it! I received your photo and I'm starting to analyze it." },
       ],
     });
 
     const response = NextResponse.json({ ok: true });
     if (!existingBrowserId || session.browserId !== browserId) {
-      response.cookies.set(COOKIE_NAME, session.browserId, {
-        httpOnly: true,
-        sameSite: 'lax',
+      response.cookies.set(COOKIE_NAME, session.browserId ?? browserId, {
+        httpOnly: true, sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
-        maxAge: COOKIE_MAX_AGE,
-        path: '/',
+        maxAge: COOKIE_MAX_AGE, path: '/',
       });
     }
 

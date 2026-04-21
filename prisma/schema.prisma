@@ -34,7 +34,7 @@ model Image {
   kidsStory    KidsStory?
   sportsMode   SportsMode?
   snapshot     Snapshot?
-  chatSessions ChatSession[]
+  emberSessions EmberSession[]
   tags         ImageTag[]
   attachments  ImageAttachment[]
   voiceCallClips VoiceCallClip[]
@@ -100,7 +100,7 @@ model Contributor {
   userId       String?
   image        Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  conversation Conversation?
+  emberSession EmberSession?
   voiceCalls   VoiceCall[]
   voiceCallClips VoiceCallClip[]
   tags         ImageTag[]
@@ -111,38 +111,46 @@ model Contributor {
   @@unique([imageId, userId])
 }
 
-model Conversation {
-  id            String      @id @default(cuid())
-  contributorId String      @unique
-  contributor   Contributor @relation(fields: [contributorId], references: [id], onDelete: Cascade)
-  status        String      @default("pending") // pending, active, completed
-  currentStep   String      @default("greeting") // greeting, context, who, what, when, where, why, how, followup, closing
-  messages      Message[]
-  responses     Response[]
-  voiceCalls    VoiceCall[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+model EmberSession {
+  id               String         @id @default(cuid())
+  imageId          String
+  image            Image          @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  userId           String?
+  user             User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contributorId    String?        @unique
+  contributor      Contributor?   @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  browserId        String?
+  sessionType      String         @default("chat")    // chat | call
+  status           String         @default("active")  // active, completed
+  currentStep      String?                            // interview state: greeting, context, who, what, when, where, why, how, followup, closing
+  personaName      String?
+  personaTraits    String?
+  personaVoice     String?
+  personaBackstory String?
+  messages         EmberMessage[]
+  voiceCalls       VoiceCall[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([userId, imageId])
+  @@unique([browserId, imageId])
+  @@index([imageId])
+  @@index([userId])
 }
 
-model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role           String       // "assistant" or "user"
-  content        String
-  source         String       @default("web") // web, sms, voice
-  createdAt      DateTime     @default(now())
-}
+model EmberMessage {
+  id            String       @id @default(cuid())
+  sessionId     String
+  session       EmberSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role          String       // user | assistant
+  content       String
+  source        String       @default("web") // web, sms, voice
+  imageFilename String?
+  question      String?      // for structured Q&A (from interview responses)
+  questionType  String?      // context, who, what, when, where, why, how, followup
+  createdAt     DateTime     @default(now())
 
-model Response {
-  id             String       @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  questionType   String       // context, who, what, when, where, why, how, followup
-  question       String
-  answer         String
-  source         String       @default("web") // web, sms, voice
-  createdAt      DateTime     @default(now())
+  @@index([sessionId, createdAt])
 }
 
 model Wiki {
@@ -280,7 +288,7 @@ model User {
   receivedFriendships  Friendship[] @relation("FriendshipAddressee")
   createdTags          ImageTag[]   @relation("CreatedImageTags")
   taggedImages         ImageTag[]   @relation("TaggedUserImages")
-  chatSessions         ChatSession[]
+  emberSessions        EmberSession[]
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 }
@@ -366,41 +374,13 @@ model ImageTag {
   @@index([contributorId, createdAt])
 }
 
-model ChatSession {
-  id        String        @id @default(cuid())
-  browserId String
-  imageId   String
-  userId    String?
-  user      User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  image     Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  messages  ChatMessage[]
-  createdAt DateTime      @default(now())
-  personaName String?
-  personaTraits String?
-  personaVoice String?
-  personaBackstory String?
-
-  @@unique([browserId, imageId])
-  @@unique([userId, imageId])
-  @@index([userId])
-}
-
-model ChatMessage {
-  id              String      @id @default(cuid())
-  sessionId       String
-  session         ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role            String      // "user" or "assistant"
-  content         String
-  imageFilename   String?
-  createdAt       DateTime    @default(now())
-}
 
 model VoiceCall {
   id                         String           @id @default(cuid())
   contributorId              String
   contributor                Contributor      @relation(fields: [contributorId], references: [id], onDelete: Cascade)
-  conversationId             String?
-  conversation               Conversation?    @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  emberSessionId             String?
+  emberSession               EmberSession?    @relation(fields: [emberSessionId], references: [id], onDelete: SetNull)
   retellCallId               String           @unique
   initiatedBy                String           @default("system") // owner, contributor, system
   callType                   String           @default("phone_call")
@@ -434,7 +414,7 @@ model VoiceCall {
   events                     VoiceCallEvent[]
 
   @@index([contributorId, createdAt])
-  @@index([conversationId, createdAt])
+  @@index([emberSessionId, createdAt])
 }
 
 model VoiceCallClip {

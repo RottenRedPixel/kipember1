@@ -601,7 +601,7 @@ export async function GET(
       }>;
     }> = [];
     try {
-      const chatSessions = await prisma.chatSession.findMany({
+      const emberSessions = await prisma.emberSession.findMany({
         where: { imageId: id, userId: { not: null } },
         include: {
           user: { select: { id: true, name: true, email: true, avatarFilename: true } },
@@ -609,7 +609,7 @@ export async function GET(
         },
       });
 
-      chatBlocks = chatSessions
+      chatBlocks = emberSessions
         .filter((session) => session.messages.length > 0)
         .map((session) => {
           const personName = session.user?.name || session.user?.email || 'Guest';

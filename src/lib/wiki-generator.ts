@@ -360,12 +360,9 @@ async function fetchImageForWiki(imageId: string) {
       },
       contributors: {
         include: {
-          conversation: {
+          emberSession: {
             include: {
               messages: {
-                orderBy: { createdAt: 'asc' },
-              },
-              responses: {
                 orderBy: { createdAt: 'asc' },
               },
             },
@@ -542,15 +539,17 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   for (const contributor of image.contributors) {
     const contributorLabel = getContributorLabel(contributor);
-    const conversationResponses = contributor.conversation?.responses || [];
+    const conversationResponses = (contributor.emberSession?.messages || []).filter(
+      (m) => m.role === 'user' && m.questionType
+    );
 
     if (conversationResponses.length > 0) {
       for (const response of conversationResponses) {
         allResponses.push({
           contributorName: contributorLabel,
-          questionType: response.questionType,
-          question: response.question,
-          answer: response.answer,
+          questionType: response.questionType!,
+          question: response.question || '',
+          answer: response.content,
           source: response.source,
         });
       }
@@ -617,8 +616,8 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       })
       .slice(-4)
       .map((response) => ({
-        questionType: response.questionType,
-        answer: cleanInlineText(response.answer),
+        questionType: response.questionType!,
+        answer: cleanInlineText(response.content),
         source: cleanInlineText(response.source) || 'web',
         createdAt: response.createdAt,
       }))
@@ -631,8 +630,9 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         } => Boolean(note.answer)
       );
 
+    const allSessionMessages = contributor.emberSession?.messages || [];
     const askConversationTextSet = new Set(
-      (contributor.conversation?.messages || [])
+      allSessionMessages
         .filter((message) => {
           const source = cleanInlineText(message.source)?.toLowerCase();
           return source === 'web' || source === 'voice';
@@ -647,8 +647,8 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     });
 
     const askConversationMessages =
-      contributor.conversation?.messages
-        ?.filter((message) => {
+      allSessionMessages
+        .filter((message) => {
           const source = cleanInlineText(message.source)?.toLowerCase();
           return source === 'web' || source === 'voice';
         })
@@ -667,7 +667,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         kind: getContributorKind(contributor),
         createdAt:
           dedupedAskNotes[dedupedAskNotes.length - 1]?.createdAt ||
-          contributor.conversation?.updatedAt ||
+          contributor.emberSession?.updatedAt ||
           contributor.createdAt,
         summary: null,
         transcript: null,
@@ -923,25 +923,27 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   ) => {
     const blocks = contributors.flatMap((contributor) => {
       const label = getContributorLabel(contributor);
-      const conversationMessages =
-        contributor.conversation?.messages
-          ?.map((message) => ({
-            speaker: message.role === 'assistant' ? 'Ember' : label,
-            text: cleanInlineText(message.content),
-          }))
-          .filter((message): message is { speaker: string; text: string } => Boolean(message.text)) || [];
+      const allMessages = contributor.emberSession?.messages || [];
+      const conversationMessages = allMessages
+        .map((message) => ({
+          speaker: message.role === 'assistant' ? 'Ember' : label,
+          text: cleanInlineText(message.content),
+        }))
+        .filter((message): message is { speaker: string; text: string } => Boolean(message.text));
 
       const fallbackResponses =
         conversationMessages.length === 0
-          ? (contributor.conversation?.responses || []).flatMap((response) => {
-              const question = cleanInlineText(response.question);
-              const answer = cleanInlineText(response.answer);
+          ? allMessages
+              .filter((m) => m.role === 'user' && m.questionType)
+              .flatMap((response) => {
+                const question = cleanInlineText(response.question);
+                const answer = cleanInlineText(response.content);
 
-              return [
-                question ? { speaker: 'Ember', text: question } : null,
-                answer ? { speaker: label, text: answer } : null,
-              ].filter((entry): entry is { speaker: string; text: string } => Boolean(entry));
-            })
+                return [
+                  question ? { speaker: 'Ember', text: question } : null,
+                  answer ? { speaker: label, text: answer } : null,
+                ].filter((entry): entry is { speaker: string; text: string } => Boolean(entry));
+              })
           : [];
 
       const transcript = (conversationMessages.length > 0 ? conversationMessages : fallbackResponses).slice(-8);

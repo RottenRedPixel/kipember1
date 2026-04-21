@@ -32,9 +32,11 @@ export class SimpleRetriever implements ContextRetriever {
         sportsMode: true,
         contributors: {
           include: {
-            conversation: {
+            emberSession: {
               include: {
-                responses: true,
+                messages: {
+                  where: { role: 'user', questionType: { not: null } },
+                },
               },
             },
           },
@@ -99,14 +101,12 @@ export class SimpleRetriever implements ContextRetriever {
     // Add raw responses
     const responses: string[] = [];
     for (const contributor of image.contributors) {
-      if (contributor.conversation?.responses) {
-        for (const response of contributor.conversation.responses) {
-          responses.push(
-            `[${contributor.name || 'Anonymous'}] ${response.questionType.toUpperCase()}\n` +
-              `Q: ${response.question}\n` +
-              `A: ${response.answer}`
-          );
-        }
+      for (const message of contributor.emberSession?.messages || []) {
+        responses.push(
+          `[${contributor.name || 'Anonymous'}] ${(message.questionType || '').toUpperCase()}\n` +
+            `Q: ${message.question || message.questionType || ''}\n` +
+            `A: ${message.content}`
+        );
       }
     }
 

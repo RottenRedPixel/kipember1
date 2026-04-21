@@ -269,25 +269,27 @@ function truncateDynamicValue(value: string | null, maxLength: number): string |
 
 async function buildPriorMemoryContext({
   contributorId,
-  conversationId,
+  emberSessionId,
 }: {
   contributorId: string;
-  conversationId?: string | null;
+  emberSessionId?: string | null;
 }): Promise<PriorMemoryContext> {
-  const [conversation, voiceCalls] = await Promise.all([
-    conversationId
-      ? prisma.conversation.findUnique({
-          where: { id: conversationId },
+  const [session, voiceCalls] = await Promise.all([
+    emberSessionId
+      ? prisma.emberSession.findUnique({
+          where: { id: emberSessionId },
           include: {
-            responses: {
+            messages: {
+              where: { role: 'user', questionType: { not: null } },
               orderBy: { createdAt: 'asc' },
             },
           },
         })
-      : prisma.conversation.findUnique({
+      : prisma.emberSession.findUnique({
           where: { contributorId },
           include: {
-            responses: {
+            messages: {
+              where: { role: 'user', questionType: { not: null } },
               orderBy: { createdAt: 'asc' },
             },
           },
@@ -310,11 +312,11 @@ async function buildPriorMemoryContext({
 
   const latestResponseByQuestion = new Map<QuestionType, string>();
 
-  for (const response of conversation?.responses || []) {
-    if (response.questionType in QUESTION_PROMPTS && response.answer.trim()) {
+  for (const message of session?.messages || []) {
+    if (message.questionType && message.questionType in QUESTION_PROMPTS && message.content.trim()) {
       latestResponseByQuestion.set(
-        response.questionType as QuestionType,
-        response.answer.trim()
+        message.questionType as QuestionType,
+        message.content.trim()
       );
     }
   }
@@ -364,10 +366,10 @@ async function buildPriorMemoryContext({
   };
 }
 
-async function ensureConversation(contributorId: string, conversationId?: string | null) {
-  if (conversationId) {
-    const existing = await prisma.conversation.findUnique({
-      where: { id: conversationId },
+async function ensureEmberSession(contributorId: string, emberSessionId?: string | null) {
+  if (emberSessionId) {
+    const existing = await prisma.emberSession.findUnique({
+      where: { id: emberSessionId },
     });
 
     if (existing) {
@@ -375,7 +377,7 @@ async function ensureConversation(contributorId: string, conversationId?: string
     }
   }
 
-  const existingForContributor = await prisma.conversation.findUnique({
+  const existingForContributor = await prisma.emberSession.findUnique({
     where: { contributorId },
   });
 
@@ -383,13 +385,32 @@ async function ensureConversation(contributorId: string, conversationId?: string
     return existingForContributor;
   }
 
-  return prisma.conversation.create({
-    data: {
-      contributorId,
-      currentStep: 'context',
-      status: 'active',
-    },
+  const contributor = await prisma.contributor.findUnique({
+    where: { id: contributorId },
+    select: { imageId: true },
   });
+
+  if (!contributor) {
+    throw new Error('Contributor not found');
+  }
+
+  try {
+    return await prisma.emberSession.create({
+      data: {
+        contributorId,
+        imageId: contributor.imageId,
+        sessionType: 'chat',
+        currentStep: 'context',
+        status: 'active',
+      },
+    });
+  } catch (e: unknown) {
+    if ((e as { code?: string }).code === 'P2002') {
+      const race = await prisma.emberSession.findUnique({ where: { contributorId } });
+      if (race) return race;
+    }
+    throw e;
+  }
 }
 
 function extractJsonObject(text: string): string {
@@ -458,7 +479,8 @@ async function upsertVoiceCallRecord(
 ) {
   const metadata = getStringMetadata(call);
   const contributorId = metadata.contributorId;
-  const conversationId = metadata.conversationId;
+  // Support both new (emberSessionId) and legacy (conversationId) metadata keys
+  const emberSessionId = metadata.emberSessionId || metadata.conversationId || null;
   const initiatedBy = metadata.initiatedBy ?? 'system';
 
   if (!contributorId) {
@@ -472,7 +494,7 @@ async function upsertVoiceCallRecord(
   const callRecord = call as unknown as Record<string, unknown>;
   const baseData = {
     contributorId,
-    conversationId: conversationId || null,
+    emberSessionId: emberSessionId || null,
     initiatedBy,
     retellCallId: call.call_id,
     callType: call.call_type,
@@ -512,7 +534,7 @@ async function upsertVoiceCallRecord(
         where: { id: existing.id },
         data: {
           ...baseData,
-          conversationId: baseData.conversationId || existing.conversationId,
+          emberSessionId: baseData.emberSessionId || existing.emberSessionId,
           initiatedBy: existing.initiatedBy || initiatedBy,
         },
       })
@@ -531,7 +553,7 @@ async function upsertVoiceCallRecord(
   return voiceCall;
 }
 
-async function syncVoiceCallToConversation(voiceCallId: string) {
+async function syncVoiceCallToEmberSession(voiceCallId: string) {
   const voiceCall = await prisma.voiceCall.findUnique({
     where: { id: voiceCallId },
     include: {
@@ -547,9 +569,9 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
     return;
   }
 
-  const conversation = await ensureConversation(
+  const session = await ensureEmberSession(
     voiceCall.contributorId,
-    voiceCall.conversationId
+    voiceCall.emberSessionId
   );
 
   const extracted = await extractInterviewFromTranscript(voiceCall.transcript);
@@ -575,29 +597,30 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
     extracted.isComplete || hasInterviewResponses || hasInterviewSummary;
 
   if (hasInterviewResponses) {
-    await prisma.response.createMany({
+    await prisma.emberMessage.createMany({
       data: extracted.responses.map((item) => ({
-        conversationId: conversation.id,
+        sessionId: session.id,
+        role: 'user',
+        content: item.answer,
+        source: 'voice',
         questionType: item.questionType,
         question: QUESTION_PROMPTS[item.questionType],
-        answer: item.answer,
-        source: 'voice',
       })),
     });
   }
 
-  await prisma.conversation.update({
-    where: { id: conversation.id },
+  await prisma.emberSession.update({
+    where: { id: session.id },
     data: {
       status: shouldMarkCompleted ? 'completed' : 'active',
-      currentStep: shouldMarkCompleted ? 'completed' : conversation.currentStep,
+      currentStep: shouldMarkCompleted ? 'completed' : session.currentStep,
     },
   });
 
   await prisma.voiceCall.update({
     where: { id: voiceCall.id },
     data: {
-      conversationId: conversation.id,
+      emberSessionId: session.id,
       callSummary: extracted.summary || voiceCall.callSummary,
       memorySyncedAt: new Date(),
     },
@@ -664,7 +687,7 @@ export async function refreshVoiceCallFromProvider(voiceCallId: string) {
   });
 
   if (shouldTreatAsAnalyzed) {
-    await syncVoiceCallToConversation(updated.id);
+    await syncVoiceCallToEmberSession(updated.id);
   }
 
   if (eventType === 'call_ended' || eventType === 'call_analyzed') {
@@ -683,7 +706,7 @@ async function prepareVoiceCallContext(contributorId: string) {
     where: { id: contributorId },
     include: {
       image: true,
-      conversation: {
+      emberSession: {
         select: {
           id: true,
         },
@@ -712,14 +735,14 @@ async function prepareVoiceCallContext(contributorId: string) {
     throw new Error('A voice call is already being started or is in progress');
   }
 
-  const conversation = await ensureConversation(
+  const session = await ensureEmberSession(
     contributor.id,
-    contributor.conversation?.id
+    contributor.emberSession?.id
   );
 
   const priorMemoryContext = await buildPriorMemoryContext({
     contributorId: contributor.id,
-    conversationId: conversation.id,
+    emberSessionId: session.id,
   });
 
   const dynamicVariables = pickDynamicVariables({
@@ -736,7 +759,7 @@ async function prepareVoiceCallContext(contributorId: string) {
 
   return {
     contributor,
-    conversation,
+    session,
     dynamicVariables,
   };
 }
@@ -748,7 +771,7 @@ export async function startVoiceCallForContributor({
   contributorId: string;
   initiatedBy: 'owner' | 'contributor';
 }) {
-  const { contributor, conversation, dynamicVariables } =
+  const { contributor, session, dynamicVariables } =
     await prepareVoiceCallContext(contributorId);
 
   if (!contributor.phoneNumber) {
@@ -759,7 +782,7 @@ export async function startVoiceCallForContributor({
     toNumber: contributor.phoneNumber,
     metadata: {
       contributorId: contributor.id,
-      conversationId: conversation.id,
+      emberSessionId: session.id,
       imageId: contributor.imageId,
       initiatedBy,
     },
@@ -769,7 +792,7 @@ export async function startVoiceCallForContributor({
   const voiceCall = await prisma.voiceCall.create({
     data: {
       contributorId: contributor.id,
-      conversationId: conversation.id,
+      emberSessionId: session.id,
       initiatedBy,
       retellCallId: call.call_id,
       callType: call.call_type,
@@ -799,13 +822,13 @@ export async function startWebVoiceCallForContributor({
   contributorId: string;
   initiatedBy: 'owner' | 'contributor';
 }) {
-  const { contributor, conversation, dynamicVariables } =
+  const { contributor, session, dynamicVariables } =
     await prepareVoiceCallContext(contributorId);
 
   const call = await createRetellWebCall({
     metadata: {
       contributorId: contributor.id,
-      conversationId: conversation.id,
+      emberSessionId: session.id,
       imageId: contributor.imageId,
       initiatedBy,
     },
@@ -815,7 +838,7 @@ export async function startWebVoiceCallForContributor({
   const voiceCall = await prisma.voiceCall.create({
     data: {
       contributorId: contributor.id,
-      conversationId: conversation.id,
+      emberSessionId: session.id,
       initiatedBy,
       retellCallId: call.call_id,
       callType: call.call_type,
@@ -854,7 +877,7 @@ export async function processRetellWebhook(rawPayload: unknown) {
   const voiceCall = await upsertVoiceCallRecord(call, eventType, rawPayload);
 
   if (eventType === 'call_analyzed') {
-    await syncVoiceCallToConversation(voiceCall.id);
+    await syncVoiceCallToEmberSession(voiceCall.id);
   }
 
   if (eventType === 'call_ended' || eventType === 'call_analyzed') {

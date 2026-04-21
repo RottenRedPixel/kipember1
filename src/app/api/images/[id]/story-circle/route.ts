@@ -27,6 +27,7 @@ async function loadOwnerStoryCircleContributor(imageId: string, userId: string) 
     include: {
       image: {
         select: {
+          id: true,
           originalName: true,
           title: true,
           description: true,
@@ -59,7 +60,7 @@ async function loadOwnerStoryCircleContributor(imageId: string, userId: string) 
           },
         },
       },
-      conversation: {
+      emberSession: {
         include: {
           messages: {
             orderBy: { createdAt: 'asc' },
@@ -68,17 +69,8 @@ async function loadOwnerStoryCircleContributor(imageId: string, userId: string) 
               role: true,
               content: true,
               source: true,
-              createdAt: true,
-            },
-          },
-          responses: {
-            orderBy: { createdAt: 'asc' },
-            select: {
-              id: true,
-              questionType: true,
               question: true,
-              answer: true,
-              source: true,
+              questionType: true,
               createdAt: true,
             },
           },
@@ -91,13 +83,17 @@ async function loadOwnerStoryCircleContributor(imageId: string, userId: string) 
 function buildStoryCircleState(
   contributor: NonNullable<Awaited<ReturnType<typeof loadOwnerStoryCircleContributor>>>
 ) {
-  const responses = contributor.conversation?.responses || [];
+  const messages = contributor.emberSession?.messages || [];
+  const responses = messages.filter(
+    (m) =>
+      m.role === 'user' &&
+      m.questionType &&
+      (isInterviewQuestionType(m.questionType) || m.questionType === 'followup')
+  );
   const knownContext = buildInterviewKnownContextFromImage(contributor.image);
   const knownSteps = getKnownInterviewSteps(knownContext);
   const answeredSteps = new Set(
-    responses
-      .map((response) => response.questionType)
-      .filter(isInterviewQuestionType)
+    responses.map((r) => r.questionType).filter(isInterviewQuestionType)
   );
   const progress = getInterviewProgress({
     answeredSteps,
@@ -112,20 +108,14 @@ function buildStoryCircleState(
     answeredCount: progress.answeredCount,
     totalCount: progress.totalCount,
     isComplete: progress.isComplete,
-    responses: responses
-      .filter(
-        (response) =>
-          isInterviewQuestionType(response.questionType) ||
-          response.questionType === 'followup'
-      )
-      .map((response) => ({
-        id: response.id,
-        questionType: response.questionType,
-        question: response.question || response.questionType,
-        answer: response.answer,
-        source: response.source,
-        createdAt: response.createdAt,
-      })),
+    responses: responses.map((r) => ({
+      id: r.id,
+      questionType: r.questionType,
+      question: r.question || r.questionType,
+      answer: r.content,
+      source: r.source,
+      createdAt: r.createdAt,
+    })),
   };
 }
 
@@ -217,44 +207,52 @@ export async function POST(
           ? INTERVIEW_QUESTIONS[questionType]
           : getFollowupPrompt();
 
-    const conversation =
-      contributor.conversation ||
-      (await prisma.conversation.create({
-        data: {
-          contributorId: contributor.id,
-          status: 'active',
-          currentStep: questionType === 'followup' ? 'completed' : questionType,
-        },
-        include: {
-          responses: true,
-        },
-      }));
+    let session = contributor.emberSession;
+    if (!session) {
+      try {
+        session = await prisma.emberSession.create({
+          data: {
+            contributorId: contributor.id,
+            imageId: contributor.image.id,
+            sessionType: 'chat',
+            status: 'active',
+            currentStep: questionType === 'followup' ? 'completed' : questionType,
+          },
+          include: { messages: true },
+        });
+      } catch (e: unknown) {
+        if ((e as { code?: string }).code === 'P2002') {
+          session = await prisma.emberSession.findUnique({
+            where: { contributorId: contributor.id },
+            include: { messages: { orderBy: { createdAt: 'asc' } } },
+          });
+        } else {
+          throw e;
+        }
+      }
+    }
 
-    await prisma.message.createMany({
+    if (!session) {
+      return NextResponse.json({ error: 'Failed to prepare Story Circle session' }, { status: 500 });
+    }
+
+    await prisma.emberMessage.createMany({
       data: [
         {
-          conversationId: conversation.id,
+          sessionId: session.id,
           role: 'assistant',
           content: question,
           source: 'web',
         },
         {
-          conversationId: conversation.id,
+          sessionId: session.id,
           role: 'user',
           content: answer,
           source: 'web',
+          questionType,
+          question,
         },
       ],
-    });
-
-    await prisma.response.create({
-      data: {
-        conversationId: conversation.id,
-        questionType,
-        question,
-        answer,
-        source: 'web',
-      },
     });
 
     const refreshedContributor = await loadOwnerStoryCircleContributor(id, auth.user.id);
@@ -264,8 +262,8 @@ export async function POST(
 
     const nextState = buildStoryCircleState(refreshedContributor);
 
-    await prisma.conversation.update({
-      where: { id: conversation.id },
+    await prisma.emberSession.update({
+      where: { id: session.id },
       data: {
         status: nextState.isComplete ? 'completed' : 'active',
         currentStep:

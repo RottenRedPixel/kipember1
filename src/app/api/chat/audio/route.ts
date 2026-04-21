@@ -50,18 +50,20 @@ async function transcribeUploadedAudio(file: File) {
   }
 }
 
-async function ensureContributorConversation(contributorId: string) {
-  return prisma.conversation.upsert({
-    where: {
-      contributorId,
-    },
-    update: {},
-    create: {
-      contributorId,
-      status: 'active',
-      currentStep: 'followup',
-    },
-  });
+async function ensureContributorSession(contributorId: string, imageId: string) {
+  const existing = await prisma.emberSession.findUnique({ where: { contributorId } });
+  if (existing) return existing;
+
+  try {
+    return await prisma.emberSession.create({
+      data: { contributorId, imageId, sessionType: 'chat', status: 'active', currentStep: 'followup' },
+    });
+  } catch (e: unknown) {
+    if ((e as { code?: string }).code === 'P2002') {
+      return prisma.emberSession.findUnique({ where: { contributorId } });
+    }
+    throw e;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -133,29 +135,23 @@ export async function POST(request: NextRequest) {
       try {
         const contributor = await ensureUserContributorForImage(imageId, auth.user.id);
         if (contributor) {
-          const conversation = await ensureContributorConversation(contributor.id);
+          const session = await ensureContributorSession(contributor.id, imageId);
 
-          await prisma.message.create({
-            data: {
-              conversationId: conversation.id,
-              role: 'user',
-              content: storedTranscript,
-              source: 'voice',
-            },
-          });
-
-          await prisma.response.create({
-            data: {
-              conversationId: conversation.id,
-              questionType: 'followup',
-              question: 'What else would you like Ember to remember about this moment?',
-              answer: storedTranscript,
-              source: 'voice',
-            },
-          });
+          if (session) {
+            await prisma.emberMessage.create({
+              data: {
+                sessionId: session.id,
+                role: 'user',
+                content: storedTranscript,
+                source: 'voice',
+                questionType: 'followup',
+                question: 'What else would you like Ember to remember about this moment?',
+              },
+            });
+          }
         }
-      } catch (conversationError) {
-        console.error('Ask audio conversation persistence error:', conversationError);
+      } catch (sessionError) {
+        console.error('Ask audio session persistence error:', sessionError);
       }
     }
 

@@ -64,12 +64,9 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
       contributors: {
         orderBy: { createdAt: 'asc' },
         include: {
-          conversation: {
+          emberSession: {
             include: {
               messages: {
-                orderBy: { createdAt: 'asc' },
-              },
-              responses: {
                 orderBy: { createdAt: 'asc' },
               },
             },
@@ -114,7 +111,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
       });
     }
 
-    for (const message of contributor.conversation?.messages || []) {
+    for (const message of contributor.emberSession?.messages || []) {
       const normalizedText = normalizeStoryEntryText(message.content);
       if (normalizedText) {
         existingConversationKeys.add(
@@ -134,15 +131,15 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
       });
     }
 
-    for (const response of contributor.conversation?.responses || []) {
-      if (response.source !== 'voice') {
-        continue;
-      }
+    const voiceAnswers = (contributor.emberSession?.messages || []).filter(
+      (m) => m.role === 'user' && m.questionType && m.source === 'voice'
+    );
 
-      const sequence = QUESTION_ORDER.get(response.questionType) ?? QUESTION_ORDER.size;
+    for (const response of voiceAnswers) {
+      const sequence = QUESTION_ORDER.get(response.questionType!) ?? QUESTION_ORDER.size;
       const questionSortOrder = 100 + sequence * 2;
 
-      if (response.question.trim()) {
+      if (response.question?.trim()) {
         const questionKey = `ember::${normalizeStoryEntryText(response.question)}`;
         if (!existingConversationKeys.has(questionKey)) {
           existingConversationKeys.add(questionKey);
@@ -159,7 +156,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
         }
       }
 
-      const answerKey = `contributor::${normalizeStoryEntryText(response.answer)}`;
+      const answerKey = `contributor::${normalizeStoryEntryText(response.content)}`;
       if (!existingConversationKeys.has(answerKey)) {
         existingConversationKeys.add(answerKey);
         entries.push({
@@ -168,7 +165,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
           source: 'voice',
           contributorName: contributor.name,
           participantLabel: contributorLabel,
-          content: response.answer,
+          content: response.content,
           timestamp: response.createdAt,
           sortOrder: questionSortOrder + 1,
         });

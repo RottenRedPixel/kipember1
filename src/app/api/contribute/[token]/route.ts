@@ -47,7 +47,7 @@ Known context:
 
 {{nextStepInstructions}}`;
 
-// GET - Fetch contributor info and conversation
+// GET - Fetch contributor info and session
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -69,7 +69,7 @@ export async function GET(
             },
           },
         },
-        conversation: {
+        emberSession: {
           include: {
             messages: {
               orderBy: { createdAt: 'asc' },
@@ -127,7 +127,7 @@ export async function GET(
             },
           },
         },
-        conversation: {
+        emberSession: {
           include: {
             messages: {
               orderBy: { createdAt: 'asc' },
@@ -182,7 +182,7 @@ export async function GET(
           description: refreshedContributor.image.description,
         },
         guestFlow: isGuestUserEmail(refreshedContributor.image.owner.email),
-        conversation: refreshedContributor.conversation,
+        conversation: refreshedContributor.emberSession,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
       },
       {
@@ -242,12 +242,11 @@ export async function POST(
             },
           },
         },
-        conversation: {
+        emberSession: {
           include: {
             messages: {
               orderBy: { createdAt: 'asc' },
             },
-            responses: true,
           },
         },
       },
@@ -257,53 +256,71 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
 
-    // Create conversation if doesn't exist
-    let conversation = contributor.conversation;
+    // Create session if doesn't exist
+    let session = contributor.emberSession;
     let welcomeMessage: string | null = null;
-    if (!conversation) {
-      conversation = await prisma.conversation.create({
-        data: {
-          contributorId: contributor.id,
-          status: 'active',
-          currentStep: 'context',
-        },
-        include: {
-          messages: true,
-          responses: true,
-        },
-      });
+    if (!session) {
+      try {
+        session = await prisma.emberSession.create({
+          data: {
+            contributorId: contributor.id,
+            imageId: contributor.image.id,
+            sessionType: 'chat',
+            status: 'active',
+            currentStep: 'context',
+          },
+          include: {
+            messages: true,
+          },
+        });
+      } catch (e: unknown) {
+        if ((e as { code?: string }).code === 'P2002') {
+          session = await prisma.emberSession.findUnique({
+            where: { contributorId: contributor.id },
+            include: { messages: { orderBy: { createdAt: 'asc' } } },
+          });
+        } else {
+          throw e;
+        }
+      }
 
-      // Add welcome message
-      welcomeMessage = contributor.name
-        ? `Hi ${contributor.name}! I'm Ember. Thanks for sharing your memories about this image. To start, can you describe what you see or remember about this moment?`
-        : `Hi! I'm Ember. Thanks for sharing your memories about this image. To start, can you describe what you see or remember about this moment?`;
+      if (session) {
+        // Add welcome message
+        welcomeMessage = contributor.name
+          ? `Hi ${contributor.name}! I'm Ember. Thanks for sharing your memories about this image. To start, can you describe what you see or remember about this moment?`
+          : `Hi! I'm Ember. Thanks for sharing your memories about this image. To start, can you describe what you see or remember about this moment?`;
 
-      await prisma.message.create({
-        data: {
-          conversationId: conversation.id,
-          role: 'assistant',
-          content: welcomeMessage,
-          source: 'web',
-        },
-      });
+        await prisma.emberMessage.create({
+          data: {
+            sessionId: session.id,
+            role: 'assistant',
+            content: welcomeMessage,
+            source: 'web',
+          },
+        });
+      }
+    }
+
+    if (!session) {
+      return NextResponse.json({ error: 'Failed to start session' }, { status: 500 });
     }
 
     if (message === '__START__') {
-      if (conversation.status === 'completed') {
+      if (session.status === 'completed') {
         const restartMessage =
           "I'm ready for more. Tell me any extra detail, correction, or small moment you want Ember to remember.";
 
-        await prisma.conversation.update({
-          where: { id: conversation.id },
+        await prisma.emberSession.update({
+          where: { id: session.id },
           data: {
             status: 'active',
             currentStep: 'followup',
           },
         });
 
-        await prisma.message.create({
+        await prisma.emberMessage.create({
           data: {
-            conversationId: conversation.id,
+            sessionId: session.id,
             role: 'assistant',
             content: restartMessage,
             source: 'web',
@@ -317,70 +334,70 @@ export async function POST(
       }
 
       const latestAssistantMessage =
-        contributor.conversation?.messages
+        contributor.emberSession?.messages
           ?.slice()
           .reverse()
           .find((entry) => entry.role === 'assistant')?.content || welcomeMessage;
 
       return NextResponse.json({
         response: latestAssistantMessage || 'Thanks for joining the interview.',
-        isComplete: conversation.status === 'completed',
+        isComplete: session.status === 'completed',
       });
     }
 
     // Save user message
-    await prisma.message.create({
+    await prisma.emberMessage.create({
       data: {
-        conversationId: conversation.id,
+        sessionId: session.id,
         role: 'user',
         content: message,
         source: 'web',
       },
     });
 
-    // Get updated conversation with all messages
-    const updatedConversation = await prisma.conversation.findUnique({
-      where: { id: conversation.id },
+    // Get updated session with all messages
+    const updatedSession = await prisma.emberSession.findUnique({
+      where: { id: session.id },
       include: {
         messages: { orderBy: { createdAt: 'asc' } },
-        responses: true,
       },
     });
 
     // Generate AI response based on interview flow
     const response = await generateInterviewResponse(
-      updatedConversation!,
+      updatedSession!,
       message,
       buildInterviewKnownContext(contributor)
     );
 
     // Save assistant response
-    await prisma.message.create({
+    await prisma.emberMessage.create({
       data: {
-        conversationId: conversation.id,
+        sessionId: session.id,
         role: 'assistant',
         content: response.message,
         source: 'web',
       },
     });
 
-    // Save response data if applicable
+    // Save structured answer if applicable
     if (response.questionType && response.answer) {
-      await prisma.response.create({
+      await prisma.emberMessage.create({
         data: {
-          conversationId: conversation.id,
+          sessionId: session.id,
+          role: 'user',
+          content: response.answer,
+          source: 'web',
           questionType: response.questionType,
           question: response.question || '',
-          answer: response.answer,
-          source: 'web',
         },
       });
     }
 
-    // Update conversation step
+    // Update session step
     if (response.nextStep) {
-      await prisma.conversation.update({
-        where: { id: conversation.id },
+      await prisma.emberSession.update({
+        where: { id: session.id },
         data: {
           currentStep: response.nextStep,
           status: response.nextStep === 'completed' ? 'completed' : 'active',
@@ -412,15 +429,14 @@ export async function POST(
   }
 }
 
-type InterviewConversation = {
-  currentStep: string;
+type InterviewSession = {
+  currentStep: string | null;
+  status: string;
   messages: Array<{
     role: string;
     content: string;
-  }>;
-  responses?: Array<{
-    questionType: string;
-    answer: string;
+    questionType?: string | null;
+    question?: string | null;
   }>;
 };
 
@@ -454,7 +470,7 @@ function buildInterviewKnownContext(contributor: {
 }
 
 async function generateInterviewResponse(
-  conversation: InterviewConversation,
+  session: InterviewSession,
   userMessage: string,
   knownContext: InterviewKnownContext
 ): Promise<{
@@ -464,12 +480,15 @@ async function generateInterviewResponse(
   answer?: string;
   nextStep?: string;
 }> {
-  const currentStep = conversation.currentStep;
-  const messages = conversation.messages;
+  const currentStep = session.currentStep ?? 'context';
+  const messages = session.messages;
   const conversationHistory = messages.map((m) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
   }));
+
+  // Structured answers are messages with questionType set
+  const structuredAnswers = messages.filter((m) => m.role === 'user' && m.questionType);
 
   // If already completed
   if (currentStep === 'completed') {
@@ -516,8 +535,8 @@ async function generateInterviewResponse(
   }
 
   const answeredSteps = new Set(
-    (conversation.responses || [])
-      .map((response) => response.questionType)
+    structuredAnswers
+      .map((m) => m.questionType)
       .filter(Boolean)
   );
   answeredSteps.add(currentStep);
@@ -545,9 +564,9 @@ async function generateInterviewResponse(
     knownContext.knownWhere
       ? `Known location from metadata: ${knownContext.knownWhere}`
       : null,
-    (conversation.responses || []).length > 0
-      ? `Answers already collected:\n${(conversation.responses || [])
-          .map((response) => `- ${response.questionType}: ${response.answer}`)
+    structuredAnswers.length > 0
+      ? `Answers already collected:\n${structuredAnswers
+          .map((m) => `- ${m.questionType}: ${m.content}`)
           .join('\n')}`
       : null,
   ]

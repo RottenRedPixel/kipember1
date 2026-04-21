@@ -1544,7 +1544,7 @@ export default function TendActionScreen({ action }: { action: string }) {
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <span style={{ color: 'var(--text-secondary)' }}><Lightbulb size={17} /></span>
-                  <h3 className="text-white font-medium text-base">Smart Title Suggestions</h3>
+                  <h3 className="text-white font-medium text-base">Title Suggestions</h3>
                 </div>
               <WikiCard>
 

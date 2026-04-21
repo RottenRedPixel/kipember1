@@ -127,7 +127,7 @@ export default function MyEmbersScreen({
                   color: isShared ? '#ffffff' : 'var(--text-secondary)',
                 }}
               >
-                Shared
+                Others
               </Link>
             </div>
 

@@ -104,15 +104,16 @@ export async function loadEmberSetupContext(imageId: string) {
               email: true,
             },
           },
-          conversation: {
+          emberSession: {
             include: {
-              responses: {
+              messages: {
+                where: { role: 'user', questionType: { not: null } },
                 orderBy: { createdAt: 'asc' },
                 select: {
                   id: true,
                   questionType: true,
                   question: true,
-                  answer: true,
+                  content: true,
                   source: true,
                   createdAt: true,
                 },
@@ -153,8 +154,8 @@ export async function loadEmberSetupContext(imageId: string) {
   );
   const confirmedLocation = parseConfirmedLocationContext(image.analysis?.metadataJson);
   const contributorMemories = image.contributors.flatMap((contributor) =>
-    (contributor.conversation?.responses || []).map((response) => ({
-      id: response.id,
+    (contributor.emberSession?.messages || []).map((message) => ({
+      id: message.id,
       contributorId: contributor.id,
       contributorUserId: contributor.user?.id || contributor.userId || null,
       contributorName:
@@ -163,11 +164,11 @@ export async function loadEmberSetupContext(imageId: string) {
         contributor.email ||
         contributor.phoneNumber ||
         'Contributor',
-      questionType: response.questionType,
-      question: response.question,
-      answer: response.answer,
-      source: response.source,
-      createdAt: toIsoString(response.createdAt),
+      questionType: message.questionType!,
+      question: message.question || '',
+      answer: message.content,
+      source: message.source,
+      createdAt: toIsoString(message.createdAt),
     }))
   );
   const callSummaries = image.contributors.flatMap((contributor) =>
