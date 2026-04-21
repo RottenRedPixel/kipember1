@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Clock, Pause, Play, RotateCcw, ScanEye, X } from 'lucide-react';
+import { BookOpen, Clock, Heart, MapPinned, Pause, Play, RotateCcw, ScanEye, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const PLAY_BAR_HEIGHTS = [6, 8, 14, 20, 25, 31, 25, 36, 31, 25, 36, 42, 36, 31, 42, 36, 31, 25, 36, 31, 25, 20, 25, 20, 14, 8, 14, 8, 6, 3].map((height) =>
@@ -96,6 +96,7 @@ export default function KipemberPlayOverlay({
   const [lineIndex, setLineIndex] = useState(0);
   const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
+  const [selectedBadge, setSelectedBadge] = useState(3);
 
   const storyLines = useMemo(() => buildStoryLines(storyScript), [storyScript]);
   const hasPlayableContent = Boolean(storyScript);
@@ -259,6 +260,7 @@ export default function KipemberPlayOverlay({
       return;
     }
 
+    setSelectedBadge(3);
     void startPlayback();
   }, [playbackState, startPlayback]);
 
@@ -284,7 +286,7 @@ export default function KipemberPlayOverlay({
       <style>{'@keyframes vizPulse { from { transform: scaleY(0.15); } to { transform: scaleY(1); } }'}</style>
       <div className="absolute left-0 right-0 z-30 flex justify-center px-4" style={{ bottom: 88 }}>
         <div
-          className="relative w-full max-w-sm flex flex-col items-center px-6 pt-8 pb-6 rounded-2xl"
+          className="relative w-full max-w-sm flex flex-col items-center px-3 pt-8 pb-6 rounded-2xl"
           style={{
             background: 'var(--bg-modal)',
             WebkitBackdropFilter: 'blur(5px)',
@@ -298,14 +300,6 @@ export default function KipemberPlayOverlay({
           >
             <X size={18} />
           </Link>
-
-          <div className="flex flex-col items-center gap-2 mb-4">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: 'rgba(249,115,22,0.85)' }}>
-              <ScanEye size={28} color="white" strokeWidth={1.6} />
-            </div>
-            <span className="text-white text-base font-medium">Play snapshot of this ember</span>
-          </div>
-          <div className="w-full mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
 
           <div className="flex items-center gap-[3px]" style={{ height: 34 }}>
             {PLAY_BAR_HEIGHTS.map((height, index) => (
@@ -348,6 +342,54 @@ export default function KipemberPlayOverlay({
           ) : playbackState === 'loading' ? (
             <p className="mt-4 text-center text-xs leading-relaxed text-white/70">Preparing audio...</p>
           ) : null}
+
+          {(() => {
+            const BADGES = [
+              { icon: MapPinned, active: 'rgba(134,239,172,0.55)', color: '#ffffff' },
+              { icon: Users,     active: 'rgba(196,181,253,0.55)', color: '#ffffff' },
+              { icon: Heart,     active: 'rgba(253,224,71,0.45)',  color: '#ffffff' },
+              { icon: ScanEye,   active: 'rgba(249,115,22,0.55)',  color: '#ffffff' },
+            ];
+            const PHRASES = [
+              'the time and place of the memory',
+              'who and what of the memory',
+              'the people and feelings of the memory',
+              'a snapshot of the memory',
+            ];
+            return (
+              <>
+              <div className="relative flex items-stretch mx-auto mt-4 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)', width: '70%' }}>
+                {/* sliding indicator */}
+                <div
+                  className="absolute top-0 bottom-0 rounded-xl transition-all duration-200"
+                  style={{
+                    width: '25%',
+                    left: `${selectedBadge * 25}%`,
+                    background: BADGES[selectedBadge].active,
+                  }}
+                />
+                {BADGES.map(({ icon: Icon, color }, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setSelectedBadge(i)}
+                    className="relative flex-1 flex items-center justify-center py-2.5 cursor-pointer"
+                  >
+                    <Icon
+                      size={18}
+                      strokeWidth={1.8}
+                      color={selectedBadge === i ? color : 'rgba(255,255,255,0.3)'}
+                      style={{ transition: 'color 0.2s ease' }}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="text-center text-xs mt-2" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                {PHRASES[selectedBadge]}
+              </p>
+              </>
+            );
+          })()}
 
           <div className="w-full mt-5" style={{ borderTop: '1px solid var(--border-default)' }} />
 

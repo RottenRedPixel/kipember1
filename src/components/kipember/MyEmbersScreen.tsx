@@ -272,7 +272,7 @@ export default function MyEmbersScreen({
                     style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
                   >
                     {/* Photo */}
-                    <div className="relative flex-shrink-0" style={{ width: 148, height: 148 }}>
+                    <div className="relative flex-shrink-0" style={{ width: 177, height: 177 }}>
                       <img
                         src={getPreviewMediaUrl({
                           mediaType: image.mediaType,
