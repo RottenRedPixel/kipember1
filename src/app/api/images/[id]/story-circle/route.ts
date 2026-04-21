@@ -93,7 +93,7 @@ function buildStoryCircleState(
   const knownContext = buildInterviewKnownContextFromImage(contributor.image);
   const knownSteps = getKnownInterviewSteps(knownContext);
   const answeredSteps = new Set(
-    responses.map((r) => r.questionType).filter(isInterviewQuestionType)
+    responses.map((r) => r.questionType).filter((qt): qt is string => isInterviewQuestionType(qt ?? ''))
   );
   const progress = getInterviewProgress({
     answeredSteps,

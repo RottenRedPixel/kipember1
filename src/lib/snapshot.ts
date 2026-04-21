@@ -1,5 +1,5 @@
 import { renderPromptTemplate } from '@/lib/control-plane';
-import { getConfiguredOpenAIModel, getOpenAIClient, getSnapshotsModel } from '@/lib/openai';
+import { getConfiguredOpenAIModel, getOpenAIClient, getSnapshotModel } from '@/lib/openai';
 
 type SetupContext = Awaited<ReturnType<typeof import('@/lib/ember-setup-context').loadEmberSetupContext>>;
 
@@ -644,7 +644,7 @@ export async function generateSnapshot(
 
   const openai = getOpenAIClient();
   const response = await openai.responses.create({
-    model: await getConfiguredOpenAIModel('snapshots.generate', getSnapshotsModel()),
+    model: await getConfiguredOpenAIModel('snapshots.generate', getSnapshotModel()),
     input: [
       {
         role: 'developer',
