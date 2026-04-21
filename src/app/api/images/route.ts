@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
             callHighlights: callHighlights.map((h) => ({ contributorName: h.contributorName, title: h.title, quote: h.quote })),
           });
           if (script.trim()) {
-            await prisma.storyCut.create({
+            await prisma.snapshot.create({
               data: {
                 imageId: image.id,
                 title,

@@ -33,7 +33,7 @@ type SnapshotDetail = {
   contributors: KipemberContributor[];
   voiceCallClips?: KipemberVoiceCallClip[];
   tags?: Array<{ id: string; label: string }>;
-  storyCut?: {
+  snapshot?: {
     script: string;
     style?: string;
     durationSeconds?: number;
@@ -116,19 +116,19 @@ export default function KipemberSnapshotEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const emberTitle = detail?.title || (detail ? stripExtension(detail.originalName) : 'Ember');
-  const savedScript = detail?.storyCut?.script || '';
+  const savedScript = detail?.snapshot?.script || '';
   const isDirty = scriptDraft.trim() !== savedScript.trim();
 
   useEffect(() => {
-    setScriptDraft(detail?.storyCut?.script || '');
-    setDurationSeconds(detail?.storyCut?.durationSeconds ?? 10);
-    setStyle(detail?.storyCut?.style || 'documentary');
-    setVoiceId(detail?.storyCut?.emberVoiceId || '');
+    setScriptDraft(detail?.snapshot?.script || '');
+    setDurationSeconds(detail?.snapshot?.durationSeconds ?? 10);
+    setStyle(detail?.snapshot?.style || 'documentary');
+    setVoiceId(detail?.snapshot?.emberVoiceId || '');
   }, [detail]);
 
   useEffect(() => {
     setLoadingVoices(true);
-    fetch('/api/story-cuts/voices')
+    fetch('/api/snapshot/voices')
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data?.voices)) setVoices(data.voices);
@@ -163,10 +163,10 @@ export default function KipemberSnapshotEditor({
     onStatus?.('');
 
     try {
-      const method = detail.storyCut ? 'PATCH' : 'POST';
+      const method = detail.snapshot ? 'PATCH' : 'POST';
       const body = JSON.stringify({ title: emberTitle, script: next, durationSeconds, style, emberVoiceId: voiceId || null });
 
-      const response = await fetch(`/api/images/${imageId}/story-cuts`, {
+      const response = await fetch(`/api/images/${imageId}/snapshot`, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body,
@@ -174,7 +174,7 @@ export default function KipemberSnapshotEditor({
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || 'Failed to save snapshot');
 
-      const updated = payload?.storyCut;
+      const updated = payload?.snapshot;
       if (updated?.script) setScriptDraft(updated.script);
       onStatus?.('Snapshot saved.');
       await refreshDetail();
@@ -198,7 +198,7 @@ export default function KipemberSnapshotEditor({
         .filter((t) => requiredPeopleIds.has(t.id))
         .map((t) => t.label);
 
-      const response = await fetch(`/api/images/${imageId}/story-cuts`, {
+      const response = await fetch(`/api/images/${imageId}/snapshot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: emberTitle, regenerate: true, durationSeconds, style, emberVoiceId: voiceId || null, requiredPeople }),
@@ -206,7 +206,7 @@ export default function KipemberSnapshotEditor({
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || 'Failed to regenerate snapshot');
 
-      const generated = payload?.storyCut;
+      const generated = payload?.snapshot;
       if (generated?.script) setScriptDraft(generated.script);
       onStatus?.('Snapshot regenerated.');
       await refreshDetail();
@@ -241,8 +241,8 @@ export default function KipemberSnapshotEditor({
           placeholder="Snapshot text will appear here..."
         />
         {error ? <p className="text-rose-300 text-xs mt-1">{error}</p> : null}
-        {detail.storyCut?.updatedAt ? (
-          <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">Last updated: {formatDate(detail.storyCut.updatedAt)}</p>
+        {detail.snapshot?.updatedAt ? (
+          <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">Last updated: {formatDate(detail.snapshot.updatedAt)}</p>
         ) : (
           <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">No snapshot yet — regenerate to create one.</p>
         )}

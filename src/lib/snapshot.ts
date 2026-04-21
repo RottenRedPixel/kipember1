@@ -1,16 +1,16 @@
 import { renderPromptTemplate } from '@/lib/control-plane';
-import { getConfiguredOpenAIModel, getOpenAIClient, getStoryCutsModel } from '@/lib/openai';
+import { getConfiguredOpenAIModel, getOpenAIClient, getSnapshotsModel } from '@/lib/openai';
 
 type SetupContext = Awaited<ReturnType<typeof import('@/lib/ember-setup-context').loadEmberSetupContext>>;
 
-export type StoryCutStyle =
+export type SnapshotStyle =
   | 'documentary'
   | 'publicRadio'
   | 'newsReport'
   | 'podcastNarrative'
   | 'movieTrailer';
 
-type StoryCutMediaBlock = {
+type SnapshotMediaBlock = {
   type: 'media';
   mediaId: string | null;
   mediaName: string | null;
@@ -22,7 +22,7 @@ type StoryCutMediaBlock = {
   order: number;
 };
 
-type StoryCutVoiceBlock = {
+type SnapshotVoiceBlock = {
   type: 'voice';
   speaker: string | null;
   content: string | null;
@@ -32,13 +32,13 @@ type StoryCutVoiceBlock = {
   order: number;
 };
 
-export type StoryCutResult = {
+export type SnapshotResult = {
   title: string;
   style: string;
   duration: number;
   wordCount: number;
   script: string;
-  blocks: Array<StoryCutMediaBlock | StoryCutVoiceBlock>;
+  blocks: Array<SnapshotMediaBlock | SnapshotVoiceBlock>;
   emberVoiceLines: string[];
   narratorVoiceLines: string[];
   ownerLines: string[];
@@ -52,8 +52,8 @@ export type StoryCutResult = {
   };
 };
 
-type GenerateStoryCutOptions = {
-  style: StoryCutStyle;
+type GenerateSnapshotOptions = {
+  style: SnapshotStyle;
   durationSeconds: number;
   storyFocus: string;
   storyTitle?: string;
@@ -66,7 +66,7 @@ type GenerateStoryCutOptions = {
   narratorVoiceLabel?: string;
 };
 
-function isVoiceBlock(block: StoryCutMediaBlock | StoryCutVoiceBlock): block is StoryCutVoiceBlock {
+function isVoiceBlock(block: SnapshotMediaBlock | SnapshotVoiceBlock): block is SnapshotVoiceBlock {
   return block.type === 'voice';
 }
 
@@ -180,7 +180,7 @@ const STORY_CUT_SCHEMA = {
   },
 } as const;
 
-const STORY_CUT_STYLE_PROMPTS: Record<StoryCutStyle, { label: string; prompt: string }> = {
+const STORY_CUT_STYLE_PROMPTS: Record<SnapshotStyle, { label: string; prompt: string }> = {
   documentary: {
     label: 'Documentary',
     prompt: `Create a DOCUMENTARY style story cut.
@@ -281,12 +281,12 @@ Focus:
   },
 };
 
-const STORY_CUT_PROMPT_KEYS: Record<StoryCutStyle, string> = {
-  documentary: 'story_cuts.documentary',
-  publicRadio: 'story_cuts.public_radio',
-  newsReport: 'story_cuts.news_report',
-  podcastNarrative: 'story_cuts.podcast_narrative',
-  movieTrailer: 'story_cuts.movie_trailer',
+const STORY_CUT_PROMPT_KEYS: Record<SnapshotStyle, string> = {
+  documentary: 'snapshots.documentary',
+  publicRadio: 'snapshots.public_radio',
+  newsReport: 'snapshots.news_report',
+  podcastNarrative: 'snapshots.podcast_narrative',
+  movieTrailer: 'snapshots.movie_trailer',
 };
 
 function clampDuration(value: number) {
@@ -319,8 +319,8 @@ function normalizeMediaToken(value: string | null | undefined) {
     .trim();
 }
 
-function resolveStoryCutMediaBlock(
-  block: StoryCutMediaBlock,
+function resolveSnapshotMediaBlock(
+  block: SnapshotMediaBlock,
   mediaChoices: Array<{
     mediaId: string;
     mediaName: string;
@@ -330,7 +330,7 @@ function resolveStoryCutMediaBlock(
     clipEndMs?: number | null;
     clipQuote?: string | null;
   }>
-): StoryCutMediaBlock {
+): SnapshotMediaBlock {
   const exactId = block.mediaId
     ? mediaChoices.find((media) => media.mediaId === block.mediaId) || null
     : null;
@@ -393,8 +393,8 @@ function resolveStoryCutMediaBlock(
   };
 }
 
-function sanitizeStoryCutResult(
-  payload: StoryCutResult,
+function sanitizeSnapshotResult(
+  payload: SnapshotResult,
   fallback: {
     styleLabel: string;
     durationSeconds: number;
@@ -413,14 +413,14 @@ function sanitizeStoryCutResult(
     clipEndMs?: number | null;
     clipQuote?: string | null;
   }>
-): StoryCutResult {
+): SnapshotResult {
   const blocks = Array.isArray(payload.blocks)
     ? payload.blocks
         .filter((block) => block && typeof block === 'object' && typeof block.order === 'number')
         .map((block) =>
-          !isVoiceBlock(block as StoryCutMediaBlock | StoryCutVoiceBlock)
-            ? resolveStoryCutMediaBlock(block as StoryCutMediaBlock, mediaChoices)
-            : (block as StoryCutVoiceBlock)
+          !isVoiceBlock(block as SnapshotMediaBlock | SnapshotVoiceBlock)
+            ? resolveSnapshotMediaBlock(block as SnapshotMediaBlock, mediaChoices)
+            : (block as SnapshotVoiceBlock)
         )
         .sort((left, right) => left.order - right.order)
     : [];
@@ -489,16 +489,16 @@ function sanitizeStoryCutResult(
   };
 }
 
-export function getStoryCutStyleOptions() {
+export function getSnapshotStyleOptions() {
   return Object.entries(STORY_CUT_STYLE_PROMPTS).map(([value, config]) => ({
-    value: value as StoryCutStyle,
+    value: value as SnapshotStyle,
     label: config.label,
   }));
 }
 
-export async function generateStoryCut(
+export async function generateSnapshot(
   context: NonNullable<SetupContext>,
-  options: GenerateStoryCutOptions
+  options: GenerateSnapshotOptions
 ) {
   const durationSeconds = clampDuration(options.durationSeconds);
   const wordCount = estimateWordCount(durationSeconds);
@@ -644,7 +644,7 @@ export async function generateStoryCut(
 
   const openai = getOpenAIClient();
   const response = await openai.responses.create({
-    model: await getConfiguredOpenAIModel('story_cuts.generate', getStoryCutsModel()),
+    model: await getConfiguredOpenAIModel('snapshots.generate', getSnapshotsModel()),
     input: [
       {
         role: 'developer',
@@ -714,7 +714,7 @@ Build the JSON blocks in order so this snapshot could be rendered later as audio
       verbosity: 'low',
       format: {
         type: 'json_schema',
-        name: 'ember_story_cut',
+        name: 'ember_snapshot',
         description: 'Structured Story Cut output for Ember.',
         schema: STORY_CUT_SCHEMA,
         strict: false,
@@ -722,8 +722,8 @@ Build the JSON blocks in order so this snapshot could be rendered later as audio
     },
   });
 
-  return sanitizeStoryCutResult(
-    parseJson<StoryCutResult>(response.output_text || '{}'),
+  return sanitizeSnapshotResult(
+    parseJson<SnapshotResult>(response.output_text || '{}'),
     {
       styleLabel: styleConfig.label,
       durationSeconds,

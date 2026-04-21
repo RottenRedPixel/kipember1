@@ -158,7 +158,7 @@ export type KipemberWikiDetail = {
   originalName: string;
   description: string | null;
   createdAt: string;
-  storyCut?: {
+  snapshot?: {
     script: string;
   } | null;
   owner?: {
@@ -767,11 +767,11 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<ScanEye size={17} />}
         title="Snapshot"
-        complete={Boolean(detail?.storyCut?.script)}
+        complete={Boolean(detail?.snapshot?.script)}
       >
         <WikiCard>
-          {detail?.storyCut?.script ? (
-            <p className="text-white/90 text-sm leading-relaxed">{detail.storyCut.script}</p>
+          {detail?.snapshot?.script ? (
+            <p className="text-white/90 text-sm leading-relaxed">{detail.snapshot.script}</p>
           ) : (
             <p className="text-white/30 text-sm">No snapshot yet.</p>
           )}

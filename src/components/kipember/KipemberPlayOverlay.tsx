@@ -158,8 +158,8 @@ export default function KipemberPlayOverlay({
     }
 
     const audioUrl = guestToken
-      ? `/api/images/${imageId}/story-cut-audio?token=${encodeURIComponent(guestToken)}`
-      : `/api/images/${imageId}/story-cut-audio`;
+      ? `/api/images/${imageId}/snapshot-audio?token=${encodeURIComponent(guestToken)}`
+      : `/api/images/${imageId}/snapshot-audio`;
     const response = await fetch(audioUrl, {
       cache: 'no-store',
     });

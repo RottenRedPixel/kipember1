@@ -54,7 +54,7 @@ export async function POST(
       return NextResponse.json({ error: 'Could not generate snapshot text' }, { status: 500 });
     }
 
-    const storyCut = await prisma.storyCut.upsert({
+    const snapshot = await prisma.snapshot.upsert({
       where: { imageId: id },
       update: {
         title,
@@ -82,11 +82,11 @@ export async function POST(
     });
 
     return NextResponse.json({
-      storyCut: {
-        title: storyCut.title,
-        script: storyCut.script,
-        wordCount: storyCut.wordCount,
-        updatedAt: storyCut.updatedAt.toISOString(),
+      snapshot: {
+        title: snapshot.title,
+        script: snapshot.script,
+        wordCount: snapshot.wordCount,
+        updatedAt: snapshot.updatedAt.toISOString(),
       },
     });
   } catch (error) {
@@ -119,12 +119,12 @@ export async function PATCH(
       return NextResponse.json({ error: 'Snapshot script is required' }, { status: 400 });
     }
 
-    const existing = await prisma.storyCut.findUnique({ where: { imageId: id } });
+    const existing = await prisma.snapshot.findUnique({ where: { imageId: id } });
     if (!existing) {
       return NextResponse.json({ error: 'Generate a snapshot before editing it' }, { status: 404 });
     }
 
-    const updated = await prisma.storyCut.update({
+    const updated = await prisma.snapshot.update({
       where: { imageId: id },
       data: {
         script,
@@ -137,7 +137,7 @@ export async function PATCH(
     });
 
     return NextResponse.json({
-      storyCut: {
+      snapshot: {
         title: updated.title,
         script: updated.script,
         durationSeconds: updated.durationSeconds,

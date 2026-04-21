@@ -129,7 +129,7 @@ type TendDetail = KipemberWikiDetail & {
   canManage: boolean;
   shareToNetwork: boolean;
   keepPrivate: boolean;
-  storyCut?: {
+  snapshot?: {
     title: string;
     style: string;
     focus: string | null;

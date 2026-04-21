@@ -31,7 +31,7 @@ export async function POST(
     await generateWikiForImage(id);
 
     // Auto-generate snapshot script if one doesn't exist yet
-    const existing = await prisma.storyCut.findUnique({ where: { imageId: id }, select: { id: true } });
+    const existing = await prisma.snapshot.findUnique({ where: { imageId: id }, select: { id: true } });
     if (!existing) {
       const imageForSnapshot = await prisma.image.findUnique({
         where: { id },
@@ -46,7 +46,7 @@ export async function POST(
         try {
           const script = await generateSnapshotScript({ title, summary, location });
           if (script.trim()) {
-            await prisma.storyCut.create({
+            await prisma.snapshot.create({
               data: {
                 imageId: id,
                 title,

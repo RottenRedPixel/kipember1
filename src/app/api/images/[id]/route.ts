@@ -71,7 +71,7 @@ export async function GET(
               updatedAt: true,
             },
           },
-          storyCut: {
+          snapshot: {
             select: {
               script: true,
             },
@@ -99,7 +99,7 @@ export async function GET(
         canManage: accessType === 'owner',
         analysis: image.analysis,
         wiki: image.wiki,
-        storyCut: image.storyCut,
+        snapshot: image.snapshot,
       });
     }
 
@@ -239,7 +239,7 @@ export async function GET(
         analysis: null,
         voiceCallClips: [],
         wiki: null,
-        storyCut: null,
+        snapshot: null,
         sportsMode: null,
       });
     }
@@ -382,7 +382,7 @@ export async function GET(
               updatedAt: true,
             },
           },
-          storyCut: {
+          snapshot: {
             select: {
               id: true,
               title: true,
@@ -692,13 +692,13 @@ export async function GET(
         createdAt: clip.createdAt,
       })),
       wiki: image.wiki,
-      storyCut: image.storyCut
+      snapshot: image.snapshot
         ? {
-            ...image.storyCut,
-            blocks: safeParseJson(image.storyCut.blocksJson, []),
-            metadata: safeParseJson(image.storyCut.metadataJson, null),
-            selectedMediaIds: safeParseJson(image.storyCut.selectedMediaJson, []),
-            selectedContributorIds: safeParseJson(image.storyCut.selectedContributorJson, []),
+            ...image.snapshot,
+            blocks: safeParseJson(image.snapshot.blocksJson, []),
+            metadata: safeParseJson(image.snapshot.metadataJson, null),
+            selectedMediaIds: safeParseJson(image.snapshot.selectedMediaJson, []),
+            selectedContributorIds: safeParseJson(image.snapshot.selectedContributorJson, []),
           }
         : null,
       sportsMode: image.sportsMode,

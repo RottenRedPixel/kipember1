@@ -33,7 +33,7 @@ model Image {
   wiki         Wiki?
   kidsStory    KidsStory?
   sportsMode   SportsMode?
-  storyCut     StoryCut?
+  snapshot     Snapshot?
   chatSessions ChatSession[]
   tags         ImageTag[]
   attachments  ImageAttachment[]
@@ -207,7 +207,7 @@ model SportsMode {
   updatedAt      DateTime @updatedAt
 }
 
-model StoryCut {
+model Snapshot {
   id                      String   @id @default(cuid())
   imageId                 String   @unique
   image                   Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)

@@ -179,7 +179,7 @@ export async function GET(
             orderBy: { createdAt: 'asc' },
           })
           .catch(() => []),
-        storyCutScript: await prisma.storyCut
+        snapshotScript: await prisma.snapshot
           .findUnique({ where: { imageId: refreshedContributor.image.id }, select: { script: true } })
           .then((sc) => sc?.script ?? null)
           .catch(() => null),

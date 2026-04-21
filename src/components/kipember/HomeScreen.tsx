@@ -73,7 +73,7 @@ type ImageDetail = ImageSummary & {
     version: number;
     updatedAt: string;
   } | null;
-  storyCut: {
+  snapshot: {
     script: string | null;
   } | null;
 };
@@ -812,10 +812,10 @@ export default function HomeScreen({
 
       {modal === 'play' ? (
         <KipemberPlayOverlay
-          key={`${selectedImageId || 'empty'}:${selectedImage?.wiki?.updatedAt || 'wiki'}:${selectedImage?.storyCut?.script ? 'story-cut' : 'fallback'}`}
+          key={`${selectedImageId || 'empty'}:${selectedImage?.wiki?.updatedAt || 'wiki'}:${selectedImage?.snapshot?.script ? 'snapshot' : 'fallback'}`}
           closeHref={buildHomeHref({ m: null })}
           imageId={selectedImageId}
-          storyScript={selectedImage?.storyCut?.script || null}
+          storyScript={selectedImage?.snapshot?.script || null}
         />
       ) : null}
 

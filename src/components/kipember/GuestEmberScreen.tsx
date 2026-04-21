@@ -36,7 +36,7 @@ type GuestData = {
     createdAt: string;
   };
   attachments: GuestAttachment[];
-  storyCutScript: string | null;
+  snapshotScript: string | null;
 };
 
 function EmberMark({ size = 18 }: { size?: number }) {
@@ -294,7 +294,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
         <KipemberPlayOverlay
           closeHref={base}
           imageId={data.image.id}
-          storyScript={data.storyCutScript}
+          storyScript={data.snapshotScript}
           guestToken={token}
         />
       ) : null}

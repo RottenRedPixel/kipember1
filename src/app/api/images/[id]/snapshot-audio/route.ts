@@ -16,7 +16,7 @@ import { getUploadsDir } from '@/lib/uploads';
 
 const STORY_CUT_AUDIO_RENDER_VERSION = 'v2';
 
-type StoryCutBlock =
+type SnapshotBlock =
   | {
       type: 'voice';
       speaker?: string | null;
@@ -33,15 +33,15 @@ type StoryCutBlock =
       order?: number | null;
     };
 
-function isVoiceBlock(block: StoryCutBlock): block is Extract<StoryCutBlock, { type: 'voice' }> {
+function isVoiceBlock(block: SnapshotBlock): block is Extract<SnapshotBlock, { type: 'voice' }> {
   return block.type === 'voice';
 }
 
-function isMediaBlock(block: StoryCutBlock): block is Extract<StoryCutBlock, { type: 'media' }> {
+function isMediaBlock(block: SnapshotBlock): block is Extract<SnapshotBlock, { type: 'media' }> {
   return block.type === 'media';
 }
 
-async function renderStoryCutAudio({
+async function renderSnapshotAudio({
   imageId,
   blocks,
   voiceId,
@@ -49,13 +49,13 @@ async function renderStoryCutAudio({
   fallbackScript,
 }: {
   imageId: string;
-  blocks: StoryCutBlock[];
+  blocks: SnapshotBlock[];
   voiceId: string;
   cachePayload: unknown;
   fallbackScript: string;
 }) {
   const cacheKey = createHash('sha1').update(JSON.stringify(cachePayload)).digest('hex');
-  const renderDir = join(getUploadsDir(), '.story-cut-renders');
+  const renderDir = join(getUploadsDir(), '.snapshot-renders');
   const outputPath = join(renderDir, `${cacheKey}.m4a`);
 
   await fs.mkdir(renderDir, { recursive: true });
@@ -164,7 +164,7 @@ async function getOrCreateTtsSegmentPath({
   const cacheKey = createHash('sha1')
     .update(`${voiceId}:${getElevenLabsModelId()}:${speechText}`)
     .digest('hex');
-  const segmentDir = join(getUploadsDir(), '.story-cut-tts');
+  const segmentDir = join(getUploadsDir(), '.snapshot-tts');
   const outputPath = join(segmentDir, `${cacheKey}.m4a`);
   const tempMp3Path = join(segmentDir, `${cacheKey}.mp3`);
 
@@ -251,7 +251,7 @@ export async function GET(
       where: { id },
       select: {
         id: true,
-        storyCut: {
+        snapshot: {
           select: {
             id: true,
             script: true,
@@ -263,25 +263,25 @@ export async function GET(
       },
     });
 
-    if (!image?.storyCut) {
+    if (!image?.snapshot) {
       return NextResponse.json({ error: 'Story Cut not found' }, { status: 404 });
     }
 
-    const storyCut = image.storyCut;
-    const parsedBlocks = JSON.parse(storyCut.blocksJson || '[]');
-    const blocks = Array.isArray(parsedBlocks) ? (parsedBlocks as StoryCutBlock[]) : [];
+    const snapshot = image.snapshot;
+    const parsedBlocks = JSON.parse(snapshot.blocksJson || '[]');
+    const blocks = Array.isArray(parsedBlocks) ? (parsedBlocks as SnapshotBlock[]) : [];
     const sortedBlocks = [...blocks].sort((left, right) => Number(left.order || 0) - Number(right.order || 0));
-    const voiceId = storyCut.emberVoiceId || (await resolveNarrationVoice('female')).voiceId;
-    const outputPath = await renderStoryCutAudio({
+    const voiceId = snapshot.emberVoiceId || (await resolveNarrationVoice('female')).voiceId;
+    const outputPath = await renderSnapshotAudio({
       imageId: id,
       blocks: sortedBlocks,
       voiceId,
-      fallbackScript: storyCut.script,
+      fallbackScript: snapshot.script,
       cachePayload: {
         version: STORY_CUT_AUDIO_RENDER_VERSION,
         imageId: id,
-        storyCutId: storyCut.id,
-        updatedAt: storyCut.updatedAt.toISOString(),
+        snapshotId: snapshot.id,
+        updatedAt: snapshot.updatedAt.toISOString(),
         voiceId,
         blocks: sortedBlocks,
       },
@@ -322,7 +322,7 @@ export async function POST(
     const body = (await request.json().catch(() => null)) as
       | {
           script?: string;
-          blocks?: StoryCutBlock[];
+          blocks?: SnapshotBlock[];
           voiceId?: string | null;
         }
       | null;
@@ -340,7 +340,7 @@ export async function POST(
       return NextResponse.json({ error: 'Story Cut has no playable content' }, { status: 400 });
     }
 
-    const outputPath = await renderStoryCutAudio({
+    const outputPath = await renderSnapshotAudio({
       imageId: id,
       blocks,
       voiceId,
