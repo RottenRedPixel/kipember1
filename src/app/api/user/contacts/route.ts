@@ -24,7 +24,7 @@ export async function GET() {
       user: { select: { name: true, avatarFilename: true } },
       image: { select: { id: true, title: true, originalName: true } },
       voiceCalls: { select: { id: true } },
-      conversation: {
+      emberSession: {
         select: {
           messages: { select: { id: true }, take: 1 },
         },
@@ -52,7 +52,7 @@ export async function GET() {
     const hasAccount = Boolean(c.userId);
     const hasContributed = hasAccount && (
       (c.voiceCalls?.length ?? 0) > 0 ||
-      (c.conversation?.messages?.length ?? 0) > 0
+      (c.emberSession?.messages?.length ?? 0) > 0
     );
     if (hasContributed) return 'contributed';
     if (hasAccount) return 'joined';

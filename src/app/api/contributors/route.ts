@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
             phoneNumber: true,
           },
         },
-        conversation: true,
+        emberSession: true,
       },
     });
 

@@ -268,7 +268,7 @@ export async function GET(
                   avatarFilename: true,
                 },
               },
-              conversation: {
+              emberSession: {
                 select: {
                   status: true,
                   currentStep: true,
@@ -279,17 +279,8 @@ export async function GET(
                       role: true,
                       content: true,
                       source: true,
-                      createdAt: true,
-                    },
-                  },
-                  responses: {
-                    orderBy: { createdAt: 'asc' },
-                    select: {
-                      id: true,
-                      questionType: true,
                       question: true,
-                      answer: true,
-                      source: true,
+                      questionType: true,
                       createdAt: true,
                     },
                   },

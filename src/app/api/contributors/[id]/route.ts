@@ -82,7 +82,7 @@ export async function PATCH(
             phoneNumber: true,
           },
         },
-        conversation: {
+        emberSession: {
           select: {
             status: true,
             currentStep: true,

@@ -39,17 +39,18 @@ export async function GET(
             phoneNumber: true,
           },
         },
-        conversation: {
+        emberSession: {
           select: {
             status: true,
             currentStep: true,
-            responses: {
+            messages: {
+              where: { role: 'user', questionType: { not: null } },
               orderBy: { createdAt: 'asc' },
               select: {
                 id: true,
                 questionType: true,
                 question: true,
-                answer: true,
+                content: true,
                 source: true,
                 createdAt: true,
               },

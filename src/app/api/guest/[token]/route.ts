@@ -13,7 +13,7 @@ export async function GET(
     const contributor = await prisma.contributor.findUnique({
       where: { token },
       include: {
-        conversation: {
+        emberSession: {
           include: {
             messages: {
               orderBy: { createdAt: 'asc' },
@@ -85,7 +85,7 @@ export async function GET(
     const refreshedContributor = await prisma.contributor.findUnique({
       where: { token },
       include: {
-        conversation: {
+        emberSession: {
           include: {
             messages: {
               orderBy: { createdAt: 'asc' },
@@ -163,11 +163,11 @@ export async function GET(
           createdAt: refreshedContributor.image.createdAt,
         },
         analysis: refreshedContributor.image.analysis,
-        conversation: refreshedContributor.conversation
+        conversation: refreshedContributor.emberSession
           ? {
-              status: refreshedContributor.conversation.status,
-              currentStep: refreshedContributor.conversation.currentStep,
-              messages: refreshedContributor.conversation.messages,
+              status: refreshedContributor.emberSession.status,
+              currentStep: refreshedContributor.emberSession.currentStep,
+              messages: refreshedContributor.emberSession.messages,
             }
           : null,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
