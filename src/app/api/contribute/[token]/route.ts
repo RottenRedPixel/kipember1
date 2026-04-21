@@ -537,7 +537,7 @@ async function generateInterviewResponse(
   const answeredSteps = new Set(
     structuredAnswers
       .map((m) => m.questionType)
-      .filter(Boolean)
+      .filter((qt): qt is string => Boolean(qt))
   );
   answeredSteps.add(currentStep);
 
