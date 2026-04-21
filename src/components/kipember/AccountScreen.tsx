@@ -320,24 +320,6 @@ export default function AccountScreen({
               </div>
             </div>
 
-            {/* Preferences */}
-            <div>
-              <SectionHeader icon={<Settings size={17} />} title="Preferences" />
-              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <ToggleRow
-                  label={isDark ? 'Dark Mode' : 'Light Mode'}
-                  enabled={isDark}
-                  onToggle={toggleTheme}
-                />
-                <ToggleRow
-                  label="Notifications"
-                  enabled={notificationsEnabled}
-                  onToggle={() => setNotificationsEnabled((v) => !v)}
-                  border
-                />
-              </div>
-            </div>
-
             {/* Contributors */}
             <div>
               <SectionHeader icon={<Users size={17} />} title="Contributors" />
@@ -369,6 +351,24 @@ export default function AccountScreen({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Preferences */}
+            <div>
+              <SectionHeader icon={<Settings size={17} />} title="Preferences" />
+              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                <ToggleRow
+                  label={isDark ? 'Dark Mode' : 'Light Mode'}
+                  enabled={isDark}
+                  onToggle={toggleTheme}
+                />
+                <ToggleRow
+                  label="Notifications"
+                  enabled={notificationsEnabled}
+                  onToggle={() => setNotificationsEnabled((v) => !v)}
+                  border
+                />
               </div>
             </div>
 
