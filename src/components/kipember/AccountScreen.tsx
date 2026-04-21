@@ -127,6 +127,22 @@ export default function AccountScreen({
     router.refresh();
   }
 
+  // ── Delete account ───────────────────────────────────────────────────────
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    const res = await fetch('/api/user', { method: 'DELETE' });
+    if (res.ok) {
+      router.push('/');
+      router.refresh();
+    } else {
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  }
+
   const displayName = form.name || form.email;
 
   return (
@@ -252,6 +268,45 @@ export default function AccountScreen({
                   {isDark ? <Sun size={18} color="var(--text-primary)" strokeWidth={1.6} /> : <Moon size={18} color="var(--text-primary)" strokeWidth={1.6} />}
                   <span className="text-sm font-medium text-white">{isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Delete account */}
+            <div className="mb-3">
+              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                {confirmDelete ? (
+                  <div className="px-4 py-4 flex flex-col gap-3">
+                    <p className="text-sm text-white/70">This will permanently delete your account and all your embers. This cannot be undone.</p>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(false)}
+                        className="flex-1 rounded-full text-white text-sm font-medium"
+                        style={{ border: '1.5px solid var(--border-btn)', minHeight: 40, cursor: 'pointer' }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteAccount()}
+                        disabled={deleting}
+                        className="flex-1 rounded-full text-white text-sm font-medium disabled:opacity-50"
+                        style={{ background: '#ef4444', minHeight: 40, cursor: 'pointer' }}
+                      >
+                        {deleting ? 'Deleting...' : 'Yes, delete my account'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full flex items-center gap-4 px-4 py-4 can-hover-dim"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className="text-sm font-medium" style={{ color: '#f87171' }}>Delete Account</span>
+                  </button>
+                )}
               </div>
             </div>
 

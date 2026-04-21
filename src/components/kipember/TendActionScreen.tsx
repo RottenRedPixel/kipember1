@@ -387,6 +387,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [locationLongitude, setLocationLongitude] = useState('');
   const [locationSaving, setLocationSaving] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+  const [editingContributor, setEditingContributor] = useState(false);
   const [detectedFaces, setDetectedFaces] = useState<{ leftPct: number; topPct: number; widthPct: number; heightPct: number }[]>([]);
   const [imgAspectRatio, setImgAspectRatio] = useState(1);
   const [faceTags, setFaceTags] = useState<FaceTag[]>([]);
@@ -850,6 +851,27 @@ export default function TendActionScreen({ action }: { action: string }) {
     await refreshDetail();
   }
 
+  async function updateContributor() {
+    if (!view) return;
+    const response = await fetch(`/api/contributors/${view}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: `${addForm.firstName} ${addForm.lastName}`.trim(),
+        phoneNumber: addForm.phone,
+        email: addForm.email,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setStatus(payload?.error || 'Failed to update contributor.');
+      return;
+    }
+    setStatus('Contributor updated.');
+    setEditingContributor(false);
+    await refreshDetail();
+  }
+
   async function copyLink(token: string | null | undefined) {
     if (!token) {
       setStatus('No contributor link is available.');
@@ -1196,11 +1218,10 @@ export default function TendActionScreen({ action }: { action: string }) {
                         className="flex items-center gap-3 flex-1 px-4 py-3 can-hover"
                         style={{ minHeight: 44, opacity: 0.9 }}
                       >
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white text-sm font-medium"
-                          style={{ background: 'rgba(100,116,139,0.6)' }}
-                        >
-                          {initials(label)}
+                        <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
+                          {item.user?.avatarFilename ? (
+                            <img src={`/api/uploads/${item.user.avatarFilename}`} alt={label} className="w-full h-full object-cover" />
+                          ) : initials(label)}
                         </div>
                         <span className="text-white text-sm font-medium">{label}</span>
                       </Link>
@@ -1291,7 +1312,45 @@ export default function TendActionScreen({ action }: { action: string }) {
             </>
           ) : null}
 
-          {action === 'contributors' && contributorSource ? (
+          {action === 'contributors' && contributorSource && editingContributor ? (
+            <>
+              {[
+                ['firstName', 'First Name'],
+                ['lastName', 'Last Name (optional)'],
+                ['phone', 'Phone'],
+                ['email', 'Email (optional)'],
+              ].map(([key, placeholder]) => (
+                <input
+                  key={key}
+                  value={addForm[key as keyof typeof addForm]}
+                  onChange={(event) =>
+                    setAddForm((current) => ({ ...current, [key]: event.target.value }))
+                  }
+                  placeholder={placeholder}
+                  className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
+                  style={fieldStyle}
+                />
+              ))}
+              <div className="py-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingContributor(false)}
+                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
+                  style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void updateContributor()}
+                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Save
+                </button>
+              </div>
+            </>
+          ) : action === 'contributors' && contributorSource ? (
             <>
               <div
                 className="rounded-xl px-4 py-4"
@@ -1323,10 +1382,29 @@ export default function TendActionScreen({ action }: { action: string }) {
                     {initials(contributorName)}
                   </div>
                 </div>
-                <p className="text-white/30 text-xs mt-3">
-                  <span className="text-white/60 font-medium">Joined Ember</span> ·{' '}
-                  {formatDate(contributorSource.createdAt)}
-                </p>
+                <div className="flex items-center justify-between mt-3">
+                  <p className="text-white/30 text-xs">
+                    <span className="text-white/60 font-medium">Joined Ember</span> ·{' '}
+                    {formatDate(contributorSource.createdAt)}
+                  </p>
+                  <button
+                    type="button"
+                    className="flex items-center justify-center w-7 h-7 cursor-pointer can-hover"
+                    aria-label="Edit contributor"
+                    onClick={() => {
+                      const nameParts = contributorName.trim().split(/\s+/);
+                      setAddForm({
+                        firstName: nameParts[0] ?? '',
+                        lastName: nameParts.slice(1).join(' '),
+                        phone: contributorPhoneNumber ?? '',
+                        email: contributorEmailAddress ?? '',
+                      });
+                      setEditingContributor(true);
+                    }}
+                  >
+                    <Pencil size={13} color="white" strokeWidth={1.8} />
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-col gap-2">

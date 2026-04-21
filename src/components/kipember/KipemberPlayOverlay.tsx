@@ -358,7 +358,7 @@ export default function KipemberPlayOverlay({
             ];
             return (
               <>
-              <div className="relative flex items-stretch mx-auto mt-4 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)', width: '70%' }}>
+              <div className="relative flex items-stretch mx-auto mt-4 rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)', width: '88%' }}>
                 {/* sliding indicator */}
                 <div
                   className="absolute top-0 bottom-0 rounded-xl transition-all duration-200"
@@ -384,7 +384,7 @@ export default function KipemberPlayOverlay({
                   </button>
                 ))}
               </div>
-              <p className="text-center text-xs mt-2" style={{ color: 'rgba(255,255,255,0.55)' }}>
+              <p className="text-center text-sm mt-3" style={{ color: 'rgba(255,255,255,0.55)' }}>
                 {PHRASES[selectedBadge]}
               </p>
               </>
