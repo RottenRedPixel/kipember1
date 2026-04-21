@@ -387,7 +387,9 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [locationLongitude, setLocationLongitude] = useState('');
   const [locationSaving, setLocationSaving] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+  const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [editingContributor, setEditingContributor] = useState(false);
+  const [savingContributor, setSavingContributor] = useState(false);
   const [detectedFaces, setDetectedFaces] = useState<{ leftPct: number; topPct: number; widthPct: number; heightPct: number }[]>([]);
   const [imgAspectRatio, setImgAspectRatio] = useState(1);
   const [faceTags, setFaceTags] = useState<FaceTag[]>([]);
@@ -622,6 +624,21 @@ export default function TendActionScreen({ action }: { action: string }) {
   const contributor: TendContributor | null =
     contributors.find((item) => item.id === view) || null;
   const contributorSource = selectedContributorDetail || contributor;
+
+  // Pre-populate edit form when contributor detail loads
+  useEffect(() => {
+    if (!contributorSource) return;
+    const nameParts = contributorDisplayName(contributorSource).trim().split(/\s+/);
+    const populated = {
+      firstName: nameParts[0] ?? '',
+      lastName: nameParts.slice(1).join(' '),
+      phone: contributorPhone(contributorSource) ?? '',
+      email: contributorEmail(contributorSource) ?? '',
+    };
+    setAddForm(populated);
+    setSavedForm(populated);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contributorSource?.id]);
   const contributorName = contributorDisplayName(contributorSource);
   const contributorPhoneNumber = contributorPhone(contributorSource);
   const contributorEmailAddress = contributorEmail(contributorSource);
@@ -853,6 +870,7 @@ export default function TendActionScreen({ action }: { action: string }) {
 
   async function updateContributor() {
     if (!view) return;
+    setSavingContributor(true);
     const response = await fetch(`/api/contributors/${view}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -863,12 +881,13 @@ export default function TendActionScreen({ action }: { action: string }) {
       }),
     });
     const payload = await response.json().catch(() => ({}));
+    setSavingContributor(false);
     if (!response.ok) {
       setStatus(payload?.error || 'Failed to update contributor.');
       return;
     }
-    setStatus('Contributor updated.');
-    setEditingContributor(false);
+    setSavedForm(addForm);
+    setStatus('Saved.');
     await refreshDetail();
   }
 
@@ -1312,105 +1331,80 @@ export default function TendActionScreen({ action }: { action: string }) {
             </>
           ) : null}
 
-          {action === 'contributors' && contributorSource && editingContributor ? (
+          {action === 'contributors' && contributorSource ? (
             <>
-              {[
-                ['firstName', 'First Name'],
-                ['lastName', 'Last Name (optional)'],
-                ['phone', 'Phone'],
-                ['email', 'Email (optional)'],
-              ].map(([key, placeholder]) => (
+              {/* Inline editable profile panel — matches Account > Profile style */}
+              <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <input
-                  key={key}
-                  value={addForm[key as keyof typeof addForm]}
-                  onChange={(event) =>
-                    setAddForm((current) => ({ ...current, [key]: event.target.value }))
-                  }
-                  placeholder={placeholder}
-                  className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                  style={fieldStyle}
+                  type="text"
+                  value={addForm.firstName}
+                  onChange={(e) => setAddForm((f) => ({ ...f, firstName: e.target.value }))}
+                  placeholder="First name"
+                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
                 />
-              ))}
-              <div className="py-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setEditingContributor(false)}
-                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
-                  style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void updateContributor()}
-                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary"
-                  style={{ background: '#f97316', minHeight: 44 }}
-                >
-                  Save
-                </button>
+                <input
+                  type="text"
+                  value={addForm.lastName}
+                  onChange={(e) => setAddForm((f) => ({ ...f, lastName: e.target.value }))}
+                  placeholder="Last name"
+                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                  style={{ borderTop: '1px solid var(--border-subtle)' }}
+                />
+                <input
+                  type="email"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="Email"
+                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                  style={{ borderTop: '1px solid var(--border-subtle)' }}
+                />
+                <input
+                  type="tel"
+                  value={addForm.phone}
+                  onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="Phone"
+                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                  style={{ borderTop: '1px solid var(--border-subtle)' }}
+                />
               </div>
-            </>
-          ) : action === 'contributors' && contributorSource ? (
-            <>
-              <div
-                className="rounded-xl px-4 py-4"
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                }}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-white font-medium text-base">{contributorName}</p>
-                    {contributorPhoneLabel ? (
-                      <p className="text-white/60 text-sm mt-0.5">{contributorPhoneLabel}</p>
-                    ) : null}
-                    {contributorEmailAddress ? (
-                      <p className="text-white/60 text-sm">{contributorEmailAddress}</p>
-                    ) : null}
+              {(() => {
+                const isDirty =
+                  addForm.firstName !== savedForm.firstName ||
+                  addForm.lastName !== savedForm.lastName ||
+                  addForm.phone !== savedForm.phone ||
+                  addForm.email !== savedForm.email;
+                return (
+                  <div className="flex justify-between items-center px-1">
+                    {status ? <span className="text-xs text-white/50">{status}</span> : <span />}
+                    <button
+                      type="button"
+                      onClick={() => void updateContributor()}
+                      disabled={savingContributor || !isDirty}
+                      className="w-1/2 rounded-full px-5 text-white text-sm font-medium transition-colors"
+                      style={{
+                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                        border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                        minHeight: 44,
+                        cursor: isDirty ? 'pointer' : 'default',
+                        opacity: savingContributor ? 0.6 : 1,
+                      }}
+                    >
+                      {savingContributor ? 'Updating…' : 'Update'}
+                    </button>
                   </div>
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
-                    style={{
-                      background:
-                        ('userId' in contributorSource && contributorSource.userId === detail?.owner?.id) ||
-                        contributorSource.user?.id === detail?.owner?.id
-                          ? 'rgba(249,115,22,0.75)'
-                          : 'rgba(100,116,139,0.6)',
-                    }}
-                  >
-                    {initials(contributorName)}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between mt-3">
-                  <p className="text-white/30 text-xs">
-                    <span className="text-white/60 font-medium">Joined Ember</span> ·{' '}
-                    {formatDate(contributorSource.createdAt)}
-                  </p>
-                  <button
-                    type="button"
-                    className="flex items-center justify-center w-7 h-7 cursor-pointer can-hover"
-                    aria-label="Edit contributor"
-                    onClick={() => {
-                      const nameParts = contributorName.trim().split(/\s+/);
-                      setAddForm({
-                        firstName: nameParts[0] ?? '',
-                        lastName: nameParts.slice(1).join(' '),
-                        phone: contributorPhoneNumber ?? '',
-                        email: contributorEmailAddress ?? '',
-                      });
-                      setEditingContributor(true);
-                    }}
-                  >
-                    <Pencil size={13} color="white" strokeWidth={1.8} />
-                  </button>
-                </div>
-              </div>
+                );
+              })()}
 
-              <div className="flex flex-col gap-2">
-                <PrefRow label="Prefers" value={contributorPreference} />
-                <PrefRow label="Contact Time" value="Not set" />
-                <PrefRow label="Language" value="English" />
+              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                <div className="flex items-center justify-between px-4" style={{ minHeight: 44 }}>
+                  <span className="text-white text-sm font-medium">Prefers <span className="text-white/50 font-normal">({contributorPreference})</span></span>
+                </div>
+                <div className="flex items-center justify-between px-4" style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}>
+                  <span className="text-white text-sm font-medium">Contact Time <span className="text-white/50 font-normal">(Not set)</span></span>
+                </div>
+                <div className="flex items-center justify-between px-4" style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}>
+                  <span className="text-white text-sm font-medium">Language <span className="text-white/50 font-normal">(English)</span></span>
+                </div>
               </div>
 
               <div className="flex gap-3">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { X, ChevronLeft, Pencil, MessageSquare, Phone, Link as LinkIcon, ChevronDown } from 'lucide-react';
+import { X, ChevronLeft, MessageSquare, Phone, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import MediaPreview from '@/components/MediaPreview';
 
 interface Contributor {
@@ -795,16 +795,6 @@ export default function ContributorList({
                           )}
                         </div>
 
-                        {canManage && (
-                          <button
-                            type="button"
-                            onClick={openEditContributor}
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/8 text-white/72 transition hover:bg-white/12 hover:text-white"
-                            aria-label="Edit contributor"
-                          >
-                            <Pencil size={18} />
-                          </button>
-                        )}
                       </div>
 
                       <div className="mt-4 flex flex-wrap gap-2">

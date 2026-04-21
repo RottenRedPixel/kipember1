@@ -93,7 +93,7 @@ export default function AvatarCropModal({
               type="button"
               onClick={onCancel}
               className="flex-1 rounded-full text-white text-sm font-medium cursor-pointer"
-              style={{ minHeight: 44, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+              style={{ minHeight: 44, background: 'transparent', border: '1.5px solid var(--border-btn)' }}
             >
               Cancel
             </button>
@@ -102,7 +102,7 @@ export default function AvatarCropModal({
                 type="button"
                 onClick={onChooseNew}
                 className="flex-1 rounded-full text-white text-sm font-medium cursor-pointer"
-                style={{ minHeight: 44, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                style={{ minHeight: 44, background: 'transparent', border: '1.5px solid var(--border-btn)' }}
               >
                 Choose new
               </button>

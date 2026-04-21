@@ -357,7 +357,7 @@ export default function AccountScreen({
                   type="button"
                   onClick={handleLogout}
                   className="w-1/2 flex items-center justify-center gap-2 rounded-full text-white text-sm font-medium"
-                  style={{ background: 'transparent', border: '1.5px solid rgba(255,255,255,0.25)', minHeight: 36, cursor: 'pointer' }}
+                  style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 36, cursor: 'pointer' }}
                 >
                   <LogOut size={15} color="white" strokeWidth={1.6} />
                   Log Out
@@ -384,7 +384,7 @@ export default function AccountScreen({
                   className="w-1/2 rounded-full px-5 text-white text-sm font-medium"
                   style={{ background: '#f97316', minHeight: 36, cursor: 'pointer' }}
                 >
-                  Update Profile
+                  Update
                 </button>
               </div>
             </div>
