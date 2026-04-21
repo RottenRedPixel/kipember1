@@ -76,6 +76,9 @@ CREATE INDEX "EmberSession_userId_idx" ON "EmberSession"("userId");
 CREATE INDEX "EmberMessage_sessionId_createdAt_idx" ON "EmberMessage"("sessionId", "createdAt");
 CREATE INDEX "VoiceCall_emberSessionId_createdAt_idx" ON "VoiceCall"("emberSessionId", "createdAt");
 
+-- Drop old FK from VoiceCall → Conversation before dropping Conversation
+ALTER TABLE "VoiceCall" DROP CONSTRAINT IF EXISTS "VoiceCall_conversationId_fkey";
+
 -- Drop old tables
 DROP TABLE "ChatMessage";
 DROP TABLE "ChatSession";
