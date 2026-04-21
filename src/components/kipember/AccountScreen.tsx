@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Camera, ChevronLeft, LogOut, Moon, Sun, User } from 'lucide-react';
+import { Bell, Camera, ChevronLeft, LogOut, Settings, ShieldAlert, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
 
@@ -16,9 +16,12 @@ type AccountScreenProps = {
   coverPhotoUrl?: string | null;
 };
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <p className="text-white/30 text-xs font-medium mb-3 px-1">{children}</p>
+    <div className="flex items-center gap-2 mb-3">
+      <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
+      <h3 className="text-white font-medium text-base">{title}</h3>
+    </div>
   );
 }
 
@@ -47,6 +50,38 @@ function InputRow({
   );
 }
 
+function ToggleRow({
+  label,
+  enabled,
+  onToggle,
+  border,
+}: {
+  label: string;
+  enabled: boolean;
+  onToggle: () => void;
+  border?: boolean;
+}) {
+  return (
+    <label
+      className="flex items-center justify-between gap-4 px-4 cursor-pointer"
+      style={{ minHeight: 44, borderTop: border ? '1px solid var(--border-subtle)' : undefined }}
+    >
+      <span className="text-sm text-white">{label}</span>
+      <span className="relative flex-shrink-0" style={{ width: 48, height: 28 }}>
+        <input type="checkbox" checked={enabled} onChange={onToggle} className="sr-only" />
+        <span
+          className="absolute inset-0 rounded-full transition-colors duration-200"
+          style={{ background: enabled ? '#f97316' : 'rgba(255,255,255,0.15)' }}
+        />
+        <span
+          className="absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200"
+          style={{ width: 24, height: 24, transform: enabled ? 'translateX(20px)' : 'translateX(0)' }}
+        />
+      </span>
+    </label>
+  );
+}
+
 export default function AccountScreen({
   name: initialName,
   email: initialEmail,
@@ -72,8 +107,9 @@ export default function AccountScreen({
   });
   const [profileStatus, setProfileStatus] = useState('');
 
-  // Theme
+  // Preferences
   const [isDark, setIsDark] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   useEffect(() => {
     setIsDark(localStorage.getItem('ember-theme') !== 'light');
@@ -165,6 +201,14 @@ export default function AccountScreen({
 
   const displayName = form.name || form.email;
 
+  const STATUS_PILL: Record<ContactStatus, { label: string; bg: string; color: string }> = {
+    contributed: { label: 'contributed',  bg: 'rgba(134,239,172,0.18)', color: 'rgba(134,239,172,0.9)' },
+    joined:      { label: 'joined',       bg: 'rgba(196,181,253,0.18)', color: 'rgba(196,181,253,0.9)' },
+    called:      { label: 'called',       bg: 'rgba(249,115,22,0.18)',  color: 'rgba(249,115,22,0.9)'  },
+    sms_sent:    { label: 'texted',       bg: 'rgba(251,191,36,0.18)',  color: 'rgba(251,191,36,0.9)'  },
+    invited:     { label: 'invited',      bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' },
+  };
+
   return (
     <div
       className="fixed inset-0 flex"
@@ -214,10 +258,10 @@ export default function AccountScreen({
         ) : null}
 
         <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col items-center px-5 py-4">
-          <div className="w-full max-w-xl">
+          <div className="w-full max-w-xl flex flex-col gap-6">
 
             {/* Avatar */}
-            <div className="flex flex-col items-center gap-3 py-6">
+            <div className="flex flex-col items-center gap-3 pt-4 pb-2">
               <div className="relative">
                 <button
                   type="button"
@@ -256,8 +300,8 @@ export default function AccountScreen({
             </div>
 
             {/* Profile */}
-            <div className="mb-3">
-              <SectionLabel>Profile</SectionLabel>
+            <div>
+              <SectionHeader icon={<User size={17} />} title="Profile" />
               <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <InputRow placeholder="Your name" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
                 <InputRow placeholder="Email address" value={form.email} type="email" onChange={(v) => setForm((f) => ({ ...f, email: v }))} border />
@@ -276,67 +320,61 @@ export default function AccountScreen({
               </div>
             </div>
 
-            {/* Theme toggle */}
-            <div className="mb-3">
+            {/* Preferences */}
+            <div>
+              <SectionHeader icon={<Settings size={17} />} title="Preferences" />
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="w-full flex items-center gap-4 px-4 py-4 can-hover-dim"
-                  style={{ cursor: 'pointer' }}
-                >
-                  {isDark ? <Sun size={18} color="var(--text-primary)" strokeWidth={1.6} /> : <Moon size={18} color="var(--text-primary)" strokeWidth={1.6} />}
-                  <span className="text-sm font-medium text-white">{isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</span>
-                </button>
+                <ToggleRow
+                  label={isDark ? 'Dark Mode' : 'Light Mode'}
+                  enabled={isDark}
+                  onToggle={toggleTheme}
+                />
+                <ToggleRow
+                  label="Notifications"
+                  enabled={notificationsEnabled}
+                  onToggle={() => setNotificationsEnabled((v) => !v)}
+                  border
+                />
               </div>
             </div>
 
-            {/* Contacts */}
-            <div className="mb-3">
-              <SectionLabel>Contributor Contacts</SectionLabel>
+            {/* Contributors */}
+            <div>
+              <SectionHeader icon={<Users size={17} />} title="Contributors" />
               <div className="rounded-xl overflow-hidden flex flex-col" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 {contacts.length === 0 ? (
                   <p className="text-white/30 text-sm px-4 py-4">No contributors yet.</p>
-                ) : (() => {
-                  const STATUS_PILL: Record<Contact['status'], { label: string; bg: string; color: string }> = {
-                    contributed: { label: 'contributed',  bg: 'rgba(134,239,172,0.18)', color: 'rgba(134,239,172,0.9)' },
-                    joined:      { label: 'joined',       bg: 'rgba(196,181,253,0.18)', color: 'rgba(196,181,253,0.9)' },
-                    called:      { label: 'called',       bg: 'rgba(249,115,22,0.18)',  color: 'rgba(249,115,22,0.9)'  },
-                    sms_sent:    { label: 'texted',       bg: 'rgba(251,191,36,0.18)',  color: 'rgba(251,191,36,0.9)'  },
-                    invited:     { label: 'invited',      bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' },
-                  };
-
-                  return contacts.map((c, i) => {
-                    const label = c.name || c.phoneNumber || c.email || 'Unknown';
-                    const sub = c.phoneNumber || c.email || null;
-                    const ini = label.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-                    const pill = STATUS_PILL[c.status];
-                    return (
-                      <div
-                        key={c.id}
-                        className="flex items-center gap-3 px-4 py-3"
-                        style={i > 0 ? { borderTop: '1px solid var(--border-subtle)' } : undefined}
-                      >
-                        <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
-                          {c.avatarFilename ? (
-                            <img src={`/api/uploads/${c.avatarFilename}`} alt={label} className="w-full h-full object-cover" />
-                          ) : ini}
-                        </div>
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-white text-sm font-medium truncate">{label}</span>
-                          {sub ? <span className="text-white/40 text-xs truncate">{sub}</span> : null}
-                          <span className="text-white/25 text-xs truncate">{c.emberTitles.join(', ')}</span>
-                        </div>
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: pill.bg, color: pill.color }}>{pill.label}</span>
+                ) : contacts.map((c, i) => {
+                  const label = c.name || c.phoneNumber || c.email || 'Unknown';
+                  const sub = c.phoneNumber || c.email || null;
+                  const ini = label.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+                  const pill = STATUS_PILL[c.status];
+                  return (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-3 px-4 py-3"
+                      style={i > 0 ? { borderTop: '1px solid var(--border-subtle)' } : undefined}
+                    >
+                      <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
+                        {c.avatarFilename ? (
+                          <img src={`/api/uploads/${c.avatarFilename}`} alt={label} className="w-full h-full object-cover" />
+                        ) : ini}
                       </div>
-                    );
-                  });
-                })()}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="text-white text-sm font-medium truncate">{label}</span>
+                        {sub ? <span className="text-white/40 text-xs truncate">{sub}</span> : null}
+                        <span className="text-white/25 text-xs truncate">{c.emberTitles.join(', ')}</span>
+                      </div>
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: pill.bg, color: pill.color }}>{pill.label}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Delete account */}
-            <div className="mb-3">
+            {/* Account */}
+            <div>
+              <SectionHeader icon={<ShieldAlert size={17} />} title="Account" />
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 {confirmDelete ? (
                   <div className="px-4 py-4 flex flex-col gap-3">
@@ -375,18 +413,16 @@ export default function AccountScreen({
             </div>
 
             {/* Logout */}
-            <div className="mb-8">
-              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-4 px-4 py-4 can-hover-dim"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <LogOut size={18} color="#f87171" strokeWidth={1.6} />
-                  <span className="text-sm font-medium" style={{ color: '#f87171' }}>Log Out</span>
-                </button>
-              </div>
+            <div className="mb-8 flex justify-end">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-1/2 flex items-center justify-center gap-2 rounded-full text-white text-sm font-medium"
+                style={{ background: 'transparent', border: '1.5px solid rgba(255,255,255,0.25)', minHeight: 36, cursor: 'pointer' }}
+              >
+                <LogOut size={15} color="white" strokeWidth={1.6} />
+                Log Out
+              </button>
             </div>
 
           </div>
