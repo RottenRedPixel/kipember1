@@ -13,7 +13,7 @@ interface Contributor {
   token: string;
   inviteSent: boolean;
   createdAt: string;
-  conversation: {
+  emberSession: {
     status: string;
     currentStep: string;
   } | null;
@@ -47,14 +47,14 @@ type ContributorDetail = {
     email: string;
     phoneNumber: string | null;
   } | null;
-  conversation: {
+  emberSession: {
     status: string;
-    currentStep: string;
-    responses: {
+    currentStep: string | null;
+    messages: {
       id: string;
-      questionType: string;
-      question: string;
-      answer: string;
+      questionType: string | null;
+      question: string | null;
+      content: string;
       source: string;
       createdAt: string;
     }[];
@@ -180,7 +180,7 @@ function startCase(value: string | null | undefined) {
 }
 
 function getContributorStatusLabel(contributor: Contributor | ContributorDetail) {
-  if ('conversation' in contributor && contributor.conversation?.status === 'completed') {
+  if ('emberSession' in contributor && contributor.emberSession?.status === 'completed') {
     return 'Story saved';
   }
 
@@ -192,7 +192,7 @@ function getContributorStatusLabel(contributor: Contributor | ContributorDetail)
     return 'Invited';
   }
 
-  if ('conversation' in contributor && contributor.conversation) {
+  if ('emberSession' in contributor && contributor.emberSession) {
     return 'In progress';
   }
 
@@ -309,7 +309,7 @@ export default function ContributorList({
     contributors.find((contributor) => contributor.id === selectedContributorId) || null;
   const selectedContributorIsOwner = selectedContributor?.userId === ownerUserId;
   const detailSource = selectedContributorDetail || selectedContributor;
-  const responseCount = selectedContributorDetail?.conversation?.responses?.length || 0;
+  const responseCount = selectedContributorDetail?.emberSession?.messages?.filter((m) => m.questionType)?.length || 0;
   const latestVoiceCall =
     selectedContributorDetail?.voiceCalls?.[0] || selectedContributor?.voiceCalls?.[0] || null;
   const detailPhone = detailSource ? contributorPhone(detailSource) : null;
@@ -827,7 +827,7 @@ export default function ContributorList({
                       />
                       <ContributorMetaCard
                         label="Conversation"
-                        value={startCase(selectedContributorDetail?.conversation?.status || selectedContributor.conversation?.status)}
+                        value={startCase(selectedContributorDetail?.emberSession?.status || selectedContributor.emberSession?.status)}
                       />
                       <ContributorMetaCard label="Saved Answers" value={`${responseCount}`} />
                       <ContributorMetaCard label="Language" value={languagePreference} />
@@ -911,18 +911,20 @@ export default function ContributorList({
                         </div>
                       )}
 
-                      {selectedContributorDetail?.conversation?.responses?.length ? (
+                      {(selectedContributorDetail?.emberSession?.messages?.filter((m) => m.questionType)?.length ?? 0) > 0 ? (
                         <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                          {selectedContributorDetail.conversation.responses.map((response) => (
+                          {selectedContributorDetail!.emberSession!.messages
+                            .filter((m) => m.questionType)
+                            .map((message) => (
                             <article
-                              key={response.id}
+                              key={message.id}
                               className="rounded-[1.05rem] border border-white/8 bg-black/18 px-4 py-4"
                             >
                               <div className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-[rgba(255,201,170,0.92)]">
-                                {formatQuestionLabel(response.question, response.questionType)}
+                                {formatQuestionLabel(message.question || '', message.questionType || '')}
                               </div>
                               <p className="mt-3 text-sm leading-6 text-white/78">
-                                {response.answer}
+                                {message.content}
                               </p>
                             </article>
                           ))}
@@ -953,41 +955,40 @@ export default function ContributorList({
                   </p>
                 </div>
 
-                <div className="mt-6 space-y-3">
+                <div className="mt-6 rounded-[1rem] overflow-hidden border border-white/12 bg-white/8 backdrop-blur-xl">
                   <input
                     type="text"
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
                     placeholder="First name"
-                    className="w-full rounded-[1rem] border border-white/12 bg-white/8 px-4 py-3.5 text-white outline-none backdrop-blur-xl placeholder:text-white/36"
+                    className="w-full h-12 px-4 text-sm text-white placeholder-white/36 outline-none bg-transparent"
                   />
                   <input
                     type="text"
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     placeholder="Last name"
-                    className="w-full rounded-[1rem] border border-white/12 bg-white/8 px-4 py-3.5 text-white outline-none backdrop-blur-xl placeholder:text-white/36"
+                    className="w-full h-12 px-4 text-sm text-white placeholder-white/36 outline-none bg-transparent border-t border-white/10"
                   />
                   <input
                     type="tel"
                     value={phoneNumber}
                     onChange={(event) => setPhoneNumber(formatPhoneNumber(event.target.value))}
                     placeholder="Phone"
-                    className="w-full rounded-[1rem] border border-white/12 bg-white/8 px-4 py-3.5 text-white outline-none backdrop-blur-xl placeholder:text-white/36"
+                    className="w-full h-12 px-4 text-sm text-white placeholder-white/36 outline-none bg-transparent border-t border-white/10"
                   />
                   <input
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="Email"
-                    className="w-full rounded-[1rem] border border-white/12 bg-white/8 px-4 py-3.5 text-white outline-none backdrop-blur-xl placeholder:text-white/36"
+                    className="w-full h-12 px-4 text-sm text-white placeholder-white/36 outline-none bg-transparent border-t border-white/10"
                   />
-
-                  <div className="relative">
+                  <div className="relative border-t border-white/10">
                     <select
                       value={languagePreference}
                       onChange={(event) => setLanguagePreference(event.target.value)}
-                      className="w-full appearance-none rounded-[1rem] border border-white/12 bg-white/8 px-4 py-3.5 pr-11 text-white outline-none backdrop-blur-xl"
+                      className="w-full h-12 appearance-none px-4 pr-11 text-sm text-white outline-none bg-transparent"
                     >
                       <option value="English">English</option>
                       <option value="Spanish">Spanish</option>
@@ -999,24 +1000,40 @@ export default function ContributorList({
                   </div>
                 </div>
 
-                <div className="mt-6 grid grid-cols-3 gap-2">
-                  <ContributorActionButton
-                    label="Call now"
-                    onClick={() => void persistContributor('call')}
-                    disabled={savingAction !== null || !phoneNumber.trim()}
-                  />
-                  <ContributorActionButton
-                    label="Text invite"
-                    onClick={() => void persistContributor('sms')}
-                    disabled={savingAction !== null || !phoneNumber.trim()}
-                  />
-                  <ContributorActionButton
-                    label={formMode === 'edit' ? 'Save edits' : 'Save'}
-                    tone="primary"
-                    onClick={() => void persistContributor('save')}
-                    disabled={savingAction !== null || (!phoneNumber.trim() && !email.trim())}
-                  />
-                </div>
+                {formMode === 'edit' ? (
+                  <div className="mt-6 flex gap-3">
+                    <ContributorActionButton
+                      label="Cancel"
+                      onClick={closeCurrentScreen}
+                      disabled={savingAction !== null}
+                    />
+                    <ContributorActionButton
+                      label={savingAction === 'save' ? 'Saving…' : 'Save'}
+                      tone="primary"
+                      onClick={() => void persistContributor('save')}
+                      disabled={savingAction !== null || (!phoneNumber.trim() && !email.trim())}
+                    />
+                  </div>
+                ) : (
+                  <div className="mt-6 grid grid-cols-3 gap-2">
+                    <ContributorActionButton
+                      label="Call now"
+                      onClick={() => void persistContributor('call')}
+                      disabled={savingAction !== null || !phoneNumber.trim()}
+                    />
+                    <ContributorActionButton
+                      label="Text invite"
+                      onClick={() => void persistContributor('sms')}
+                      disabled={savingAction !== null || !phoneNumber.trim()}
+                    />
+                    <ContributorActionButton
+                      label={savingAction === 'save' ? 'Saving…' : 'Save'}
+                      tone="primary"
+                      onClick={() => void persistContributor('save')}
+                      disabled={savingAction !== null || (!phoneNumber.trim() && !email.trim())}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>

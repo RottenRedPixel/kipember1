@@ -2,9 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, Camera, ChevronLeft, LogOut, Settings, ShieldAlert, User, Users } from 'lucide-react';
+import {
+  Bell, Camera, ChevronLeft, ChevronRight, LogOut,
+  Settings, ShieldAlert, User, Users,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
+
+type Section = 'profile' | 'contributors' | 'preferences' | 'account' | null;
 
 type AccountScreenProps = {
   name: string | null;
@@ -15,15 +20,6 @@ type AccountScreenProps = {
   joinedAt?: Date | null;
   coverPhotoUrl?: string | null;
 };
-
-function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
-      <h3 className="text-white font-medium text-base">{title}</h3>
-    </div>
-  );
-}
 
 function InputRow({
   placeholder,
@@ -92,6 +88,7 @@ export default function AccountScreen({
   coverPhotoUrl,
 }: AccountScreenProps) {
   const router = useRouter();
+  const [section, setSection] = useState<Section>(null);
 
   // Avatar
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -100,8 +97,15 @@ export default function AccountScreen({
   const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Profile
+  function splitName(full: string | null) {
+    const trimmed = full?.trim() || '';
+    const [first = '', ...rest] = trimmed.split(/\s+/);
+    return { firstName: first, lastName: rest.join(' ') };
+  }
+  const { firstName: initFirst, lastName: initLast } = splitName(initialName);
+  const [firstName, setFirstName] = useState(initFirst);
+  const [lastName, setLastName] = useState(initLast);
   const [form, setForm] = useState({
-    name: initialName ?? '',
     email: initialEmail,
     phoneNumber: initialPhone ?? '',
   });
@@ -115,7 +119,31 @@ export default function AccountScreen({
     setIsDark(localStorage.getItem('ember-theme') !== 'light');
   }, []);
 
-  // ── Avatar ──────────────────────────────────────────────────────────────
+  // Contacts
+  type ContactStatus = 'contributed' | 'joined' | 'called' | 'sms_sent' | 'invited';
+  type Contact = {
+    id: string;
+    name: string | null;
+    phoneNumber: string | null;
+    email: string | null;
+    avatarFilename: string | null;
+    emberTitles: string[];
+    status: ContactStatus;
+  };
+  const [contacts, setContacts] = useState<Contact[]>([]);
+
+  useEffect(() => {
+    void fetch('/api/user/contacts')
+      .then((r) => r.json())
+      .then((d) => { if (Array.isArray(d?.contacts)) setContacts(d.contacts); })
+      .catch(() => undefined);
+  }, []);
+
+  // Delete account
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Avatar handlers
   async function handleAvatarUpload(blob: Blob) {
     setAvatarUploading(true);
     try {
@@ -136,19 +164,18 @@ export default function AccountScreen({
     await handleAvatarUpload(blob);
   }
 
-  // ── Profile ─────────────────────────────────────────────────────────────
   async function saveProfile() {
     setProfileStatus('');
+    const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null;
     const res = await fetch('/api/profile', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, name }),
     });
     const payload = await res.json().catch(() => ({}));
     setProfileStatus(res.ok ? 'Saved.' : payload?.error || 'Failed to save.');
   }
 
-  // ── Theme ────────────────────────────────────────────────────────────────
   function toggleTheme() {
     const next = isDark ? 'light' : 'dark';
     localStorage.setItem('ember-theme', next);
@@ -156,36 +183,11 @@ export default function AccountScreen({
     setIsDark(!isDark);
   }
 
-  // ── Logout ───────────────────────────────────────────────────────────────
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/signin');
     router.refresh();
   }
-
-  // ── Contacts ─────────────────────────────────────────────────────────────
-  type ContactStatus = 'contributed' | 'joined' | 'called' | 'sms_sent' | 'invited';
-  type Contact = {
-    id: string;
-    name: string | null;
-    phoneNumber: string | null;
-    email: string | null;
-    avatarFilename: string | null;
-    emberTitles: string[];
-    status: ContactStatus;
-  };
-  const [contacts, setContacts] = useState<Contact[]>([]);
-
-  useEffect(() => {
-    void fetch('/api/user/contacts')
-      .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d?.contacts)) setContacts(d.contacts); })
-      .catch(() => undefined);
-  }, []);
-
-  // ── Delete account ───────────────────────────────────────────────────────
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   async function handleDeleteAccount() {
     setDeleting(true);
@@ -199,7 +201,7 @@ export default function AccountScreen({
     }
   }
 
-  const displayName = form.name || form.email;
+  const displayName = [firstName, lastName].filter(Boolean).join(' ') || form.email;
 
   const STATUS_PILL: Record<ContactStatus, { label: string; bg: string; color: string }> = {
     contributed: { label: 'contributed',  bg: 'rgba(134,239,172,0.18)', color: 'rgba(134,239,172,0.9)' },
@@ -208,6 +210,16 @@ export default function AccountScreen({
     sms_sent:    { label: 'texted',       bg: 'rgba(251,191,36,0.18)',  color: 'rgba(251,191,36,0.9)'  },
     invited:     { label: 'invited',      bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' },
   };
+
+  // Section header config
+  const SECTIONS: { key: Exclude<Section, null>; icon: React.ReactNode; label: string }[] = [
+    { key: 'profile',      icon: <User size={20} strokeWidth={1.6} />,       label: 'Profile' },
+    { key: 'contributors', icon: <Users size={20} strokeWidth={1.6} />,      label: 'Contributors' },
+    { key: 'preferences',  icon: <Settings size={20} strokeWidth={1.6} />,   label: 'Preferences' },
+    { key: 'account',      icon: <ShieldAlert size={20} strokeWidth={1.6} />, label: 'Account' },
+  ];
+
+  const activeSection = SECTIONS.find((s) => s.key === section);
 
   return (
     <div
@@ -219,20 +231,35 @@ export default function AccountScreen({
         className="w-[93%] h-full flex flex-col slide-in-right"
         style={{ background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }}
       >
-        {/* Slider header */}
+        {/* Header */}
         <div
           className="flex items-center gap-3 px-4 pt-6 pb-4 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <Link
-            href="/home"
-            className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
-            style={{ opacity: 0.75 }}
-          >
-            <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
-          </Link>
-          <User size={22} color="var(--text-primary)" strokeWidth={1.6} className="flex-shrink-0" />
-          <h2 className="text-white font-medium text-base">Account</h2>
+          {section ? (
+            <button
+              type="button"
+              onClick={() => setSection(null)}
+              className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+              style={{ opacity: 0.75, cursor: 'pointer' }}
+            >
+              <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
+            </button>
+          ) : (
+            <Link
+              href="/home"
+              className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+              style={{ opacity: 0.75 }}
+            >
+              <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
+            </Link>
+          )}
+          <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
+            {activeSection ? activeSection.icon : <User size={22} strokeWidth={1.6} />}
+          </span>
+          <h2 className="text-white font-medium text-base">
+            {activeSection ? activeSection.label : 'Account'}
+          </h2>
         </div>
 
         <input
@@ -257,57 +284,99 @@ export default function AccountScreen({
           />
         ) : null}
 
-        <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col items-center px-5 py-4">
-          <div className="w-full max-w-xl flex flex-col gap-6">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto no-scrollbar">
 
-            {/* Avatar */}
-            <div className="flex flex-col items-center gap-3 pt-4 pb-2">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="relative rounded-full overflow-hidden flex items-center justify-center"
-                  style={{ width: 80, height: 80, background: 'rgba(249,115,22,0.85)', cursor: 'pointer' }}
-                >
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-white text-2xl font-medium">{userInitials}</span>
-                  )}
-                  {avatarUploading ? (
-                    <div className="absolute inset-0 flex items-center justify-center rounded-full" style={{ background: 'rgba(0,0,0,0.5)' }}>
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" style={{ animation: 'kipSpin 0.8s linear infinite' }} />
-                    </div>
+          {/* ── Main menu ── */}
+          {!section && (
+            <div className="flex flex-col items-center px-5 py-6 gap-6">
+
+              {/* Avatar */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative rounded-full overflow-hidden flex items-center justify-center"
+                    style={{ width: 80, height: 80, background: 'rgba(249,115,22,0.85)', cursor: 'pointer' }}
+                  >
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-white text-2xl font-medium">{userInitials}</span>
+                    )}
+                    {avatarUploading ? (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-full" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full" style={{ animation: 'kipSpin 0.8s linear infinite' }} />
+                      </div>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ background: 'var(--bg-screen)', border: '2px solid var(--border-subtle)', cursor: 'pointer' }}
+                  >
+                    <Camera size={13} color="var(--text-primary)" strokeWidth={1.8} />
+                  </button>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-white font-semibold text-base">{displayName}</span>
+                  {joinedAt ? (
+                    <span className="text-white/30 text-xs mt-1">
+                      Member since {new Date(joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </span>
                   ) : null}
-                </button>
+                </div>
+              </div>
+
+              {/* Menu items */}
+              <div className="w-full rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                {SECTIONS.map((s, i) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setSection(s.key)}
+                    className="w-full flex items-center gap-3 px-4"
+                    style={{
+                      minHeight: 52,
+                      cursor: 'pointer',
+                      borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined,
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-secondary)' }}>{s.icon}</span>
+                    <span className="flex-1 text-left text-sm text-white">{s.label}</span>
+                    <ChevronRight size={16} color="var(--text-secondary)" strokeWidth={1.8} />
+                  </button>
+                ))}
+              </div>
+
+              {/* Logout */}
+              <div className="w-full flex justify-end mb-4">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center"
-                  style={{ background: 'var(--bg-screen)', border: '2px solid var(--border-subtle)', cursor: 'pointer' }}
+                  onClick={handleLogout}
+                  className="w-1/2 flex items-center justify-center gap-2 rounded-full text-white text-sm font-medium"
+                  style={{ background: 'transparent', border: '1.5px solid rgba(255,255,255,0.25)', minHeight: 36, cursor: 'pointer' }}
                 >
-                  <Camera size={13} color="var(--text-primary)" strokeWidth={1.8} />
+                  <LogOut size={15} color="white" strokeWidth={1.6} />
+                  Log Out
                 </button>
               </div>
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-white font-semibold text-base">{displayName}</span>
-                {joinedAt ? (
-                  <span className="text-white/30 text-xs mt-1">
-                    Member since {new Date(joinedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                  </span>
-                ) : null}
-              </div>
-            </div>
 
-            {/* Profile */}
-            <div>
-              <SectionHeader icon={<User size={17} />} title="Profile" />
+            </div>
+          )}
+
+          {/* ── Profile ── */}
+          {section === 'profile' && (
+            <div className="px-5 py-6 flex flex-col gap-4">
               <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <InputRow placeholder="Your name" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} />
+                <InputRow placeholder="First name" value={firstName} onChange={setFirstName} />
+                <InputRow placeholder="Last name" value={lastName} onChange={setLastName} border />
                 <InputRow placeholder="Email address" value={form.email} type="email" onChange={(v) => setForm((f) => ({ ...f, email: v }))} border />
                 <InputRow placeholder="Phone number" value={form.phoneNumber} type="tel" onChange={(v) => setForm((f) => ({ ...f, phoneNumber: v }))} border />
               </div>
-              <div className="flex justify-between items-center mt-2 px-1">
+              <div className="flex justify-between items-center px-1">
                 {profileStatus ? <span className="text-xs text-white/50">{profileStatus}</span> : <span />}
                 <button
                   type="button"
@@ -319,10 +388,11 @@ export default function AccountScreen({
                 </button>
               </div>
             </div>
+          )}
 
-            {/* Contributors */}
-            <div>
-              <SectionHeader icon={<Users size={17} />} title="Contributors" />
+          {/* ── Contributors ── */}
+          {section === 'contributors' && (
+            <div className="px-5 py-6">
               <div className="rounded-xl overflow-hidden flex flex-col" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 {contacts.length === 0 ? (
                   <p className="text-white/30 text-sm px-4 py-4">No contributors yet.</p>
@@ -353,10 +423,11 @@ export default function AccountScreen({
                 })}
               </div>
             </div>
+          )}
 
-            {/* Preferences */}
-            <div>
-              <SectionHeader icon={<Settings size={17} />} title="Preferences" />
+          {/* ── Preferences ── */}
+          {section === 'preferences' && (
+            <div className="px-5 py-6">
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <ToggleRow
                   label={isDark ? 'Dark Mode' : 'Light Mode'}
@@ -371,10 +442,11 @@ export default function AccountScreen({
                 />
               </div>
             </div>
+          )}
 
-            {/* Account */}
-            <div>
-              <SectionHeader icon={<ShieldAlert size={17} />} title="Account" />
+          {/* ── Account ── */}
+          {section === 'account' && (
+            <div className="px-5 py-6">
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 {confirmDelete ? (
                   <div className="px-4 py-4 flex flex-col gap-3">
@@ -403,7 +475,7 @@ export default function AccountScreen({
                   <button
                     type="button"
                     onClick={() => setConfirmDelete(true)}
-                    className="w-full flex items-center gap-4 px-4 py-4 can-hover-dim"
+                    className="w-full flex items-center gap-4 px-4 py-4"
                     style={{ cursor: 'pointer' }}
                   >
                     <span className="text-sm font-medium" style={{ color: '#f87171' }}>Delete Account</span>
@@ -411,21 +483,8 @@ export default function AccountScreen({
                 )}
               </div>
             </div>
+          )}
 
-            {/* Logout */}
-            <div className="mb-8 flex justify-end">
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-1/2 flex items-center justify-center gap-2 rounded-full text-white text-sm font-medium"
-                style={{ background: 'transparent', border: '1.5px solid rgba(255,255,255,0.25)', minHeight: 36, cursor: 'pointer' }}
-              >
-                <LogOut size={15} color="white" strokeWidth={1.6} />
-                Log Out
-              </button>
-            </div>
-
-          </div>
         </div>
       </div>
     </div>
