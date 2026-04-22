@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Bell, Camera, ChevronLeft, ChevronRight, LogOut,
+  Bell, Camera, ChevronLeft, ChevronRight,
   Settings, ShieldAlert, User, Users,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -299,7 +299,13 @@ export default function AccountScreen({
                 <div className="relative">
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      if (avatarUrl) {
+                        setCropSrc(avatarUrl);
+                      } else {
+                        fileInputRef.current?.click();
+                      }
+                    }}
                     className="relative rounded-full overflow-hidden flex items-center justify-center"
                     style={{ width: 80, height: 80, background: 'rgba(249,115,22,0.85)', cursor: 'pointer' }}
                   >
@@ -365,10 +371,9 @@ export default function AccountScreen({
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-1/2 flex items-center justify-center gap-2 rounded-full text-white text-sm font-medium"
+                  className="w-1/2 flex items-center justify-center rounded-full text-white text-sm font-medium"
                   style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 36, cursor: 'pointer' }}
                 >
-                  <LogOut size={15} color="white" strokeWidth={1.6} />
                   Log Out
                 </button>
               </div>
@@ -476,7 +481,7 @@ export default function AccountScreen({
                         className="flex-1 rounded-full text-white text-sm font-medium disabled:opacity-50"
                         style={{ background: '#ef4444', minHeight: 40, cursor: 'pointer' }}
                       >
-                        {deleting ? 'Deleting...' : 'Yes, delete my account'}
+                        {deleting ? 'Deleting...' : 'Delete Now!'}
                       </button>
                     </div>
                   </div>
