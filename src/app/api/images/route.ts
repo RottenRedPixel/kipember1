@@ -131,6 +131,10 @@ export async function POST(request: NextRequest) {
         hasWiki: false,
         hasLocation: false,
         hasVoiceCall: false,
+        cropX: null,
+        cropY: null,
+        cropWidth: null,
+        cropHeight: null,
       },
     });
   } catch (error) {

@@ -9,7 +9,7 @@ declare global {
 }
 
 import Link from 'next/link';
-import { Calendar, ChevronLeft, Copy, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, RotateCcw, ShieldUser, TicketSlash, UserRound, Users, X } from 'lucide-react';
+import { Calendar, ChevronLeft, Copy, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, ShieldUser, TicketSlash, UserRound, Users, X } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -422,6 +422,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const dragStart = useRef<{ clientX: number; clientY: number; origX: number; origY: number } | null>(null);
   const faceTagsRef = useRef(faceTags);
   const savePositionRef = useRef<(tagId: string) => void>(() => {});
+  const frameInitRef = useRef(false);
 
   useEffect(() => {
     if (imageId) {
@@ -534,6 +535,14 @@ export default function TendActionScreen({ action }: { action: string }) {
       })
       .catch(() => undefined);
   }, [detailPath, resolvedImageId]);
+
+  // Guard: prevent react-easy-crop's mount-time onCropChange from marking frame dirty
+  useEffect(() => {
+    if (action !== 'frame') return;
+    frameInitRef.current = false;
+    const t = setTimeout(() => { frameInitRef.current = true; }, 150);
+    return () => clearTimeout(t);
+  }, [action]);
 
   useEffect(() => {
     if (action !== 'edit-title' || !resolvedImageId) {
@@ -2018,8 +2027,8 @@ export default function TendActionScreen({ action }: { action: string }) {
                       crop={frameCrop}
                       zoom={frameZoom}
                       aspect={3 / 4}
-                      onCropChange={(c) => { setFrameCrop(c); setFrameIsDirty(true); }}
-                      onZoomChange={(z) => { setFrameZoom(z); setFrameIsDirty(true); }}
+                      onCropChange={(c) => { setFrameCrop(c); if (frameInitRef.current) setFrameIsDirty(true); }}
+                      onZoomChange={(z) => { setFrameZoom(z); if (frameInitRef.current) setFrameIsDirty(true); }}
                       onCropComplete={(_croppedArea, croppedAreaPercentage) => {
                         setFrameCroppedArea(croppedAreaPercentage);
                       }}
@@ -2037,47 +2046,38 @@ export default function TendActionScreen({ action }: { action: string }) {
                       max={3}
                       step={0.01}
                       value={frameZoom}
-                      onChange={(e) => { setFrameZoom(Number(e.target.value)); setFrameIsDirty(true); }}
+                      onChange={(e) => { setFrameZoom(Number(e.target.value)); if (frameInitRef.current) setFrameIsDirty(true); }}
                       className="w-full"
                       style={{ accentColor: '#f97316' }}
                     />
                     <p className="text-center text-xs text-white/40">Drag to reframe · Pinch or slide to zoom</p>
                   </div>
-                  {savedFrameCrop ? (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!resolvedImageId) return;
-                        await fetch(`/api/images/${resolvedImageId}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ crop: null }),
-                        });
-                        setSavedFrameCrop(null);
-                        setFrameCrop({ x: 0, y: 0 });
-                        setFrameZoom(1);
-                        setFrameIsDirty(false);
-                        setStatus('Frame reset.');
-                        await refreshDetail();
-                      }}
-                      className="flex items-center justify-center gap-1.5 text-xs text-white/40 cursor-pointer"
-                    >
-                      <RotateCcw size={12} strokeWidth={1.8} />
-                      Reset to default
-                    </button>
-                  ) : null}
                 </div>
               ) : (
                 <p className="text-white/40 text-sm text-center py-8">No photo available.</p>
               )}
               <div className="flex gap-3">
-                <Link
-                  href={tendModalHref}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!resolvedImageId) return;
+                    await fetch(`/api/images/${resolvedImageId}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ crop: null }),
+                    });
+                    setSavedFrameCrop(null);
+                    setFrameCrop({ x: 0, y: 0 });
+                    setFrameZoom(1);
+                    setFrameIsDirty(false);
+                    setStatus('Frame reset.');
+                    await refreshDetail();
+                  }}
                   className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
-                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: 'pointer' }}
                 >
-                  Cancel
-                </Link>
+                  Reset
+                </button>
                 <button
                   type="button"
                   onClick={() => void saveFrame()}

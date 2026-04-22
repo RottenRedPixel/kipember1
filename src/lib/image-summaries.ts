@@ -22,6 +22,10 @@ export type AccessibleImageSummary = {
   hasWiki: boolean;
   hasLocation: boolean;
   hasVoiceCall: boolean;
+  cropX: number | null;
+  cropY: number | null;
+  cropWidth: number | null;
+  cropHeight: number | null;
 };
 
 const globalForImageSummaries = globalThis as unknown as {
@@ -74,6 +78,10 @@ export async function getAccessibleImagesForUser(userId: string) {
       description: true,
       createdAt: true,
       shareToNetwork: true,
+      cropX: true,
+      cropY: true,
+      cropWidth: true,
+      cropHeight: true,
       contributors: {
         select: {
           id: true,
@@ -121,6 +129,10 @@ export async function getAccessibleImagesForUser(userId: string) {
           : image.contributors.some((c) => c.userId === userId)
             ? 'contributor'
             : 'network',
+      cropX: image.cropX ?? null,
+      cropY: image.cropY ?? null,
+      cropWidth: image.cropWidth ?? null,
+      cropHeight: image.cropHeight ?? null,
     };
   });
 
