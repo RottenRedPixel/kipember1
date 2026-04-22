@@ -221,19 +221,21 @@ function WorkflowSlot({
   flow,
   imageId,
   onConversationStateChange,
+  onExpand,
 }: {
   flow: HomeEmberFlow;
   imageId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
+  onExpand: () => void;
 }) {
   switch (flow) {
     case 'owner':
       return imageId ? (
-        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} onExpand={onExpand} />
       ) : null;
     case 'contributor':
       return imageId ? (
-        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} onExpand={onExpand} />
       ) : null;
     default:
       return null;
@@ -267,6 +269,7 @@ export default function HomeScreen({
   const router = useRouter();
   const modal = params.get('m');
   const rawFlow = params.get('ember');
+  const view = params.get('view');
   const mode = params.get('mode');
   const step = params.get('step');
   const firstEmber = mode === 'first-ember';
@@ -297,6 +300,7 @@ export default function HomeScreen({
   const defaultChatFlow = getDefaultHomeEmberFlow(displayImage?.accessType);
   const flow = parseHomeEmberFlow(rawFlow);
   const emberOpen = flow !== null;
+  const chatExpanded = emberOpen && view === 'full';
   const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
   const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
   const capturedAt = selectedImage?.analysis?.capturedAt ?? displayImage?.capturedAt ?? null;
@@ -846,13 +850,21 @@ export default function HomeScreen({
       {!firstEmber ? (
         <div
           className="absolute bottom-0 left-0 right-0 z-30 flex flex-col"
-          style={{ background: 'var(--bg-screen)', WebkitBackdropFilter: 'blur(20px)', backdropFilter: 'blur(20px)', borderTop: '1px solid var(--border-subtle)' }}
+          style={{
+            top: chatExpanded ? '20%' : 'auto',
+            background: 'var(--bg-screen)',
+            WebkitBackdropFilter: 'blur(20px)',
+            backdropFilter: 'blur(20px)',
+            borderTop: '1px solid var(--border-subtle)',
+            borderRadius: chatExpanded ? '20px 20px 0 0' : undefined,
+            transition: 'top 200ms ease',
+          }}
         >
           <div className="flex items-center gap-3 pl-4 pr-[22px] py-3">
             <Link
               href={
                 flow
-                  ? buildHomeHref({ ember: null, step: null, sub: null })
+                  ? buildHomeHref({ ember: null, view: null, step: null, sub: null })
                   : buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })
               }
               className="flex-1 text-left"
@@ -864,10 +876,20 @@ export default function HomeScreen({
                 </span>
               </span>
             </Link>
+            {chatExpanded ? (
+              <Link
+                href={buildHomeHref({ view: null })}
+                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(255,255,255,0.15)' }}
+                aria-label="Collapse chat"
+              >
+                <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
+              </Link>
+            ) : null}
             <Link
               href={
                 flow
-                  ? buildHomeHref({ ember: null, step: null, sub: null })
+                  ? buildHomeHref({ ember: null, view: null, step: null, sub: null })
                   : buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })
               }
               className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
@@ -885,6 +907,7 @@ export default function HomeScreen({
               flow={flow}
               imageId={selectedImageId}
               onConversationStateChange={setHasConversationHistory}
+              onExpand={() => router.replace(buildHomeHref({ view: 'full' }))}
             />
           ) : null}
         </div>
