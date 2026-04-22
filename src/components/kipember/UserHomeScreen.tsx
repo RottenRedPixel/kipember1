@@ -250,8 +250,8 @@ export default function UserHomeScreen({
               style={{
                 width: 48,
                 height: 48,
-                background: 'rgba(249,115,22,0.12)',
-                border: '1px solid rgba(249,115,22,0.25)',
+                background: '#f97316',
+                border: 'none',
               }}
             >
               <EmberMark size={22} />
