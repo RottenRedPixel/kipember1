@@ -5,6 +5,7 @@ import {
   BookOpen,
   ChevronDown,
   ChevronLeft,
+  ChevronUp,
   Clock,
   Copy,
   LogOut,
@@ -221,21 +222,19 @@ function WorkflowSlot({
   flow,
   imageId,
   onConversationStateChange,
-  onExpand,
 }: {
   flow: HomeEmberFlow;
   imageId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
-  onExpand: () => void;
 }) {
   switch (flow) {
     case 'owner':
       return imageId ? (
-        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} onExpand={onExpand} />
+        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
       ) : null;
     case 'contributor':
       return imageId ? (
-        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} onExpand={onExpand} />
+        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
       ) : null;
     default:
       return null;
@@ -726,7 +725,7 @@ export default function HomeScreen({
         className={`absolute right-2 z-20 flex flex-col gap-0 items-center transition-opacity duration-200 ${
           railHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
-        style={{ bottom: '11%' }}
+        style={{ bottom: '9%' }}
       >
         {allMedia.length > 1 && nextPhotoUrl ? (
           <button
@@ -876,7 +875,17 @@ export default function HomeScreen({
                 </span>
               </span>
             </Link>
-            {chatExpanded ? (
+            {flow && !chatExpanded ? (
+              <Link
+                href={buildHomeHref({ view: 'full' })}
+                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ border: '1.5px solid var(--border-btn)' }}
+                aria-label="Expand chat"
+              >
+                <ChevronUp size={18} color="var(--text-secondary)" strokeWidth={1.8} />
+              </Link>
+            ) : null}
+            {flow && chatExpanded ? (
               <Link
                 href={buildHomeHref({ view: null })}
                 className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
@@ -907,7 +916,6 @@ export default function HomeScreen({
               flow={flow}
               imageId={selectedImageId}
               onConversationStateChange={setHasConversationHistory}
-              onExpand={() => { if ('ontouchstart' in window || navigator.maxTouchPoints > 0) { router.replace(buildHomeHref({ view: 'full' })); } }}
             />
           ) : null}
         </div>
