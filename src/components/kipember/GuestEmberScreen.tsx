@@ -305,7 +305,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
         className="absolute bottom-0 left-0 right-0 z-30 flex flex-col"
         style={{ background: 'var(--bg-screen)', borderTop: '1px solid var(--border-subtle)' }}
       >
-        <div className="flex items-center gap-3 pl-4 pr-[22px] py-3">
+        <div className="flex items-center gap-3 px-4 py-3">
           <Link href={flowOpen ? closeHref : openHref} className="flex-1 text-left">
             <span className="flex items-center gap-2">
               <EmberMark />

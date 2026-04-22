@@ -164,7 +164,7 @@ export default function GuestFlow({ token }: { token: string }) {
   }
 
   return (
-    <div className="relative z-[1] pl-4 pr-[22px] pb-4 pt-1">
+    <div className="relative z-[1] px-4 pb-4 pt-1">
       <div className="max-h-[34vh] overflow-y-auto pb-4 pr-1 no-scrollbar">
         <div className="flex flex-col gap-4">
           {/* Greeting */}

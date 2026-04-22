@@ -214,7 +214,7 @@ export default function ContributorFlow({
   }
 
   return (
-    <div className="relative z-[1] pl-4 pr-[22px] pb-4 pt-1">
+    <div className="relative z-[1] flex flex-col flex-1 min-h-0 px-4 pb-4 pt-1">
       <input
         ref={fileInputRef}
         type="file"
@@ -228,7 +228,7 @@ export default function ContributorFlow({
       />
 
       {!isLoadingHistory ? (
-        <div className="max-h-[30vh] overflow-y-auto pb-4 pr-1 no-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <div className="flex flex-col gap-4">
             {messages.length === 0 && !welcomeBack ? (
               <div className="flex flex-col gap-2 items-start">
@@ -300,7 +300,7 @@ export default function ContributorFlow({
         </div>
       ) : null}
 
-      <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2">
+      <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2 flex-shrink-0">
         <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isSending} className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer" style={{ background: 'rgba(255,255,255,0.08)' }} aria-label="Add photo">
           <ImagePlus size={18} />
         </button>

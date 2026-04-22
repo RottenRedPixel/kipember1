@@ -623,7 +623,7 @@ export default function HomeScreen({
         userModalHref={selectedImageId ? `/account?imageId=${selectedImageId}` : '/account'}
       />
 
-      {!firstEmber && displayImage ? (
+      {!firstEmber && displayImage && !chatExpanded ? (
         <div className="absolute left-4 z-20 pointer-events-none" style={{ top: 64 }}>
           <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{title}</p>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{subtitle}</p>
@@ -723,7 +723,7 @@ export default function HomeScreen({
       ) : null}
 
       <div
-        className={`absolute right-3 z-20 flex flex-col gap-0 items-center transition-opacity duration-200 ${
+        className={`absolute right-2 z-20 flex flex-col gap-0 items-center transition-opacity duration-200 ${
           railHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
         style={{ bottom: '11%' }}
@@ -849,18 +849,18 @@ export default function HomeScreen({
 
       {!firstEmber ? (
         <div
-          className="absolute bottom-0 left-0 right-0 z-30 flex flex-col"
+          className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
           style={{
             top: chatExpanded ? '20%' : 'auto',
             background: 'var(--bg-screen)',
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
             borderTop: '1px solid var(--border-subtle)',
-            borderRadius: chatExpanded ? '20px 20px 0 0' : undefined,
+            borderRadius: emberOpen ? '30px 30px 0 0' : undefined,
             transition: 'top 200ms ease',
           }}
         >
-          <div className="flex items-center gap-3 pl-4 pr-[22px] py-3">
+          <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0">
             <Link
               href={
                 flow
@@ -896,7 +896,7 @@ export default function HomeScreen({
               style={{ background: flow ? 'rgba(255,255,255,0.15)' : '#f97316' }}
             >
               {flow ? (
-                <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
+                <X size={18} color="var(--text-primary)" strokeWidth={1.8} />
               ) : (
                 <Plus size={20} color="white" strokeWidth={2} />
               )}
@@ -907,7 +907,7 @@ export default function HomeScreen({
               flow={flow}
               imageId={selectedImageId}
               onConversationStateChange={setHasConversationHistory}
-              onExpand={() => router.replace(buildHomeHref({ view: 'full' }))}
+              onExpand={() => { if ('ontouchstart' in window || navigator.maxTouchPoints > 0) { router.replace(buildHomeHref({ view: 'full' })); } }}
             />
           ) : null}
         </div>
