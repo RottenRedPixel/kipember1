@@ -614,23 +614,20 @@ export default function HomeScreen({
               objectPosition: 'center center',
               opacity: photoOpacity,
               transition: 'opacity 0.22s ease',
-            } : (() => {
-              const hasCrop = displayImage?.cropX != null && displayImage?.cropY != null;
-              return {
-                top: 56,
-                bottom: 72,
-                left: 0,
-                right: 0,
-                width: '100%',
-                height: 'calc(100% - 128px)',
-                objectFit: hasCrop ? 'cover' : (photoIsLandscape ? 'contain' : 'cover'),
-                objectPosition: hasCrop
-                  ? `${displayImage!.cropX}% ${displayImage!.cropY}%`
-                  : 'center center',
-                opacity: photoOpacity,
-                transition: 'opacity 0.22s ease',
-              };
-            })()}
+            } : {
+              top: 56,
+              bottom: 72,
+              left: 0,
+              right: 0,
+              width: '100%',
+              height: 'calc(100% - 128px)',
+              objectFit: 'cover',
+              objectPosition: selectedImage?.cropX != null && selectedImage?.cropY != null
+                ? `${selectedImage.cropX}% ${selectedImage.cropY}%`
+                : 'center center',
+              opacity: photoOpacity,
+              transition: 'opacity 0.22s ease',
+            }}
           />
           <div
             className="absolute inset-0 pointer-events-none"
