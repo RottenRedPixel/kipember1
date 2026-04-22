@@ -66,11 +66,9 @@ function AudioPlayer({ src }: { src: string }) {
 export default function ContributorFlow({
   imageId,
   onConversationStateChange,
-  expanded = false,
 }: {
   imageId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
-  expanded?: boolean;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [welcomeBack, setWelcomeBack] = useState('');
@@ -226,7 +224,7 @@ export default function ContributorFlow({
       />
 
       {!isLoadingHistory ? (
-        <div className={`${expanded ? 'flex-1 min-h-0' : 'max-h-[34vh]'} overflow-y-auto pb-4 pr-1 no-scrollbar`}>
+        <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <div className="flex flex-col gap-4">
             {messages.length === 0 && !welcomeBack ? (
               <div className="flex flex-col gap-2 items-start">

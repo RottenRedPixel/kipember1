@@ -222,21 +222,19 @@ function WorkflowSlot({
   flow,
   imageId,
   onConversationStateChange,
-  expanded,
 }: {
   flow: HomeEmberFlow;
   imageId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
-  expanded: boolean;
 }) {
   switch (flow) {
     case 'owner':
       return imageId ? (
-        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} expanded={expanded} />
+        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
       ) : null;
     case 'contributor':
       return imageId ? (
-        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} expanded={expanded} />
+        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
       ) : null;
     default:
       return null;
@@ -865,7 +863,7 @@ export default function HomeScreen({
         <div
           className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
           style={{
-            top: chatExpanded ? '20%' : 'auto',
+            top: chatExpanded ? '20%' : emberOpen ? '55%' : 'auto',
             background: 'var(--bg-screen)',
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
@@ -932,7 +930,6 @@ export default function HomeScreen({
                 flow={flow}
                 imageId={selectedImageId}
                 onConversationStateChange={setHasConversationHistory}
-                expanded={chatExpanded}
               />
             </div>
           ) : null}
