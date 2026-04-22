@@ -58,6 +58,10 @@ export async function GET(
           createdAt: true,
           shareToNetwork: true,
           keepPrivate: true,
+          cropX: true,
+          cropY: true,
+          cropWidth: true,
+          cropHeight: true,
           analysis: {
             select: {
               summary: true,
@@ -119,6 +123,10 @@ export async function GET(
             createdAt: true,
             shareToNetwork: true,
             keepPrivate: true,
+          cropX: true,
+          cropY: true,
+          cropWidth: true,
+          cropHeight: true,
             owner: {
               select: {
                 id: true,
@@ -761,6 +769,10 @@ export async function PATCH(
       title?: string | null;
       titleUpdatedAt?: Date | null;
       description?: string | null;
+      cropX?: number | null;
+      cropY?: number | null;
+      cropWidth?: number | null;
+      cropHeight?: number | null;
     } = {};
     let capturedAtValue: Date | null | undefined;
 
@@ -816,6 +828,26 @@ export async function PATCH(
         capturedAtValue = parsedDate;
       } else {
         capturedAtValue = null;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body ?? {}, 'crop')) {
+      const crop = body.crop;
+      if (crop === null) {
+        updateData.cropX = null;
+        updateData.cropY = null;
+        updateData.cropWidth = null;
+        updateData.cropHeight = null;
+      } else if (
+        typeof crop?.x === 'number' &&
+        typeof crop?.y === 'number' &&
+        typeof crop?.width === 'number' &&
+        typeof crop?.height === 'number'
+      ) {
+        updateData.cropX = crop.x;
+        updateData.cropY = crop.y;
+        updateData.cropWidth = crop.width;
+        updateData.cropHeight = crop.height;
       }
     }
 

@@ -75,6 +75,10 @@ type ImageDetail = ImageSummary & {
   snapshot: {
     script: string | null;
   } | null;
+  cropX: number | null;
+  cropY: number | null;
+  cropWidth: number | null;
+  cropHeight: number | null;
 };
 
 type CreateEmberResponse = {
@@ -617,8 +621,10 @@ export default function HomeScreen({
               right: 0,
               width: '100%',
               height: 'calc(100% - 128px)',
-              objectFit: photoIsLandscape ? 'contain' : 'cover',
-              objectPosition: 'center center',
+              objectFit: 'cover',
+              objectPosition: selectedImage?.cropX != null && selectedImage?.cropY != null
+                ? `${selectedImage.cropX}% ${selectedImage.cropY}%`
+                : 'center center',
               opacity: photoOpacity,
               transition: 'opacity 0.22s ease',
             }}

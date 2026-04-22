@@ -9,7 +9,8 @@ declare global {
 }
 
 import Link from 'next/link';
-import { Calendar, ChevronLeft, Copy, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, ShieldUser, TicketSlash, UserRound, Users, X } from 'lucide-react';
+import { Calendar, ChevronLeft, Copy, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, RotateCcw, ShieldUser, TicketSlash, UserRound, Users, X } from 'lucide-react';
+import Cropper from 'react-easy-crop';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
@@ -129,6 +130,10 @@ type TendDetail = KipemberWikiDetail & {
   canManage: boolean;
   shareToNetwork: boolean;
   keepPrivate: boolean;
+  cropX: number | null;
+  cropY: number | null;
+  cropWidth: number | null;
+  cropHeight: number | null;
   snapshot?: {
     title: string;
     style: string;
@@ -395,6 +400,12 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [savedLocationLat, setSavedLocationLat] = useState('');
   const [savedLocationLng, setSavedLocationLng] = useState('');
   const [locationSaving, setLocationSaving] = useState(false);
+  const [frameCrop, setFrameCrop] = useState({ x: 0, y: 0 });
+  const [frameZoom, setFrameZoom] = useState(1);
+  const [frameCroppedArea, setFrameCroppedArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [savedFrameCrop, setSavedFrameCrop] = useState<{ x: number; y: number } | null>(null);
+  const [frameIsDirty, setFrameIsDirty] = useState(false);
+  const [frameSaving, setFrameSaving] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [editingContributor, setEditingContributor] = useState(false);
@@ -474,6 +485,12 @@ export default function TendActionScreen({ action }: { action: string }) {
     setSavedLocationAddress(address);
     setSavedLocationLat(latStr);
     setSavedLocationLng(lngStr);
+    // Populate frame crop
+    if (payload.cropX != null && payload.cropY != null) {
+      setSavedFrameCrop({ x: payload.cropX, y: payload.cropY });
+    } else {
+      setSavedFrameCrop(null);
+    }
   }
 
   useEffect(() => {
@@ -827,6 +844,39 @@ export default function TendActionScreen({ action }: { action: string }) {
       setStatus('Failed to save location.');
     } finally {
       setLocationSaving(false);
+    }
+  }
+
+  async function saveFrame() {
+    if (!resolvedImageId || !frameCroppedArea) return;
+    setFrameSaving(true);
+    const cx = frameCroppedArea.x + frameCroppedArea.width / 2;
+    const cy = frameCroppedArea.y + frameCroppedArea.height / 2;
+    try {
+      const response = await fetch(`/api/images/${resolvedImageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          crop: {
+            x: parseFloat(cx.toFixed(2)),
+            y: parseFloat(cy.toFixed(2)),
+            width: parseFloat(frameCroppedArea.width.toFixed(2)),
+            height: parseFloat(frameCroppedArea.height.toFixed(2)),
+          },
+        }),
+      });
+      if (response.ok) {
+        setSavedFrameCrop({ x: cx, y: cy });
+        setFrameIsDirty(false);
+        setStatus('Frame saved.');
+        await refreshDetail();
+      } else {
+        setStatus('Failed to save frame.');
+      }
+    } catch {
+      setStatus('Failed to save frame.');
+    } finally {
+      setFrameSaving(false);
     }
   }
 
@@ -1957,17 +2007,91 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'frame' ? (
             <>
-              <div className="flex flex-col items-center justify-center gap-3 py-10">
-                <p className="text-white/40 text-sm text-center">Frame is coming soon.</p>
-              </div>
-              <div className="flex justify-end">
+              {coverPhotoUrl ? (
+                <div className="flex flex-col gap-3">
+                  <div
+                    className="relative w-full rounded-xl overflow-hidden"
+                    style={{ aspectRatio: '3 / 4' }}
+                  >
+                    <Cropper
+                      image={coverPhotoUrl}
+                      crop={frameCrop}
+                      zoom={frameZoom}
+                      aspect={3 / 4}
+                      onCropChange={(c) => { setFrameCrop(c); setFrameIsDirty(true); }}
+                      onZoomChange={(z) => { setFrameZoom(z); setFrameIsDirty(true); }}
+                      onCropComplete={(_croppedArea, croppedAreaPercentage) => {
+                        setFrameCroppedArea(croppedAreaPercentage);
+                      }}
+                      style={{
+                        containerStyle: { borderRadius: 12 },
+                        mediaStyle: {},
+                        cropAreaStyle: { border: '2px solid rgba(249,115,22,0.8)', borderRadius: 8 },
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <input
+                      type="range"
+                      min={1}
+                      max={3}
+                      step={0.01}
+                      value={frameZoom}
+                      onChange={(e) => { setFrameZoom(Number(e.target.value)); setFrameIsDirty(true); }}
+                      className="w-full"
+                      style={{ accentColor: '#f97316' }}
+                    />
+                    <p className="text-center text-xs text-white/40">Drag to reframe · Pinch or slide to zoom</p>
+                  </div>
+                  {savedFrameCrop ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!resolvedImageId) return;
+                        await fetch(`/api/images/${resolvedImageId}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ crop: null }),
+                        });
+                        setSavedFrameCrop(null);
+                        setFrameCrop({ x: 0, y: 0 });
+                        setFrameZoom(1);
+                        setFrameIsDirty(false);
+                        setStatus('Frame reset.');
+                        await refreshDetail();
+                      }}
+                      className="flex items-center justify-center gap-1.5 text-xs text-white/40 cursor-pointer"
+                    >
+                      <RotateCcw size={12} strokeWidth={1.8} />
+                      Reset to default
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-white/40 text-sm text-center py-8">No photo available.</p>
+              )}
+              <div className="flex gap-3">
                 <Link
                   href={tendModalHref}
-                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
                   style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
                 >
-                  Close
+                  Cancel
                 </Link>
+                <button
+                  type="button"
+                  onClick={() => void saveFrame()}
+                  disabled={frameSaving || !frameIsDirty || !frameCroppedArea}
+                  className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+                  style={{
+                    background: frameIsDirty ? '#f97316' : 'var(--bg-surface)',
+                    border: frameIsDirty ? 'none' : '1px solid var(--border-subtle)',
+                    minHeight: 44,
+                    cursor: frameIsDirty ? 'pointer' : 'default',
+                  }}
+                >
+                  {frameSaving ? 'Saving...' : 'Save'}
+                </button>
               </div>
             </>
           ) : null}
