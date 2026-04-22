@@ -16,6 +16,7 @@ import {
   type InterviewKnownContext,
 } from '@/lib/interview-flow';
 import { generateWikiForImage } from '@/lib/wiki-generator';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
 const CONTRIBUTOR_FOLLOWUP_PROMPT = `You are Ember collecting one more memory detail after an interview was already completed.
@@ -391,7 +392,7 @@ export async function POST(
 
     // Save structured answer if applicable
     if (response.questionType && response.answer) {
-      await prisma.emberMessage.create({
+      const structuredMessage = await prisma.emberMessage.create({
         data: {
           sessionId: session.id,
           role: 'user',
@@ -401,6 +402,10 @@ export async function POST(
           question: response.question || '',
         },
       });
+      await reconcileEmberMessageSafely(
+        structuredMessage.id,
+        'Contributor interview memory reconciliation'
+      );
     }
 
     // Update session step

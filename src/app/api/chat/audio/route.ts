@@ -10,6 +10,7 @@ import {
   getConfiguredOpenAIModel,
   getOpenAIClient,
 } from '@/lib/openai';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 
 function buildAttachmentDescription(transcript: string | null) {
   const prefix = 'Ask Ember voice note';
@@ -153,7 +154,7 @@ export async function POST(request: NextRequest) {
           const session = await ensureContributorSession(contributor.id, imageId);
 
           if (session) {
-            await prisma.emberMessage.create({
+            const memoryMessage = await prisma.emberMessage.create({
               data: {
                 sessionId: session.id,
                 role: 'user',
@@ -163,6 +164,10 @@ export async function POST(request: NextRequest) {
                 question: 'What else would you like Ember to remember about this moment?',
               },
             });
+            await reconcileEmberMessageSafely(
+              memoryMessage.id,
+              'Ask voice note memory reconciliation'
+            );
           }
         }
       } catch (sessionError) {

@@ -38,6 +38,8 @@ model Image {
   tags         ImageTag[]
   attachments  ImageAttachment[]
   voiceCallClips VoiceCallClip[]
+  memoryClaims MemoryClaim[]
+  memoryConflicts MemoryConflict[]
 
   @@index([ownerId, createdAt])
   @@index([shareToNetwork, createdAt])
@@ -104,6 +106,7 @@ model Contributor {
   voiceCalls   VoiceCall[]
   voiceCallClips VoiceCallClip[]
   tags         ImageTag[]
+  memoryClaims MemoryClaim[]
   createdAt    DateTime      @default(now())
 
   @@index([imageId, createdAt])
@@ -131,6 +134,7 @@ model EmberSession {
   personaBackstory String?
   messages         EmberMessage[]
   voiceCalls       VoiceCall[]
+  memoryClaims     MemoryClaim[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
@@ -154,8 +158,80 @@ model EmberMessage {
   question      String?      // for structured Q&A (from interview responses)
   questionType  String?      // context, who, what, when, where, why, how, followup
   createdAt     DateTime     @default(now())
+  memoryClaims  MemoryClaim[]
 
   @@index([sessionId, createdAt])
+}
+
+model MemoryClaim {
+  id              String                @id @default(cuid())
+  imageId         String
+  image           Image                 @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberMessageId  String?
+  emberMessage    EmberMessage?         @relation(fields: [emberMessageId], references: [id], onDelete: SetNull)
+  contributorId   String?
+  contributor     Contributor?          @relation(fields: [contributorId], references: [id], onDelete: SetNull)
+  userId          String?
+  user            User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sourceSessionId String?
+  sourceSession   EmberSession?         @relation(fields: [sourceSessionId], references: [id], onDelete: SetNull)
+  source          String                @default("human_memory")
+  questionType    String?
+  claimType       String
+  subject         String                @default("")
+  value           String
+  normalizedValue String
+  rawText         String?
+  confidence      Float?
+  evidenceKind    String                @default("human_memory")
+  resolutionMode  String                @default("human_clarification")
+  status          String                @default("active")
+  metadataJson    String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  conflicts       MemoryConflictClaim[]
+
+  @@index([imageId, claimType, subject])
+  @@index([imageId, status])
+  @@index([emberMessageId])
+  @@index([sourceSessionId, createdAt])
+  @@index([contributorId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model MemoryConflict {
+  id               String                @id @default(cuid())
+  imageId          String
+  image            Image                 @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  claimType        String
+  subject          String                @default("")
+  summary          String
+  status           String                @default("open")
+  resolutionMode   String                @default("human_clarification")
+  resolutionValue  String?
+  resolutionNote   String?
+  outreachQuestion String?
+  confidence       Float?
+  metadataJson     String?
+  resolvedAt       DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  claims           MemoryConflictClaim[]
+
+  @@index([imageId, status])
+  @@index([imageId, claimType, subject])
+}
+
+model MemoryConflictClaim {
+  conflictId String
+  claimId    String
+  stance     String         @default("disputed")
+  createdAt  DateTime       @default(now())
+  conflict   MemoryConflict @relation(fields: [conflictId], references: [id], onDelete: Cascade)
+  claim      MemoryClaim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@id([conflictId, claimId])
+  @@index([claimId])
 }
 
 model Wiki {
@@ -294,6 +370,7 @@ model User {
   createdTags          ImageTag[]   @relation("CreatedImageTags")
   taggedImages         ImageTag[]   @relation("TaggedUserImages")
   emberSessions        EmberSession[]
+  memoryClaims         MemoryClaim[]
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 }

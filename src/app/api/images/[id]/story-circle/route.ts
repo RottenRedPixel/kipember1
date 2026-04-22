@@ -16,6 +16,7 @@ import {
 } from '@/lib/ember-sessions';
 import { prisma } from '@/lib/db';
 import { generateWikiForImage } from '@/lib/wiki-generator';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 
 function getFollowupPrompt() {
   return 'What else would you like Ember to remember about this moment?';
@@ -245,15 +246,17 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to prepare Story Circle session' }, { status: 500 });
     }
 
-    await prisma.emberMessage.createMany({
-      data: [
-        {
+    const [, structuredMessage] = await prisma.$transaction([
+      prisma.emberMessage.create({
+        data: {
           sessionId: session.id,
           role: 'assistant',
           content: question,
           source: 'web',
         },
-        {
+      }),
+      prisma.emberMessage.create({
+        data: {
           sessionId: session.id,
           role: 'user',
           content: answer,
@@ -261,8 +264,12 @@ export async function POST(
           questionType,
           question,
         },
-      ],
-    });
+      }),
+    ]);
+    await reconcileEmberMessageSafely(
+      structuredMessage.id,
+      'Story Circle memory reconciliation'
+    );
 
     const refreshedContributor = await loadOwnerStoryCircleContributor(id, auth.user.id);
     if (!refreshedContributor) {
