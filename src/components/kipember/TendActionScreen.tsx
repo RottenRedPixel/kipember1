@@ -361,11 +361,11 @@ export default function TendActionScreen({ action }: { action: string }) {
   const imageId = searchParams.get('id');
   const view = searchParams.get('view');
   const [detail, setDetail] = useState<TendDetail | null>(null);
-  const [cachedCoverUrl, setCachedCoverUrl] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
+  const [cachedCoverUrl, setCachedCoverUrl] = useState<string | null>(null);
+  useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id');
-    return id ? (sessionStorage.getItem(`cover-${id}`) ?? null) : null;
-  });
+    if (id) setCachedCoverUrl(sessionStorage.getItem(`cover-${id}`));
+  }, []);
   const [selectedContributorDetail, setSelectedContributorDetail] = useState<ContributorDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
@@ -1558,7 +1558,7 @@ export default function TendActionScreen({ action }: { action: string }) {
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <span style={{ color: 'var(--text-secondary)' }}><Lightbulb size={17} /></span>
-                  <h3 className="text-white font-medium text-base">Title Suggestions</h3>
+                  <h3 className="text-white font-medium text-base">Title Ideas</h3>
                 </div>
               <WikiCard>
 
@@ -1643,7 +1643,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                   className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
                   style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
                 >
-                  {titleSuggestionsRefreshing ? 'Regenerating...' : 'Regen Suggestions'}
+                  {titleSuggestionsRefreshing ? 'Regenerating...' : 'Regen Ideas'}
                 </button>
                 {(() => {
                   const savedTitleValue = detail ? (detail.title || detail.originalName?.replace(/\.[^.]+$/, '') || '') : '';
@@ -1905,23 +1905,17 @@ export default function TendActionScreen({ action }: { action: string }) {
                   <MapPin size={17} color="var(--text-secondary)" strokeWidth={1.6} />
                   <h3 className="text-white font-medium text-base">GPS Data</h3>
                 </div>
-                <div className="rounded-xl flex overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                   <input
-                    type="number"
-                    step="any"
-                    value={locationLatitude}
-                    onChange={(e) => setLocationLatitude(e.target.value)}
-                    placeholder="Latitude"
-                    className="flex-1 h-12 px-4 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                    style={{ borderRight: '1px solid var(--border-subtle)' }}
-                  />
-                  <input
-                    type="number"
-                    step="any"
-                    value={locationLongitude}
-                    onChange={(e) => setLocationLongitude(e.target.value)}
-                    placeholder="Longitude"
-                    className="flex-1 h-12 px-4 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                    type="text"
+                    value={locationLatitude && locationLongitude ? `${locationLatitude}, ${locationLongitude}` : locationLatitude || locationLongitude}
+                    onChange={(e) => {
+                      const parts = e.target.value.split(',');
+                      setLocationLatitude(parts[0]?.trim() ?? '');
+                      setLocationLongitude(parts[1]?.trim() ?? '');
+                    }}
+                    placeholder="Latitude, Longitude"
+                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
                   />
                 </div>
               </div>
