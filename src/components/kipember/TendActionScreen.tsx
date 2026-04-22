@@ -2029,7 +2029,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                       aspect={3 / 4}
                       onCropChange={(c) => { setFrameCrop(c); if (frameInitRef.current) setFrameIsDirty(true); }}
                       onZoomChange={(z) => { setFrameZoom(z); if (frameInitRef.current) setFrameIsDirty(true); }}
-                      onCropComplete={(_croppedArea, croppedAreaPercentage) => {
+                      onCropComplete={(croppedAreaPercentage) => {
                         setFrameCroppedArea(croppedAreaPercentage);
                       }}
                       style={{
