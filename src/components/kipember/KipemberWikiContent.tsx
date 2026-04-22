@@ -2,15 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import {
+  AlertTriangle,
+  CheckCircle2,
   Clock,
   FileText,
+  GitCompareArrows,
   History,
   Image as ImageIcon,
   MapPin,
   Mic,
   Phone,
   Play,
+  RefreshCw,
   ScanEye,
+  Send,
   ShieldUser,
   Sparkles,
   Users,
@@ -157,6 +162,7 @@ export type KipemberWikiDetail = {
   titleUpdatedAt?: string | null;
   originalName: string;
   description: string | null;
+  canManage?: boolean;
   createdAt: string;
   snapshot?: {
     script: string;
@@ -204,6 +210,57 @@ export type KipemberWikiDetail = {
       createdAt: string;
     }>;
   }>;
+};
+
+type ReconciliationClaim = {
+  id: string;
+  claimType: string;
+  subject: string;
+  value: string;
+  normalizedValue: string;
+  rawText: string | null;
+  confidence: number | null;
+  evidenceKind: string;
+  resolutionMode: string;
+  status: string;
+  questionType: string | null;
+  source: string;
+  contributorId: string | null;
+  userId: string | null;
+  metadata: unknown;
+  createdAt: string;
+};
+
+type ReconciliationConflict = {
+  id: string;
+  claimType: string;
+  subject: string;
+  summary: string;
+  status: string;
+  resolutionMode: string;
+  resolutionValue: string | null;
+  resolutionNote: string | null;
+  outreachQuestion: string | null;
+  confidence: number | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  claims: Array<{
+    stance: string;
+    claim: ReconciliationClaim;
+  }>;
+};
+
+type ReconciliationResponse = {
+  claims: ReconciliationClaim[];
+  conflicts: ReconciliationConflict[];
+};
+
+type ReconciliationRefreshResponse = {
+  processedMessages: number;
+  claimsCreated: number;
+  conflictsCreated: number;
+  openConflictCount: number;
 };
 
 function formatLongDate(value: string | null | undefined) {
@@ -547,6 +604,299 @@ function WikiCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+function getSourceName(claim: ReconciliationClaim) {
+  const metadata = claim.metadata;
+  if (
+    metadata &&
+    typeof metadata === 'object' &&
+    'sourceLabel' in metadata &&
+    typeof metadata.sourceLabel === 'string' &&
+    metadata.sourceLabel.trim()
+  ) {
+    return metadata.sourceLabel.trim();
+  }
+
+  return 'Contributor';
+}
+
+function formatClaimType(value: string) {
+  return value
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function formatConfidence(value: number | null) {
+  if (typeof value !== 'number') {
+    return null;
+  }
+
+  return `${Math.round(value * 100)}% confidence`;
+}
+
+function ReconciliationPill({
+  children,
+  tone = 'neutral',
+}: {
+  children: React.ReactNode;
+  tone?: 'neutral' | 'warn' | 'good';
+}) {
+  const stylesByTone = {
+    neutral: {
+      background: 'rgba(255,255,255,0.08)',
+      color: 'rgba(255,255,255,0.55)',
+      border: '1px solid rgba(255,255,255,0.08)',
+    },
+    warn: {
+      background: 'rgba(249,115,22,0.13)',
+      color: 'rgba(253,186,116,0.95)',
+      border: '1px solid rgba(249,115,22,0.28)',
+    },
+    good: {
+      background: 'rgba(34,197,94,0.13)',
+      color: 'rgba(134,239,172,0.95)',
+      border: '1px solid rgba(34,197,94,0.28)',
+    },
+  } as const;
+
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em]"
+      style={stylesByTone[tone]}
+    >
+      {children}
+    </span>
+  );
+}
+
+async function fetchReconciliationState(imageId: string, signal?: AbortSignal): Promise<ReconciliationResponse> {
+  const response = await fetch(`/api/images/${imageId}/reconciliation`, {
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to load reconciliation state');
+  }
+
+  const payload = (await response.json()) as ReconciliationResponse;
+  return {
+    claims: Array.isArray(payload.claims) ? payload.claims : [],
+    conflicts: Array.isArray(payload.conflicts) ? payload.conflicts : [],
+  };
+}
+
+function MemoryReconciliationPanel({ imageId }: { imageId: string }) {
+  const [reconciliation, setReconciliation] = useState<ReconciliationResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const [lastRefreshResult, setLastRefreshResult] = useState<ReconciliationRefreshResponse | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+
+    async function loadInitial() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const nextReconciliation = await fetchReconciliationState(imageId, controller.signal);
+
+        if (!cancelled) {
+          setReconciliation(nextReconciliation);
+        }
+      } catch (loadError) {
+        if (cancelled || (loadError instanceof DOMException && loadError.name === 'AbortError')) {
+          return;
+        }
+
+        setError(loadError instanceof Error ? loadError.message : 'Failed to load reconciliation state');
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadInitial();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [imageId]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setError('');
+    setLastRefreshResult(null);
+
+    try {
+      const response = await fetch(`/api/images/${imageId}/reconciliation`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to refresh reconciliation scan');
+      }
+
+      const payload = (await response.json()) as ReconciliationRefreshResponse;
+      setLastRefreshResult(payload);
+      setReconciliation(await fetchReconciliationState(imageId));
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : 'Failed to refresh reconciliation scan');
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  const conflicts = reconciliation?.conflicts || [];
+  const openConflicts = conflicts.filter((conflict) => conflict.status === 'open');
+  const claims = reconciliation?.claims || [];
+
+  return (
+    <WikiSection
+      icon={<GitCompareArrows size={17} />}
+      title="Memory Reconciliation"
+      complete={!loading && openConflicts.length === 0}
+    >
+      <WikiCard>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-white/30 text-xs font-medium uppercase tracking-wider">Different recollections</p>
+            <p className="text-white/70 text-sm leading-relaxed mt-1">
+              Ember compares contributor answers, stores factual claims, and flags details that may need a human check.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-white/80 disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
+          >
+            <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+            {refreshing ? 'Scanning' : 'Refresh scan'}
+          </button>
+        </div>
+
+        {lastRefreshResult ? (
+          <p className="text-white/35 text-xs mt-3">
+            Scanned {lastRefreshResult.processedMessages} answers, found {lastRefreshResult.claimsCreated} claims and {lastRefreshResult.openConflictCount} open conflicts.
+          </p>
+        ) : null}
+
+        {error ? (
+          <div
+            className="mt-4 rounded-xl px-3 py-2 text-xs text-orange-100"
+            style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.25)' }}
+          >
+            {error}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <p className="text-white/30 text-sm mt-4">Loading reconciliation state...</p>
+        ) : openConflicts.length > 0 ? (
+          <div className="mt-4 flex flex-col gap-3">
+            {openConflicts.map((conflict) => (
+              <div
+                key={conflict.id}
+                className="rounded-2xl p-4"
+                style={{ background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.22)' }}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <AlertTriangle size={15} className="text-orange-300" />
+                  <p className="text-white text-sm font-medium">
+                    {formatClaimType(conflict.claimType)}
+                    {conflict.subject ? `: ${conflict.subject}` : ''}
+                  </p>
+                  <ReconciliationPill tone="warn">
+                    {conflict.resolutionMode === 'visual_review' ? 'Visual review' : 'Ask humans'}
+                  </ReconciliationPill>
+                  {formatConfidence(conflict.confidence) ? (
+                    <ReconciliationPill>{formatConfidence(conflict.confidence)}</ReconciliationPill>
+                  ) : null}
+                </div>
+
+                <p className="text-white/65 text-sm leading-relaxed mt-3">{conflict.summary}</p>
+
+                <div className="mt-3 grid gap-2">
+                  {conflict.claims.map((item) => (
+                    <div
+                      key={`${conflict.id}-${item.claim.id}`}
+                      className="rounded-xl px-3 py-2"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-white/35 text-xs">{getSourceName(item.claim)}</span>
+                        <span className="text-white/25 text-[10px]">{formatLongDate(item.claim.createdAt)}</span>
+                      </div>
+                      <p className="text-white text-sm mt-1">{item.claim.value}</p>
+                      {item.claim.rawText && item.claim.rawText !== item.claim.value ? (
+                        <p className="text-white/35 text-xs mt-1">{item.claim.rawText}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+
+                {conflict.outreachQuestion ? (
+                  <div
+                    className="mt-3 rounded-xl px-3 py-2"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.07)' }}
+                  >
+                    <p className="text-white/30 text-xs font-medium uppercase tracking-wider">Suggested clarification</p>
+                    <p className="text-white/70 text-sm mt-1">{conflict.outreachQuestion}</p>
+                  </div>
+                ) : null}
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-white/35"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    title="Outreach will be added in the next phase."
+                  >
+                    <Send size={12} />
+                    Ask contributors next
+                  </button>
+                  <button
+                    type="button"
+                    disabled
+                    className="rounded-full px-3 py-1.5 text-xs font-medium text-white/35"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    title="Manual resolution will be added in the next phase."
+                  >
+                    Keep both / resolve next
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div
+            className="mt-4 rounded-2xl p-4"
+            style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={15} className="text-emerald-300" />
+              <p className="text-white text-sm font-medium">No open conflicts found.</p>
+            </div>
+            <p className="text-white/45 text-xs mt-2">
+              {claims.length > 0
+                ? `${claims.length} memory claims are currently tracked for this Ember.`
+                : 'Run a scan after contributors add more structured memory details.'}
+            </p>
+          </div>
+        )}
+      </WikiCard>
+    </WikiSection>
+  );
+}
+
 const TAG_COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
 
 export default function KipemberWikiContent({
@@ -843,6 +1193,8 @@ export default function KipemberWikiContent({
           )}
         </WikiCard>
       </WikiSection>
+
+      {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}
 
       <WikiSection
         icon={<History size={17} />}
