@@ -66,9 +66,11 @@ function AudioPlayer({ src }: { src: string }) {
 export default function OwnerFlow({
   imageId,
   onConversationStateChange,
+  onExpand,
 }: {
   imageId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
+  onExpand?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [welcomeBack, setWelcomeBack] = useState('');
@@ -81,6 +83,7 @@ export default function OwnerFlow({
   const [error, setError] = useState('');
   const [hasPhoneNumber, setHasPhoneNumber] = useState<boolean | null>(null);
   const [isCalling, setIsCalling] = useState(false);
+  const hasExpandedRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const transcriptRef = useRef('');
@@ -109,6 +112,7 @@ export default function OwnerFlow({
               "Welcome back! I'm here whenever you're ready.",
             ];
             setWelcomeBack(picks[Math.floor(Math.random() * picks.length)]);
+            if (!hasExpandedRef.current) { hasExpandedRef.current = true; onExpand?.(); }
           }
         }
       } catch {
@@ -341,7 +345,7 @@ export default function OwnerFlow({
           <ImagePlus size={18} />
         </button>
         <div className="relative min-w-0 flex-1">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Chat with ember about this memory..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
+          <input type="text" value={input} onChange={(e) => { setInput(e.target.value); if (e.target.value && !hasExpandedRef.current) { hasExpandedRef.current = true; onExpand?.(); } }} placeholder="Chat with ember about this memory..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
           <button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} disabled={isSending} className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer" style={{ color: isRecording ? 'white' : 'rgba(255,255,255,0.5)', background: isRecording ? 'rgba(249,115,22,0.95)' : 'transparent' }} aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}>
             <Mic size={15} />
           </button>
