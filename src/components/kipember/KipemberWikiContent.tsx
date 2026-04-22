@@ -943,7 +943,7 @@ export default function KipemberWikiContent({
         complete={Boolean(detail?.originalName || visualAttachments.length)}
       >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Ember Image</p>
+          <p className="text-white/30 text-xs font-medium mb-2">Ember Cover Photo</p>
           <div className="flex items-start gap-3">
             <div
               className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0"
