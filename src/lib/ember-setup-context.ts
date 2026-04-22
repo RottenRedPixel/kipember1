@@ -132,6 +132,22 @@ export async function loadEmberSetupContext(imageId: string) {
               id: true,
               callSummary: true,
               createdAt: true,
+              emberSession: {
+                select: {
+                  messages: {
+                    where: { role: 'user', questionType: { not: null } },
+                    orderBy: { createdAt: 'asc' },
+                    select: {
+                      id: true,
+                      questionType: true,
+                      question: true,
+                      content: true,
+                      source: true,
+                      createdAt: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -154,7 +170,10 @@ export async function loadEmberSetupContext(imageId: string) {
   );
   const confirmedLocation = parseConfirmedLocationContext(image.analysis?.metadataJson);
   const contributorMemories = image.contributors.flatMap((contributor) =>
-    (contributor.emberSession?.messages || []).map((message) => ({
+    [
+      ...(contributor.emberSession?.messages || []),
+      ...contributor.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
+    ].map((message) => ({
       id: message.id,
       contributorId: contributor.id,
       contributorUserId: contributor.user?.id || contributor.userId || null,

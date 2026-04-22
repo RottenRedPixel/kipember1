@@ -1,10 +1,15 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { Prisma } from '@/generated/prisma/client';
 import { requireApiUser } from '@/lib/auth-server';
 import { retriever } from '@/lib/context-retrieval';
 import { isFeatureEnabled, renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
+import {
+  contributorChatSessionIdentity,
+  emberSessionParticipantWhere,
+  ensureEmberSession,
+  type EmberParticipantType,
+} from '@/lib/ember-sessions';
 import { getImageAccessType } from '@/lib/ember-access';
 import { chat } from '@/lib/claude';
 import { getAskCaptureModel, getConfiguredOpenAIModel, getOpenAIClient } from '@/lib/openai';
@@ -169,10 +174,6 @@ function getStoredQuestion(questionType: AskMemoryTopic) {
     : 'Additional detail shared in Ask Ember';
 }
 
-function isUniqueConstraintError(error: unknown) {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
-}
-
 async function analyzeAskMemoryCapture({
   context, recentTurns, message,
 }: {
@@ -230,77 +231,78 @@ async function analyzeAskMemoryCapture({
 }
 
 async function ensureContributorSession(contributorId: string, imageId: string) {
-  const existing = await prisma.emberSession.findUnique({ where: { contributorId } });
-  if (existing) return existing;
+  const contributor = await prisma.contributor.findUnique({
+    where: { id: contributorId },
+    include: {
+      image: {
+        select: {
+          ownerId: true,
+        },
+      },
+    },
+  });
 
-  try {
-    return await prisma.emberSession.create({
-      data: { imageId, contributorId, sessionType: 'chat', status: 'active', currentStep: 'followup' },
-    });
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) throw error;
-    const raced = await prisma.emberSession.findUnique({ where: { contributorId } });
-    if (!raced) throw error;
-    return raced;
+  if (!contributor) {
+    throw new Error('Contributor not found');
   }
+  if (contributor.imageId !== imageId) {
+    throw new Error('Contributor does not belong to this image');
+  }
+
+  const identity = contributorChatSessionIdentity(contributor);
+
+  return ensureEmberSession({
+    ...identity,
+    contributorId,
+    userId: identity.participantType === 'owner' ? contributor.userId : null,
+    status: 'active',
+    currentStep: 'followup',
+  });
+}
+
+async function resolveUserChatParticipant({
+  imageId,
+  userId,
+}: {
+  imageId: string;
+  userId: string;
+}) {
+  const image = await prisma.image.findUnique({
+    where: { id: imageId },
+    select: {
+      ownerId: true,
+      contributors: {
+        where: { userId },
+        select: { id: true },
+        take: 1,
+      },
+    },
+  });
+
+  const participantType: EmberParticipantType =
+    image?.ownerId === userId
+      ? 'owner'
+      : image?.contributors.length
+        ? 'contributor'
+        : 'guest';
+
+  return {
+    imageId,
+    sessionType: 'chat' as const,
+    participantType,
+    participantId: userId,
+  };
 }
 
 async function ensureChatSession({ browserId, imageId, userId }: { browserId: string; imageId: string; userId: string }) {
-  const existingUserSession = await prisma.emberSession.findUnique({
-    where: { userId_imageId: { userId, imageId } },
+  const participant = await resolveUserChatParticipant({ imageId, userId });
+
+  return ensureEmberSession({
+    ...participant,
+    browserId,
+    userId,
+    status: 'active',
   });
-  if (existingUserSession) return existingUserSession;
-
-  try {
-    return await prisma.emberSession.create({
-      data: { browserId, imageId, userId, sessionType: 'chat', status: 'active' },
-    });
-  } catch (error) {
-    if (!isUniqueConstraintError(error)) throw error;
-
-    const racedUserSession = await prisma.emberSession.findUnique({
-      where: { userId_imageId: { userId, imageId } },
-    });
-    if (racedUserSession) return racedUserSession;
-
-    const existingBrowserSession = await prisma.emberSession.findUnique({
-      where: { browserId_imageId: { browserId, imageId } },
-    });
-
-    if (existingBrowserSession) {
-      if (existingBrowserSession.userId === userId) return existingBrowserSession;
-
-      if (!existingBrowserSession.userId) {
-        try {
-          return await prisma.emberSession.update({
-            where: { id: existingBrowserSession.id },
-            data: { userId },
-          });
-        } catch (updateError) {
-          if (!isUniqueConstraintError(updateError)) throw updateError;
-          const racedUpdated = await prisma.emberSession.findUnique({
-            where: { userId_imageId: { userId, imageId } },
-          });
-          if (racedUpdated) return racedUpdated;
-          throw updateError;
-        }
-      }
-    }
-
-    const replacementBrowserId = randomUUID();
-    try {
-      return await prisma.emberSession.create({
-        data: { browserId: replacementBrowserId, imageId, userId, sessionType: 'chat', status: 'active' },
-      });
-    } catch (retryError) {
-      if (!isUniqueConstraintError(retryError)) throw retryError;
-      const finalUserSession = await prisma.emberSession.findUnique({
-        where: { userId_imageId: { userId, imageId } },
-      });
-      if (finalUserSession) return finalUserSession;
-      throw retryError;
-    }
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -443,9 +445,12 @@ export async function GET(request: NextRequest) {
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;
+    const participant = await resolveUserChatParticipant({ imageId, userId });
 
     const [session, contributor] = await Promise.all([
-      prisma.emberSession.findUnique({ where: { userId_imageId: { userId, imageId } } }),
+      prisma.emberSession.findUnique({
+        where: emberSessionParticipantWhere(participant),
+      }),
       prisma.contributor.findFirst({
         where: { imageId, userId },
         select: {
@@ -456,6 +461,24 @@ export async function GET(request: NextRequest) {
                 where: { source: 'voice', questionType: { not: null } },
                 orderBy: { createdAt: 'asc' },
                 select: { id: true, question: true, content: true, questionType: true, createdAt: true },
+              },
+            },
+          },
+          voiceCalls: {
+            where: {
+              emberSessionId: {
+                not: null,
+              },
+            },
+            select: {
+              emberSession: {
+                select: {
+                  messages: {
+                    where: { source: 'voice', questionType: { not: null } },
+                    orderBy: { createdAt: 'asc' },
+                    select: { id: true, question: true, content: true, questionType: true, createdAt: true },
+                  },
+                },
               },
             },
           },
@@ -496,7 +519,10 @@ export async function GET(request: NextRequest) {
       createdAt: entry.createdAt.toISOString(),
     }));
 
-    const voiceMessages = contributor?.emberSession?.messages ?? [];
+    const voiceMessages = [
+      ...(contributor?.emberSession?.messages ?? []),
+      ...(contributor?.voiceCalls.flatMap((call) => call.emberSession?.messages ?? []) ?? []),
+    ];
     const voiceEntries: MergedEntry[] = voiceMessages.flatMap((msg) => {
       const matchedClip = clips.find(
         (clip) => clip.audioUrl && clip.quote.trim().length > 10 && msg.content.includes(clip.quote.trim().slice(0, 40))

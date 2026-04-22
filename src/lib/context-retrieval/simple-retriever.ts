@@ -39,6 +39,17 @@ export class SimpleRetriever implements ContextRetriever {
                 },
               },
             },
+            voiceCalls: {
+              include: {
+                emberSession: {
+                  include: {
+                    messages: {
+                      where: { role: 'user', questionType: { not: null } },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -101,7 +112,12 @@ export class SimpleRetriever implements ContextRetriever {
     // Add raw responses
     const responses: string[] = [];
     for (const contributor of image.contributors) {
-      for (const message of contributor.emberSession?.messages || []) {
+      const contributorMessages = [
+        ...(contributor.emberSession?.messages || []),
+        ...contributor.voiceCalls.flatMap((call) => call.emberSession?.messages || []),
+      ];
+
+      for (const message of contributorMessages) {
         responses.push(
           `[${contributor.name || 'Anonymous'}] ${(message.questionType || '').toUpperCase()}\n` +
             `Q: ${message.question || message.questionType || ''}\n` +

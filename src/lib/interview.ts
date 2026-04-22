@@ -1,6 +1,11 @@
 import { prisma } from './db';
-import { chat, generateFollowUpQuestion } from './claude';
+import { generateFollowUpQuestion } from './claude';
 import { sendSMS } from './twilio';
+import {
+  contributorChatSessionIdentity,
+  emberSessionParticipantWhere,
+  ensureEmberSession,
+} from './ember-sessions';
 
 const INTERVIEW_STEPS = [
   'greeting',
@@ -50,19 +55,14 @@ export async function startConversation(contributorId: string): Promise<string> 
   if (!contributor) throw new Error('Contributor not found');
   if (!contributor.phoneNumber) throw new Error('Contributor does not have a phone number');
 
-  let session = await prisma.emberSession.findUnique({ where: { contributorId } });
-
-  if (!session) {
-    session = await prisma.emberSession.create({
-      data: {
-        imageId: contributor.imageId,
-        contributorId,
-        sessionType: 'chat',
-        status: 'pending',
-        currentStep: 'greeting',
-      },
-    });
-  }
+  const identity = contributorChatSessionIdentity(contributor);
+  const session = await ensureEmberSession({
+    ...identity,
+    contributorId,
+    userId: identity.participantType === 'owner' ? contributor.userId : null,
+    status: 'pending',
+    currentStep: 'greeting',
+  });
 
   const greeting = contributor.name
     ? `Hi ${contributor.name}! ${STEP_QUESTIONS.greeting}`
@@ -89,11 +89,6 @@ export async function handleIncomingMessage(
   const contributor = await prisma.contributor.findFirst({
     where: { phoneNumber: { contains: normalizedPhone } },
     include: {
-      emberSession: {
-        include: {
-          messages: { orderBy: { createdAt: 'asc' } },
-        },
-      },
       image: true,
     },
   });
@@ -102,18 +97,25 @@ export async function handleIncomingMessage(
     return "Sorry, I couldn't find your conversation. Please contact the person who invited you.";
   }
 
-  let session = contributor.emberSession;
+  const identity = contributorChatSessionIdentity(contributor);
+  let session = await prisma.emberSession.findUnique({
+    where: emberSessionParticipantWhere(identity),
+    include: {
+      messages: { orderBy: { createdAt: 'asc' } },
+    },
+  });
 
   if (!session) {
-    session = await prisma.emberSession.create({
-      data: {
-        imageId: contributor.imageId,
-        contributorId: contributor.id,
-        sessionType: 'chat',
-        status: 'pending',
-        currentStep: 'greeting',
-      },
-      include: { messages: true },
+    const created = await ensureEmberSession({
+      ...identity,
+      contributorId: contributor.id,
+      userId: identity.participantType === 'owner' ? contributor.userId : null,
+      status: 'pending',
+      currentStep: 'greeting',
+    });
+    session = await prisma.emberSession.findUniqueOrThrow({
+      where: { id: created.id },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
   }
 
