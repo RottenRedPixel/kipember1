@@ -615,7 +615,7 @@ export default function HomeScreen({
               opacity: photoOpacity,
               transition: 'opacity 0.22s ease',
             } : (() => {
-              const hasCrop = selectedImage?.cropX != null && selectedImage?.cropY != null;
+              const hasCrop = displayImage?.cropX != null && displayImage?.cropY != null;
               return {
                 top: 56,
                 bottom: 72,
@@ -625,7 +625,7 @@ export default function HomeScreen({
                 height: 'calc(100% - 128px)',
                 objectFit: hasCrop ? 'cover' : (photoIsLandscape ? 'contain' : 'cover'),
                 objectPosition: hasCrop
-                  ? `${selectedImage!.cropX}% ${selectedImage!.cropY}%`
+                  ? `${displayImage!.cropX}% ${displayImage!.cropY}%`
                   : 'center center',
                 opacity: photoOpacity,
                 transition: 'opacity 0.22s ease',
