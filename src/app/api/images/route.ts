@@ -113,6 +113,25 @@ export async function POST(request: NextRequest) {
       id: image.id,
       mediaType: persistedMedia.mediaType,
       warning: persistedMedia.warning ?? null,
+      image: {
+        id: image.id,
+        filename: image.filename,
+        mediaType: image.mediaType,
+        posterFilename: image.posterFilename,
+        durationSeconds: image.durationSeconds,
+        originalName: image.originalName,
+        title: image.title,
+        description: image.description,
+        createdAt: image.createdAt,
+        capturedAt: null,
+        shareToNetwork: image.shareToNetwork,
+        accessType: 'owner',
+        photoCount: 1,
+        contributorCount: 0,
+        hasWiki: false,
+        hasLocation: false,
+        hasVoiceCall: false,
+      },
     });
   } catch (error) {
     console.error('Upload error:', error);

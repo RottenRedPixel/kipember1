@@ -78,6 +78,14 @@ type ImageDetail = ImageSummary & {
   } | null;
 };
 
+type CreateEmberResponse = {
+  id?: string;
+  mediaType?: string;
+  warning?: string | null;
+  error?: string;
+  image?: ImageSummary;
+};
+
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 72 72" fill="white">
@@ -356,7 +364,7 @@ export default function HomeScreen({
       return;
     }
 
-    void fetch('/api/images')
+    void fetch('/api/images', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) {
           return;
@@ -502,9 +510,16 @@ export default function HomeScreen({
 
     try {
       const response = await fetch('/api/images', { method: 'POST', body: formData });
-      const payload = await response.json().catch(() => ({}));
+      const payload = (await response.json().catch(() => ({}))) as CreateEmberResponse;
       if (!response.ok || typeof payload?.id !== 'string') {
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
+      }
+      const createdSummary = payload.image;
+      if (createdSummary) {
+        setImages((current) => [
+          createdSummary,
+          ...current.filter((image) => image.id !== createdSummary.id),
+        ]);
       }
       setCreatedImageId(payload.id);
     } catch (error) {

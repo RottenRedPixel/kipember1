@@ -74,6 +74,15 @@ const VISUAL_REVIEW_CLAIM_TYPES = new Set([
   'activity',
 ]);
 
+const CONFLICT_ELIGIBLE_CLAIM_TYPES = new Set([
+  'event_type',
+  'date_time',
+  'location',
+  'relationship',
+  'clothing_color',
+  'object_count',
+]);
+
 function compactLines(lines: Array<string | null | undefined>) {
   return lines
     .map((value) => (typeof value === 'string' ? value.trim() : ''))
@@ -201,6 +210,27 @@ function claimSourceLabel(claim: { metadataJson: string | null }) {
     : 'Someone';
 }
 
+function claimSourceKey(claim: {
+  contributorId: string | null;
+  userId: string | null;
+  sourceSessionId: string | null;
+  metadataJson: string | null;
+}) {
+  if (claim.userId) {
+    return `user:${claim.userId}`;
+  }
+
+  if (claim.contributorId) {
+    return `contributor:${claim.contributorId}`;
+  }
+
+  if (claim.sourceSessionId) {
+    return `session:${claim.sourceSessionId}`;
+  }
+
+  return `label:${normalizeComparableValue(claimSourceLabel(claim))}`;
+}
+
 function summarizeClaimValues(
   claims: Array<{
     value: string;
@@ -272,32 +302,39 @@ function chooseResolutionMode(
 async function createConflictForClaim(
   claim: Awaited<ReturnType<typeof prisma.memoryClaim.create>>
 ) {
-  const otherClaims = await prisma.memoryClaim.findMany({
+  if (!CONFLICT_ELIGIBLE_CLAIM_TYPES.has(claim.claimType)) {
+    return null;
+  }
+
+  const relatedClaims = await prisma.memoryClaim.findMany({
     where: {
       imageId: claim.imageId,
       claimType: claim.claimType,
       subject: claim.subject,
       status: 'active',
-      id: {
-        not: claim.id,
-      },
-      normalizedValue: {
-        not: claim.normalizedValue,
-      },
     },
     orderBy: {
       createdAt: 'asc',
     },
-    take: 20,
   });
 
-  if (otherClaims.length === 0) {
-    return null;
+  const dedupedClaims = new Map<string, (typeof relatedClaims)[number]>();
+  for (const relatedClaim of relatedClaims) {
+    const key = [
+      claimSourceKey(relatedClaim),
+      relatedClaim.normalizedValue,
+    ].join('|');
+
+    if (!dedupedClaims.has(key)) {
+      dedupedClaims.set(key, relatedClaim);
+    }
   }
 
-  const claims = [claim, ...otherClaims];
+  const claims = Array.from(dedupedClaims.values());
   const distinctValues = new Set(claims.map((item) => item.normalizedValue));
-  if (distinctValues.size < 2) {
+  const distinctSources = new Set(claims.map((item) => claimSourceKey(item)));
+
+  if (distinctValues.size < 2 || distinctSources.size < 2) {
     return null;
   }
 
@@ -351,6 +388,15 @@ async function createConflictForClaim(
       metadataJson: stringifyJson({
         distinctValues: Array.from(distinctValues),
       }),
+    },
+  });
+
+  await prisma.memoryConflictClaim.deleteMany({
+    where: {
+      conflictId: conflict.id,
+      claimId: {
+        notIn: claims.map((item) => item.id),
+      },
     },
   });
 
@@ -475,8 +521,20 @@ export async function reconcileEmberMessage(messageId: string) {
     }
   );
   const extractedClaims = parseExtractedClaims(response);
+  const uniqueExtractedClaims = Array.from(
+    new Map(
+      extractedClaims.map((claim) => [
+        [
+          claim.claimType,
+          claim.subject,
+          claim.normalizedValue,
+        ].join('|'),
+        claim,
+      ])
+    ).values()
+  );
 
-  if (extractedClaims.length === 0) {
+  if (uniqueExtractedClaims.length === 0) {
     return {
       claimsCreated: 0,
       conflictsCreated: 0,
@@ -484,7 +542,7 @@ export async function reconcileEmberMessage(messageId: string) {
   }
 
   const createdClaims = await Promise.all(
-    extractedClaims.map((claim) =>
+    uniqueExtractedClaims.map((claim) =>
       prisma.memoryClaim.create({
         data: {
           imageId: image.id,
