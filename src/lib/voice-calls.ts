@@ -14,6 +14,7 @@ import {
 } from '@/lib/voice-call-clips';
 import { maybeNotifyFailedCall } from '@/lib/voice-call-notifications';
 import { generateWikiForImage } from '@/lib/wiki-generator';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 
 const QUESTION_PROMPTS = {
   context: 'Can you describe what you see or what memory this image captures for you?',
@@ -606,16 +607,27 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     extracted.isComplete || hasInterviewResponses || hasInterviewSummary;
 
   if (hasInterviewResponses) {
-    await prisma.emberMessage.createMany({
-      data: extracted.responses.map((item) => ({
-        sessionId: session.id,
-        role: 'user',
-        content: item.answer,
-        source: 'voice',
-        questionType: item.questionType,
-        question: QUESTION_PROMPTS[item.questionType],
-      })),
-    });
+    const createdMessages = await Promise.all(
+      extracted.responses.map((item) =>
+        prisma.emberMessage.create({
+          data: {
+            sessionId: session.id,
+            role: 'user',
+            content: item.answer,
+            source: 'voice',
+            questionType: item.questionType,
+            question: QUESTION_PROMPTS[item.questionType],
+          },
+        })
+      )
+    );
+
+    for (const message of createdMessages) {
+      await reconcileEmberMessageSafely(
+        message.id,
+        'Voice interview memory reconciliation'
+      );
+    }
   }
 
   await prisma.emberSession.update({

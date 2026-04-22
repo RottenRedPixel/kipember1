@@ -15,6 +15,7 @@ import { chat } from '@/lib/claude';
 import { getAskCaptureModel, getConfiguredOpenAIModel, getOpenAIClient } from '@/lib/openai';
 import { ensureUserContributorForImage } from '@/lib/owner-contributor';
 import { INTERVIEW_QUESTIONS, isInterviewQuestionType } from '@/lib/interview-flow';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 
 const COOKIE_NAME = 'mw_photo_chat_v2';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -391,7 +392,7 @@ export async function POST(request: NextRequest) {
 
         if (!memorySummary) throw new Error('Memory capture indicated storage without a summary');
 
-        await prisma.emberMessage.create({
+        const memoryMessage = await prisma.emberMessage.create({
           data: {
             sessionId: contributorSessionId,
             role: 'user',
@@ -401,6 +402,10 @@ export async function POST(request: NextRequest) {
             questionType: memoryTopic,
           },
         });
+        await reconcileEmberMessageSafely(
+          memoryMessage.id,
+          'Ask Ember memory reconciliation'
+        );
 
         storedMemory = { saved: true, summary: memorySummary, topic: memoryTopic };
       }
