@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { chat } from '@/lib/claude';
 import { renderPromptTemplate } from '@/lib/control-plane';
+import {
+  emberSessionParticipantWhere,
+  ensureEmberSession,
+} from '@/lib/ember-sessions';
 import { isGuestUserEmail } from '@/lib/guest-embers';
 import {
   buildInterviewKnownContextFromImage,
@@ -256,33 +260,38 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
 
+    const sessionIdentity = {
+      imageId: contributor.image.id,
+      sessionType: 'chat' as const,
+      participantType: 'contributor' as const,
+      participantId: contributor.id,
+    };
+
     // Create session if doesn't exist
-    let session = contributor.emberSession;
+    let session = await prisma.emberSession.findUnique({
+      where: emberSessionParticipantWhere(sessionIdentity),
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
     let welcomeMessage: string | null = null;
     if (!session) {
-      try {
-        session = await prisma.emberSession.create({
-          data: {
-            contributorId: contributor.id,
-            imageId: contributor.image.id,
-            sessionType: 'chat',
-            status: 'active',
-            currentStep: 'context',
+      const created = await ensureEmberSession({
+        ...sessionIdentity,
+        contributorId: contributor.id,
+        status: 'active',
+        currentStep: 'context',
+      });
+      session = await prisma.emberSession.findUniqueOrThrow({
+        where: { id: created.id },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'asc' },
           },
-          include: {
-            messages: true,
-          },
-        });
-      } catch (e: unknown) {
-        if ((e as { code?: string }).code === 'P2002') {
-          session = await prisma.emberSession.findUnique({
-            where: { contributorId: contributor.id },
-            include: { messages: { orderBy: { createdAt: 'asc' } } },
-          });
-        } else {
-          throw e;
-        }
-      }
+        },
+      });
 
       if (session) {
         // Add welcome message
@@ -334,7 +343,7 @@ export async function POST(
       }
 
       const latestAssistantMessage =
-        contributor.emberSession?.messages
+        session.messages
           ?.slice()
           .reverse()
           .find((entry) => entry.role === 'assistant')?.content || welcomeMessage;

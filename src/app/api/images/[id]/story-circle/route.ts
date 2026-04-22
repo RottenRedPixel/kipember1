@@ -9,6 +9,11 @@ import {
   isInterviewQuestionType,
 } from '@/lib/interview-flow';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
+import {
+  contributorChatSessionIdentity,
+  emberSessionParticipantWhere,
+  ensureEmberSession,
+} from '@/lib/ember-sessions';
 import { prisma } from '@/lib/db';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 
@@ -17,17 +22,18 @@ function getFollowupPrompt() {
 }
 
 async function loadOwnerStoryCircleContributor(imageId: string, userId: string) {
-  const contributor = await ensureOwnerContributorForImage(imageId, userId);
-  if (!contributor) {
+  const ownerContributor = await ensureOwnerContributorForImage(imageId, userId);
+  if (!ownerContributor) {
     return null;
   }
 
-  return prisma.contributor.findUnique({
-    where: { id: contributor.id },
+  const contributor = await prisma.contributor.findUnique({
+    where: { id: ownerContributor.id },
     include: {
       image: {
         select: {
           id: true,
+          ownerId: true,
           originalName: true,
           title: true,
           description: true,
@@ -60,24 +66,36 @@ async function loadOwnerStoryCircleContributor(imageId: string, userId: string) 
           },
         },
       },
-      emberSession: {
-        include: {
-          messages: {
-            orderBy: { createdAt: 'asc' },
-            select: {
-              id: true,
-              role: true,
-              content: true,
-              source: true,
-              question: true,
-              questionType: true,
-              createdAt: true,
-            },
-          },
+    },
+  });
+
+  if (!contributor) {
+    return null;
+  }
+
+  const identity = contributorChatSessionIdentity(contributor);
+  const emberSession = await prisma.emberSession.findUnique({
+    where: emberSessionParticipantWhere(identity),
+    include: {
+      messages: {
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          role: true,
+          content: true,
+          source: true,
+          question: true,
+          questionType: true,
+          createdAt: true,
         },
       },
     },
   });
+
+  return {
+    ...contributor,
+    emberSession,
+  };
 }
 
 function buildStoryCircleState(
@@ -209,27 +227,18 @@ export async function POST(
 
     let session = contributor.emberSession;
     if (!session) {
-      try {
-        session = await prisma.emberSession.create({
-          data: {
-            contributorId: contributor.id,
-            imageId: contributor.image.id,
-            sessionType: 'chat',
-            status: 'active',
-            currentStep: questionType === 'followup' ? 'completed' : questionType,
-          },
-          include: { messages: true },
-        });
-      } catch (e: unknown) {
-        if ((e as { code?: string }).code === 'P2002') {
-          session = await prisma.emberSession.findUnique({
-            where: { contributorId: contributor.id },
-            include: { messages: { orderBy: { createdAt: 'asc' } } },
-          });
-        } else {
-          throw e;
-        }
-      }
+      const identity = contributorChatSessionIdentity(contributor);
+      const created = await ensureEmberSession({
+        ...identity,
+        contributorId: contributor.id,
+        userId: identity.participantType === 'owner' ? contributor.userId : null,
+        status: 'active',
+        currentStep: questionType === 'followup' ? 'completed' : questionType,
+      });
+      session = await prisma.emberSession.findUniqueOrThrow({
+        where: { id: created.id },
+        include: { messages: { orderBy: { createdAt: 'asc' } } },
+      });
     }
 
     if (!session) {

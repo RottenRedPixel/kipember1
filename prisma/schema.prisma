@@ -120,8 +120,8 @@ model EmberSession {
   contributorId    String?        @unique
   contributor      Contributor?   @relation(fields: [contributorId], references: [id], onDelete: Cascade)
   browserId        String?
-  participantType  String?                            // owner | contributor | guest
-  participantId    String?                            // user, contributor, or browser identifier for session grouping
+  participantType  String                             // owner | contributor | guest
+  participantId    String                             // user, contributor, or browser identifier for session grouping
   sessionType      String         @default("chat")    // chat | call
   status           String         @default("active")  // active, completed
   currentStep      String?                            // interview state: greeting, context, who, what, when, where, why, how, followup, closing
@@ -134,11 +134,11 @@ model EmberSession {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  @@unique([userId, imageId])
-  @@unique([browserId, imageId])
   @@unique([imageId, sessionType, participantType, participantId])
   @@index([imageId])
   @@index([userId])
+  @@index([userId, imageId])
+  @@index([browserId, imageId])
   @@index([sessionType, imageId])
   @@index([participantType, participantId])
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
 import { getImageAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
+import { contributorChatSessionIdentity, ensureEmberSession } from '@/lib/ember-sessions';
 import { persistUploadedMedia } from '@/lib/media-upload';
 import { ensureUserContributorForImage } from '@/lib/owner-contributor';
 import {
@@ -51,19 +52,33 @@ async function transcribeUploadedAudio(file: File) {
 }
 
 async function ensureContributorSession(contributorId: string, imageId: string) {
-  const existing = await prisma.emberSession.findUnique({ where: { contributorId } });
-  if (existing) return existing;
+  const contributor = await prisma.contributor.findUnique({
+    where: { id: contributorId },
+    include: {
+      image: {
+        select: {
+          ownerId: true,
+        },
+      },
+    },
+  });
 
-  try {
-    return await prisma.emberSession.create({
-      data: { contributorId, imageId, sessionType: 'chat', status: 'active', currentStep: 'followup' },
-    });
-  } catch (e: unknown) {
-    if ((e as { code?: string }).code === 'P2002') {
-      return prisma.emberSession.findUnique({ where: { contributorId } });
-    }
-    throw e;
+  if (!contributor) {
+    throw new Error('Contributor not found');
   }
+  if (contributor.imageId !== imageId) {
+    throw new Error('Contributor does not belong to this image');
+  }
+
+  const identity = contributorChatSessionIdentity(contributor);
+
+  return ensureEmberSession({
+    ...identity,
+    contributorId,
+    userId: identity.participantType === 'owner' ? contributor.userId : null,
+    status: 'active',
+    currentStep: 'followup',
+  });
 }
 
 export async function POST(request: NextRequest) {

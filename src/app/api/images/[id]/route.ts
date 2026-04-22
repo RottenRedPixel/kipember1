@@ -584,9 +584,10 @@ export async function GET(
     }> = [];
     try {
       const emberSessions = await prisma.emberSession.findMany({
-        where: { imageId: id, userId: { not: null } },
+        where: { imageId: id, sessionType: 'chat' },
         include: {
           user: { select: { id: true, name: true, email: true, avatarFilename: true } },
+          contributor: { select: { id: true, name: true, email: true } },
           messages: { orderBy: { createdAt: 'asc' } },
         },
       });
@@ -594,7 +595,12 @@ export async function GET(
       chatBlocks = emberSessions
         .filter((session) => session.messages.length > 0)
         .map((session) => {
-          const personName = session.user?.name || session.user?.email || 'Guest';
+          const personName =
+            session.user?.name ||
+            session.contributor?.name ||
+            session.user?.email ||
+            session.contributor?.email ||
+            (session.participantType === 'guest' ? 'Guest' : 'Contributor');
           const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
           const messages = session.messages.map((msg) => ({
             role: msg.role,

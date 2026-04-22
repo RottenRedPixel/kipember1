@@ -2,6 +2,10 @@ import type Retell from 'retell-sdk';
 import { chat } from '@/lib/claude';
 import { renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
+import {
+  contributorParticipant,
+  ensureEmberSession,
+} from '@/lib/ember-sessions';
 import { getEmberTitle } from '@/lib/ember-title';
 import { createRetellPhoneCall, createRetellWebCall, retrieveRetellCall } from '@/lib/retell';
 import {
@@ -200,7 +204,9 @@ type CallSessionContributor = {
   id: string;
   imageId: string;
   userId: string | null;
-  imageOwnerId: string;
+  image: {
+    ownerId: string;
+  };
 };
 
 function toTimestamp(value: Date | string | null | undefined): number | null {
@@ -380,12 +386,6 @@ async function buildPriorMemoryContext({
   };
 }
 
-function getCallParticipantType(contributor: CallSessionContributor) {
-  return contributor.userId && contributor.userId === contributor.imageOwnerId
-    ? 'owner'
-    : 'contributor';
-}
-
 async function ensureCallEmberSession({
   contributor,
   emberSessionId,
@@ -403,47 +403,16 @@ async function ensureCallEmberSession({
     }
   }
 
-  const participantType = getCallParticipantType(contributor);
-  const participantId = contributor.id;
+  const participant = contributorParticipant(contributor);
 
-  const existingCallSession = await prisma.emberSession.findFirst({
-    where: {
-      imageId: contributor.imageId,
-      sessionType: 'call',
-      participantType,
-      participantId,
-    },
+  return ensureEmberSession({
+    imageId: contributor.imageId,
+    sessionType: 'call',
+    ...participant,
+    userId: participant.participantType === 'owner' ? contributor.userId : null,
+    status: 'active',
+    currentStep: 'context',
   });
-
-  if (existingCallSession) {
-    return existingCallSession;
-  }
-
-  try {
-    return await prisma.emberSession.create({
-      data: {
-        imageId: contributor.imageId,
-        participantType,
-        participantId,
-        sessionType: 'call',
-        currentStep: 'context',
-        status: 'active',
-      },
-    });
-  } catch (e: unknown) {
-    if ((e as { code?: string }).code === 'P2002') {
-      const race = await prisma.emberSession.findFirst({
-        where: {
-          imageId: contributor.imageId,
-          sessionType: 'call',
-          participantType,
-          participantId,
-        },
-      });
-      if (race) return race;
-    }
-    throw e;
-  }
 }
 
 function extractJsonObject(text: string): string {
@@ -607,7 +576,9 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
       id: voiceCall.contributorId,
       imageId: voiceCall.contributor.imageId,
       userId: voiceCall.contributor.userId,
-      imageOwnerId: voiceCall.contributor.image.ownerId,
+      image: {
+        ownerId: voiceCall.contributor.image.ownerId,
+      },
     },
     emberSessionId: voiceCall.emberSessionId,
   });
@@ -773,7 +744,9 @@ async function prepareVoiceCallContext(contributorId: string) {
       id: contributor.id,
       imageId: contributor.imageId,
       userId: contributor.userId,
-      imageOwnerId: contributor.image.ownerId,
+      image: {
+        ownerId: contributor.image.ownerId,
+      },
     },
   });
 
