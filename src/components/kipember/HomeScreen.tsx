@@ -855,7 +855,7 @@ export default function HomeScreen({
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
             borderTop: '1px solid var(--border-subtle)',
-            borderRadius: emberOpen ? '30px 30px 0 0' : undefined,
+            borderRadius: emberOpen ? '20px 20px 0 0' : undefined,
             transition: 'top 200ms ease',
           }}
         >
@@ -879,7 +879,7 @@ export default function HomeScreen({
               <Link
                 href={buildHomeHref({ view: 'full' })}
                 className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ border: '1.5px solid var(--border-btn)' }}
+                style={{}}
                 aria-label="Expand chat"
               >
                 <ChevronUp size={18} color="var(--text-secondary)" strokeWidth={1.8} />
@@ -889,7 +889,7 @@ export default function HomeScreen({
               <Link
                 href={buildHomeHref({ view: null })}
                 className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(255,255,255,0.15)' }}
+                style={{}}
                 aria-label="Collapse chat"
               >
                 <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
@@ -912,11 +912,13 @@ export default function HomeScreen({
             </Link>
           </div>
           {flow ? (
-            <WorkflowSlot
-              flow={flow}
-              imageId={selectedImageId}
-              onConversationStateChange={setHasConversationHistory}
-            />
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              <WorkflowSlot
+                flow={flow}
+                imageId={selectedImageId}
+                onConversationStateChange={setHasConversationHistory}
+              />
+            </div>
           ) : null}
         </div>
       ) : null}
