@@ -623,7 +623,7 @@ export default function HomeScreen({
                 right: 0,
                 width: '100%',
                 height: 'calc(100% - 128px)',
-                objectFit: (hasCrop ? 'cover' : (photoIsLandscape ? 'contain' : 'cover')) as const,
+                objectFit: (hasCrop ? 'cover' : (photoIsLandscape ? 'contain' : 'cover')) as 'cover' | 'contain',
                 objectPosition: hasCrop
                   ? `${displayImage!.cropX}% ${displayImage!.cropY}%`
                   : 'center center',
