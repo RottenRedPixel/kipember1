@@ -110,6 +110,30 @@ Action buttons at the bottom of a slider content area always split the full widt
 
 This ensures visual consistency across all sliders — a lone CTA is never full-width.
 
+### Slider Save button — dirty state rule
+The primary Save button is orange (`#f97316`) **only when the user has unsaved changes**. When no changes exist it renders as a muted dark button (`var(--bg-surface)` background, `1px solid var(--border-subtle)` border) and is disabled.
+
+```tsx
+// Pattern — compute isDirty, then apply conditionally:
+<button
+  type="button"
+  onClick={handleSave}
+  disabled={!isDirty}
+  style={{
+    background: isDirty ? '#f97316' : 'var(--bg-surface)',
+    border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+    minHeight: 44,
+    cursor: isDirty ? 'pointer' : 'default',
+  }}
+>
+  Save
+</button>
+```
+
+- `isDirty` compares **all editable fields** against the last-saved values (from `detail` or a `savedForm` snapshot), not just one field.
+- The button label is always just **"Save"** — never "Save Title", "Save Location", etc.
+- Applies to: Edit Title, Edit Snapshot, Edit Location, Edit Time & Date, and any future edit slider.
+
 Structure: constants file (actions map + icons map) → dynamic `[action]` route → slider page.
 
 - **Tend sliders** (`/tend/[action]`) — Add Content, View Wiki, Edit Snapshot, Tag People, Edit Title, Contributors, Settings

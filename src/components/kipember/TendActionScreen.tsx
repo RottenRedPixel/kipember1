@@ -9,7 +9,7 @@ declare global {
 }
 
 import Link from 'next/link';
-import { ChevronLeft, Lightbulb, MessageSquarePlus, Pencil, Phone, ShieldUser, UserRound, Users, X } from 'lucide-react';
+import { Calendar, ChevronLeft, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, ShieldUser, TicketSlash, UserRound, Users, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
@@ -361,6 +361,11 @@ export default function TendActionScreen({ action }: { action: string }) {
   const imageId = searchParams.get('id');
   const view = searchParams.get('view');
   const [detail, setDetail] = useState<TendDetail | null>(null);
+  const [cachedCoverUrl, setCachedCoverUrl] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const id = new URLSearchParams(window.location.search).get('id');
+    return id ? (sessionStorage.getItem(`cover-${id}`) ?? null) : null;
+  });
   const [selectedContributorDetail, setSelectedContributorDetail] = useState<ContributorDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
@@ -385,6 +390,10 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [locationCountry, setLocationCountry] = useState('');
   const [locationLatitude, setLocationLatitude] = useState('');
   const [locationLongitude, setLocationLongitude] = useState('');
+  const [savedLocationLabel, setSavedLocationLabel] = useState('');
+  const [savedLocationAddress, setSavedLocationAddress] = useState('');
+  const [savedLocationLat, setSavedLocationLat] = useState('');
+  const [savedLocationLng, setSavedLocationLng] = useState('');
   const [locationSaving, setLocationSaving] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
@@ -427,6 +436,11 @@ export default function TendActionScreen({ action }: { action: string }) {
 
   function applyDetail(payload: TendDetail) {
     setDetail(payload);
+    const url = getPreviewMediaUrl({ mediaType: payload.mediaType, filename: payload.filename, posterFilename: payload.posterFilename });
+    if (url && resolvedImageId) {
+      sessionStorage.setItem(`cover-${resolvedImageId}`, url);
+      setCachedCoverUrl(url);
+    }
     setTitleValue(payload.title || payload.originalName?.replace(/\.[^.]+$/, '') || '');
     setNetworkValue(Boolean(payload.shareToNetwork));
     setKeepPrivateValue(Boolean(payload.keepPrivate));
@@ -444,14 +458,22 @@ export default function TendActionScreen({ action }: { action: string }) {
     }
     // Populate location
     const loc = payload.analysis?.confirmedLocation;
-    setLocationLabel(loc?.label || '');
-    setLocationAddress(loc?.detail || '');
-    setLocationCityStateZip('');
-    setLocationCountry('');
+    const label = loc?.label || '';
+    const address = loc?.detail || '';
     const lat = payload.analysis?.latitude ?? loc?.latitude ?? null;
     const lng = payload.analysis?.longitude ?? loc?.longitude ?? null;
-    setLocationLatitude(lat != null ? String(lat) : '');
-    setLocationLongitude(lng != null ? String(lng) : '');
+    const latStr = lat != null ? String(lat) : '';
+    const lngStr = lng != null ? String(lng) : '';
+    setLocationLabel(label);
+    setLocationAddress(address);
+    setLocationCityStateZip('');
+    setLocationCountry('');
+    setLocationLatitude(latStr);
+    setLocationLongitude(lngStr);
+    setSavedLocationLabel(label);
+    setSavedLocationAddress(address);
+    setSavedLocationLat(latStr);
+    setSavedLocationLng(lngStr);
   }
 
   useEffect(() => {
@@ -487,8 +509,8 @@ export default function TendActionScreen({ action }: { action: string }) {
                 null;
               const addressSuggestion = suggestions.find((s) => s.kind === 'address') || null;
 
-              if (placeSuggestion) setLocationLabel(placeSuggestion.label);
-              if (addressSuggestion) setLocationAddress(addressSuggestion.label);
+              if (placeSuggestion) { setLocationLabel(placeSuggestion.label); setSavedLocationLabel(placeSuggestion.label); }
+              if (addressSuggestion) { setLocationAddress(addressSuggestion.label); setSavedLocationAddress(addressSuggestion.label); }
             })
             .catch(() => undefined);
         }
@@ -789,8 +811,18 @@ export default function TendActionScreen({ action }: { action: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      setStatus(response.ok ? 'Location saved.' : 'Failed to save location.');
-      if (response.ok) await refreshDetail();
+      if (response.ok) {
+        setSavedLocationLabel(locationLabel.trim());
+        setSavedLocationAddress(locationAddress.trim());
+        setSavedLocationLat(locationLatitude);
+        setSavedLocationLng(locationLongitude);
+        setLocationCityStateZip('');
+        setLocationCountry('');
+        setStatus('Location saved.');
+        await refreshDetail();
+      } else {
+        setStatus('Failed to save location.');
+      }
     } catch {
       setStatus('Failed to save location.');
     } finally {
@@ -1130,7 +1162,7 @@ export default function TendActionScreen({ action }: { action: string }) {
 
   const coverPhotoUrl = detail
     ? getPreviewMediaUrl({ mediaType: detail.mediaType, filename: detail.filename, posterFilename: detail.posterFilename })
-    : null;
+    : cachedCoverUrl;
 
   const [detectingFaces, setDetectingFaces] = useState(false);
 
@@ -1493,7 +1525,12 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'edit-title' ? (
             <>
-              {/* Ember title input — at top */}
+              {/* Ember title input */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <TicketSlash size={17} color="var(--text-secondary)" strokeWidth={1.6} />
+                  <h3 className="text-white font-medium text-base">Title</h3>
+                </div>
               <div
                 className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
@@ -1514,6 +1551,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                     })}
                   </p>
                 ) : null}
+              </div>
               </div>
 
               {/* Smart title suggestions */}
@@ -1559,41 +1597,6 @@ export default function TendActionScreen({ action }: { action: string }) {
                       </div>
                     ) : null}
 
-                    {titleSuggestions.contributorQuotes.length > 0 ? (
-                      <div className="flex flex-col gap-2">
-                        <p className="text-white/45 text-[11px] uppercase tracking-[0.18em]">
-                          From Real Quotes
-                        </p>
-                        <div className="flex flex-col gap-2">
-                          {titleSuggestions.contributorQuotes.map((suggestion) => (
-                            <button
-                              key={`quote-${suggestion.title}-${suggestion.contributorName}`}
-                              type="button"
-                              onClick={() => setTitleValue(suggestion.title)}
-                              className="w-full rounded-xl px-4 py-3 text-left can-hover"
-                              style={{
-                                background:
-                                  titleValue.trim().toLowerCase() === suggestion.title.trim().toLowerCase()
-                                    ? 'rgba(249,115,22,0.18)'
-                                    : 'rgba(255,255,255,0.05)',
-                                border:
-                                  titleValue.trim().toLowerCase() === suggestion.title.trim().toLowerCase()
-                                    ? '1px solid rgba(249,115,22,0.65)'
-                                    : '1px solid rgba(255,255,255,0.08)',
-                              }}
-                            >
-                              <p className="text-white text-sm font-medium">{suggestion.title}</p>
-                              <p className="text-white/45 text-xs mt-1">
-                                {suggestion.contributorName} via {suggestion.source === 'voice' ? 'voice' : 'text'}
-                              </p>
-                              <p className="text-white/60 text-sm mt-2 leading-relaxed">
-                                {suggestion.quote}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 ) : null}
               </WikiCard>
@@ -1607,7 +1610,6 @@ export default function TendActionScreen({ action }: { action: string }) {
                     <h3 className="text-white font-medium text-base">People</h3>
                   </div>
                 <WikiCard>
-                  <p className="text-white/40 text-xs mb-3">Check names to prefer in title suggestions.</p>
                   <div className="flex flex-col gap-2">
                     {detail.tags.map((tag) => (
                       <label key={tag.id} className="flex items-center gap-3 cursor-pointer" style={{ minHeight: 36 }}>
@@ -1628,6 +1630,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                       </label>
                     ))}
                   </div>
+                  <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">Check names to prefer in title suggestions.</p>
                 </WikiCard>
                 </div>
               ) : null}
@@ -1640,16 +1643,28 @@ export default function TendActionScreen({ action }: { action: string }) {
                   className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
                   style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
                 >
-                  {titleSuggestionsRefreshing ? 'Refreshing...' : 'Refresh Suggestions'}
+                  {titleSuggestionsRefreshing ? 'Regenerating...' : 'Regen Suggestions'}
                 </button>
-                <button
-                  type="button"
-                  onClick={saveTitle}
-                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary"
-                  style={{ background: '#f97316', minHeight: 44 }}
-                >
-                  Save Title
-                </button>
+                {(() => {
+                  const savedTitleValue = detail ? (detail.title || detail.originalName?.replace(/\.[^.]+$/, '') || '') : '';
+                  const isTitleDirty = titleValue.trim() !== savedTitleValue.trim();
+                  return (
+                    <button
+                      type="button"
+                      onClick={saveTitle}
+                      disabled={!isTitleDirty}
+                      className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+                      style={{
+                        background: isTitleDirty ? '#f97316' : 'var(--bg-surface)',
+                        border: isTitleDirty ? 'none' : '1px solid var(--border-subtle)',
+                        minHeight: 44,
+                        cursor: isTitleDirty ? 'pointer' : 'default',
+                      }}
+                    >
+                      Save
+                    </button>
+                  );
+                })()}
               </div>
             </>
           ) : null}
@@ -1789,13 +1804,19 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'edit-time-date' ? (
             <>
-              <input
-                type="datetime-local"
-                value={timeDateValue}
-                onChange={(e) => setTimeDateValue(e.target.value)}
-                className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
-                style={{ ...fieldStyle, colorScheme: 'dark' }}
-              />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Calendar size={17} color="var(--text-secondary)" strokeWidth={1.6} />
+                  <h3 className="text-white font-medium text-base">Time &amp; Date</h3>
+                </div>
+                <input
+                  type="datetime-local"
+                  value={timeDateValue}
+                  onChange={(e) => setTimeDateValue(e.target.value)}
+                  className="w-full h-12 px-4 rounded-xl text-sm text-white outline-none cursor-pointer"
+                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', colorScheme: 'dark' }}
+                />
+              </div>
               <div className="flex gap-3">
                 <Link
                   href={tendModalHref}
@@ -1804,63 +1825,95 @@ export default function TendActionScreen({ action }: { action: string }) {
                 >
                   Cancel
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => void saveTimeDate()}
-                  disabled={timeDateSaving || !timeDateValue}
-                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
-                  style={{ background: '#f97316', minHeight: 44 }}
-                >
-                  {timeDateSaving ? 'Saving...' : 'Save'}
-                </button>
+                {(() => {
+                  const capturedAt = detail?.analysis?.capturedAt;
+                  let savedTimeDateValue = '';
+                  if (capturedAt) {
+                    const d = new Date(capturedAt);
+                    if (!Number.isNaN(d.getTime())) {
+                      savedTimeDateValue = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    }
+                  }
+                  const isTimeDateDirty = Boolean(timeDateValue) && timeDateValue !== savedTimeDateValue;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => void saveTimeDate()}
+                      disabled={timeDateSaving || !isTimeDateDirty}
+                      className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+                      style={{
+                        background: isTimeDateDirty ? '#f97316' : 'var(--bg-surface)',
+                        border: isTimeDateDirty ? 'none' : '1px solid var(--border-subtle)',
+                        minHeight: 44,
+                        cursor: isTimeDateDirty ? 'pointer' : 'default',
+                      }}
+                    >
+                      {timeDateSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  );
+                })()}
               </div>
             </>
           ) : null}
 
           {action === 'edit-location' ? (
             <>
+              {/* Location fields */}
               <div className="flex flex-col gap-3">
-                <input
-                  type="text"
-                  value={locationLabel}
-                  onChange={(e) => setLocationLabel(e.target.value)}
-                  placeholder="Name of location"
-                  className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
-                  style={fieldStyle}
-                />
-                <input
-                  type="text"
-                  value={locationAddress}
-                  onChange={(e) => setLocationAddress(e.target.value)}
-                  placeholder="Address"
-                  className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
-                  style={fieldStyle}
-                />
-                <input
-                  type="text"
-                  value={locationCityStateZip}
-                  onChange={(e) => setLocationCityStateZip(e.target.value)}
-                  placeholder="City, State ZIP"
-                  className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
-                  style={fieldStyle}
-                />
-                <input
-                  type="text"
-                  value={locationCountry}
-                  onChange={(e) => setLocationCountry(e.target.value)}
-                  placeholder="Country"
-                  className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none"
-                  style={fieldStyle}
-                />
-                <div className="flex gap-3">
+                <div className="flex items-center gap-2">
+                  <MapPin size={17} color="var(--text-secondary)" strokeWidth={1.6} />
+                  <h3 className="text-white font-medium text-base">Location</h3>
+                </div>
+                <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                  <input
+                    type="text"
+                    value={locationLabel}
+                    onChange={(e) => setLocationLabel(e.target.value)}
+                    placeholder="Name of location"
+                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                  />
+                  <input
+                    type="text"
+                    value={locationAddress}
+                    onChange={(e) => setLocationAddress(e.target.value)}
+                    placeholder="Address"
+                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                    style={{ borderTop: '1px solid var(--border-subtle)' }}
+                  />
+                  <input
+                    type="text"
+                    value={locationCityStateZip}
+                    onChange={(e) => setLocationCityStateZip(e.target.value)}
+                    placeholder="City, State ZIP"
+                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                    style={{ borderTop: '1px solid var(--border-subtle)' }}
+                  />
+                  <input
+                    type="text"
+                    value={locationCountry}
+                    onChange={(e) => setLocationCountry(e.target.value)}
+                    placeholder="Country"
+                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                    style={{ borderTop: '1px solid var(--border-subtle)' }}
+                  />
+                </div>
+              </div>
+
+              {/* GPS coordinates */}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <MapPin size={17} color="var(--text-secondary)" strokeWidth={1.6} />
+                  <h3 className="text-white font-medium text-base">GPS Data</h3>
+                </div>
+                <div className="rounded-xl flex overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                   <input
                     type="number"
                     step="any"
                     value={locationLatitude}
                     onChange={(e) => setLocationLatitude(e.target.value)}
                     placeholder="Latitude"
-                    className="h-11 rounded-xl px-4 text-sm text-white outline-none flex-1"
-                    style={fieldStyle}
+                    className="flex-1 h-12 px-4 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                    style={{ borderRight: '1px solid var(--border-subtle)' }}
                   />
                   <input
                     type="number"
@@ -1868,8 +1921,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                     value={locationLongitude}
                     onChange={(e) => setLocationLongitude(e.target.value)}
                     placeholder="Longitude"
-                    className="h-11 rounded-xl px-4 text-sm text-white outline-none flex-1"
-                    style={fieldStyle}
+                    className="flex-1 h-12 px-4 text-sm text-white placeholder-white/30 outline-none bg-transparent"
                   />
                 </div>
               </div>
@@ -1881,15 +1933,32 @@ export default function TendActionScreen({ action }: { action: string }) {
                 >
                   Cancel
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => void saveLocation()}
-                  disabled={locationSaving || !locationLabel.trim()}
-                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
-                  style={{ background: '#f97316', minHeight: 44 }}
-                >
-                  {locationSaving ? 'Saving...' : 'Save'}
-                </button>
+                {(() => {
+                  const isLocationDirty =
+                    locationLabel !== savedLocationLabel ||
+                    locationAddress !== savedLocationAddress ||
+                    locationCityStateZip !== '' ||
+                    locationCountry !== '' ||
+                    locationLatitude !== savedLocationLat ||
+                    locationLongitude !== savedLocationLng;
+                  const canSave = Boolean(locationLabel.trim()) && isLocationDirty;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => void saveLocation()}
+                      disabled={locationSaving || !canSave}
+                      className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+                      style={{
+                        background: canSave ? '#f97316' : 'var(--bg-surface)',
+                        border: canSave ? 'none' : '1px solid var(--border-subtle)',
+                        minHeight: 44,
+                        cursor: canSave ? 'pointer' : 'default',
+                      }}
+                    >
+                      {locationSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  );
+                })()}
               </div>
             </>
           ) : null}

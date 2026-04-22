@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, FileText, Mic, Sliders, Users } from 'lucide-react';
+import { ChevronDown, Clock, FileText, Mic, ScanEye, Sliders, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
   KipemberAttachment,
@@ -112,12 +112,21 @@ export default function KipemberSnapshotEditor({
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState('');
+  const [styleOpen, setStyleOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [requiredPeopleIds, setRequiredPeopleIds] = useState<Set<string>>(new Set());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const emberTitle = detail?.title || (detail ? stripExtension(detail.originalName) : 'Ember');
   const savedScript = detail?.snapshot?.script || '';
-  const isDirty = scriptDraft.trim() !== savedScript.trim();
+  const savedDuration = detail?.snapshot?.durationSeconds ?? 10;
+  const savedStyle = detail?.snapshot?.style || 'documentary';
+  const savedVoiceId = detail?.snapshot?.emberVoiceId || '';
+  const isDirty =
+    scriptDraft.trim() !== savedScript.trim() ||
+    durationSeconds !== savedDuration ||
+    style !== savedStyle ||
+    voiceId !== savedVoiceId;
 
   useEffect(() => {
     setScriptDraft(detail?.snapshot?.script || '');
@@ -230,6 +239,7 @@ export default function KipemberSnapshotEditor({
   return (
     <div className="flex flex-col gap-6">
       {/* Snapshot Text */}
+      <SnapshotSection icon={<ScanEye size={17} />} title="Snapshot">
       <SnapshotCard>
         <textarea
           ref={textareaRef}
@@ -247,6 +257,7 @@ export default function KipemberSnapshotEditor({
           <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">No snapshot yet — regenerate to create one.</p>
         )}
       </SnapshotCard>
+      </SnapshotSection>
 
       {/* Snapshot Length */}
       <SnapshotSection icon={<Clock size={17} />} title="Length">
@@ -303,58 +314,100 @@ export default function KipemberSnapshotEditor({
 
       {/* Snapshot Style */}
       <SnapshotSection icon={<Sliders size={17} />} title="Style">
-        <div className="px-1">
-          <select
-            value={style}
-            onChange={(e) => setStyle(e.target.value)}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setStyleOpen((v) => !v)}
             disabled={!detail.canManage}
-            className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none disabled:opacity-50 cursor-pointer"
-            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
+            className="flex items-center gap-1.5 px-3 rounded-xl can-hover w-full disabled:opacity-50 cursor-pointer"
+            style={{ background: 'var(--bg-surface)', opacity: 0.9, minHeight: 44 }}
           >
-            {STYLE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+            <span className="text-white text-xs font-medium flex-1 text-left">
+              {STYLE_OPTIONS.find((o) => o.value === style)?.label ?? style}
+            </span>
+            <ChevronDown size={13} color="var(--text-secondary)" strokeWidth={2} />
+          </button>
+          {styleOpen ? (
+            <div
+              className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-10 flex flex-col w-full"
+              style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-default)' }}
+            >
+              {STYLE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { setStyle(opt.value); setStyleOpen(false); }}
+                  className="px-4 py-2.5 text-xs font-medium can-hover text-left"
+                  style={{ color: opt.value === style ? '#f97316' : 'var(--text-primary)', opacity: 0.9 }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </SnapshotSection>
 
       {/* Snapshot Voice */}
       <SnapshotSection icon={<Mic size={17} />} title="Voice">
-        <div className="px-1">
-          <select
-            value={voiceId}
-            onChange={(e) => setVoiceId(e.target.value)}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setVoiceOpen((v) => !v)}
             disabled={!detail.canManage || loadingVoices}
-            className="w-full h-11 rounded-xl px-4 text-sm text-white outline-none disabled:opacity-50 cursor-pointer"
-            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
+            className="flex items-center gap-1.5 px-3 rounded-xl can-hover w-full disabled:opacity-50 cursor-pointer"
+            style={{ background: 'var(--bg-surface)', opacity: 0.9, minHeight: 44 }}
           >
-            <option value="">Default voice</option>
-            {voices.map((v) => (
-              <option key={v.voiceId} value={v.voiceId}>{v.name}</option>
-            ))}
-          </select>
+            <span className="text-white text-xs font-medium flex-1 text-left">
+              {voices.find((v) => v.voiceId === voiceId)?.name ?? 'Default voice'}
+            </span>
+            <ChevronDown size={13} color="var(--text-secondary)" strokeWidth={2} />
+          </button>
+          {voiceOpen ? (
+            <div
+              className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-10 flex flex-col w-full"
+              style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-default)' }}
+            >
+              {[{ voiceId: '', name: 'Default voice' }, ...voices].map((v) => (
+                <button
+                  key={v.voiceId}
+                  type="button"
+                  onClick={() => { setVoiceId(v.voiceId); setVoiceOpen(false); }}
+                  className="px-4 py-2.5 text-xs font-medium can-hover text-left"
+                  style={{ color: v.voiceId === voiceId ? '#f97316' : 'var(--text-primary)', opacity: 0.9 }}
+                >
+                  {v.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </SnapshotSection>
 
       {/* Actions */}
-      <div className="flex flex-wrap justify-end gap-3">
+      <div className="flex gap-3">
         <button
           type="button"
           onClick={() => void handleRegenerate()}
           disabled={!detail.canManage || regenerating}
-          className="rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+          className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
           style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
         >
-          {regenerating ? 'Regenerating...' : 'Regenerate'}
+          {regenerating ? 'Regenerating...' : 'Regen Snapshot'}
         </button>
         <button
           type="button"
           onClick={() => void handleSave()}
           disabled={!detail.canManage || saving || !isDirty}
-          className="rounded-full px-5 text-white text-sm font-medium btn-primary disabled:opacity-60 cursor-pointer"
-          style={{ background: '#f97316', minHeight: 44 }}
+          className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+          style={{
+            background: isDirty ? '#f97316' : 'var(--bg-surface)',
+            border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+            minHeight: 44,
+            cursor: isDirty ? 'pointer' : 'default',
+          }}
         >
-          {saving ? 'Saving...' : 'Save Snapshot'}
+          {saving ? 'Saving...' : 'Save'}
         </button>
       </div>
     </div>
