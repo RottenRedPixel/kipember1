@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, ChevronLeft, ChevronRight, Mic, Share2, UserPlus } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Mic, Share2 } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 
 function EmberMark({ size = 18 }: { size?: number }) {
@@ -31,6 +31,75 @@ function initials(value: string) {
     .toUpperCase();
 }
 
+
+// ─── Facepile ─────────────────────────────────────────────────────────────────
+
+const DUMMY_CONTRIBUTORS = [
+  { initials: 'SA', color: '#7c3aed' },
+  { initials: 'MK', color: '#0891b2' },
+  { initials: 'JL', color: '#16a34a' },
+  { initials: 'RB', color: '#b45309' },
+];
+
+function Facepile({
+  people,
+  max = 3,
+  size = 30,
+  overlap = 10,
+}: {
+  people: Array<{ initials: string; color: string; avatarUrl?: string }>;
+  max?: number;
+  size?: number;
+  overlap?: number;
+}) {
+  const shown = people.slice(0, max);
+  const extra = people.length - shown.length;
+  const step = size - overlap;
+  const totalW = size + (shown.length - 1 + (extra > 0 ? 1 : 0)) * step;
+
+  return (
+    <div className="relative flex-shrink-0 flex items-center" style={{ width: totalW, height: 55 }}>
+      {shown.map((p, i) => (
+        <div
+          key={i}
+          className="absolute flex items-center justify-center rounded-full text-white font-bold overflow-hidden"
+          style={{
+            width: size,
+            height: size,
+            left: i * step,
+            background: p.color,
+            border: '2px solid var(--bg-screen)',
+            zIndex: shown.length - i,
+            fontSize: Math.round(size * 0.32),
+          }}
+        >
+          {p.avatarUrl
+            ? <img src={p.avatarUrl} alt="" className="w-full h-full object-cover" />
+            : p.initials}
+        </div>
+      ))}
+      {extra > 0 && (
+        <div
+          className="absolute flex items-center justify-center rounded-full font-bold"
+          style={{
+            width: size,
+            height: size,
+            left: shown.length * step,
+            background: 'var(--bg-surface)',
+            border: '2px solid var(--bg-screen)',
+            color: 'rgba(255,255,255,0.45)',
+            fontSize: Math.round(size * 0.3),
+            zIndex: 0,
+          }}
+        >
+          +{extra}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 type Step = 'home' | 'confirm' | 'processing';
 
@@ -270,33 +339,38 @@ export default function UserHomeScreen({
         <div className="mt-5">
           <p className="text-xs font-medium text-white/30 mb-3">Recent Activity</p>
           <div className="flex flex-col gap-2">
-            {[
-              { icon: UserPlus, title: 'New contributor joined', sub: 'Someone added to your ember', count: 4 },
-              { icon: BookOpen, title: 'Wiki updated', sub: 'Ember knowledge base was refined', count: 1 },
-            ].map(({ icon: Icon, title, sub, count }) => (
-              <div key={title} className="flex items-center gap-3 can-hover-card rounded-xl">
-                <div className="relative flex-shrink-0">
-                  <div
-                    className="flex items-center justify-center rounded-full"
-                    style={{ width: 55, height: 55, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-                  >
-                    <Icon size={22} color="#6b7280" strokeWidth={1.6} />
-                  </div>
-                  {count ? (
-                    <span
-                      className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-                      style={{ minWidth: 18, height: 18, background: '#f97316', padding: '0 4px' }}
-                    >
-                      {count}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="flex-1 min-w-0 px-2">
-                  <p className="text-sm font-medium text-white leading-snug">{title}</p>
-                  <p className="text-xs text-white/40 leading-snug">{sub}</p>
-                </div>
+
+            {/* Contributors — facepile */}
+            <div className="flex items-center gap-3 can-hover-card rounded-xl">
+              <Facepile people={DUMMY_CONTRIBUTORS} />
+              <div className="flex-1 min-w-0 px-2">
+                <p className="text-sm font-medium text-white leading-snug">4 contributors joined</p>
+                <p className="text-xs text-white/40 leading-snug">Added to your ember</p>
               </div>
-            ))}
+            </div>
+
+            {/* Wiki updated — icon */}
+            <div className="flex items-center gap-3 can-hover-card rounded-xl">
+              <div className="relative flex-shrink-0">
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{ width: 55, height: 55, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                >
+                  <BookOpen size={22} color="#6b7280" strokeWidth={1.6} />
+                </div>
+                <span
+                  className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
+                  style={{ minWidth: 18, height: 18, background: '#f97316', padding: '0 4px' }}
+                >
+                  1
+                </span>
+              </div>
+              <div className="flex-1 min-w-0 px-2">
+                <p className="text-sm font-medium text-white leading-snug">Wiki updated</p>
+                <p className="text-xs text-white/40 leading-snug">Ember knowledge base was refined</p>
+              </div>
+            </div>
+
           </div>
         </div>
 
