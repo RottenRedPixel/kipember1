@@ -50,7 +50,7 @@ export default function MyEmbersScreen({
       if (!response.ok || typeof payload?.id !== 'string') {
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
       }
-      router.push(`/home?id=${payload.id}&ember=welcome`);
+      router.push(`/home?id=${payload.id}&ember=owner`);
     } catch {
       setCreating(false);
     }

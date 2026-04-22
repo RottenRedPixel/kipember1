@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
-import GuestContributorAddFlow from '@/components/kipember/workflows/GuestContributorAddFlow';
+import GuestFlow from '@/components/kipember/workflows/GuestFlow';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 
 type GuestAttachment = {
@@ -183,7 +183,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
   const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
 
   const base = `/guest/${token}`;
-  const openHref = `${base}?ember=contrib-add`;
+  const openHref = `${base}?ember=guest`;
   const closeHref = base;
   const shareUrl = typeof window !== 'undefined' ? window.location.origin + base : base;
 
@@ -325,7 +325,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
             )}
           </Link>
         </div>
-        {flow ? <GuestContributorAddFlow token={token} /> : null}
+        {flow ? <GuestFlow token={token} /> : null}
       </div>
     </div>
   );

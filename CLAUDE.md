@@ -152,40 +152,28 @@ The Ember Chat is a persistent shell at the bottom of Memory View. It has two pa
 2. **Workflow slot** — an interchangeable inner component that renders the current workflow's UI.
 
 ### Workflow routing
-Driven by URL param: `/home?ember=welcome`, `/home?ember=recording`, `/home?ember=invite`, etc.
+Driven by URL param: `/home?ember=owner`, `/home?ember=contributor`, `/guest/{token}?ember=guest`, etc.
 
-### Planned workflows
-| Param | Component | Purpose |
-|---|---|---|
-| `welcome` | WelcomeFlow | Default — "invite others" / "add to memory" buttons + intro chat |
-| `owner-add` | OwnerAddFlow | Owner adding content — record voice, add photo, write a note |
-| `contrib-add` | ContributorAddFlow | Contributor sharing a memory — record voice, share memory |
-| `owner-add-more` | OwnerAddMoreFlow | Owner adding more content to an existing memory |
-| `contrib-add-more` | ContributorAddMoreFlow | Contributor adding more to a memory — phone or chat |
-| `recording` | RecordingFlow | Mic controls, live waveform, transcript |
-| `invite` | InviteFlow | Share invite link, contacts picker |
-| `story-circle` | StoryCircleFlow | Group conversation UI |
-| `review` | ReviewFlow | Review/approve a contribution |
+### Workflows
+| Param | Component | Role | Purpose |
+|---|---|---|---|
+| `owner` | OwnerFlow | Logged-in owner | Full chat history, phone call trigger, photo upload, voice input |
+| `contributor` | ContributorFlow | Logged-in contributor | Full chat history, photo upload, voice input |
+| `guest` | GuestFlow (in GuestEmberScreen) | Unauthenticated guest | Token-based, no persistent history, mic + text only |
 
 ### File structure
 ```
 app/components/
-  Ember Chat.tsx              — shell (toggle, container, animation)
+  EmberChat.tsx               — shell (toggle, container, animation)
   workflows/
-    WelcomeFlow.tsx         — current "invite others / add to memory"
-    OwnerAddFlow.tsx        — owner adding content (voice, photo, note)
-    ContributorAddFlow.tsx  — contributor sharing a memory
-    OwnerAddMoreFlow.tsx    — owner adding more to a memory
-    ContributorAddMoreFlow.tsx — contributor adding more to a memory
-    RecordingFlow.tsx       — mic + waveform
-    InviteFlow.tsx          — share invite link
-    StoryCircleFlow.tsx     — group conversation
-    ReviewFlow.tsx          — approve contributions
+    OwnerFlow.tsx             — owner: full chat + phone call + photo upload
+    ContributorFlow.tsx       — contributor: full chat + photo upload
+    GuestFlow.tsx             — guest: token-based chat, no history
 ```
 
 ### Chat message formatting — Ember Chat and Story Circle must be identical
 
-The live Ember Chat (`WelcomeFlow.tsx`) and the Story Circle block in the wiki (`KipemberWikiContent.tsx`) must always match in message formatting. Any change to one must be applied to the other. Rules:
+The live Ember Chat (`OwnerFlow.tsx`, `ContributorFlow.tsx`) and the Story Circle block in the wiki (`KipemberWikiContent.tsx`) must always match in message formatting. Any change to one must be applied to the other. Rules:
 
 - **Sender label**: bold, white (`font-bold text-white`) for both ember and user/contributor
 - **User/contributor bubbles**: `var(--bg-chat-user)` background, no border

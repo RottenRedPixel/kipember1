@@ -32,11 +32,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
-import ContributorAddFlow from '@/components/kipember/workflows/ContributorAddFlow';
-import ContributorAddMoreFlow from '@/components/kipember/workflows/ContributorAddMoreFlow';
-import OwnerAddFlow from '@/components/kipember/workflows/OwnerAddFlow';
-import OwnerAddMoreFlow from '@/components/kipember/workflows/OwnerAddMoreFlow';
-import WelcomeFlow from '@/components/kipember/workflows/WelcomeFlow';
+import ContributorFlow from '@/components/kipember/workflows/ContributorFlow';
+import OwnerFlow from '@/components/kipember/workflows/OwnerFlow';
 import type { AccessibleImageSummary } from '@/lib/image-summaries';
 import { getEmberTitle } from '@/lib/ember-title';
 
@@ -214,20 +211,14 @@ function WorkflowSlot({
   onConversationStateChange: (hasConversation: boolean) => void;
 }) {
   switch (flow) {
-    case 'welcome':
+    case 'owner':
       return imageId ? (
-        <WelcomeFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
       ) : null;
-    case 'owner-add':
+    case 'contributor':
       return imageId ? (
-        <WelcomeFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
       ) : null;
-    case 'contrib-add':
-      return <ContributorAddFlow />;
-    case 'owner-add-more':
-      return <OwnerAddMoreFlow />;
-    case 'contrib-add-more':
-      return <ContributorAddMoreFlow />;
     default:
       return null;
   }
@@ -537,7 +528,7 @@ export default function HomeScreen({
     const timer = setTimeout(() => {
       setSelectedFile(null);
       setSelectedPreviewUrl('');
-      router.replace(`/home?id=${createdImageId}&ember=welcome`);
+      router.replace(`/home?id=${createdImageId}&ember=owner`);
     }, 400);
 
     return () => clearTimeout(timer);
@@ -804,7 +795,7 @@ export default function HomeScreen({
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
             {displayImage?.accessType === 'contributor' ? (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner` : '/home?ember=owner'} icon={PlusCircle} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="View Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
               </>
@@ -817,7 +808,7 @@ export default function HomeScreen({
                 <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
-                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner-add` : '/home?ember=owner-add'} icon={PlusCircle} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner` : '/home?ember=owner'} icon={PlusCircle} />
                 <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
               </>
             )}

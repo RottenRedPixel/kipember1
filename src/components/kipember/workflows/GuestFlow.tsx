@@ -20,10 +20,7 @@ type BrowserSpeechRecognition = {
 };
 
 type SpeechRecognitionEventLike = {
-  results: ArrayLike<{
-    isFinal?: boolean;
-    0: { transcript: string };
-  }>;
+  results: ArrayLike<{ isFinal?: boolean; 0: { transcript: string } }>;
 };
 
 declare global {
@@ -33,7 +30,7 @@ declare global {
   }
 }
 
-export default function GuestContributorAddFlow({ token }: { token: string }) {
+export default function GuestFlow({ token }: { token: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -172,7 +169,7 @@ export default function GuestContributorAddFlow({ token }: { token: string }) {
         <div className="flex flex-col gap-4">
           {/* Greeting */}
           <div className="flex flex-col gap-2 items-start">
-            <span className="pl-1 text-xs font-medium text-white">ember</span>
+            <span className="pl-1 text-xs font-bold text-white">ember</span>
             <div
               className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
               style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
@@ -187,7 +184,7 @@ export default function GuestContributorAddFlow({ token }: { token: string }) {
           {messages.map((message, index) =>
             message.role === 'user' ? (
               <div key={index} className="flex flex-col items-end gap-1">
-                <span className="pr-1 text-xs font-medium text-white/30">you</span>
+                <span className="pr-1 text-xs font-bold text-white/30">you</span>
                 <div
                   className="inline-block max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-2.5"
                   style={{ background: 'var(--bg-chat-user)' }}
@@ -197,7 +194,7 @@ export default function GuestContributorAddFlow({ token }: { token: string }) {
               </div>
             ) : (
               <div key={index} className="flex flex-col gap-1 items-start">
-                <span className="pl-1 text-xs font-medium text-white">ember</span>
+                <span className="pl-1 text-xs font-bold text-white">ember</span>
                 <div
                   className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
                   style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
@@ -211,7 +208,7 @@ export default function GuestContributorAddFlow({ token }: { token: string }) {
           {/* Sending indicator */}
           {isSending ? (
             <div className="flex flex-col gap-1 items-start">
-              <span className="pl-1 text-xs font-medium text-white">ember</span>
+              <span className="pl-1 text-xs font-bold text-white">ember</span>
               <div
                 className="inline-flex max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3"
                 style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
@@ -231,46 +228,46 @@ export default function GuestContributorAddFlow({ token }: { token: string }) {
 
       {/* Input bar */}
       <form onSubmit={handleSubmit} className="flex items-end gap-2">
-          <button
-            type="button"
-            onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-            disabled={isSending}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
-            style={{ background: isRecording ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
-            aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
-          >
-            <Mic size={18} />
-          </button>
+        <button
+          type="button"
+          onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
+          disabled={isSending}
+          className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
+          style={{ background: isRecording ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
+          aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
+        >
+          <Mic size={18} />
+        </button>
 
-          <input
-            type="text"
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            placeholder="Ask Ember about this memory..."
-            className="min-w-0 flex-1 rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]"
-            disabled={isSending}
-          />
+        <input
+          type="text"
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="Ask Ember about this memory..."
+          className="min-w-0 flex-1 rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]"
+          disabled={isSending}
+        />
 
-          <button
-            type="submit"
-            disabled={isSending || !input.trim()}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
-            style={{ background: '#f97316' }}
-            aria-label="Send message"
-          >
-            <SendHorizontal size={18} />
-          </button>
-        </form>
+        <button
+          type="submit"
+          disabled={isSending || !input.trim()}
+          className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
+          style={{ background: '#f97316' }}
+          aria-label="Send message"
+        >
+          <SendHorizontal size={18} />
+        </button>
+      </form>
 
-        {isRecording || error ? (
-          <div className="px-2 pt-2 text-xs">
-            {error ? (
-              <p className="text-[rgba(255,180,180,0.92)]">{error}</p>
-            ) : (
-              <p className="text-white/48">Listening...</p>
-            )}
-          </div>
-        ) : null}
+      {isRecording || error ? (
+        <div className="px-2 pt-2 text-xs">
+          {error ? (
+            <p className="text-[rgba(255,180,180,0.92)]">{error}</p>
+          ) : (
+            <p className="text-white/48">Listening...</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
