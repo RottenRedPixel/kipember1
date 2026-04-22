@@ -377,10 +377,6 @@ export default function HomeScreen({
   }, []);
 
   useEffect(() => {
-    if (createdImageId === null && initialImages.length > 0) {
-      return;
-    }
-
     void fetch('/api/images', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) {
@@ -390,7 +386,7 @@ export default function HomeScreen({
         setImages(payload);
       })
       .catch(() => undefined);
-  }, [createdImageId, firstEmber, initialImages.length, router]);
+  }, [createdImageId]);
 
   useEffect(() => {
     if (!selectedImageId || modal !== 'play') {
@@ -604,18 +600,26 @@ export default function HomeScreen({
               const img = e.currentTarget;
               setPhotoIsLandscape(img.naturalWidth > img.naturalHeight);
             }}
-            style={chatExpanded ? {
-              top: 56,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              height: 'calc(25vh - 56px)',
-              width: 'auto',
-              objectFit: 'contain',
-              objectPosition: 'center center',
-              opacity: photoOpacity,
-              transition: 'opacity 0.22s ease',
-            } : (() => {
-              const hasCrop = displayImage?.cropX != null && displayImage?.cropY != null;
+            style={(() => {
+              const cx = displayImage?.cropX;
+              const cy = displayImage?.cropY;
+              const cw = displayImage?.cropWidth;
+              const ch = displayImage?.cropHeight;
+              const hasCrop = !chatExpanded && cx != null && cy != null && cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100;
+              const scale = hasCrop && cw != null && ch != null && cw > 0 && ch > 0
+                ? Math.min(100 / cw, 100 / ch)
+                : 1;
+              if (chatExpanded) return {
+                top: 56,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                height: 'calc(25vh - 56px)',
+                width: 'auto',
+                objectFit: 'contain' as const,
+                objectPosition: 'center center',
+                opacity: photoOpacity,
+                transition: 'opacity 0.22s ease',
+              };
               return {
                 top: 56,
                 bottom: 72,
@@ -623,10 +627,10 @@ export default function HomeScreen({
                 right: 0,
                 width: '100%',
                 height: 'calc(100% - 128px)',
-                objectFit: (hasCrop ? 'cover' : (photoIsLandscape ? 'contain' : 'cover')) as 'cover' | 'contain',
-                objectPosition: hasCrop
-                  ? `${displayImage!.cropX}% ${displayImage!.cropY}%`
-                  : 'center center',
+                objectFit: 'cover' as const,
+                objectPosition: hasCrop ? `${cx}% ${cy}%` : 'center center',
+                transform: scale > 1.01 ? `scale(${scale.toFixed(3)})` : undefined,
+                transformOrigin: hasCrop ? `${cx}% ${cy}%` : 'center',
                 opacity: photoOpacity,
                 transition: 'opacity 0.22s ease',
               };
