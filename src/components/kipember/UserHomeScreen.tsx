@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, ChevronLeft, Mic, Share2, UserPlus } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Mic, Share2, UserPlus } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 
 function EmberMark({ size = 18 }: { size?: number }) {
@@ -224,13 +224,16 @@ export default function UserHomeScreen({
           <p className="text-white/60 text-sm">Good to see you again!</p>
         </div>
 
-        {/* b) Create ember block */}
+        {/* b) Create ember card */}
         <div className="mt-4">
-          <div
-            className="flex flex-col items-center gap-3 rounded-2xl px-6 py-8 w-full can-hover-card"
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center gap-3 px-3 rounded-2xl cursor-pointer can-hover-card"
             style={{
+              height: 72,
               background: isDragOver ? 'rgba(249,115,22,0.08)' : 'var(--bg-surface)',
-              border: `2px dashed ${isDragOver ? '#f97316' : 'var(--border-subtle)'}`,
+              border: `1px solid ${isDragOver ? '#f97316' : 'var(--border-subtle)'}`,
               transition: 'background 0.15s, border-color 0.15s',
             }}
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
@@ -242,22 +245,25 @@ export default function UserHomeScreen({
               if (file) handleFile(file);
             }}
           >
-            <EmberMark size={44} />
-            <div className="flex flex-col items-center gap-1 text-center">
-              <p className="text-white font-medium text-base">Create a new ember</p>
-              <p className="text-white/60 text-sm leading-snug">
-                Drop a photo, paste, or choose a file to start a new memory.
+            <div
+              className="flex-shrink-0 rounded-xl flex items-center justify-center"
+              style={{
+                width: 48,
+                height: 48,
+                background: 'rgba(249,115,22,0.12)',
+                border: '1px solid rgba(249,115,22,0.25)',
+              }}
+            >
+              <EmberMark size={22} />
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-white text-sm font-medium leading-snug">Create a new ember</p>
+              <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Drop, paste, or choose a photo
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-8 rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
-              style={{ background: '#f97316', minHeight: 44 }}
-            >
-              Choose Photo
-            </button>
-          </div>
+            <ChevronRight size={15} strokeWidth={2} className="flex-shrink-0 mr-1" style={{ color: 'rgba(255,255,255,0.2)' }} />
+          </button>
         </div>
 
         {/* c) Recent Activity */}
