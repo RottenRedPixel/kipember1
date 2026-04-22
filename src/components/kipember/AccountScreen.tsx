@@ -270,7 +270,10 @@ export default function AccountScreen({
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            setCropSrc(URL.createObjectURL(file));
+            setCropSrc((prev) => {
+              if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev);
+              return URL.createObjectURL(file);
+            });
             e.target.value = '';
           }}
         />
@@ -279,8 +282,8 @@ export default function AccountScreen({
           <AvatarCropModal
             imageSrc={cropSrc}
             onConfirm={handleCropConfirm}
-            onCancel={() => setCropSrc(null)}
-            onChooseNew={() => fileInputRef.current?.click()}
+            onCancel={() => { if (cropSrc.startsWith('blob:')) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+            onChooseNew={() => { fileInputRef.current?.click(); }}
           />
         ) : null}
 
@@ -313,7 +316,13 @@ export default function AccountScreen({
                   </button>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => {
+                      if (avatarUrl) {
+                        setCropSrc(avatarUrl);
+                      } else {
+                        fileInputRef.current?.click();
+                      }
+                    }}
                     className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center"
                     style={{ background: 'var(--bg-screen)', border: '2px solid var(--border-subtle)', cursor: 'pointer' }}
                   >

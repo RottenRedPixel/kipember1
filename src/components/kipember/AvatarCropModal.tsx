@@ -1,7 +1,7 @@
 'use client';
 
 import Cropper from 'react-easy-crop';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { getCroppedImageBlob } from '@/lib/crop-image';
 
@@ -21,6 +21,13 @@ export default function AvatarCropModal({
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<CroppedArea | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const initRef = useRef(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => { initRef.current = true; }, 150);
+    return () => clearTimeout(t);
+  }, []);
 
   const onCropComplete = useCallback((_: unknown, pixels: CroppedArea) => {
     setCroppedAreaPixels(pixels);
@@ -60,8 +67,8 @@ export default function AvatarCropModal({
           aspect={1}
           cropShape="round"
           showGrid={false}
-          onCropChange={setCrop}
-          onZoomChange={setZoom}
+          onCropChange={(c) => { setCrop(c); if (initRef.current) setIsDirty(true); }}
+          onZoomChange={(z) => { setZoom(z); if (initRef.current) setIsDirty(true); }}
           onCropComplete={onCropComplete}
         />
       </div>
@@ -80,7 +87,7 @@ export default function AvatarCropModal({
               max={3}
               step={0.01}
               value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
+              onChange={(e) => { setZoom(Number(e.target.value)); setIsDirty(true); }}
               className="w-full"
               style={{ accentColor: '#f97316' }}
             />
@@ -89,14 +96,6 @@ export default function AvatarCropModal({
 
           {/* Buttons */}
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 rounded-full text-white text-sm font-medium cursor-pointer"
-              style={{ minHeight: 44, background: 'transparent', border: '1.5px solid var(--border-btn)' }}
-            >
-              Cancel
-            </button>
             {onChooseNew ? (
               <button
                 type="button"
@@ -104,16 +103,22 @@ export default function AvatarCropModal({
                 className="flex-1 rounded-full text-white text-sm font-medium cursor-pointer"
                 style={{ minHeight: 44, background: 'transparent', border: '1.5px solid var(--border-btn)' }}
               >
-                Choose new
+                New
               </button>
             ) : null}
             <button
               type="button"
               onClick={() => void handleConfirm()}
-              className="flex-1 rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
-              style={{ minHeight: 44, background: '#f97316' }}
+              disabled={!isDirty}
+              className="flex-1 rounded-full text-white text-sm font-medium"
+              style={{
+                minHeight: 44,
+                background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                cursor: isDirty ? 'pointer' : 'default',
+              }}
             >
-              Save Photo
+              Save
             </button>
           </div>
         </div>

@@ -338,7 +338,13 @@ export default function UserActionScreen({
                 />
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    if (avatarUrl) {
+                      setCropSrc(avatarUrl);
+                    } else {
+                      fileInputRef.current?.click();
+                    }
+                  }}
                   className="relative cursor-pointer"
                   style={{ width: 80, height: 80 }}
                 >
@@ -442,7 +448,8 @@ export default function UserActionScreen({
         <AvatarCropModal
           imageSrc={cropSrc}
           onConfirm={(blob) => { void handleAvatarUpload(blob); }}
-          onCancel={() => { URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+          onCancel={() => { if (cropSrc.startsWith('blob:')) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+          onChooseNew={() => { if (cropSrc.startsWith('blob:')) URL.revokeObjectURL(cropSrc); setCropSrc(null); fileInputRef.current?.click(); }}
         />
       ) : null}
     </div>
