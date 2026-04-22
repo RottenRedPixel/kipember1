@@ -89,21 +89,11 @@ function getDefaultHomeEmberFlow(accessType: ImageSummary['accessType'] | undefi
   return accessType === 'contributor' ? 'contributor' : 'owner';
 }
 
-function normalizeHomeEmberFlow(
-  flow: string | null,
-  accessType: ImageSummary['accessType'] | undefined
-): HomeEmberFlow {
+function parseHomeEmberFlow(flow: string | null): HomeEmberFlow {
   switch (flow) {
     case 'owner':
     case 'contributor':
       return flow;
-    case 'contrib-add':
-    case 'contrib-add-more':
-      return 'contributor';
-    case 'welcome':
-    case 'owner-add':
-    case 'owner-add-more':
-      return getDefaultHomeEmberFlow(accessType);
     default:
       return null;
   }
@@ -305,7 +295,7 @@ export default function HomeScreen({
   const selectedSummary = images.find((image) => image.id === selectedImageId) || null;
   const displayImage = selectedImage || selectedSummary;
   const defaultChatFlow = getDefaultHomeEmberFlow(displayImage?.accessType);
-  const flow = normalizeHomeEmberFlow(rawFlow, displayImage?.accessType);
+  const flow = parseHomeEmberFlow(rawFlow);
   const emberOpen = flow !== null;
   const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
   const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';

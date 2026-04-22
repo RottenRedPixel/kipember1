@@ -119,11 +119,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
   const params = useSearchParams();
   const rawFlow = params.get('ember');
   const modal = params.get('m');
-  const flowOpen =
-    rawFlow === 'guest' ||
-    rawFlow === 'contributor' ||
-    rawFlow === 'contrib-add' ||
-    rawFlow === 'contrib-add-more';
+  const flowOpen = rawFlow === 'guest';
 
   const [data, setData] = useState<GuestData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
