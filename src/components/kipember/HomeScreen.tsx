@@ -83,6 +83,32 @@ type CreateEmberResponse = {
   image?: ImageSummary;
 };
 
+type HomeEmberFlow = 'owner' | 'contributor' | null;
+
+function getDefaultHomeEmberFlow(accessType: ImageSummary['accessType'] | undefined): Exclude<HomeEmberFlow, null> {
+  return accessType === 'contributor' ? 'contributor' : 'owner';
+}
+
+function normalizeHomeEmberFlow(
+  flow: string | null,
+  accessType: ImageSummary['accessType'] | undefined
+): HomeEmberFlow {
+  switch (flow) {
+    case 'owner':
+    case 'contributor':
+      return flow;
+    case 'contrib-add':
+    case 'contrib-add-more':
+      return 'contributor';
+    case 'welcome':
+    case 'owner-add':
+    case 'owner-add-more':
+      return getDefaultHomeEmberFlow(accessType);
+    default:
+      return null;
+  }
+}
+
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 72 72" fill="white">
@@ -206,7 +232,7 @@ function WorkflowSlot({
   imageId,
   onConversationStateChange,
 }: {
-  flow: string | null;
+  flow: HomeEmberFlow;
   imageId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
 }) {
@@ -250,12 +276,10 @@ export default function HomeScreen({
   const params = useSearchParams();
   const router = useRouter();
   const modal = params.get('m');
-  const flow = params.get('ember');
+  const rawFlow = params.get('ember');
   const mode = params.get('mode');
   const step = params.get('step');
   const firstEmber = mode === 'first-ember';
-  const emberOpen = flow !== null;
-  const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
 
   const [profile, setProfile] = useState<AuthUser | null>(initialProfile ?? null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
@@ -280,6 +304,10 @@ export default function HomeScreen({
   const hasExistingEmbers = images.length > 0;
   const selectedSummary = images.find((image) => image.id === selectedImageId) || null;
   const displayImage = selectedImage || selectedSummary;
+  const defaultChatFlow = getDefaultHomeEmberFlow(displayImage?.accessType);
+  const flow = normalizeHomeEmberFlow(rawFlow, displayImage?.accessType);
+  const emberOpen = flow !== null;
+  const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
   const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
   const capturedAt = selectedImage?.analysis?.capturedAt ?? displayImage?.capturedAt ?? null;
   const subtitle = displayImage
@@ -795,7 +823,7 @@ export default function HomeScreen({
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
             {displayImage?.accessType === 'contributor' ? (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner` : '/home?ember=owner'} icon={PlusCircle} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=contributor` : '/home?ember=contributor'} icon={PlusCircle} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="View Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
               </>
@@ -835,7 +863,7 @@ export default function HomeScreen({
               href={
                 flow
                   ? buildHomeHref({ ember: null, step: null, sub: null })
-                  : buildHomeHref({ ember: 'welcome', m: null, step: null, sub: null })
+                  : buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })
               }
               className="flex-1 text-left"
             >
@@ -850,7 +878,7 @@ export default function HomeScreen({
               href={
                 flow
                   ? buildHomeHref({ ember: null, step: null, sub: null })
-                  : buildHomeHref({ ember: 'welcome', m: null, step: null, sub: null })
+                  : buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })
               }
               className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
               style={{ background: flow ? 'rgba(255,255,255,0.15)' : '#f97316' }}
