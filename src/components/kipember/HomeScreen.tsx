@@ -596,14 +596,27 @@ export default function HomeScreen({
           <img
             src={currentPhotoUrl}
             alt=""
-            className="absolute left-0 right-0 pointer-events-none w-full"
+            className="absolute pointer-events-none"
             onLoad={(e) => {
               const img = e.currentTarget;
               setPhotoIsLandscape(img.naturalWidth > img.naturalHeight);
             }}
-            style={{
+            style={chatExpanded ? {
+              top: 56,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              height: 'calc(20vh - 56px)',
+              width: 'auto',
+              objectFit: 'contain',
+              objectPosition: 'center center',
+              opacity: photoOpacity,
+              transition: 'opacity 0.22s ease',
+            } : {
               top: 56,
               bottom: 72,
+              left: 0,
+              right: 0,
+              width: '100%',
               height: 'calc(100% - 128px)',
               objectFit: photoIsLandscape ? 'contain' : 'cover',
               objectPosition: 'center center',
