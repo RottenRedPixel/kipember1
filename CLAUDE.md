@@ -68,7 +68,7 @@ const [step, setStep] = useState(null);
 
 // GOOD — Link navigation works everywhere:
 const step = useSearchParams().get("step");
-<Link href="/home?ember=welcome&step=adding">Add to Memory</Link>
+<Link href="/home?ember=owner&step=adding">Add to Memory</Link>
 ```
 
 This pattern is used in all workflow components. State is read from the URL via `useSearchParams()`, and each choice navigates to a URL with a `step=` param (e.g. `step=adding`, `step=phone`, `step=chat`).

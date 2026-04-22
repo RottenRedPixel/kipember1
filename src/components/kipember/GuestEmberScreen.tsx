@@ -117,8 +117,9 @@ function RailBtn({
 
 export default function GuestEmberScreen({ token }: { token: string }) {
   const params = useSearchParams();
-  const flow = params.get('ember');
+  const rawFlow = params.get('ember');
   const modal = params.get('m');
+  const flowOpen = rawFlow === 'guest';
 
   const [data, setData] = useState<GuestData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -305,27 +306,27 @@ export default function GuestEmberScreen({ token }: { token: string }) {
         style={{ background: 'var(--bg-screen)', borderTop: '1px solid var(--border-subtle)' }}
       >
         <div className="flex items-center gap-3 pl-4 pr-[22px] py-3">
-          <Link href={flow ? closeHref : openHref} className="flex-1 text-left">
+          <Link href={flowOpen ? closeHref : openHref} className="flex-1 text-left">
             <span className="flex items-center gap-2">
               <EmberMark />
               <span className="text-base font-medium text-white">
-                {flow ? 'Ember Chat' : 'Ember interactive memory'}
+                {flowOpen ? 'Ember Chat' : 'Ember interactive memory'}
               </span>
             </span>
           </Link>
           <Link
-            href={flow ? closeHref : openHref}
+            href={flowOpen ? closeHref : openHref}
             className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-            style={{ background: flow ? 'rgba(255,255,255,0.15)' : '#f97316' }}
+            style={{ background: flowOpen ? 'rgba(255,255,255,0.15)' : '#f97316' }}
           >
-            {flow ? (
+            {flowOpen ? (
               <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
             ) : (
               <Plus size={20} color="white" strokeWidth={2} />
             )}
           </Link>
         </div>
-        {flow ? <GuestFlow token={token} /> : null}
+        {flowOpen ? <GuestFlow token={token} /> : null}
       </div>
     </div>
   );
