@@ -66,9 +66,11 @@ function AudioPlayer({ src }: { src: string }) {
 export default function OwnerFlow({
   imageId,
   onConversationStateChange,
+  expanded = false,
 }: {
   imageId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
+  expanded?: boolean;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [welcomeBack, setWelcomeBack] = useState('');
@@ -253,7 +255,7 @@ export default function OwnerFlow({
       />
 
       {!isLoadingHistory ? (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
+        <div className={`${expanded ? 'flex-1 min-h-0' : 'max-h-[34vh]'} overflow-y-auto pb-4 pr-1 no-scrollbar`}>
           <div className="flex flex-col gap-4">
             {messages.length === 0 && !welcomeBack ? (
               <div className="flex flex-col gap-2 items-start">
@@ -341,7 +343,7 @@ export default function OwnerFlow({
           <ImagePlus size={18} />
         </button>
         <div className="relative min-w-0 flex-1">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Chat with ember." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
+          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Chat with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
           <button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} disabled={isSending} className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer" style={{ color: isRecording ? 'white' : 'rgba(255,255,255,0.5)', background: isRecording ? 'rgba(249,115,22,0.95)' : 'transparent' }} aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}>
             <Mic size={15} />
           </button>

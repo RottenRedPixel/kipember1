@@ -222,19 +222,21 @@ function WorkflowSlot({
   flow,
   imageId,
   onConversationStateChange,
+  expanded,
 }: {
   flow: HomeEmberFlow;
   imageId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
+  expanded: boolean;
 }) {
   switch (flow) {
     case 'owner':
       return imageId ? (
-        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} expanded={expanded} />
       ) : null;
     case 'contributor':
       return imageId ? (
-        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} />
+        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} expanded={expanded} />
       ) : null;
     default:
       return null;
@@ -917,6 +919,7 @@ export default function HomeScreen({
                 flow={flow}
                 imageId={selectedImageId}
                 onConversationStateChange={setHasConversationHistory}
+                expanded={chatExpanded}
               />
             </div>
           ) : null}
