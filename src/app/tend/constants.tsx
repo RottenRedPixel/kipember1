@@ -1,4 +1,4 @@
-import { PlusCircle, BookOpen, ScanEye, UserStar, PencilLine, Users, Settings, Clock, MapPin } from 'lucide-react';
+import { PlusCircle, BookOpen, ScanEye, UserStar, PencilLine, Users, Settings, Clock, ScanLine } from 'lucide-react';
 
 export const TEND_ACTIONS: Record<string, string> = {
   'add-content': 'Add Content',
@@ -6,8 +6,8 @@ export const TEND_ACTIONS: Record<string, string> = {
   'edit-snapshot': 'Edit Snapshot',
   'tag-people': 'Tag People',
   'edit-title': 'Edit Title',
-  'edit-time-date': 'Edit Time & Date',
-  'edit-location': 'Edit Location',
+  'edit-time-place': 'Edit Time & Place',
+  frame: 'Frame',
   contributors: 'Contributors',
   settings: 'Settings',
 };
@@ -18,8 +18,8 @@ export const TEND_ICONS: Record<string, React.ComponentType<{ size?: number; col
   'edit-snapshot': ScanEye,
   'tag-people': UserStar,
   'edit-title': PencilLine,
-  'edit-time-date': Clock,
-  'edit-location': MapPin,
+  'edit-time-place': Clock,
+  frame: ScanLine,
   contributors: Users,
   settings: Settings,
 };

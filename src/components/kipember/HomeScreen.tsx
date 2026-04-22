@@ -16,6 +16,7 @@ import {
   Plus,
   PlusCircle,
   ScanEye,
+  ScanLine,
   Settings,
   Leaf,
   Link2,
@@ -603,7 +604,7 @@ export default function HomeScreen({
               top: 56,
               left: '50%',
               transform: 'translateX(-50%)',
-              height: 'calc(20vh - 56px)',
+              height: 'calc(25vh - 56px)',
               width: 'auto',
               objectFit: 'contain',
               objectPosition: 'center center',
@@ -836,9 +837,9 @@ export default function HomeScreen({
             ) : (
               <>
                 <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
+                <SvgItem label="Edit Time & Place" href={selectedImageId ? `/tend/edit-time-place?id=${selectedImageId}` : '/tend/edit-time-place'} icon={Clock} />
                 <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
-                <SvgItem label="Edit Location" href={selectedImageId ? `/tend/edit-location?id=${selectedImageId}` : '/tend/edit-location'} icon={MapPin} />
-                <SvgItem label="Edit Time & Date" href={selectedImageId ? `/tend/edit-time-date?id=${selectedImageId}` : '/tend/edit-time-date'} icon={Clock} />
+                <SvgItem label="Frame" href={selectedImageId ? `/tend/frame?id=${selectedImageId}` : '/tend/frame'} icon={ScanLine} />
                 <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
@@ -863,7 +864,7 @@ export default function HomeScreen({
         <div
           className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
           style={{
-            top: chatExpanded ? '20%' : emberOpen ? '55%' : 'auto',
+            top: chatExpanded ? '25%' : emberOpen ? '55%' : 'auto',
             background: 'var(--bg-screen)',
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',

@@ -9,7 +9,7 @@ declare global {
 }
 
 import Link from 'next/link';
-import { Calendar, ChevronLeft, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, ShieldUser, TicketSlash, UserRound, Users, X } from 'lucide-react';
+import { Calendar, ChevronLeft, Copy, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, ShieldUser, TicketSlash, UserRound, Users, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
@@ -462,8 +462,8 @@ export default function TendActionScreen({ action }: { action: string }) {
     const address = loc?.detail || '';
     const lat = payload.analysis?.latitude ?? loc?.latitude ?? null;
     const lng = payload.analysis?.longitude ?? loc?.longitude ?? null;
-    const latStr = lat != null ? String(lat) : '';
-    const lngStr = lng != null ? String(lng) : '';
+    const latStr = lat != null ? parseFloat(lat.toFixed(5)).toString() : '';
+    const lngStr = lng != null ? parseFloat(lng.toFixed(5)).toString() : '';
     setLocationLabel(label);
     setLocationAddress(address);
     setLocationCityStateZip('');
@@ -1802,8 +1802,9 @@ export default function TendActionScreen({ action }: { action: string }) {
             </>
           ) : null}
 
-          {action === 'edit-time-date' ? (
+          {action === 'edit-time-place' ? (
             <>
+              {/* Date & Time */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <Calendar size={17} color="var(--text-secondary)" strokeWidth={1.6} />
@@ -1817,47 +1818,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                   style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', colorScheme: 'dark' }}
                 />
               </div>
-              <div className="flex gap-3">
-                <Link
-                  href={tendModalHref}
-                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
-                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-                >
-                  Cancel
-                </Link>
-                {(() => {
-                  const capturedAt = detail?.analysis?.capturedAt;
-                  let savedTimeDateValue = '';
-                  if (capturedAt) {
-                    const d = new Date(capturedAt);
-                    if (!Number.isNaN(d.getTime())) {
-                      savedTimeDateValue = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                    }
-                  }
-                  const isTimeDateDirty = Boolean(timeDateValue) && timeDateValue !== savedTimeDateValue;
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => void saveTimeDate()}
-                      disabled={timeDateSaving || !isTimeDateDirty}
-                      className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-                      style={{
-                        background: isTimeDateDirty ? '#f97316' : 'var(--bg-surface)',
-                        border: isTimeDateDirty ? 'none' : '1px solid var(--border-subtle)',
-                        minHeight: 44,
-                        cursor: isTimeDateDirty ? 'pointer' : 'default',
-                      }}
-                    >
-                      {timeDateSaving ? 'Saving...' : 'Save'}
-                    </button>
-                  );
-                })()}
-              </div>
-            </>
-          ) : null}
 
-          {action === 'edit-location' ? (
-            <>
               {/* Location fields */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
@@ -1905,20 +1866,43 @@ export default function TendActionScreen({ action }: { action: string }) {
                   <MapPin size={17} color="var(--text-secondary)" strokeWidth={1.6} />
                   <h3 className="text-white font-medium text-base">GPS Data</h3>
                 </div>
-                <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                  <input
-                    type="text"
-                    value={locationLatitude && locationLongitude ? `${locationLatitude}, ${locationLongitude}` : locationLatitude || locationLongitude}
-                    onChange={(e) => {
-                      const parts = e.target.value.split(',');
-                      setLocationLatitude(parts[0]?.trim() ?? '');
-                      setLocationLongitude(parts[1]?.trim() ?? '');
-                    }}
-                    placeholder="Latitude, Longitude"
-                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                  />
+                <div className="rounded-xl px-4 flex items-center gap-2 min-h-[48px]" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                  {locationLatitude && locationLongitude ? (
+                    <>
+                      <a
+                        href={`https://maps.google.com/?q=${locationLatitude},${locationLongitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 py-3 text-sm text-white/80"
+                      >
+                        {locationLatitude}, {locationLongitude}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => void navigator.clipboard.writeText(`${locationLatitude}, ${locationLongitude}`)}
+                        className="flex-shrink-0 p-1 cursor-pointer"
+                        aria-label="Copy coordinates"
+                      >
+                        <Copy size={15} color="var(--text-secondary)" strokeWidth={1.6} />
+                      </button>
+                    </>
+                  ) : (
+                    <input
+                      type="text"
+                      value={locationLatitude || locationLongitude}
+                      onChange={(e) => {
+                        const parts = e.target.value.split(',');
+                        setLocationLatitude(parts[0]?.trim() ?? '');
+                        setLocationLongitude(parts[1]?.trim() ?? '');
+                      }}
+                      placeholder="Latitude, Longitude"
+                      className="flex-1 h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                    />
+                  )}
                 </div>
               </div>
+
+              {/* Combined save */}
               <div className="flex gap-3">
                 <Link
                   href={tendModalHref}
@@ -1928,6 +1912,15 @@ export default function TendActionScreen({ action }: { action: string }) {
                   Cancel
                 </Link>
                 {(() => {
+                  const capturedAt = detail?.analysis?.capturedAt;
+                  let savedTimeDateValue = '';
+                  if (capturedAt) {
+                    const d = new Date(capturedAt);
+                    if (!Number.isNaN(d.getTime())) {
+                      savedTimeDateValue = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                    }
+                  }
+                  const isTimeDateDirty = Boolean(timeDateValue) && timeDateValue !== savedTimeDateValue;
                   const isLocationDirty =
                     locationLabel !== savedLocationLabel ||
                     locationAddress !== savedLocationAddress ||
@@ -1935,24 +1928,46 @@ export default function TendActionScreen({ action }: { action: string }) {
                     locationCountry !== '' ||
                     locationLatitude !== savedLocationLat ||
                     locationLongitude !== savedLocationLng;
-                  const canSave = Boolean(locationLabel.trim()) && isLocationDirty;
+                  const isDirty = isTimeDateDirty || (Boolean(locationLabel.trim()) && isLocationDirty);
+                  const isSaving = timeDateSaving || locationSaving;
+                  async function saveAll() {
+                    if (isTimeDateDirty) await saveTimeDate();
+                    if (Boolean(locationLabel.trim()) && isLocationDirty) await saveLocation();
+                  }
                   return (
                     <button
                       type="button"
-                      onClick={() => void saveLocation()}
-                      disabled={locationSaving || !canSave}
+                      onClick={() => void saveAll()}
+                      disabled={isSaving || !isDirty}
                       className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
                       style={{
-                        background: canSave ? '#f97316' : 'var(--bg-surface)',
-                        border: canSave ? 'none' : '1px solid var(--border-subtle)',
+                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                        border: isDirty ? 'none' : '1px solid var(--border-subtle)',
                         minHeight: 44,
-                        cursor: canSave ? 'pointer' : 'default',
+                        cursor: isDirty ? 'pointer' : 'default',
                       }}
                     >
-                      {locationSaving ? 'Saving...' : 'Save'}
+                      {isSaving ? 'Saving...' : 'Save'}
                     </button>
                   );
                 })()}
+              </div>
+            </>
+          ) : null}
+
+          {action === 'frame' ? (
+            <>
+              <div className="flex flex-col items-center justify-center gap-3 py-10">
+                <p className="text-white/40 text-sm text-center">Frame is coming soon.</p>
+              </div>
+              <div className="flex justify-end">
+                <Link
+                  href={tendModalHref}
+                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
+                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+                >
+                  Close
+                </Link>
               </div>
             </>
           ) : null}
