@@ -1104,7 +1104,6 @@ export default function KipemberWikiContent({
         complete={Boolean(detail?.title || detail?.originalName)}
       >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium uppercase tracking-wider">Ember Title</p>
           <p className="text-white font-medium text-base">
             {detail?.title || detail?.originalName || 'Untitled Ember'}
           </p>
@@ -1121,7 +1120,10 @@ export default function KipemberWikiContent({
       >
         <WikiCard>
           {detail?.snapshot?.script ? (
-            <p className="text-white/90 text-sm leading-relaxed">{detail.snapshot.script}</p>
+            <>
+              <p className="text-white/90 text-sm leading-relaxed">{detail.snapshot.script}</p>
+              <p className="text-white/30 text-xs">Source: AI generated</p>
+            </>
           ) : (
             <p className="text-white/30 text-sm">No snapshot yet.</p>
           )}
