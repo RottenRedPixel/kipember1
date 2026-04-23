@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Activity, ChevronLeft, ChevronRight, Star, Users } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
@@ -215,6 +216,8 @@ function relativeJoined(value: Date | string) {
 
 type ContributorCard = {
   key: string;
+  contributorId: string;
+  emberId: string;
   name: string;
   avatarUrl: string | null;
   joinedAt: Date | string;
@@ -249,54 +252,6 @@ export default function UserHomeScreen({
     })
   );
 
-  const contributorsRowRef = useRef<HTMLDivElement | null>(null);
-  const contributorsDrag = useRef<{
-    startX: number;
-    startScroll: number;
-    pointerId: number;
-    lastX: number;
-    rafId: number | null;
-  } | null>(null);
-
-  function handleContributorsPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (e.pointerType === 'touch') return;
-    const row = contributorsRowRef.current;
-    if (!row) return;
-    contributorsDrag.current = {
-      startX: e.clientX,
-      startScroll: row.scrollLeft,
-      pointerId: e.pointerId,
-      lastX: e.clientX,
-      rafId: null,
-    };
-    row.style.scrollSnapType = 'none';
-    row.style.cursor = 'grabbing';
-    try { row.setPointerCapture(e.pointerId); } catch { /* noop */ }
-  }
-
-  function handleContributorsPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    const drag = contributorsDrag.current;
-    const row = contributorsRowRef.current;
-    if (!drag || !row) return;
-    drag.lastX = e.clientX;
-    if (drag.rafId !== null) return;
-    drag.rafId = requestAnimationFrame(() => {
-      drag.rafId = null;
-      if (!contributorsDrag.current) return;
-      row.scrollLeft = drag.startScroll - (drag.lastX - drag.startX);
-    });
-  }
-
-  function handleContributorsPointerUp(e: React.PointerEvent<HTMLDivElement>) {
-    const drag = contributorsDrag.current;
-    const row = contributorsRowRef.current;
-    if (!drag || !row) return;
-    if (drag.rafId !== null) cancelAnimationFrame(drag.rafId);
-    try { row.releasePointerCapture(drag.pointerId); } catch { /* noop */ }
-    row.style.scrollSnapType = '';
-    row.style.cursor = 'grab';
-    contributorsDrag.current = null;
-  }
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState<Step>('home');
@@ -625,31 +580,27 @@ export default function UserHomeScreen({
           <div className="flex items-center gap-2 mb-3">
             <Users size={18} strokeWidth={2} color="white" />
             <p className="text-base font-bold text-white">Contributors</p>
+            {contributors.length > 4 ? (
+              <Link
+                href="/account"
+                className="ml-auto text-xs font-medium can-hover"
+                style={{ color: 'rgba(255,255,255,0.5)' }}
+              >
+                View all →
+              </Link>
+            ) : null}
           </div>
           {contributors.length === 0 ? (
             <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
               No contributors yet.
             </p>
           ) : (
-            <div
-              ref={contributorsRowRef}
-              onPointerDown={handleContributorsPointerDown}
-              onPointerMove={handleContributorsPointerMove}
-              onPointerUp={handleContributorsPointerUp}
-              onPointerCancel={handleContributorsPointerUp}
-              className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 snap-x select-none"
-              style={{
-                WebkitOverflowScrolling: 'touch',
-                overscrollBehaviorX: 'contain',
-                scrollPaddingLeft: 16,
-                cursor: 'grab',
-                touchAction: 'pan-x',
-              }}
-            >
-              {contributors.map((person) => (
-                <div
+            <div className="flex gap-3 -mx-4 px-4">
+              {contributors.slice(0, 4).map((person) => (
+                <Link
                   key={person.key}
-                  className="flex flex-col items-center gap-2 flex-shrink-0 snap-start"
+                  href={`/tend/contributors?id=${person.emberId}&view=${person.contributorId}&from=home`}
+                  className="flex flex-col items-center gap-2 flex-shrink-0 can-hover"
                   style={{ width: 60 }}
                 >
                   <div
@@ -667,9 +618,8 @@ export default function UserHomeScreen({
                   </div>
                   <p className="text-sm text-white font-medium text-center truncate w-full">{person.name.split(/\s+/)[0] || person.name}</p>
                   <p className="text-[10px] text-center truncate w-full" style={{ color: 'rgba(255,255,255,0.25)', marginTop: -4 }}>{relativeJoined(person.joinedAt)}</p>
-                </div>
+                </Link>
               ))}
-              <div aria-hidden className="flex-shrink-0" style={{ width: '35%', minWidth: 120 }} />
             </div>
           )}
         </div>

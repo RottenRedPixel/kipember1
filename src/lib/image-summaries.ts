@@ -64,6 +64,8 @@ export async function getTotalContributorsForUser(userId: string) {
 
 export type ContributorSummary = {
   key: string;
+  contributorId: string;
+  emberId: string;
   name: string;
   avatarUrl: string | null;
   joinedAt: Date;
@@ -80,6 +82,7 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
       email: true,
       phoneNumber: true,
       createdAt: true,
+      imageId: true,
       user: { select: { name: true, email: true, avatarFilename: true } },
     },
   });
@@ -97,7 +100,7 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
       r.phoneNumber ??
       'Contributor';
     const avatarUrl = r.user?.avatarFilename ? `/api/uploads/${r.user.avatarFilename}` : null;
-    byKey.set(key, { key, name, avatarUrl, joinedAt: r.createdAt });
+    byKey.set(key, { key, contributorId: r.id, emberId: r.imageId, name, avatarUrl, joinedAt: r.createdAt });
   }
 
   return Array.from(byKey.values()).sort(

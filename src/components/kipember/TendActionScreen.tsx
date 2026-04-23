@@ -669,7 +669,12 @@ export default function TendActionScreen({ action }: { action: string }) {
   const TendIcon = TEND_ICONS[action];
   const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}` : '/tend/contributors';
   const tendModalHref = resolvedImageId ? `/ember/${resolvedImageId}?m=tend` : '/home';
-  const backHref = action === 'contributors' && view ? listHref : tendModalHref;
+  const fromParam = searchParams.get('from');
+  const backHref = fromParam === 'account'
+    ? '/account'
+    : fromParam === 'home'
+    ? '/home'
+    : action === 'contributors' && view ? listHref : tendModalHref;
   const contributors: TendContributor[] = detail?.contributors || [];
   const contributor: TendContributor | null =
     contributors.find((item) => item.id === view) || null;
@@ -1249,6 +1254,8 @@ export default function TendActionScreen({ action }: { action: string }) {
   const coverPhotoUrl = detail
     ? getPreviewMediaUrl({ mediaType: detail.mediaType, filename: detail.filename, posterFilename: detail.posterFilename })
     : cachedCoverUrl;
+  const fromExternal = searchParams.get('from') === 'account' || searchParams.get('from') === 'home';
+  const peekBackgroundUrl = fromExternal ? null : coverPhotoUrl;
 
   const [detectingFaces, setDetectingFaces] = useState(false);
 
@@ -1287,8 +1294,8 @@ export default function TendActionScreen({ action }: { action: string }) {
   return (
     <div
       className="fixed inset-0 flex"
-      style={coverPhotoUrl ? {
-        backgroundImage: `url(${coverPhotoUrl})`,
+      style={peekBackgroundUrl ? {
+        backgroundImage: `url(${peekBackgroundUrl})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       } : undefined}

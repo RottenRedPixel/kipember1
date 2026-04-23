@@ -420,7 +420,7 @@ export default function AccountScreen({
                     style={{ background: 'rgba(255,255,255,0.05)' }}
                   >
                     <Link
-                      href={`/tend/contributors?id=${c.emberId}&view=${c.id}`}
+                      href={`/tend/contributors?id=${c.emberId}&view=${c.id}&from=account`}
                       className="flex items-center gap-3 flex-1 min-w-0 px-4 py-3 can-hover"
                       style={{ minHeight: 44, opacity: 0.9 }}
                     >
