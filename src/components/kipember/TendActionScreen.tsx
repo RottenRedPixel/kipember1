@@ -405,6 +405,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [frameCroppedArea, setFrameCroppedArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [savedFrameCrop, setSavedFrameCrop] = useState<{ x: number; y: number } | null>(null);
   const [frameIsDirty, setFrameIsDirty] = useState(false);
+  const [frameResetPending, setFrameResetPending] = useState(false);
   const [frameSaving, setFrameSaving] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
@@ -857,25 +858,34 @@ export default function TendActionScreen({ action }: { action: string }) {
   }
 
   async function saveFrame() {
-    if (!resolvedImageId || !frameCroppedArea) return;
+    if (!resolvedImageId) return;
+    if (!frameResetPending && !frameCroppedArea) return;
     setFrameSaving(true);
-    const cx = frameCroppedArea.x + frameCroppedArea.width / 2;
-    const cy = frameCroppedArea.y + frameCroppedArea.height / 2;
     try {
+      const body = frameResetPending
+        ? { crop: null }
+        : {
+            crop: {
+              x: parseFloat((frameCroppedArea!.x + frameCroppedArea!.width / 2).toFixed(2)),
+              y: parseFloat((frameCroppedArea!.y + frameCroppedArea!.height / 2).toFixed(2)),
+              width: parseFloat(frameCroppedArea!.width.toFixed(2)),
+              height: parseFloat(frameCroppedArea!.height.toFixed(2)),
+            },
+          };
       const response = await fetch(`/api/images/${resolvedImageId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          crop: {
-            x: parseFloat(cx.toFixed(2)),
-            y: parseFloat(cy.toFixed(2)),
-            width: parseFloat(frameCroppedArea.width.toFixed(2)),
-            height: parseFloat(frameCroppedArea.height.toFixed(2)),
-          },
-        }),
+        body: JSON.stringify(body),
       });
       if (response.ok) {
-        setSavedFrameCrop({ x: cx, y: cy });
+        if (frameResetPending) {
+          setSavedFrameCrop(null);
+          setFrameResetPending(false);
+        } else {
+          const cx = frameCroppedArea!.x + frameCroppedArea!.width / 2;
+          const cy = frameCroppedArea!.y + frameCroppedArea!.height / 2;
+          setSavedFrameCrop({ x: cx, y: cy });
+        }
         setFrameIsDirty(false);
         setStatus('Frame saved.');
         await refreshDetail();
@@ -2028,8 +2038,20 @@ export default function TendActionScreen({ action }: { action: string }) {
                       crop={frameCrop}
                       zoom={frameZoom}
                       aspect={3 / 4}
-                      onCropChange={(c) => { setFrameCrop(c); if (frameInitRef.current) setFrameIsDirty(true); }}
-                      onZoomChange={(z) => { setFrameZoom(z); if (frameInitRef.current) setFrameIsDirty(true); }}
+                      onCropChange={(c) => {
+                        setFrameCrop(c);
+                        if (frameInitRef.current) {
+                          setFrameIsDirty(true);
+                          setFrameResetPending(false);
+                        }
+                      }}
+                      onZoomChange={(z) => {
+                        setFrameZoom(z);
+                        if (frameInitRef.current) {
+                          setFrameIsDirty(true);
+                          setFrameResetPending(false);
+                        }
+                      }}
                       onCropComplete={(croppedAreaPercentage) => {
                         setFrameCroppedArea(croppedAreaPercentage);
                       }}
@@ -2047,7 +2069,13 @@ export default function TendActionScreen({ action }: { action: string }) {
                       max={3}
                       step={0.01}
                       value={frameZoom}
-                      onChange={(e) => { setFrameZoom(Number(e.target.value)); if (frameInitRef.current) setFrameIsDirty(true); }}
+                      onChange={(e) => {
+                        setFrameZoom(Number(e.target.value));
+                        if (frameInitRef.current) {
+                          setFrameIsDirty(true);
+                          setFrameResetPending(false);
+                        }
+                      }}
                       className="w-full"
                       style={{ accentColor: '#f97316' }}
                     />
@@ -2060,19 +2088,11 @@ export default function TendActionScreen({ action }: { action: string }) {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (!resolvedImageId) return;
-                    await fetch(`/api/images/${resolvedImageId}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ crop: null }),
-                    });
-                    setSavedFrameCrop(null);
+                  onClick={() => {
                     setFrameCrop({ x: 0, y: 0 });
                     setFrameZoom(1);
-                    setFrameIsDirty(false);
-                    setStatus('Frame reset.');
-                    await refreshDetail();
+                    setFrameResetPending(true);
+                    setFrameIsDirty(true);
                   }}
                   className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
                   style={{ border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: 'pointer' }}
@@ -2082,7 +2102,7 @@ export default function TendActionScreen({ action }: { action: string }) {
                 <button
                   type="button"
                   onClick={() => void saveFrame()}
-                  disabled={frameSaving || !frameIsDirty || !frameCroppedArea}
+                  disabled={frameSaving || !frameIsDirty || (!frameCroppedArea && !frameResetPending)}
                   className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
                   style={{
                     background: frameIsDirty ? '#f97316' : 'var(--bg-surface)',
