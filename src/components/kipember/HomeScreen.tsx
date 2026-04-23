@@ -710,7 +710,7 @@ export default function HomeScreen({
               filter: 'blur(24px)',
               transform: 'scale(1.08)',
               opacity: photoOpacity * 0.7,
-              transition: 'opacity 0.22s ease',
+              transition: 'opacity 0.44s ease',
             }}
           />
           <img
@@ -740,7 +740,7 @@ export default function HomeScreen({
                 objectFit: 'contain' as const,
                 objectPosition: 'center center',
                 opacity: photoOpacity,
-                transition: 'opacity 0.22s ease',
+                transition: 'opacity 0.44s ease',
               };
               return {
                 top: 56,
@@ -754,7 +754,7 @@ export default function HomeScreen({
                 transform: scale > 1.01 ? `scale(${scale.toFixed(3)})` : undefined,
                 transformOrigin: hasCrop ? `${cx}% ${cy}%` : 'center',
                 opacity: photoOpacity,
-                transition: 'opacity 0.22s ease',
+                transition: 'opacity 0.44s ease',
               };
             })()}
           />
@@ -780,7 +780,7 @@ export default function HomeScreen({
           style={{
             top: 64,
             opacity: dragY === 0 ? 1 : 0,
-            transition: 'opacity 0.18s ease',
+            transition: 'opacity 0.36s ease',
           }}
         >
           <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{title}</p>
@@ -895,7 +895,7 @@ export default function HomeScreen({
                 setPhotoIndex((i) => (i + 1) % allMedia.length);
                 setPhotoIsLandscape(false);
                 setPhotoOpacity(1);
-              }, 220);
+              }, 440);
             }}
             className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 active:bg-white/20 cursor-pointer"
           >
