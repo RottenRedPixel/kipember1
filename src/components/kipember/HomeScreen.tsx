@@ -710,7 +710,7 @@ export default function HomeScreen({
               filter: 'blur(24px)',
               transform: 'scale(1.08)',
               opacity: photoOpacity * 0.7,
-              transition: 'opacity 0.44s ease',
+              transition: 'opacity 0.9s ease-in-out',
             }}
           />
           <img
@@ -740,7 +740,7 @@ export default function HomeScreen({
                 objectFit: 'contain' as const,
                 objectPosition: 'center center',
                 opacity: photoOpacity,
-                transition: 'opacity 0.44s ease',
+                transition: 'opacity 0.9s ease-in-out',
               };
               return {
                 top: 56,
@@ -754,7 +754,7 @@ export default function HomeScreen({
                 transform: scale > 1.01 ? `scale(${scale.toFixed(3)})` : undefined,
                 transformOrigin: hasCrop ? `${cx}% ${cy}%` : 'center',
                 opacity: photoOpacity,
-                transition: 'opacity 0.44s ease',
+                transition: 'opacity 0.9s ease-in-out',
               };
             })()}
           />
@@ -895,7 +895,7 @@ export default function HomeScreen({
                 setPhotoIndex((i) => (i + 1) % allMedia.length);
                 setPhotoIsLandscape(false);
                 setPhotoOpacity(1);
-              }, 440);
+              }, 900);
             }}
             className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 active:bg-white/20 cursor-pointer"
           >
