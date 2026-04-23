@@ -266,10 +266,12 @@ export default function HomeScreen({
   initialProfile,
   initialImages = [],
   initialImageId,
+  initialAvatarUrl,
 }: {
   initialProfile?: AuthUser | null;
   initialImages?: ImageSummary[];
   initialImageId?: string;
+  initialAvatarUrl?: string | null;
 }) {
   const params = useSearchParams();
   const router = useRouter();
@@ -281,7 +283,7 @@ export default function HomeScreen({
   const firstEmber = mode === 'first-ember';
 
   const [profile, setProfile] = useState<AuthUser | null>(initialProfile ?? null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? initialProfile?.avatarUrl ?? null);
   const [images, setImages] = useState<ImageSummary[]>(initialImages);
   const [selectedImage, setSelectedImage] = useState<ImageDetail | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -466,6 +468,7 @@ export default function HomeScreen({
   }, [profile]);
 
   useEffect(() => {
+    if (avatarUrl) return;
     void fetch('/api/profile', { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) return;
@@ -475,6 +478,9 @@ export default function HomeScreen({
         }
       })
       .catch(() => undefined);
+    // intentional: only fall back to client fetch on initial mount when no
+    // server-provided avatar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

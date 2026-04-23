@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
 import HomeScreen from '@/components/kipember/HomeScreen';
 import { getAccessibleImagesForUser } from '@/lib/image-summaries';
+import { getAvatarUrl } from '@/lib/avatar';
 
 export default async function EmberViewPage({
   params,
@@ -15,7 +16,10 @@ export default async function EmberViewPage({
   }
 
   const { id } = await params;
-  const initialImages = await getAccessibleImagesForUser(auth.user.id);
+  const [initialImages, initialAvatarUrl] = await Promise.all([
+    getAccessibleImagesForUser(auth.user.id),
+    getAvatarUrl(auth.user.id),
+  ]);
 
   return (
     <Suspense>
@@ -23,6 +27,7 @@ export default async function EmberViewPage({
         initialProfile={auth.user}
         initialImages={initialImages}
         initialImageId={id}
+        initialAvatarUrl={initialAvatarUrl}
       />
     </Suspense>
   );
