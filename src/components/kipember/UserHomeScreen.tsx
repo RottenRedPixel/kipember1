@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Activity, ChevronLeft, ChevronRight, Flame, Star, Users } from 'lucide-react';
+import { Activity, ChevronLeft, ChevronRight, Star, Users } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 import { getPreviewMediaUrl, type EmberMediaType } from '@/lib/media';
 
@@ -529,18 +529,17 @@ export default function UserHomeScreen({
           </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: Flame, iconColor: '#f97316', value: String(totalEmbers),       label: 'Embers' },
-            { icon: Users, iconColor: '#60a5fa', value: String(totalContributors), label: 'Contributors' },
-            { icon: Star,  iconColor: '#fbbf24', value: '340',                     label: 'Story Score' },
-          ].map(({ icon: Icon, iconColor, value, label }) => (
+            { value: String(totalEmbers),       label: 'Embers' },
+            { value: String(totalContributors), label: 'Contributors' },
+            { value: '340',                     label: 'Story Score' },
+          ].map(({ value, label }) => (
             <div
               key={label}
               className="flex flex-col items-center justify-center gap-1 rounded-2xl"
-              style={{ height: 80, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+              style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
             >
-              <Icon size={18} strokeWidth={1.8} style={{ color: iconColor }} />
               <span className="text-white font-bold text-xl leading-none">{value}</span>
-              <span className="text-[10px] leading-none" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</span>
+              <span className="text-xs leading-none" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</span>
             </div>
           ))}
         </div>
