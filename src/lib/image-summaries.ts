@@ -47,6 +47,64 @@ export function invalidateAccessibleImagesForUser(userId: string) {
   accessibleImageSummaryCache.delete(userId);
 }
 
+export async function getTotalContributorsForUser(userId: string) {
+  const contributors = await prisma.contributor.findMany({
+    where: { image: { ownerId: userId } },
+    select: { id: true, userId: true, email: true, phoneNumber: true },
+  });
+
+  const seen = new Set<string>();
+  for (const c of contributors) {
+    if (c.userId === userId) continue;
+    const key = c.userId ?? c.email?.toLowerCase() ?? c.phoneNumber ?? `row:${c.id}`;
+    seen.add(key);
+  }
+  return seen.size;
+}
+
+export type ContributorSummary = {
+  key: string;
+  name: string;
+  avatarUrl: string | null;
+  joinedAt: Date;
+};
+
+export async function getContributorsListForUser(userId: string): Promise<ContributorSummary[]> {
+  const rows = await prisma.contributor.findMany({
+    where: { image: { ownerId: userId } },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      email: true,
+      phoneNumber: true,
+      createdAt: true,
+      user: { select: { name: true, email: true, avatarFilename: true } },
+    },
+  });
+
+  const byKey = new Map<string, ContributorSummary>();
+  for (const r of rows) {
+    if (r.userId === userId) continue;
+    const key = r.userId ?? r.email?.toLowerCase() ?? r.phoneNumber ?? `row:${r.id}`;
+    if (byKey.has(key)) continue;
+    const name =
+      r.user?.name ??
+      r.name ??
+      r.user?.email ??
+      r.email ??
+      r.phoneNumber ??
+      'Contributor';
+    const avatarUrl = r.user?.avatarFilename ? `/api/uploads/${r.user.avatarFilename}` : null;
+    byKey.set(key, { key, name, avatarUrl, joinedAt: r.createdAt });
+  }
+
+  return Array.from(byKey.values()).sort(
+    (a, b) => b.joinedAt.getTime() - a.joinedAt.getTime()
+  );
+}
+
 export async function getAccessibleImagesForUser(userId: string) {
   const cached = accessibleImageSummaryCache.get(userId);
   if (cached && cached.expiresAt > Date.now()) {

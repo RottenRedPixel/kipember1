@@ -1596,8 +1596,9 @@ export default function TendActionScreen({ action }: { action: string }) {
               >
                 <input
                   value={titleValue}
-                  onChange={(event) => setTitleValue(event.target.value)}
+                  onChange={(event) => setTitleValue(event.target.value.slice(0, 40))}
                   placeholder="Ember title"
+                  maxLength={40}
                   className="w-full px-0 py-2 text-base font-medium text-white placeholder-white/30 outline-none bg-transparent"
                 />
                 {(detail?.titleUpdatedAt || detail?.createdAt) ? (

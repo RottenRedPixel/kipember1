@@ -2,7 +2,11 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
 import UserHomeScreen from '@/components/kipember/UserHomeScreen';
-import { getAccessibleImagesForUser } from '@/lib/image-summaries';
+import {
+  getAccessibleImagesForUser,
+  getContributorsListForUser,
+  getTotalContributorsForUser,
+} from '@/lib/image-summaries';
 import { getAvatarUrl } from '@/lib/avatar';
 
 export default async function HomePage({
@@ -34,14 +38,22 @@ export default async function HomePage({
     redirect(query ? `/ember/${legacyId}?${query}` : `/ember/${legacyId}`);
   }
 
-  const [initialImages, initialAvatarUrl] = await Promise.all([
+  const [initialImages, initialAvatarUrl, initialTotalContributors, initialContributors] = await Promise.all([
     getAccessibleImagesForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
+    getTotalContributorsForUser(auth.user.id),
+    getContributorsListForUser(auth.user.id),
   ]);
 
   return (
     <Suspense>
-      <UserHomeScreen initialProfile={auth.user} initialImages={initialImages} initialAvatarUrl={initialAvatarUrl} />
+      <UserHomeScreen
+        initialProfile={auth.user}
+        initialImages={initialImages}
+        initialAvatarUrl={initialAvatarUrl}
+        initialTotalContributors={initialTotalContributors}
+        initialContributors={initialContributors}
+      />
     </Suspense>
   );
 }

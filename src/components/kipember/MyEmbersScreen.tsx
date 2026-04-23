@@ -99,6 +99,17 @@ export default function MyEmbersScreen({
   return (
     <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
       <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref="/account" />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.currentTarget.value = '';
+          if (file) void handleFileSelect(file);
+        }}
+      />
 
 <div className="absolute left-0 right-0 bottom-0 flex flex-col items-center" style={{ top: 56 }}>
       <div className="flex flex-col w-full max-w-xl flex-1 min-h-0">
@@ -131,14 +142,16 @@ export default function MyEmbersScreen({
               </Link>
             </div>
 
-            <Link
-              href="/home"
-              className="flex items-center justify-center rounded-full can-hover-dim"
-              style={{ width: 32, height: 32, background: '#f97316', flexShrink: 0 }}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={creating}
+              className="flex items-center justify-center rounded-full can-hover-dim disabled:opacity-60"
+              style={{ width: 32, height: 32, background: '#f97316', flexShrink: 0, cursor: creating ? 'default' : 'pointer' }}
               aria-label="Create new ember"
             >
               <Plus size={16} color="white" strokeWidth={2.5} />
-            </Link>
+            </button>
           </div>
 
           {/* Layout toggle + Sort dropdown */}
@@ -226,17 +239,6 @@ export default function MyEmbersScreen({
                 </div>
                 {!isShared ? (
                   <>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*,video/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        e.currentTarget.value = '';
-                        if (file) void handleFileSelect(file);
-                      }}
-                    />
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}

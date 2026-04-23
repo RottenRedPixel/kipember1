@@ -246,13 +246,20 @@ export default function AccountScreen({
               <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
             </button>
           ) : (
-            <Link
-              href="/home"
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push('/home');
+                }
+              }}
               className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
-              style={{ opacity: 0.75 }}
+              style={{ opacity: 0.75, cursor: 'pointer' }}
             >
               <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
-            </Link>
+            </button>
           )}
           <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
             {activeSection ? activeSection.icon : <User size={22} strokeWidth={1.6} />}

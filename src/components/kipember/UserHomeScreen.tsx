@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Activity, ChevronLeft, ChevronRight, Flame, Star, Users } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
+import { getPreviewMediaUrl, type EmberMediaType } from '@/lib/media';
 
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
@@ -188,15 +189,114 @@ function Facepile({
 
 type Step = 'home' | 'confirm' | 'processing';
 
+const CONTRIBUTOR_COLORS = ['#7c3aed', '#0891b2', '#16a34a', '#b45309', '#db2777', '#2563eb', '#d97706', '#9333ea'];
+
+function colorForKey(key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return CONTRIBUTOR_COLORS[hash % CONTRIBUTOR_COLORS.length];
+}
+
+function relativeJoined(value: Date | string) {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfThat = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const diffDays = Math.round((startOfToday - startOfThat) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
+  return `${Math.floor(diffDays / 365)}y ago`;
+}
+
+type ContributorCard = {
+  key: string;
+  name: string;
+  avatarUrl: string | null;
+  joinedAt: Date | string;
+};
+
 export default function UserHomeScreen({
   initialProfile,
   initialImages,
   initialAvatarUrl,
+  initialTotalContributors,
+  initialContributors,
 }: {
   initialProfile: { name: string | null; email: string } | null;
-  initialImages?: Array<{ accessType: string }>;
+  initialImages?: Array<{
+    accessType: string;
+    filename: string;
+    mediaType: EmberMediaType;
+    posterFilename: string | null;
+  }>;
   initialAvatarUrl?: string | null;
+  initialTotalContributors?: number;
+  initialContributors?: ContributorCard[];
 }) {
+  const totalEmbers = initialImages?.filter((img) => img.accessType === 'owner').length ?? 0;
+  const totalContributors = initialTotalContributors ?? 0;
+  const contributors = initialContributors ?? [];
+  const activityImages = (initialImages ?? []).slice(0, 3).map((img) =>
+    getPreviewMediaUrl({
+      mediaType: img.mediaType,
+      filename: img.filename,
+      posterFilename: img.posterFilename,
+    })
+  );
+
+  const contributorsRowRef = useRef<HTMLDivElement | null>(null);
+  const contributorsDrag = useRef<{
+    startX: number;
+    startScroll: number;
+    pointerId: number;
+    lastX: number;
+    rafId: number | null;
+  } | null>(null);
+
+  function handleContributorsPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType === 'touch') return;
+    const row = contributorsRowRef.current;
+    if (!row) return;
+    contributorsDrag.current = {
+      startX: e.clientX,
+      startScroll: row.scrollLeft,
+      pointerId: e.pointerId,
+      lastX: e.clientX,
+      rafId: null,
+    };
+    row.style.scrollSnapType = 'none';
+    row.style.cursor = 'grabbing';
+    try { row.setPointerCapture(e.pointerId); } catch { /* noop */ }
+  }
+
+  function handleContributorsPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const drag = contributorsDrag.current;
+    const row = contributorsRowRef.current;
+    if (!drag || !row) return;
+    drag.lastX = e.clientX;
+    if (drag.rafId !== null) return;
+    drag.rafId = requestAnimationFrame(() => {
+      drag.rafId = null;
+      if (!contributorsDrag.current) return;
+      row.scrollLeft = drag.startScroll - (drag.lastX - drag.startX);
+    });
+  }
+
+  function handleContributorsPointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    const drag = contributorsDrag.current;
+    const row = contributorsRowRef.current;
+    if (!drag || !row) return;
+    if (drag.rafId !== null) cancelAnimationFrame(drag.rafId);
+    try { row.releasePointerCapture(drag.pointerId); } catch { /* noop */ }
+    row.style.scrollSnapType = '';
+    row.style.cursor = 'grab';
+    contributorsDrag.current = null;
+  }
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState<Step>('home');
@@ -429,9 +529,9 @@ export default function UserHomeScreen({
           </div>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { icon: Flame, iconColor: '#f97316', value: '12',  label: 'Embers' },
-            { icon: Users, iconColor: '#60a5fa', value: '45',  label: 'Contributors' },
-            { icon: Star,  iconColor: '#fbbf24', value: '340', label: 'Story Score' },
+            { icon: Flame, iconColor: '#f97316', value: String(totalEmbers),       label: 'Embers' },
+            { icon: Users, iconColor: '#60a5fa', value: String(totalContributors), label: 'Contributors' },
+            { icon: Star,  iconColor: '#fbbf24', value: '340',                     label: 'Story Score' },
           ].map(({ icon: Icon, iconColor, value, label }) => (
             <div
               key={label}
@@ -460,7 +560,11 @@ export default function UserHomeScreen({
                   className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
                   style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
                 >
-                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }} />
+                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }}>
+                    {activityImages[0] && (
+                      <img src={activityImages[0]} alt="" className="w-full h-full object-cover" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
                       <span style={{ color: '#f97316', fontWeight: 700 }}>4</span> Contributions
@@ -478,7 +582,11 @@ export default function UserHomeScreen({
                   className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
                   style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
                 >
-                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)' }} />
+                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)' }}>
+                    {activityImages[1] && (
+                      <img src={activityImages[1]} alt="" className="w-full h-full object-cover" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
                       <span style={{ color: '#f97316', fontWeight: 700 }}>2</span> Wiki Updates
@@ -495,7 +603,11 @@ export default function UserHomeScreen({
                   className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
                   style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
                 >
-                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #059669 0%, #065f46 100%)' }} />
+                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #059669 0%, #065f46 100%)' }}>
+                    {activityImages[2] && (
+                      <img src={activityImages[2]} alt="" className="w-full h-full object-cover" />
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
                       <span style={{ color: 'white', fontWeight: 700 }}>22</span> Views
@@ -515,27 +627,52 @@ export default function UserHomeScreen({
             <Users size={18} strokeWidth={2} color="white" />
             <p className="text-base font-bold text-white">Contributors</p>
           </div>
-          <div className="grid grid-cols-4 gap-3">
-            {DUMMY_CONTRIBUTORS.map((person) => (
-              <div key={person.name} className="flex flex-col items-center gap-2">
+          {contributors.length === 0 ? (
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              No contributors yet.
+            </p>
+          ) : (
+            <div
+              ref={contributorsRowRef}
+              onPointerDown={handleContributorsPointerDown}
+              onPointerMove={handleContributorsPointerMove}
+              onPointerUp={handleContributorsPointerUp}
+              onPointerCancel={handleContributorsPointerUp}
+              className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 snap-x select-none"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehaviorX: 'contain',
+                scrollPaddingLeft: 16,
+                cursor: 'grab',
+                touchAction: 'pan-x',
+              }}
+            >
+              {contributors.map((person) => (
                 <div
-                  className="rounded-full flex items-center justify-center text-white font-bold"
-                  style={{
-                    width: 56,
-                    height: 56,
-                    background: person.color,
-                    fontSize: 16,
-                  }}
+                  key={person.key}
+                  className="flex flex-col items-center gap-2 flex-shrink-0 snap-start"
+                  style={{ width: 60 }}
                 >
-                  {person.avatarUrl
-                    ? <img src={person.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                    : person.initials}
+                  <div
+                    className="rounded-full flex items-center justify-center text-white font-bold overflow-hidden"
+                    style={{
+                      width: 44,
+                      height: 44,
+                      background: colorForKey(person.key),
+                      fontSize: 13,
+                    }}
+                  >
+                    {person.avatarUrl
+                      ? <img src={person.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                      : initials(person.name)}
+                  </div>
+                  <p className="text-sm text-white font-medium text-center truncate w-full">{person.name.split(/\s+/)[0] || person.name}</p>
+                  <p className="text-[10px] text-center truncate w-full" style={{ color: 'rgba(255,255,255,0.25)', marginTop: -4 }}>{relativeJoined(person.joinedAt)}</p>
                 </div>
-                <p className="text-sm text-white font-medium text-center truncate w-full">{person.name}</p>
-                <p className="text-[10px] text-center truncate w-full" style={{ color: 'rgba(255,255,255,0.25)', marginTop: -4 }}>{person.joined}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+              <div aria-hidden className="flex-shrink-0" style={{ width: '35%', minWidth: 120 }} />
+            </div>
+          )}
         </div>
 
       </div>

@@ -800,6 +800,13 @@ export async function PATCH(
         );
       }
 
+      if (typeof body.title === 'string' && body.title.trim().length > 40) {
+        return NextResponse.json(
+          { error: 'title must be 40 characters or fewer' },
+          { status: 400 }
+        );
+      }
+
       updateData.title = typeof body.title === 'string' ? (toTitleCase(body.title) || null) : null;
       updateData.titleUpdatedAt = new Date();
     }

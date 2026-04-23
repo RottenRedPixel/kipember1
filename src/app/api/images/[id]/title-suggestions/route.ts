@@ -27,6 +27,7 @@ ${modeInstruction}
 
 Each title should:
 - Be 2-6 words long
+- Be 40 characters or fewer (hard limit, including spaces)
 - Capture the essence of the memory
 - Feel personal and meaningful
 - Avoid generic phrases
@@ -43,6 +44,7 @@ Rules:
 - Use the speaker's actual wording as much as possible.
 - Light trimming is allowed, but do not invent facts or rewrite the meaning.
 - Each title must be 2-8 words.
+- Each title must be 40 characters or fewer (hard limit, including spaces and the surrounding quotes).
 - Each title must be wrapped in double quotes.
 - Prefer vivid, memorable, title-worthy wording.
 - Prefer statements over questions when possible.
@@ -78,6 +80,7 @@ PRIORITY (in order):
 - Fall back to visual scene details only when no personal context is available
 
 Generate ONE thoughtful, evocative title between 2 and 8 words.
+The title must be 40 characters or fewer (hard limit, including spaces).
 Return ONLY the title, with no explanation.`;
 
 function normalizeTitleLine(value: string) {
