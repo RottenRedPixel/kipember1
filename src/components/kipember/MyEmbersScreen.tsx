@@ -50,7 +50,7 @@ export default function MyEmbersScreen({
       if (!response.ok || typeof payload?.id !== 'string') {
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
       }
-      router.push(`/home?id=${payload.id}&ember=owner`);
+      router.push(`/ember/${payload.id}?ember=owner`);
     } catch {
       setCreating(false);
     }
@@ -88,7 +88,7 @@ export default function MyEmbersScreen({
       else next.set(key, value);
     });
     const query = next.toString();
-    return query ? `/user/my-embers?${query}` : '/user/my-embers';
+    return query ? `/embers?${query}` : '/embers';
   };
 
   const filtered = images.filter((img) =>
@@ -267,7 +267,7 @@ export default function MyEmbersScreen({
                 return (
                   <Link
                     key={image.id}
-                    href={`/home?id=${image.id}`}
+                    href={`/ember/${image.id}`}
                     className="flex rounded-xl overflow-hidden can-hover-card"
                     style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
                   >
@@ -340,7 +340,7 @@ export default function MyEmbersScreen({
               {sorted.map((image) => (
                 <Link
                   key={image.id}
-                  href={`/home?id=${image.id}`}
+                  href={`/ember/${image.id}`}
                   className="aspect-square rounded-xl overflow-hidden can-hover-card relative"
                   style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: 0.95 }}
                 >

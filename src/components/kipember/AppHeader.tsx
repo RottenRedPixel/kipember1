@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 type AppHeaderProps = {
   avatarUrl?: string | null;
@@ -18,8 +18,8 @@ export default function AppHeader({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(externalAvatarUrl ?? null);
   const [authenticated, setAuthenticated] = useState(externalAvatarUrl !== undefined);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const isHomeDashboard = pathname === '/home' && !searchParams.get('id');
+  const isHomeDashboard = pathname === '/home';
+  const isEmbersList = pathname === '/embers';
 
   useEffect(() => {
     // Caller is managing auth state — use what was passed
@@ -77,7 +77,7 @@ export default function AppHeader({
           <Link href="/home" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : '#6b7280' }}>
             HOME
           </Link>
-          <Link href="/user/my-embers" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/user/my-embers' ? '#ffffff' : '#6b7280' }}>
+          <Link href="/embers" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isEmbersList ? '#ffffff' : '#6b7280' }}>
             EMBERS
           </Link>
         </>

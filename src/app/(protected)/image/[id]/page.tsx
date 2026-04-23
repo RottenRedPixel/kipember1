@@ -6,5 +6,5 @@ export default async function ImagePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/home?id=${id}`);
+  redirect(`/ember/${id}`);
 }

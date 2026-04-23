@@ -242,7 +242,7 @@ export default function UserHomeScreen({
   useEffect(() => {
     if (!createdImageId || step !== 'processing') return;
     const timer = setTimeout(() => {
-      router.replace(`/home?id=${createdImageId}&ember=owner`);
+      router.replace(`/ember/${createdImageId}?ember=owner`);
     }, 400);
     return () => clearTimeout(timer);
   }, [createdImageId, step, router]);

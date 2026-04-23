@@ -265,9 +265,11 @@ function XIcon() {
 export default function HomeScreen({
   initialProfile,
   initialImages = [],
+  initialImageId,
 }: {
   initialProfile?: AuthUser | null;
   initialImages?: ImageSummary[];
+  initialImageId?: string;
 }) {
   const params = useSearchParams();
   const router = useRouter();
@@ -297,7 +299,7 @@ export default function HomeScreen({
   const [shareToken, setShareToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const selectedImageId = params.get('id') || images[0]?.id || null;
+  const selectedImageId = initialImageId || params.get('id') || images[0]?.id || null;
   const hasExistingEmbers = images.length > 0;
   const selectedSummary = images.find((image) => image.id === selectedImageId) || null;
   const displayImage = selectedImage || selectedSummary;
@@ -334,7 +336,9 @@ export default function HomeScreen({
 
   const buildHomeHref = useCallback((updates: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
+    next.delete('id');
     Object.entries(updates).forEach(([key, value]) => {
+      if (key === 'id') return;
       if (value === null) {
         next.delete(key);
       } else {
@@ -342,8 +346,11 @@ export default function HomeScreen({
       }
     });
     const query = next.toString();
+    if (selectedImageId) {
+      return query ? `/ember/${selectedImageId}?${query}` : `/ember/${selectedImageId}`;
+    }
     return query ? `/home?${query}` : '/home';
-  }, [params]);
+  }, [params, selectedImageId]);
   const isDarkTheme = params.get('theme')
     ? params.get('theme') !== 'light'
     : storedTheme !== 'light';
@@ -550,7 +557,7 @@ export default function HomeScreen({
     const timer = setTimeout(() => {
       setSelectedFile(null);
       setSelectedPreviewUrl('');
-      router.replace(`/home?id=${createdImageId}&ember=owner`);
+      router.replace(`/ember/${createdImageId}?ember=owner`);
     }, 400);
 
     return () => clearTimeout(timer);
@@ -843,7 +850,7 @@ export default function HomeScreen({
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
             {displayImage?.accessType === 'contributor' ? (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=contributor` : '/home?ember=contributor'} icon={PlusCircle} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=contributor` : '/home'} icon={PlusCircle} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="View Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
               </>
@@ -856,7 +863,7 @@ export default function HomeScreen({
                 <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
-                <SvgItem label="Add Content" href={selectedImageId ? `/home?id=${selectedImageId}&ember=owner` : '/home?ember=owner'} icon={PlusCircle} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=owner` : '/home'} icon={PlusCircle} />
                 <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
               </>
             )}

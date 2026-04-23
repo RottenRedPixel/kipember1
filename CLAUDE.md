@@ -68,7 +68,7 @@ const [step, setStep] = useState(null);
 
 // GOOD — Link navigation works everywhere:
 const step = useSearchParams().get("step");
-<Link href="/home?ember=owner&step=adding">Add to Memory</Link>
+<Link href="/ember/[id]?ember=owner&step=adding">Add to Memory</Link>
 ```
 
 This pattern is used in all workflow components. State is read from the URL via `useSearchParams()`, and each choice navigates to a URL with a `step=` param (e.g. `step=adding`, `step=phone`, `step=chat`).
@@ -76,10 +76,25 @@ This pattern is used in all workflow components. State is read from the URL via 
 # Architecture
 
 ## Screen naming
-- **Landing Page** (`/`) — intro + sign up / sign in
-- **Sign Up** (`/signup`) — account creation
-- **Sign In** (`/signin`) — login
-- **Memory View** (`/home`) — main screen showing a memory (photo, title, date) with the right rail (user avatar, share, tend, play) and Ember Chat
+The app has five top-level screens:
+
+- **Landing Page** (`/`) — intro + sign up / sign in (unauthenticated)
+- **Home Screen** (`/home`) — greeting dashboard for a signed-in user ("Hello {firstName}"), stats, activity, contributors grid
+- **My Embers** (`/embers`) — grid / list of the user's embers (tabs for Mine / Shared)
+- **Ember View** (`/ember/[id]`) — individual ember detail (photo, title, date) with the right rail (share, tend, view) and Ember Chat
+- **Account** (`/account`) — profile + settings
+
+Secondary routes (not in the five, but live in the app):
+- Auth: `/signup`, `/signin`
+- Marketing: `/about`
+- Shared access: `/guest/[token]`, `/contribute/[token]`
+- Sliders: `/tend/[action]` (ember-level), `/user/[action]` (user-level)
+
+Legacy redirects in place:
+- `/home?id=X[&...]` → `/ember/X[?...]`
+- `/user/my-embers[?...]` → `/embers[?...]`
+- `/user/shared-embers` → `/embers?view=shared`
+- `/image/[id]` → `/ember/[id]`
 
 ## Slider pattern
 All detail screens use a consistent slider panel: 93% width, 7% peek on the left to go back, header with back chevron + icon + title, scrollable content area.
@@ -138,21 +153,21 @@ Structure: constants file (actions map + icons map) → dynamic `[action]` route
 
 - **Tend sliders** (`/tend/[action]`) — Add Content, View Wiki, Edit Snapshot, Tag People, Edit Title, Contributors, Settings
 - **User sliders** (`/user/[action]`) — My Embers, Shared Embers, Create Ember, Profile
-- Back links return to the modal that opened them (`/home?m=tend` or `/home?m=user`)
+- Back links return to the modal that opened them (`/ember/[id]?m=tend` or `/ember/[id]?m=user`)
 
 ## Modals
-URL-driven via `?m=` param on `/home`. Current modals: `user`, `share`, `tend`, `play`.
+URL-driven via `?m=` param on `/ember/[id]`. Current modals: `user`, `share`, `tend`, `play`.
 
 Each modal uses the shared `<Modal>` wrapper (frosted glass card, X to close, centered at bottom). Items inside use `<SvgItem>` (icon + label in a 3-column grid).
 
 ## Ember Chat workflow pattern
-The Ember Chat is a persistent shell at the bottom of Memory View. It has two parts:
+The Ember Chat is a persistent shell at the bottom of Ember View. It has two parts:
 
 1. **Shell** (Ember Chat component) — handles open/close toggle, flame button, container animation. Always the same regardless of workflow.
 2. **Workflow slot** — an interchangeable inner component that renders the current workflow's UI.
 
 ### Workflow routing
-Driven by URL param: `/home?ember=owner`, `/home?ember=contributor`, `/guest/{token}?ember=guest`, etc.
+Driven by URL param: `/ember/[id]?ember=owner`, `/ember/[id]?ember=contributor`, `/guest/{token}?ember=guest`, etc.
 
 ### Workflows
 | Param | Component | Role | Purpose |

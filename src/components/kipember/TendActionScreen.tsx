@@ -666,7 +666,7 @@ export default function TendActionScreen({ action }: { action: string }) {
 
   const TendIcon = TEND_ICONS[action];
   const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}` : '/tend/contributors';
-  const tendModalHref = resolvedImageId ? `/home?id=${resolvedImageId}&m=tend` : '/home?m=tend';
+  const tendModalHref = resolvedImageId ? `/ember/${resolvedImageId}?m=tend` : '/home';
   const backHref = action === 'contributors' && view ? listHref : tendModalHref;
   const contributors: TendContributor[] = detail?.contributors || [];
   const contributor: TendContributor | null =

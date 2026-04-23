@@ -1,21 +1,9 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
-import HomeScreen from '@/components/kipember/HomeScreen';
 import UserHomeScreen from '@/components/kipember/UserHomeScreen';
 import { getAccessibleImagesForUser } from '@/lib/image-summaries';
 import { getAvatarUrl } from '@/lib/avatar';
-
-const HOME_STAGE_QUERY_KEYS = new Set([
-  'id',
-  'm',
-  'ember',
-  'mode',
-  'step',
-  'sub',
-  'paused',
-  'restart',
-]);
 
 export default async function HomePage({
   searchParams,
@@ -28,21 +16,32 @@ export default async function HomePage({
   }
 
   const resolvedSearchParams = await searchParams;
+
+  // Legacy redirect: /home?id=X[&...] -> /ember/X[?...]
+  const rawId = resolvedSearchParams.id;
+  const legacyId = Array.isArray(rawId) ? rawId[0] : rawId;
+  if (typeof legacyId === 'string' && legacyId.length > 0) {
+    const preserved = new URLSearchParams();
+    for (const [key, value] of Object.entries(resolvedSearchParams)) {
+      if (key === 'id' || value === undefined) continue;
+      if (Array.isArray(value)) {
+        value.forEach((v) => preserved.append(key, v));
+      } else {
+        preserved.set(key, value);
+      }
+    }
+    const query = preserved.toString();
+    redirect(query ? `/ember/${legacyId}?${query}` : `/ember/${legacyId}`);
+  }
+
   const [initialImages, initialAvatarUrl] = await Promise.all([
     getAccessibleImagesForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
   ]);
-  const showStageView = Object.keys(resolvedSearchParams).some((key) =>
-    HOME_STAGE_QUERY_KEYS.has(key)
-  );
 
   return (
     <Suspense>
-      {showStageView ? (
-        <HomeScreen initialProfile={auth.user} initialImages={initialImages} />
-      ) : (
-        <UserHomeScreen initialProfile={auth.user} initialImages={initialImages} initialAvatarUrl={initialAvatarUrl} />
-      )}
+      <UserHomeScreen initialProfile={auth.user} initialImages={initialImages} initialAvatarUrl={initialAvatarUrl} />
     </Suspense>
   );
 }

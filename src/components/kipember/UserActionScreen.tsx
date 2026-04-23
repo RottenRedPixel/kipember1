@@ -235,7 +235,7 @@ export default function UserActionScreen({
           {rootView ? (
             <div className="ml-auto flex items-center gap-2">
               <Link
-                href="/user/shared-embers"
+                href="/embers?view=shared"
                 className="w-11 h-11 flex items-center justify-center rounded-full can-hover"
                 style={{ background: 'var(--bg-surface)' }}
               >
@@ -297,7 +297,7 @@ export default function UserActionScreen({
                   {sorted.map((image) => (
                     <Link
                       key={image.id}
-                      href={`/home?id=${image.id}`}
+                      href={`/ember/${image.id}`}
                       className="aspect-square rounded-xl overflow-hidden can-hover relative"
                       style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: 0.95 }}
                     >
