@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, ChevronLeft, ChevronRight, Mic, Share2 } from 'lucide-react';
+import { Activity, ChevronLeft, ChevronRight, Flame, Star, Users } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 
 function EmberMark({ size = 18 }: { size?: number }) {
@@ -32,13 +32,100 @@ function initials(value: string) {
 }
 
 
+// ─── SwipeDismiss ─────────────────────────────────────────────────────────────
+
+function SwipeDismiss({ children, onDismiss }: { children: React.ReactNode; onDismiss: () => void }) {
+  const [dragX, setDragX] = useState(0);
+  const [settling, setSettling] = useState(false);
+  const [gone, setGone] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const startPos = useRef<{ x: number; y: number } | null>(null);
+  const swiping = useRef(false);
+
+  const THRESHOLD = 80;
+
+  function handlePointerDown(e: React.PointerEvent) {
+    startPos.current = { x: e.clientX, y: e.clientY };
+    swiping.current = false;
+    setSettling(false);
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!startPos.current) return;
+    const dx = e.clientX - startPos.current.x;
+    const dy = e.clientY - startPos.current.y;
+    if (!swiping.current) {
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        swiping.current = true;
+        try { cardRef.current?.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      } else return;
+    }
+    setDragX(dx);
+  }
+
+  function handlePointerUp() {
+    if (!startPos.current) return;
+    const wasSwipe = swiping.current;
+    const dx = dragX;
+    startPos.current = null;
+    swiping.current = false;
+    if (!wasSwipe) return;
+    setSettling(true);
+    if (Math.abs(dx) >= THRESHOLD) {
+      setDragX(dx > 0 ? window.innerWidth : -window.innerWidth);
+      setTimeout(() => { setGone(true); onDismiss(); }, 260);
+    } else {
+      setDragX(0);
+      setTimeout(() => setSettling(false), 300);
+    }
+  }
+
+  if (gone) return null;
+
+  const pct = Math.min(1, Math.abs(dragX) / THRESHOLD);
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      {/* Dismiss bg */}
+      <div
+        className="absolute inset-0 flex items-center rounded-2xl"
+        style={{
+          background: '#1f2937',
+          opacity: pct,
+          justifyContent: dragX > 0 ? 'flex-start' : 'flex-end',
+          paddingLeft: dragX > 0 ? 20 : 0,
+          paddingRight: dragX <= 0 ? 20 : 0,
+        }}
+      >
+        <span className="text-white/50 text-sm font-medium">Dismiss</span>
+      </div>
+      {/* Card */}
+      <div
+        ref={cardRef}
+        style={{
+          transform: `translateX(${dragX}px)`,
+          transition: settling ? 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+          touchAction: 'pan-y',
+          cursor: 'grab',
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // ─── Facepile ─────────────────────────────────────────────────────────────────
 
-const DUMMY_CONTRIBUTORS = [
-  { initials: 'SA', color: '#7c3aed' },
-  { initials: 'MK', color: '#0891b2' },
-  { initials: 'JL', color: '#16a34a' },
-  { initials: 'RB', color: '#b45309' },
+const DUMMY_CONTRIBUTORS: Array<{ initials: string; color: string; name: string; joined: string; avatarUrl?: string }> = [
+  { initials: 'SA', color: '#7c3aed', name: 'Sarah',  joined: 'Today' },
+  { initials: 'MK', color: '#0891b2', name: 'Mike',   joined: 'Today' },
+  { initials: 'JL', color: '#16a34a', name: 'James',  joined: 'Yesterday' },
+  { initials: 'RB', color: '#b45309', name: 'Rachel', joined: '3d ago' },
 ];
 
 function Facepile({
@@ -68,7 +155,6 @@ function Facepile({
             height: size,
             left: i * step,
             background: p.color,
-            border: '2px solid var(--bg-screen)',
             zIndex: shown.length - i,
             fontSize: Math.round(size * 0.32),
           }}
@@ -86,7 +172,6 @@ function Facepile({
             height: size,
             left: shown.length * step,
             background: 'var(--bg-surface)',
-            border: '2px solid var(--bg-screen)',
             color: 'rgba(255,255,255,0.45)',
             fontSize: Math.round(size * 0.3),
             zIndex: 0,
@@ -122,6 +207,7 @@ export default function UserHomeScreen({
   const [uploadError, setUploadError] = useState('');
   const [createdImageId, setCreatedImageId] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
+  const [dismissedActivity, setDismissedActivity] = useState<Set<string>>(new Set());
 
   const displayName = initialProfile?.name || initialProfile?.email || 'Ember User';
 
@@ -288,9 +374,9 @@ export default function UserHomeScreen({
       >
       <div className="w-full max-w-xl">
         {/* a) Greeting */}
-        <div className="pt-5 pb-2 flex flex-col gap-1">
+        <div className="pt-5 pb-2">
           <h1 className="text-white text-2xl font-bold tracking-tight">Hello {firstName}</h1>
-          <p className="text-white/60 text-sm">Good to see you again!</p>
+          <p className="text-white/60 text-sm mt-1">Good to see you again!</p>
         </div>
 
         {/* b) Create ember card */}
@@ -335,78 +421,123 @@ export default function UserHomeScreen({
           </button>
         </div>
 
-        {/* c) Recent Activity */}
+        {/* Stats strip */}
         <div className="mt-5">
-          <p className="text-xs font-medium text-white/30 mb-3">Recent Activity</p>
+          <div className="flex items-center gap-2 mb-3">
+            <Star size={18} strokeWidth={2} color="white" />
+            <p className="text-base font-bold text-white">Your Stats</p>
+          </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { icon: Flame, iconColor: '#f97316', value: '12',  label: 'Embers' },
+            { icon: Users, iconColor: '#60a5fa', value: '45',  label: 'Contributors' },
+            { icon: Star,  iconColor: '#fbbf24', value: '340', label: 'Story Score' },
+          ].map(({ icon: Icon, iconColor, value, label }) => (
+            <div
+              key={label}
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl"
+              style={{ height: 80, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+            >
+              <Icon size={18} strokeWidth={1.8} style={{ color: iconColor }} />
+              <span className="text-white font-bold text-xl leading-none">{value}</span>
+              <span className="text-[10px] leading-none" style={{ color: 'rgba(255,255,255,0.35)' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+        </div>
+
+        {/* c) Ember activity */}
+        <div className="mt-5">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity size={18} strokeWidth={2} color="white" />
+            <p className="text-base font-bold text-white">Ember Activity</p>
+          </div>
           <div className="flex flex-col gap-2">
 
-            {/* Contributors — facepile */}
-            <div className="flex items-center gap-3 can-hover-card rounded-xl">
-              <Facepile people={DUMMY_CONTRIBUTORS} />
-              <div className="flex-1 min-w-0 px-2">
-                <p className="text-sm font-medium text-white leading-snug">4 contributors joined</p>
-                <p className="text-xs text-white/40 leading-snug">Added to your ember</p>
-              </div>
-            </div>
-
-            {/* Wiki updated — icon */}
-            <div className="flex items-center gap-3 can-hover-card rounded-xl">
-              <div className="relative flex-shrink-0">
+            {!dismissedActivity.has('contributions') && (
+              <SwipeDismiss onDismiss={() => setDismissedActivity(p => new Set([...p, 'contributions']))}>
                 <div
-                  className="flex items-center justify-center rounded-full"
-                  style={{ width: 55, height: 55, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                  className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
+                  style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
                 >
-                  <BookOpen size={22} color="#6b7280" strokeWidth={1.6} />
+                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      <span style={{ color: '#f97316', fontWeight: 700 }}>4</span> Contributions
+                    </p>
+                    <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Summer Trip · 2h ago</p>
+                  </div>
+                  <Facepile people={DUMMY_CONTRIBUTORS} size={36} overlap={11} />
                 </div>
-                <span
-                  className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-                  style={{ minWidth: 18, height: 18, background: '#f97316', padding: '0 4px' }}
+              </SwipeDismiss>
+            )}
+
+            {!dismissedActivity.has('wiki') && (
+              <SwipeDismiss onDismiss={() => setDismissedActivity(p => new Set([...p, 'wiki']))}>
+                <div
+                  className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
+                  style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
                 >
-                  1
-                </span>
-              </div>
-              <div className="flex-1 min-w-0 px-2">
-                <p className="text-sm font-medium text-white leading-snug">Wiki updated</p>
-                <p className="text-xs text-white/40 leading-snug">Ember knowledge base was refined</p>
-              </div>
-            </div>
+                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      <span style={{ color: '#f97316', fontWeight: 700 }}>2</span> Wiki Updates
+                    </p>
+                    <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Gran's 80th · yesterday</p>
+                  </div>
+                </div>
+              </SwipeDismiss>
+            )}
+
+            {!dismissedActivity.has('views') && (
+              <SwipeDismiss onDismiss={() => setDismissedActivity(p => new Set([...p, 'views']))}>
+                <div
+                  className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
+                  style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                >
+                  <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #059669 0%, #065f46 100%)' }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      <span style={{ color: 'white', fontWeight: 700 }}>22</span> Views
+                    </p>
+                    <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>Beach Day · 3d ago</p>
+                  </div>
+                </div>
+              </SwipeDismiss>
+            )}
 
           </div>
         </div>
 
-        {/* d) Requests */}
+        {/* d) New members */}
         <div className="mt-5 mb-8">
-          <p className="text-xs font-medium text-white/30 mb-3">Requests</p>
-          <div className="flex flex-col gap-2">
-            {[
-              { icon: Mic, title: 'Contribution request', sub: 'Someone wants to add a memory', count: 2 },
-              { icon: Share2, title: 'Share request', sub: 'An ember was shared with you', count: 0 },
-            ].map(({ icon: Icon, title, sub, count }) => (
-              <div key={title} className="flex items-center gap-3 can-hover-card rounded-xl">
-                <div className="relative flex-shrink-0">
-                  <div
-                    className="flex items-center justify-center rounded-full"
-                    style={{ width: 55, height: 55, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-                  >
-                    <Icon size={22} color="#6b7280" strokeWidth={1.6} />
-                  </div>
-                  {count ? (
-                    <span
-                      className="absolute -top-1 -right-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white"
-                      style={{ minWidth: 18, height: 18, background: '#f97316', padding: '0 4px' }}
-                    >
-                      {count}
-                    </span>
-                  ) : null}
+          <div className="flex items-center gap-2 mb-3">
+            <Users size={18} strokeWidth={2} color="white" />
+            <p className="text-base font-bold text-white">Contributors</p>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            {DUMMY_CONTRIBUTORS.map((person) => (
+              <div key={person.name} className="flex flex-col items-center gap-2">
+                <div
+                  className="rounded-full flex items-center justify-center text-white font-bold"
+                  style={{
+                    width: 56,
+                    height: 56,
+                    background: person.color,
+                    fontSize: 16,
+                  }}
+                >
+                  {person.avatarUrl
+                    ? <img src={person.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
+                    : person.initials}
                 </div>
-                <div className="flex-1 min-w-0 px-2">
-                  <p className="text-sm font-medium text-white leading-snug">{title}</p>
-                  <p className="text-xs text-white/40 leading-snug">{sub}</p>
-                </div>
+                <p className="text-sm text-white font-medium text-center truncate w-full">{person.name}</p>
+                <p className="text-[10px] text-center truncate w-full" style={{ color: 'rgba(255,255,255,0.25)', marginTop: -4 }}>{person.joined}</p>
               </div>
             ))}
           </div>
         </div>
+
       </div>
       </div>
     </div>
