@@ -297,7 +297,12 @@ export default function HomeScreen({
   const [photoOpacity, setPhotoOpacity] = useState(1);
   const [photoIsLandscape, setPhotoIsLandscape] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [dragY, setDragY] = useState(0);
+  const [swipeSettling, setSwipeSettling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const swipeWrapperRef = useRef<HTMLDivElement | null>(null);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipeActiveRef = useRef(false);
 
   const selectedImageId = initialImageId || params.get('id') || images[0]?.id || null;
   const hasExistingEmbers = images.length > 0;
@@ -308,6 +313,7 @@ export default function HomeScreen({
   const emberOpen = flow !== null;
   const chatExpanded = emberOpen && view === 'full';
   const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
+  const swipeEnabled = !firstEmber && !emberOpen && !modal && !step && images.length > 1;
   const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
   const capturedAt = selectedImage?.analysis?.capturedAt ?? displayImage?.capturedAt ?? null;
   const subtitle = displayImage
@@ -334,6 +340,16 @@ export default function HomeScreen({
   const currentPhotoUrl = allMedia[photoIndex]?.url ?? mediaUrl;
   const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
 
+  const currentEmberIndex = selectedImageId ? images.findIndex((i) => i.id === selectedImageId) : -1;
+  const prevEmber = currentEmberIndex > 0 ? images[currentEmberIndex - 1] : null;
+  const nextEmber = currentEmberIndex >= 0 && currentEmberIndex < images.length - 1 ? images[currentEmberIndex + 1] : null;
+  const prevEmberPreloadUrl = prevEmber
+    ? getPreviewMediaUrl({ mediaType: prevEmber.mediaType, filename: prevEmber.filename, posterFilename: prevEmber.posterFilename })
+    : null;
+  const nextEmberPreloadUrl = nextEmber
+    ? getPreviewMediaUrl({ mediaType: nextEmber.mediaType, filename: nextEmber.filename, posterFilename: nextEmber.posterFilename })
+    : null;
+
   const buildHomeHref = useCallback((updates: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
     next.delete('id');
@@ -354,6 +370,64 @@ export default function HomeScreen({
   const isDarkTheme = params.get('theme')
     ? params.get('theme') !== 'light'
     : storedTheme !== 'light';
+
+  const SWIPE_THRESHOLD = 80;
+
+  const commitEmberSwipe = useCallback((targetId: string) => {
+    setSwipeSettling(true);
+    setDragY(dragY < 0 ? -window.innerHeight : window.innerHeight);
+    setTimeout(() => {
+      router.push(`/ember/${targetId}`);
+    }, 220);
+  }, [dragY, router]);
+
+  const handleEmberSwipeDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!swipeEnabled) return;
+    swipeStartRef.current = { x: e.clientX, y: e.clientY };
+    swipeActiveRef.current = false;
+    setSwipeSettling(false);
+  }, [swipeEnabled]);
+
+  const handleEmberSwipeMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!swipeEnabled || !swipeStartRef.current) return;
+    const dx = e.clientX - swipeStartRef.current.x;
+    const dy = e.clientY - swipeStartRef.current.y;
+    if (!swipeActiveRef.current) {
+      if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) * 1.4) {
+        swipeActiveRef.current = true;
+        try { swipeWrapperRef.current?.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      } else return;
+    }
+    let next = dy;
+    if (dy < 0 && !nextEmber) next = dy * 0.25;
+    if (dy > 0 && !prevEmber) next = dy * 0.25;
+    setDragY(next);
+  }, [nextEmber, prevEmber, swipeEnabled]);
+
+  const handleEmberSwipeEnd = useCallback(() => {
+    if (!swipeStartRef.current) return;
+    const wasActive = swipeActiveRef.current;
+    const dy = dragY;
+    swipeStartRef.current = null;
+    swipeActiveRef.current = false;
+    if (!wasActive) return;
+    if (dy <= -SWIPE_THRESHOLD && nextEmber) {
+      commitEmberSwipe(nextEmber.id);
+      return;
+    }
+    if (dy >= SWIPE_THRESHOLD && prevEmber) {
+      commitEmberSwipe(prevEmber.id);
+      return;
+    }
+    setSwipeSettling(true);
+    setDragY(0);
+    setTimeout(() => setSwipeSettling(false), 300);
+  }, [commitEmberSwipe, dragY, nextEmber, prevEmber]);
+
+  useEffect(() => {
+    setDragY(0);
+    setSwipeSettling(false);
+  }, [selectedImageId]);
 
   useEffect(() => {
     if (profile) {
@@ -586,7 +660,20 @@ export default function HomeScreen({
       />
 
       {!firstEmber && currentPhotoUrl ? (
-        <>
+        <div
+          ref={swipeWrapperRef}
+          className="absolute inset-0"
+          style={{
+            transform: dragY ? `translateY(${dragY}px)` : undefined,
+            transition: swipeSettling ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
+            pointerEvents: swipeEnabled ? 'auto' : 'none',
+            touchAction: swipeEnabled ? 'pan-x' : 'auto',
+          }}
+          onPointerDown={handleEmberSwipeDown}
+          onPointerMove={handleEmberSwipeMove}
+          onPointerUp={handleEmberSwipeEnd}
+          onPointerCancel={handleEmberSwipeEnd}
+        >
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
@@ -647,8 +734,11 @@ export default function HomeScreen({
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
           />
-        </>
+        </div>
       ) : null}
+
+      {prevEmberPreloadUrl ? <img src={prevEmberPreloadUrl} alt="" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} /> : null}
+      {nextEmberPreloadUrl ? <img src={nextEmberPreloadUrl} alt="" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} /> : null}
 
       <AppHeader
         avatarUrl={avatarUrl}
