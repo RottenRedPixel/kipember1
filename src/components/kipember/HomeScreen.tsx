@@ -303,6 +303,7 @@ export default function HomeScreen({
   const swipeWrapperRef = useRef<HTMLDivElement | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const swipeActiveRef = useRef(false);
+  const pendingEntryRef = useRef(0);
 
   const selectedImageId = initialImageId || params.get('id') || images[0]?.id || null;
   const hasExistingEmbers = images.length > 0;
@@ -374,11 +375,13 @@ export default function HomeScreen({
   const SWIPE_THRESHOLD = 80;
 
   const commitEmberSwipe = useCallback((targetId: string) => {
+    const swipingUp = dragY < 0;
+    pendingEntryRef.current = swipingUp ? 1 : -1;
     setSwipeSettling(true);
-    setDragY(dragY < 0 ? -window.innerHeight : window.innerHeight);
+    setDragY(swipingUp ? -window.innerHeight : window.innerHeight);
     setTimeout(() => {
       router.push(`/ember/${targetId}`);
-    }, 220);
+    }, 320);
   }, [dragY, router]);
 
   const handleEmberSwipeDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -425,8 +428,23 @@ export default function HomeScreen({
   }, [commitEmberSwipe, dragY, nextEmber, prevEmber]);
 
   useEffect(() => {
-    setDragY(0);
+    if (pendingEntryRef.current !== 0) {
+      const dir = pendingEntryRef.current;
+      pendingEntryRef.current = 0;
+      // Place new ember off-screen on the entry side without transition,
+      // then animate it in on the next paint.
+      setSwipeSettling(false);
+      setDragY(dir * window.innerHeight);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setSwipeSettling(true);
+          setDragY(0);
+        });
+      });
+      return;
+    }
     setSwipeSettling(false);
+    setDragY(0);
   }, [selectedImageId]);
 
   useEffect(() => {
