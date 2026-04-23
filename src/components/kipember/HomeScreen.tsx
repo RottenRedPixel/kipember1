@@ -432,9 +432,11 @@ export default function HomeScreen({
       const dir = pendingEntryRef.current;
       pendingEntryRef.current = 0;
       // Place new ember off-screen on the entry side without transition,
-      // then animate it in on the next paint.
+      // then animate it in on the next paint. Start at opacity 0 so the
+      // photo fades in via the img onLoad handler.
       setSwipeSettling(false);
       setDragY(dir * window.innerHeight);
+      setPhotoOpacity(0);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setSwipeSettling(true);
@@ -686,6 +688,7 @@ export default function HomeScreen({
             transition: swipeSettling ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
             pointerEvents: swipeEnabled ? 'auto' : 'none',
             touchAction: swipeEnabled ? 'pan-x' : 'auto',
+            overflow: 'hidden',
           }}
           onPointerDown={handleEmberSwipeDown}
           onPointerMove={handleEmberSwipeMove}
@@ -711,6 +714,7 @@ export default function HomeScreen({
             onLoad={(e) => {
               const img = e.currentTarget;
               setPhotoIsLandscape(img.naturalWidth > img.naturalHeight);
+              setPhotoOpacity(1);
             }}
             style={(() => {
               const cx = displayImage?.cropX;
