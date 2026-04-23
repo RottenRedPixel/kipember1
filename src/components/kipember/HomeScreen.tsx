@@ -775,7 +775,14 @@ export default function HomeScreen({
       />
 
       {!firstEmber && displayImage && !chatExpanded ? (
-        <div className="absolute left-4 z-20 pointer-events-none" style={{ top: 64 }}>
+        <div
+          className="absolute left-4 z-20 pointer-events-none"
+          style={{
+            top: 64,
+            opacity: dragY === 0 ? 1 : 0,
+            transition: 'opacity 0.18s ease',
+          }}
+        >
           <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{title}</p>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{subtitle}</p>
         </div>
