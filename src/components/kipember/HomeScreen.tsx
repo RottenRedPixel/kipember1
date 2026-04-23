@@ -297,6 +297,7 @@ export default function HomeScreen({
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [photoOpacity, setPhotoOpacity] = useState(1);
+  const [photoFadeMs, setPhotoFadeMs] = useState(900);
   const [photoIsLandscape, setPhotoIsLandscape] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [dragY, setDragY] = useState(0);
@@ -710,7 +711,7 @@ export default function HomeScreen({
               filter: 'blur(24px)',
               transform: 'scale(1.08)',
               opacity: photoOpacity * 0.7,
-              transition: 'opacity 0.9s ease-in-out',
+              transition: `opacity ${photoFadeMs}ms ease-in-out`,
             }}
           />
           <img
@@ -740,7 +741,7 @@ export default function HomeScreen({
                 objectFit: 'contain' as const,
                 objectPosition: 'center center',
                 opacity: photoOpacity,
-                transition: 'opacity 0.9s ease-in-out',
+                transition: `opacity ${photoFadeMs}ms ease-in-out`,
               };
               return {
                 top: 56,
@@ -754,7 +755,7 @@ export default function HomeScreen({
                 transform: scale > 1.01 ? `scale(${scale.toFixed(3)})` : undefined,
                 transformOrigin: hasCrop ? `${cx}% ${cy}%` : 'center',
                 opacity: photoOpacity,
-                transition: 'opacity 0.9s ease-in-out',
+                transition: `opacity ${photoFadeMs}ms ease-in-out`,
               };
             })()}
           />
@@ -890,12 +891,14 @@ export default function HomeScreen({
           <button
             type="button"
             onClick={() => {
+              setPhotoFadeMs(300);
               setPhotoOpacity(0);
               setTimeout(() => {
                 setPhotoIndex((i) => (i + 1) % allMedia.length);
                 setPhotoIsLandscape(false);
                 setPhotoOpacity(1);
-              }, 900);
+                setTimeout(() => setPhotoFadeMs(900), 320);
+              }, 300);
             }}
             className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 active:bg-white/20 cursor-pointer"
           >
