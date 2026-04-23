@@ -9,7 +9,7 @@ declare global {
 }
 
 import Link from 'next/link';
-import { Calendar, ChevronLeft, Copy, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, ShieldUser, TicketSlash, UserRound, Users, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Copy, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, Settings, ShieldUser, TicketSlash, User, UserRound, Users, X } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -411,6 +411,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [editingContributor, setEditingContributor] = useState(false);
   const [savingContributor, setSavingContributor] = useState(false);
+  const [contributorSubSection, setContributorSubSection] = useState<'profile' | 'contributions' | 'preferences' | null>(null);
   const [detectedFaces, setDetectedFaces] = useState<{ leftPct: number; topPct: number; widthPct: number; heightPct: number }[]>([]);
   const [imgAspectRatio, setImgAspectRatio] = useState(1);
   const [faceTags, setFaceTags] = useState<FaceTag[]>([]);
@@ -686,6 +687,7 @@ export default function TendActionScreen({ action }: { action: string }) {
     };
     setAddForm(populated);
     setSavedForm(populated);
+    setContributorSubSection(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contributorSource?.id]);
   const contributorName = contributorDisplayName(contributorSource);
@@ -697,6 +699,21 @@ export default function TendActionScreen({ action }: { action: string }) {
     contributorEmailAddress
   );
   const contributionEntries = buildContributorContributions(selectedContributorDetail, contributor);
+
+  const contributorSections: {
+    key: 'profile' | 'contributions' | 'preferences';
+    icon: React.ReactNode;
+    label: string;
+  }[] = [
+    { key: 'profile',       icon: <User size={20} strokeWidth={1.6} />,            label: 'Profile' },
+    { key: 'contributions', icon: <MessageSquarePlus size={20} strokeWidth={1.6} />, label: 'Contributions' },
+    { key: 'preferences',   icon: <Settings size={20} strokeWidth={1.6} />,        label: 'Preferences' },
+  ];
+  const contributorSubMeta = contributorSubSection
+    ? contributorSections.find((s) => s.key === contributorSubSection) || null
+    : null;
+  const contributorAvatarFilename = contributor?.user?.avatarFilename || null;
+  const contributorCreatedAt = contributorSource?.createdAt || null;
   const contributionHeading = `${contributorName.split(/\s+/)[0] || 'Contributor'}'s Contributions`;
   const canManageContributors = Boolean(detail?.canManage);
 
@@ -1285,18 +1302,37 @@ export default function TendActionScreen({ action }: { action: string }) {
           className="flex items-center gap-3 px-4 pt-6 pb-4 flex-shrink-0"
           style={{ borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <Link
-            href={backHref}
-            className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
-            style={{ opacity: 0.75 }}
-          >
-            <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
-          </Link>
-          {TendIcon && !(action === 'contributors' && view) ? (
+          {contributorSubMeta ? (
+            <button
+              type="button"
+              onClick={() => setContributorSubSection(null)}
+              className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+              style={{ opacity: 0.75, cursor: 'pointer' }}
+            >
+              <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
+            </button>
+          ) : (
+            <Link
+              href={backHref}
+              className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+              style={{ opacity: 0.75 }}
+            >
+              <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
+            </Link>
+          )}
+          {contributorSubMeta ? (
+            <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
+              {contributorSubMeta.icon}
+            </span>
+          ) : TendIcon && !(action === 'contributors' && view) ? (
             <TendIcon size={22} color="var(--text-primary)" strokeWidth={1.6} className="flex-shrink-0" />
           ) : null}
           <h2 className="text-white font-medium text-base">
-            {action === 'contributors' && contributorSource ? contributorName : title}
+            {contributorSubMeta
+              ? contributorSubMeta.label
+              : action === 'contributors' && contributorSource
+              ? contributorName
+              : title}
           </h2>
         </div>
 
@@ -1345,15 +1381,15 @@ export default function TendActionScreen({ action }: { action: string }) {
                         </div>
                         <span className="text-white text-sm font-medium">{label}</span>
                       </Link>
-                      <div className="w-11 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
+                      <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
                         <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
                       </div>
-                      <div className="w-11 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
+                      <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
                         <MessageSquarePlus size={15} color="var(--text-primary)" strokeWidth={1.8} />
                       </div>
                       <Link
                         href={`${listHref}&view=${item.id}`}
-                        className="w-11 h-11 flex items-center justify-center can-hover flex-shrink-0 mr-2"
+                        className="w-8 h-11 flex items-center justify-center can-hover flex-shrink-0 mr-2"
                         style={{ opacity: 0.4 }}
                         aria-label={`View ${label}`}
                       >
@@ -1416,177 +1452,234 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'contributors' && contributorSource ? (
             <>
-              {/* Inline editable profile panel — matches Account > Profile style */}
-              <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <input
-                  type="text"
-                  value={addForm.firstName}
-                  onChange={(e) => setAddForm((f) => ({ ...f, firstName: e.target.value }))}
-                  placeholder="First name"
-                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                />
-                <input
-                  type="text"
-                  value={addForm.lastName}
-                  onChange={(e) => setAddForm((f) => ({ ...f, lastName: e.target.value }))}
-                  placeholder="Last name"
-                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                  style={{ borderTop: '1px solid var(--border-subtle)' }}
-                />
-                <input
-                  type="email"
-                  value={addForm.email}
-                  onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
-                  placeholder="Email"
-                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                  style={{ borderTop: '1px solid var(--border-subtle)' }}
-                />
-                <input
-                  type="tel"
-                  value={addForm.phone}
-                  onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
-                  placeholder="Phone"
-                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                  style={{ borderTop: '1px solid var(--border-subtle)' }}
-                />
-              </div>
-              {(() => {
-                const isDirty =
-                  addForm.firstName !== savedForm.firstName ||
-                  addForm.lastName !== savedForm.lastName ||
-                  addForm.phone !== savedForm.phone ||
-                  addForm.email !== savedForm.email;
-                return (
-                  <div className="flex justify-between items-center px-1">
-                    {status ? <span className="text-xs text-white/50">{status}</span> : <span />}
+              {/* ── Main view ── */}
+              {!contributorSubSection ? (
+                <div className="flex flex-col items-center gap-6 py-2">
+                  {/* Avatar + name + Member since */}
+                  <div className="flex flex-col items-center gap-3">
+                    <div
+                      className="rounded-full overflow-hidden flex items-center justify-center"
+                      style={{ width: 80, height: 80, background: 'rgba(249,115,22,0.85)' }}
+                    >
+                      {contributorAvatarFilename ? (
+                        <img src={`/api/uploads/${contributorAvatarFilename}`} alt={contributorName} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-white text-2xl font-medium">{initials(contributorName)}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-white font-semibold text-base">{contributorName}</span>
+                      {contributorCreatedAt ? (
+                        <span className="text-white/30 text-xs mt-1">
+                          Member since {new Date(contributorCreatedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Menu */}
+                  <div className="w-full rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                    {contributorSections.map((s, i) => (
+                      <button
+                        key={s.key}
+                        type="button"
+                        onClick={() => setContributorSubSection(s.key)}
+                        className="w-full flex items-center gap-3 px-4"
+                        style={{
+                          minHeight: 52,
+                          cursor: 'pointer',
+                          borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined,
+                        }}
+                      >
+                        <span style={{ color: 'var(--text-secondary)' }}>{s.icon}</span>
+                        <span className="flex-1 text-left text-sm text-white">{s.label}</span>
+                        <ChevronRight size={16} color="var(--text-secondary)" strokeWidth={1.8} />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Call Now / Send Text Now */}
+                  <div className="w-full flex gap-3">
                     <button
                       type="button"
-                      onClick={() => void updateContributor()}
-                      disabled={savingContributor || !isDirty}
-                      className="w-1/2 rounded-full px-5 text-white text-sm font-medium transition-colors"
+                      onClick={() => {
+                        if (contributor && contributorPhoneNumber) {
+                          void handleStartVoiceCall(contributor.id);
+                        } else if (contributor?.token) {
+                          void copyLink(contributor.token);
+                        }
+                      }}
+                      disabled={
+                        !canManageContributors ||
+                        (!contributorPhoneNumber && !contributor?.token) ||
+                        callingContributorId === contributor?.id
+                      }
+                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary disabled:opacity-40"
                       style={{
-                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
-                        border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                        background: 'transparent',
+                        border: '1.5px solid var(--border-btn)',
                         minHeight: 44,
-                        cursor: isDirty ? 'pointer' : 'default',
-                        opacity: savingContributor ? 0.6 : 1,
                       }}
                     >
-                      {savingContributor ? 'Updating…' : 'Update'}
+                      {contributorPhoneNumber ? 'Call Now' : 'Copy Link'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (contributor && contributorPhoneNumber) {
+                          void handleSendInvite(contributor.id);
+                        } else if (contributor?.token) {
+                          void copyLink(contributor.token);
+                        }
+                      }}
+                      disabled={
+                        !canManageContributors ||
+                        (!contributorPhoneNumber && !contributor?.token) ||
+                        sendingContributorId === contributor?.id
+                      }
+                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-40"
+                      style={{ background: '#f97316', minHeight: 44 }}
+                    >
+                      Send Text Now
                     </button>
                   </div>
-                );
-              })()}
-
-              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <div className="flex items-center justify-between px-4" style={{ minHeight: 44 }}>
-                  <span className="text-white text-sm font-medium">Prefers <span className="text-white/50 font-normal">({contributorPreference})</span></span>
                 </div>
-                <div className="flex items-center justify-between px-4" style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}>
-                  <span className="text-white text-sm font-medium">Contact Time <span className="text-white/50 font-normal">(Not set)</span></span>
-                </div>
-                <div className="flex items-center justify-between px-4" style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}>
-                  <span className="text-white text-sm font-medium">Language <span className="text-white/50 font-normal">(English)</span></span>
-                </div>
-              </div>
+              ) : null}
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (contributor && contributorPhoneNumber) {
-                      void handleStartVoiceCall(contributor.id);
-                    } else if (contributor?.token) {
-                      void copyLink(contributor.token);
-                    }
-                  }}
-                  disabled={
-                    !canManageContributors ||
-                    (!contributorPhoneNumber && !contributor?.token) ||
-                    callingContributorId === contributor?.id
-                  }
-                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary disabled:opacity-40"
-                  style={{
-                    background: 'transparent',
-                    border: '1.5px solid var(--border-btn)',
-                    minHeight: 44,
-                  }}
-                >
-                  {contributorPhoneNumber ? 'Call Now' : 'Copy Link'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (contributor && contributorPhoneNumber) {
-                      void handleSendInvite(contributor.id);
-                    } else if (contributor?.token) {
-                      void copyLink(contributor.token);
-                    }
-                  }}
-                  disabled={
-                    !canManageContributors ||
-                    (!contributorPhoneNumber && !contributor?.token) ||
-                    sendingContributorId === contributor?.id
-                  }
-                  className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-40"
-                  style={{ background: '#f97316', minHeight: 44 }}
-                >
-                  Send Text Now
-                </button>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--border-subtle)' }} className="pt-4">
-                <p className="text-white font-medium text-sm mb-3">{contributionHeading}</p>
-
-                {detailLoading ? (
-                  <div
-                    className="rounded-xl px-4 py-3"
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                    }}
-                  >
-                    <p className="text-white/30 text-xs italic">Loading contributor details...</p>
+              {/* ── Profile ── */}
+              {contributorSubSection === 'profile' ? (
+                <>
+                  <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                    <input
+                      type="text"
+                      value={addForm.firstName}
+                      onChange={(e) => setAddForm((f) => ({ ...f, firstName: e.target.value }))}
+                      placeholder="First name"
+                      className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                    />
+                    <input
+                      type="text"
+                      value={addForm.lastName}
+                      onChange={(e) => setAddForm((f) => ({ ...f, lastName: e.target.value }))}
+                      placeholder="Last name"
+                      className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                      style={{ borderTop: '1px solid var(--border-subtle)' }}
+                    />
+                    <input
+                      type="email"
+                      value={addForm.email}
+                      onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
+                      placeholder="Email"
+                      className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                      style={{ borderTop: '1px solid var(--border-subtle)' }}
+                    />
+                    <input
+                      type="tel"
+                      value={addForm.phone}
+                      onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                      placeholder="Phone"
+                      className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+                      style={{ borderTop: '1px solid var(--border-subtle)' }}
+                    />
                   </div>
-                ) : null}
-
-                {detailError ? (
-                  <div
-                    className="rounded-xl px-4 py-3 mb-4"
-                    style={{
-                      background: 'rgba(94,20,20,0.48)',
-                      border: '1px solid rgba(255,119,119,0.35)',
-                    }}
-                  >
-                    <p className="text-[rgba(255,210,210,0.94)] text-sm">{detailError}</p>
-                  </div>
-                ) : null}
-
-                {!detailLoading && !detailError && contributionEntries.length === 0 ? (
-                  <p className="text-white/30 text-sm">No contributions yet.</p>
-                ) : null}
-
-                {!detailLoading && !detailError
-                  ? contributionEntries.map((entry) => (
-                      <div key={entry.id} className="mb-4">
-                        <p className="text-white/60 text-xs font-medium mb-1">
-                          {entry.label} · <span className="text-white/30">{entry.timestamp}</span>
-                        </p>
-                        <div
-                          className="rounded-xl px-4 py-3"
+                  {(() => {
+                    const isDirty =
+                      addForm.firstName !== savedForm.firstName ||
+                      addForm.lastName !== savedForm.lastName ||
+                      addForm.phone !== savedForm.phone ||
+                      addForm.email !== savedForm.email;
+                    return (
+                      <div className="flex justify-between items-center px-1">
+                        {status ? <span className="text-xs text-white/50">{status}</span> : <span />}
+                        <button
+                          type="button"
+                          onClick={() => void updateContributor()}
+                          disabled={savingContributor || !isDirty}
+                          className="w-1/2 rounded-full px-5 text-white text-sm font-medium transition-colors"
                           style={{
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                            border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                            minHeight: 44,
+                            cursor: isDirty ? 'pointer' : 'default',
+                            opacity: savingContributor ? 0.6 : 1,
                           }}
                         >
-                          <p className="text-white/45 text-xs leading-relaxed">
-                            {entry.preview}
-                          </p>
-                        </div>
+                          {savingContributor ? 'Updating…' : 'Update'}
+                        </button>
                       </div>
-                    ))
-                  : null}
-              </div>
+                    );
+                  })()}
+                </>
+              ) : null}
+
+              {/* ── Contributions ── */}
+              {contributorSubSection === 'contributions' ? (
+                <div>
+                  {detailLoading ? (
+                    <div
+                      className="rounded-xl px-4 py-3"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                      }}
+                    >
+                      <p className="text-white/30 text-xs italic">Loading contributor details...</p>
+                    </div>
+                  ) : null}
+
+                  {detailError ? (
+                    <div
+                      className="rounded-xl px-4 py-3 mb-4"
+                      style={{
+                        background: 'rgba(94,20,20,0.48)',
+                        border: '1px solid rgba(255,119,119,0.35)',
+                      }}
+                    >
+                      <p className="text-[rgba(255,210,210,0.94)] text-sm">{detailError}</p>
+                    </div>
+                  ) : null}
+
+                  {!detailLoading && !detailError && contributionEntries.length === 0 ? (
+                    <p className="text-white/30 text-sm">No contributions yet.</p>
+                  ) : null}
+
+                  {!detailLoading && !detailError
+                    ? contributionEntries.map((entry) => (
+                        <div key={entry.id} className="mb-4">
+                          <p className="text-white/60 text-xs font-medium mb-1">
+                            {entry.label} · <span className="text-white/30">{entry.timestamp}</span>
+                          </p>
+                          <div
+                            className="rounded-xl px-4 py-3"
+                            style={{
+                              background: 'rgba(255,255,255,0.04)',
+                              border: '1px solid rgba(255,255,255,0.06)',
+                            }}
+                          >
+                            <p className="text-white/45 text-xs leading-relaxed">
+                              {entry.preview}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    : null}
+                </div>
+              ) : null}
+
+              {/* ── Preferences ── */}
+              {contributorSubSection === 'preferences' ? (
+                <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                  <div className="flex items-center justify-between px-4" style={{ minHeight: 44 }}>
+                    <span className="text-white text-sm font-medium">Prefers <span className="text-white/50 font-normal">({contributorPreference})</span></span>
+                  </div>
+                  <div className="flex items-center justify-between px-4" style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}>
+                    <span className="text-white text-sm font-medium">Contact Time <span className="text-white/50 font-normal">(Not set)</span></span>
+                  </div>
+                  <div className="flex items-center justify-between px-4" style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}>
+                    <span className="text-white text-sm font-medium">Language <span className="text-white/50 font-normal">(English)</span></span>
+                  </div>
+                </div>
+              ) : null}
             </>
           ) : null}
 

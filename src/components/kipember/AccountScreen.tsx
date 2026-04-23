@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Bell, Camera, ChevronLeft, ChevronRight,
-  Settings, ShieldAlert, User, Users,
+  Camera, ChevronLeft, ChevronRight,
+  MessageSquarePlus, Phone,
+  Settings, ShieldAlert, User, UserRound, Users,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
@@ -120,15 +121,14 @@ export default function AccountScreen({
   }, []);
 
   // Contacts
-  type ContactStatus = 'contributed' | 'joined' | 'called' | 'sms_sent' | 'invited';
   type Contact = {
     id: string;
+    emberId: string;
     name: string | null;
     phoneNumber: string | null;
     email: string | null;
     avatarFilename: string | null;
     emberTitles: string[];
-    status: ContactStatus;
   };
   const [contacts, setContacts] = useState<Contact[]>([]);
 
@@ -202,14 +202,6 @@ export default function AccountScreen({
   }
 
   const displayName = [firstName, lastName].filter(Boolean).join(' ') || form.email;
-
-  const STATUS_PILL: Record<ContactStatus, { label: string; bg: string; color: string }> = {
-    contributed: { label: 'contributed',  bg: 'rgba(134,239,172,0.18)', color: 'rgba(134,239,172,0.9)' },
-    joined:      { label: 'joined',       bg: 'rgba(196,181,253,0.18)', color: 'rgba(196,181,253,0.9)' },
-    called:      { label: 'called',       bg: 'rgba(249,115,22,0.18)',  color: 'rgba(249,115,22,0.9)'  },
-    sms_sent:    { label: 'texted',       bg: 'rgba(251,191,36,0.18)',  color: 'rgba(251,191,36,0.9)'  },
-    invited:     { label: 'invited',      bg: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.35)' },
-  };
 
   // Section header config
   const SECTIONS: { key: Exclude<Section, null>; icon: React.ReactNode; label: string }[] = [
@@ -413,20 +405,24 @@ export default function AccountScreen({
 
           {/* ── Contributors ── */}
           {section === 'contributors' && (
-            <div className="px-5 py-6">
-              <div className="rounded-xl overflow-hidden flex flex-col" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                {contacts.length === 0 ? (
+            <div className="px-5 py-6 flex flex-col gap-4">
+              {contacts.length === 0 ? (
+                <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                   <p className="text-white/30 text-sm px-4 py-4">No contributors yet.</p>
-                ) : contacts.map((c, i) => {
-                  const label = c.name || c.phoneNumber || c.email || 'Unknown';
-                  const sub = c.phoneNumber || c.email || null;
-                  const ini = label.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-                  const pill = STATUS_PILL[c.status];
-                  return (
-                    <div
-                      key={c.id}
-                      className="flex items-center gap-3 px-4 py-3"
-                      style={i > 0 ? { borderTop: '1px solid var(--border-subtle)' } : undefined}
+                </div>
+              ) : contacts.map((c) => {
+                const label = c.name || c.phoneNumber || c.email || 'Unknown';
+                const ini = label.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-center rounded-xl overflow-hidden"
+                    style={{ background: 'rgba(255,255,255,0.05)' }}
+                  >
+                    <Link
+                      href={`/tend/contributors?id=${c.emberId}&view=${c.id}`}
+                      className="flex items-center gap-3 flex-1 min-w-0 px-4 py-3 can-hover"
+                      style={{ minHeight: 44, opacity: 0.9 }}
                     >
                       <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
                         {c.avatarFilename ? (
@@ -435,14 +431,25 @@ export default function AccountScreen({
                       </div>
                       <div className="flex flex-col min-w-0 flex-1">
                         <span className="text-white text-sm font-medium truncate">{label}</span>
-                        {sub ? <span className="text-white/40 text-xs truncate">{sub}</span> : null}
-                        <span className="text-white/25 text-xs truncate">{c.emberTitles.join(', ')}</span>
+                        {c.emberTitles.length === 1 ? (
+                          <span className="text-white/25 text-xs truncate">{c.emberTitles[0]}</span>
+                        ) : c.emberTitles.length > 1 ? (
+                          <span className="text-white/25 text-xs truncate">Contributed to multiple embers</span>
+                        ) : null}
                       </div>
-                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: pill.bg, color: pill.color }}>{pill.label}</span>
+                    </Link>
+                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
+                      <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
+                      <MessageSquarePlus size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                    </div>
+                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0 mr-2" style={{ opacity: 0.4 }}>
+                      <UserRound size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

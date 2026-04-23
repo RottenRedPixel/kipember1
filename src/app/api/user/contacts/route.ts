@@ -72,6 +72,7 @@ export async function GET() {
   const contacts = Array.from(seen.values())
     .map((c) => ({
       id: c.id,
+      emberId: c.image.id,
       name: c.user?.name || c.name,
       phoneNumber: c.phoneNumber,
       email: c.email,
