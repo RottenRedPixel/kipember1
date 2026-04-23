@@ -298,6 +298,8 @@ export default function HomeScreen({
   const [photoIndex, setPhotoIndex] = useState(0);
   const [photoOpacity, setPhotoOpacity] = useState(1);
   const [photoFadeMs, setPhotoFadeMs] = useState(900);
+  const [photoSwapX, setPhotoSwapX] = useState(0);
+  const [photoSwapSettling, setPhotoSwapSettling] = useState(false);
   const [photoIsLandscape, setPhotoIsLandscape] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const [dragY, setDragY] = useState(0);
@@ -306,6 +308,7 @@ export default function HomeScreen({
   const swipeWrapperRef = useRef<HTMLDivElement | null>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const swipeActiveRef = useRef(false);
+  const swipeAxisRef = useRef<'x' | 'y' | null>(null);
   const pendingEntryRef = useRef(0);
 
   const selectedImageId = initialImageId || params.get('id') || images[0]?.id || null;
@@ -387,10 +390,32 @@ export default function HomeScreen({
     }, 320);
   }, [dragY, router]);
 
+  const allMediaLength = allMedia.length;
+
+  const commitPhotoSwipe = useCallback((direction: 'next' | 'prev') => {
+    if (allMediaLength <= 1) return;
+    setPhotoSwapSettling(true);
+    setPhotoSwapX(direction === 'next' ? -window.innerWidth : window.innerWidth);
+    setTimeout(() => {
+      setPhotoIndex((i) => (i + (direction === 'next' ? 1 : -1) + allMediaLength) % allMediaLength);
+      setPhotoIsLandscape(false);
+      setPhotoSwapSettling(false);
+      setPhotoSwapX(direction === 'next' ? window.innerWidth : -window.innerWidth);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setPhotoSwapSettling(true);
+          setPhotoSwapX(0);
+        });
+      });
+      setTimeout(() => setPhotoSwapSettling(false), 350);
+    }, 320);
+  }, [allMediaLength]);
+
   const handleEmberSwipeDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!swipeEnabled) return;
     swipeStartRef.current = { x: e.clientX, y: e.clientY };
     swipeActiveRef.current = false;
+    swipeAxisRef.current = null;
     setSwipeSettling(false);
   }, [swipeEnabled]);
 
@@ -401,34 +426,60 @@ export default function HomeScreen({
     if (!swipeActiveRef.current) {
       if (Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx) * 1.4) {
         swipeActiveRef.current = true;
+        swipeAxisRef.current = 'y';
+        try { swipeWrapperRef.current?.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      } else if (allMediaLength > 1 && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        swipeActiveRef.current = true;
+        swipeAxisRef.current = 'x';
         try { swipeWrapperRef.current?.setPointerCapture(e.pointerId); } catch { /* noop */ }
       } else return;
     }
-    let next = dy;
-    if (dy < 0 && !nextEmber) next = dy * 0.25;
-    if (dy > 0 && !prevEmber) next = dy * 0.25;
-    setDragY(next);
-  }, [nextEmber, prevEmber, swipeEnabled]);
+    if (swipeAxisRef.current === 'y') {
+      let next = dy;
+      if (dy < 0 && !nextEmber) next = dy * 0.25;
+      if (dy > 0 && !prevEmber) next = dy * 0.25;
+      setDragY(next);
+    } else {
+      setPhotoSwapX(dx);
+    }
+  }, [allMediaLength, nextEmber, prevEmber, swipeEnabled]);
 
   const handleEmberSwipeEnd = useCallback(() => {
     if (!swipeStartRef.current) return;
     const wasActive = swipeActiveRef.current;
+    const axis = swipeAxisRef.current;
     const dy = dragY;
+    const dx = photoSwapX;
     swipeStartRef.current = null;
     swipeActiveRef.current = false;
+    swipeAxisRef.current = null;
     if (!wasActive) return;
-    if (dy <= -SWIPE_THRESHOLD && nextEmber) {
-      commitEmberSwipe(nextEmber.id);
-      return;
+    if (axis === 'y') {
+      if (dy <= -SWIPE_THRESHOLD && nextEmber) {
+        commitEmberSwipe(nextEmber.id);
+        return;
+      }
+      if (dy >= SWIPE_THRESHOLD && prevEmber) {
+        commitEmberSwipe(prevEmber.id);
+        return;
+      }
+      setSwipeSettling(true);
+      setDragY(0);
+      setTimeout(() => setSwipeSettling(false), 300);
+    } else {
+      if (dx <= -SWIPE_THRESHOLD) {
+        commitPhotoSwipe('next');
+        return;
+      }
+      if (dx >= SWIPE_THRESHOLD) {
+        commitPhotoSwipe('prev');
+        return;
+      }
+      setPhotoSwapSettling(true);
+      setPhotoSwapX(0);
+      setTimeout(() => setPhotoSwapSettling(false), 300);
     }
-    if (dy >= SWIPE_THRESHOLD && prevEmber) {
-      commitEmberSwipe(prevEmber.id);
-      return;
-    }
-    setSwipeSettling(true);
-    setDragY(0);
-    setTimeout(() => setSwipeSettling(false), 300);
-  }, [commitEmberSwipe, dragY, nextEmber, prevEmber]);
+  }, [commitEmberSwipe, commitPhotoSwipe, dragY, nextEmber, photoSwapX, prevEmber]);
 
   useEffect(() => {
     if (pendingEntryRef.current !== 0) {
@@ -694,7 +745,7 @@ export default function HomeScreen({
             transform: dragY ? `translateY(${dragY}px)` : undefined,
             transition: swipeSettling ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
             pointerEvents: swipeEnabled ? 'auto' : 'none',
-            touchAction: swipeEnabled ? 'pan-x' : 'auto',
+            touchAction: swipeEnabled ? 'none' : 'auto',
             overflow: 'hidden',
           }}
           onPointerDown={handleEmberSwipeDown}
@@ -705,64 +756,92 @@ export default function HomeScreen({
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: `url(${currentPhotoUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              filter: 'blur(24px)',
-              transform: 'scale(1.08)',
-              opacity: photoOpacity * 0.7,
-              transition: `opacity ${photoFadeMs}ms ease-in-out`,
+              transform: photoSwapX ? `translateX(${photoSwapX}px)` : undefined,
+              transition: photoSwapSettling ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
             }}
-          />
-          <img
-            src={currentPhotoUrl}
-            alt=""
-            className="absolute pointer-events-none"
-            onLoad={(e) => {
-              const img = e.currentTarget;
-              setPhotoIsLandscape(img.naturalWidth > img.naturalHeight);
-              setPhotoOpacity(1);
-            }}
-            style={(() => {
-              const cx = displayImage?.cropX;
-              const cy = displayImage?.cropY;
-              const cw = displayImage?.cropWidth;
-              const ch = displayImage?.cropHeight;
-              const hasCrop = !chatExpanded && cx != null && cy != null && cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100;
-              const scale = hasCrop && cw != null && ch != null && cw > 0 && ch > 0
-                ? Math.min(100 / cw, 100 / ch)
-                : 1;
-              if (chatExpanded) return {
-                top: 56,
-                left: '50%',
-                transform: 'translateX(-50%)',
-                height: 'calc(25vh - 56px)',
-                width: 'auto',
-                objectFit: 'contain' as const,
-                objectPosition: 'center center',
-                opacity: photoOpacity,
+          >
+            <div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                backgroundImage: `url(${currentPhotoUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(24px)',
+                transform: 'scale(1.08)',
+                opacity: photoOpacity * 0.7,
                 transition: `opacity ${photoFadeMs}ms ease-in-out`,
-              };
-              return {
-                top: 56,
-                bottom: 72,
-                left: 0,
-                right: 0,
-                width: '100%',
-                height: 'calc(100% - 128px)',
-                objectFit: 'cover' as const,
-                objectPosition: hasCrop ? `${cx}% ${cy}%` : 'center center',
-                transform: scale > 1.01 ? `scale(${scale.toFixed(3)})` : undefined,
-                transformOrigin: hasCrop ? `${cx}% ${cy}%` : 'center',
-                opacity: photoOpacity,
-                transition: `opacity ${photoFadeMs}ms ease-in-out`,
-              };
-            })()}
-          />
+              }}
+            />
+            <img
+              src={currentPhotoUrl}
+              alt=""
+              className="absolute pointer-events-none"
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                setPhotoIsLandscape(img.naturalWidth > img.naturalHeight);
+                setPhotoOpacity(1);
+              }}
+              style={(() => {
+                const cx = displayImage?.cropX;
+                const cy = displayImage?.cropY;
+                const cw = displayImage?.cropWidth;
+                const ch = displayImage?.cropHeight;
+                const hasCrop = !chatExpanded && cx != null && cy != null && cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100;
+                const scale = hasCrop && cw != null && ch != null && cw > 0 && ch > 0
+                  ? Math.min(100 / cw, 100 / ch)
+                  : 1;
+                if (chatExpanded) return {
+                  top: 56,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  height: 'calc(25vh - 56px)',
+                  width: 'auto',
+                  objectFit: 'contain' as const,
+                  objectPosition: 'center center',
+                  opacity: photoOpacity,
+                  transition: `opacity ${photoFadeMs}ms ease-in-out`,
+                };
+                return {
+                  top: 56,
+                  bottom: 72,
+                  left: 0,
+                  right: 0,
+                  width: '100%',
+                  height: 'calc(100% - 128px)',
+                  objectFit: 'cover' as const,
+                  objectPosition: hasCrop ? `${cx}% ${cy}%` : 'center center',
+                  transform: scale > 1.01 ? `scale(${scale.toFixed(3)})` : undefined,
+                  transformOrigin: hasCrop ? `${cx}% ${cy}%` : 'center',
+                  opacity: photoOpacity,
+                  transition: `opacity ${photoFadeMs}ms ease-in-out`,
+                };
+              })()}
+            />
+          </div>
           <div
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
           />
+          {allMedia.length > 1 && !chatExpanded ? (
+            <div
+              className="absolute left-1/2 flex items-center gap-1.5 pointer-events-none"
+              style={{ bottom: 88, transform: 'translateX(-50%)' }}
+            >
+              {allMedia.map((_, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    background: idx === photoIndex ? '#ffffff' : 'rgba(255,255,255,0.35)',
+                    boxShadow: idx === photoIndex ? '0 1px 3px rgba(0,0,0,0.5)' : 'none',
+                    transition: 'background 200ms ease',
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -890,16 +969,7 @@ export default function HomeScreen({
         {allMedia.length > 1 && nextPhotoUrl ? (
           <button
             type="button"
-            onClick={() => {
-              setPhotoFadeMs(300);
-              setPhotoOpacity(0);
-              setTimeout(() => {
-                setPhotoIndex((i) => (i + 1) % allMedia.length);
-                setPhotoIsLandscape(false);
-                setPhotoOpacity(1);
-                setTimeout(() => setPhotoFadeMs(900), 320);
-              }, 300);
-            }}
+            onClick={() => commitPhotoSwipe('next')}
             className="flex flex-col items-center gap-1 p-2 rounded-xl hover:bg-white/10 active:bg-white/20 cursor-pointer"
           >
             <div className="relative w-11 h-11">
