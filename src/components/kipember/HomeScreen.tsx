@@ -986,6 +986,9 @@ export default function HomeScreen({
           </button>
         ) : null}
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
+        {displayImage?.accessType === 'owner' ? (
+          <RailBtn icon={BookOpen} label="wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/home'} />
+        ) : null}
         <RailBtn icon={Leaf} label="tend" href={buildHomeHref({ m: 'tend' })} active={modal === 'tend'} />
         <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
