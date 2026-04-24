@@ -71,7 +71,6 @@ export default function ContributorFlow({
   onConversationStateChange?: (hasConversation: boolean) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [welcomeBack, setWelcomeBack] = useState('');
   const [input, setInput] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
@@ -97,18 +96,33 @@ export default function ContributorFlow({
         if (!response.ok) { if (!cancelled) { setMessages([]); onConversationStateChange?.(false); } return; }
         const payload = await response.json();
         const nextMessages = Array.isArray(payload.messages) ? (payload.messages as Message[]) : [];
-        if (!cancelled) {
-          setMessages(nextMessages);
-          onConversationStateChange?.(nextMessages.length > 0);
-          if (nextMessages.length > 0) {
-            const picks = [
-              'Welcome back! What would you like to add?',
-              "Good to see you again. What's on your mind?",
-              "Welcome back! I'm here whenever you're ready.",
-            ];
-            setWelcomeBack(picks[Math.floor(Math.random() * picks.length)]);
+        if (cancelled) return;
+
+        if (nextMessages.length === 0) {
+          try {
+            const welcomeRes = await fetch('/api/chat/welcome', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageId, situation: 'first_open' }),
+            });
+            if (welcomeRes.ok) {
+              const { message } = await welcomeRes.json();
+              if (!cancelled && typeof message === 'string' && message.trim()) {
+                setMessages([{ role: 'assistant', content: message, createdAt: new Date().toISOString() }]);
+                onConversationStateChange?.(true);
+                return;
+              }
+            }
+          } catch {
+            /* fall through to empty state */
           }
+          setMessages([]);
+          onConversationStateChange?.(false);
+          return;
         }
+
+        setMessages(nextMessages);
+        onConversationStateChange?.(true);
       } catch {
         if (!cancelled) { setMessages([]); onConversationStateChange?.(false); }
       } finally {
@@ -226,15 +240,6 @@ export default function ContributorFlow({
       {!isLoadingHistory ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <div className="flex flex-col gap-4">
-            {messages.length === 0 && !welcomeBack ? (
-              <div className="flex flex-col gap-2 items-start">
-                <span className="pl-1 text-xs font-bold text-white">ember</span>
-                <div className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5" style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}>
-                  <p className="text-sm leading-relaxed text-white/90">Share your memory of this moment. I&apos;d love to hear your perspective — add a photo or just start chatting.</p>
-                </div>
-              </div>
-            ) : null}
-
             {messages.map((message, index) => {
               const isUser = message.role === 'user';
               const isVoice = message.source === 'voice';
@@ -269,15 +274,6 @@ export default function ContributorFlow({
                 </div>
               );
             })}
-
-            {welcomeBack ? (
-              <div className="flex flex-col gap-2 items-start">
-                <span className="pl-1 text-xs font-bold text-white">ember</span>
-                <div className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5" style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}>
-                  <p className="text-sm leading-relaxed text-white/90">{welcomeBack}</p>
-                </div>
-              </div>
-            ) : null}
 
             {isSending ? (
               <div className="flex flex-col gap-1 items-start">

@@ -136,6 +136,7 @@ export async function GET(
                 id: true,
                 name: true,
                 email: true,
+                createdAt: true,
               },
             },
             contributors: {
@@ -257,6 +258,7 @@ export async function GET(
               name: true,
               email: true,
               avatarFilename: true,
+              createdAt: true,
             },
           },
           contributors: {
@@ -291,7 +293,6 @@ export async function GET(
               },
               voiceCalls: {
                 orderBy: { createdAt: 'desc' },
-                take: 1,
                 select: {
                   id: true,
                   status: true,
@@ -303,6 +304,23 @@ export async function GET(
                   callSummary: true,
                   initiatedBy: true,
                   memorySyncedAt: true,
+                  emberSession: {
+                    select: {
+                      id: true,
+                      messages: {
+                        orderBy: { createdAt: 'asc' },
+                        select: {
+                          id: true,
+                          role: true,
+                          content: true,
+                          source: true,
+                          question: true,
+                          questionType: true,
+                          createdAt: true,
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -581,7 +599,9 @@ export async function GET(
 
     const voiceCallClips = await loadVoiceCallClips();
 
-    // Build chatBlocks: one block per person who has a ChatSession for this image
+    // Build chatBlocks: one block per person, merging their chat + call sessions.
+    // Only authentic messages (typed or transcribed); synthetic AI-extracted rows
+    // (questionType !== null) are excluded.
     let chatBlocks: Array<{
       personName: string;
       avatarUrl: string | null;
@@ -596,7 +616,7 @@ export async function GET(
     }> = [];
     try {
       const emberSessions = await prisma.emberSession.findMany({
-        where: { imageId: id, sessionType: 'chat' },
+        where: { imageId: id, sessionType: { in: ['chat', 'call'] } },
         include: {
           user: { select: { id: true, name: true, email: true, avatarFilename: true } },
           contributor: { select: { id: true, name: true, email: true } },
@@ -604,26 +624,58 @@ export async function GET(
         },
       });
 
-      chatBlocks = emberSessions
-        .filter((session) => session.messages.length > 0)
-        .map((session) => {
-          const personName =
-            session.user?.name ||
-            session.contributor?.name ||
-            session.user?.email ||
-            session.contributor?.email ||
-            (session.participantType === 'guest' ? 'Guest' : 'Contributor');
-          const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
-          const messages = session.messages.map((msg) => ({
+      type ChatMessage = {
+        role: string;
+        content: string;
+        source: string;
+        imageFilename?: string | null;
+        audioUrl?: string | null;
+        createdAt: string;
+      };
+      const byPerson = new Map<string, { personName: string; avatarUrl: string | null; messages: ChatMessage[] }>();
+      for (const session of emberSessions) {
+        const personName =
+          session.user?.name ||
+          session.contributor?.name ||
+          session.user?.email ||
+          session.contributor?.email ||
+          (session.participantType === 'guest' ? 'Guest' : 'Contributor');
+        const personKey =
+          session.userId ||
+          session.contributorId ||
+          session.participantId ||
+          personName;
+        const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
+        const bucket = byPerson.get(personKey) || { personName, avatarUrl, messages: [] };
+        for (const msg of session.messages) {
+          if (msg.questionType) continue;
+          bucket.messages.push({
             role: msg.role,
             content: msg.content,
-            source: 'web',
+            source: msg.source || 'web',
             imageFilename: msg.imageFilename ?? null,
             audioUrl: null as string | null,
             createdAt: msg.createdAt.toISOString(),
-          }));
-          return { personName, avatarUrl, messages };
-        });
+          });
+        }
+        byPerson.set(personKey, bucket);
+      }
+
+      // Dedup identical (role, content) within each person and sort by time.
+      chatBlocks = Array.from(byPerson.values())
+        .map((block) => {
+          const seen = new Set<string>();
+          const deduped = block.messages
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+            .filter((m) => {
+              const key = `${m.role}::${m.content.replace(/\s+/g, ' ').trim()}`;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+          return { ...block, messages: deduped };
+        })
+        .filter((block) => block.messages.length > 0);
     } catch (chatBlocksError) {
       console.error('Failed to load chatBlocks:', chatBlocksError);
       chatBlocks = [];

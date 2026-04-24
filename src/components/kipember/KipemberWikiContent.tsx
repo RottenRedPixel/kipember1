@@ -30,6 +30,7 @@ type ConversationMessage = {
   content: string;
   createdAt: string;
   source?: string | null;
+  questionType?: string | null;
 };
 
 type ConversationResponse = {
@@ -46,6 +47,10 @@ type ContributorVoiceCall = {
   createdAt: string;
   startedAt: string | null;
   callSummary: string | null;
+  emberSession?: {
+    id: string;
+    messages: ConversationMessage[];
+  } | null;
 };
 
 type LocationSuggestion = {
@@ -172,6 +177,7 @@ export type KipemberWikiDetail = {
     name: string | null;
     email: string;
     avatarFilename?: string | null;
+    createdAt?: string | null;
   } | null;
   analysis: {
     status?: string;
@@ -318,10 +324,6 @@ function AvatarCircle({
       {initials(name)}
     </div>
   );
-}
-
-function normalizeStoryText(value: string | null | undefined) {
-  return value?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
 }
 
 function formatCoordinates(
@@ -764,21 +766,18 @@ function MemoryReconciliationPanel({ imageId }: { imageId: string }) {
     >
       <WikiCard>
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-white/30 text-xs font-medium uppercase tracking-wider">Different recollections</p>
-            <p className="text-white/70 text-sm leading-relaxed mt-1">
-              Ember compares contributor answers, stores factual claims, and flags details that may need a human check.
-            </p>
-          </div>
+          <p className="text-white/70 text-sm leading-relaxed flex-1">
+            Ember compares contributor answers, stores factual claims, and flags details that may need a human check.
+          </p>
           <button
             type="button"
             onClick={handleRefresh}
             disabled={refreshing || loading}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-white/80 disabled:opacity-50"
-            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
+            aria-label={refreshing ? 'Scanning' : 'Refresh scan'}
+            className="w-9 h-9 flex items-center justify-center rounded-full flex-shrink-0 disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', cursor: refreshing || loading ? 'default' : 'pointer' }}
           >
-            <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
-            {refreshing ? 'Scanning' : 'Refresh scan'}
+            <RefreshCw size={14} color="rgba(255,255,255,0.8)" className={refreshing ? 'animate-spin' : ''} />
           </button>
         </div>
 
@@ -921,91 +920,10 @@ export default function KipemberWikiContent({
     detail?.analysis?.longitude ??
     null;
   const coordinateLine = formatCoordinates(latitude, longitude);
-  const contributorChats = contributors
-    .map((contributor) => {
-      const isOwner = contributor.userId === ownerUserId || contributor.user?.id === ownerUserId;
-      const name =
-        contributor.name ||
-        contributor.user?.name ||
-        contributor.email ||
-        contributor.user?.email ||
-        contributor.phoneNumber ||
-        (isOwner ? ownerName : null) ||
-        'Contributor';
-      const messageEntries = (contributor.conversation?.messages || []).map((message) => ({
-        id: `message-${message.id}`,
-        createdAt: message.createdAt,
-        role: message.role || null,
-        source: message.source || null,
-        text: message.content,
-      }));
-      const hasMessages = messageEntries.length > 0;
-      const seenConversationEntries = new Set(
-        messageEntries
-          .map((entry) => {
-            const normalizedText = normalizeStoryText(entry.text);
-            if (!normalizedText) {
-              return null;
-            }
-
-            return `${entry.role || 'unknown'}::${normalizedText}`;
-          })
-          .filter((entry): entry is string => Boolean(entry))
-      );
-      const responseEntries = (contributor.conversation?.responses || []).flatMap((response) => {
-        const entries: Array<{
-          id: string;
-          createdAt: string;
-          role: string | null;
-          source: string | null;
-          text: string;
-        }> = [];
-        const shouldExpandPair = response.source === 'voice' || !hasMessages;
-
-        if (shouldExpandPair && response.question?.trim()) {
-          const questionText = response.question.trim();
-          const questionKey = `assistant::${normalizeStoryText(questionText)}`;
-
-          if (!seenConversationEntries.has(questionKey)) {
-            seenConversationEntries.add(questionKey);
-            entries.push({
-              id: `response-question-${response.id}`,
-              createdAt: response.createdAt,
-              role: 'assistant',
-              source: response.source || null,
-              text: questionText,
-            });
-          }
-        }
-
-        if (response.answer?.trim()) {
-          const answerText = response.answer.trim();
-          const answerKey = `user::${normalizeStoryText(answerText)}`;
-
-          if (!seenConversationEntries.has(answerKey)) {
-            seenConversationEntries.add(answerKey);
-            entries.push({
-              id: `response-answer-${response.id}`,
-              createdAt: response.createdAt,
-              role: 'user',
-              source: response.source || null,
-              text: answerText,
-            });
-          }
-        }
-
-        return entries;
-      });
-      const voiceCallEntries: typeof messageEntries = [];
-
-      const entries = [...voiceCallEntries, ...messageEntries, ...responseEntries]
-        .filter((entry) => entry.text.trim().length > 0)
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-      return { contributorId: contributor.id, isOwner, name: name || 'Contributor', entries };
-    })
-    .filter((chat) => chat.entries.length > 0);
-  const totalStoryMessages = contributorChats.reduce((sum, chat) => sum + chat.entries.length, 0);
+  const totalStoryMessages = (detail?.chatBlocks || []).reduce(
+    (sum, block) => sum + block.messages.length,
+    0
+  );
   const isAudioAttachment = (attachment: KipemberAttachment) =>
     attachment.mediaType === 'AUDIO' ||
     isAudioLikeFilename(attachment.filename) ||
@@ -1144,7 +1062,11 @@ export default function KipemberWikiContent({
                 bgColor="rgba(249,115,22,0.6)"
               />
               <span className="text-white text-sm font-medium">{ownerName}</span>
-              <span className="ml-auto text-white/30 text-xs font-medium">Owner</span>
+              {detail?.owner?.createdAt ? (
+                <span className="ml-auto text-white/30 text-xs font-medium">
+                  Member since {new Date(detail.owner.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </span>
+              ) : null}
             </div>
           ) : (
             <p className="text-white/30 text-sm">Owner data is not available.</p>
@@ -1212,16 +1134,6 @@ export default function KipemberWikiContent({
                   <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
                 </div>
                 <div className="flex flex-col gap-3">
-                  {/* Synthetic opening message ember always shows first */}
-                  <div className="flex flex-col gap-0.5 items-start">
-                    <span className="text-white text-xs font-bold">ember</span>
-                    <div
-                      className="inline-block max-w-[85%] rounded-2xl rounded-tl-sm px-3 py-2 text-xs leading-relaxed text-white/80"
-                      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-                    >
-                      Want to tell me more about this memory? I can call your phone for a quick interview or you can just continue with ember chat.
-                    </div>
-                  </div>
                   {block.messages.map((msg, i) => {
                     const isUser = msg.role === 'user';
                     const isVoice = msg.source === 'voice';

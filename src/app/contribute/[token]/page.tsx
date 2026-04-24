@@ -485,8 +485,7 @@ export default function ContributePage() {
   }, [data]);
 
   const latestAssistantMessage =
-    [...messages].reverse().find((message) => message.role === 'assistant')?.content ||
-    `Hi ${contributorFirstName}! I'm Ember. Thanks for sharing your memory.`;
+    [...messages].reverse().find((message) => message.role === 'assistant')?.content || '';
 
   const recentMessages = messages.slice(-4);
 

@@ -18,6 +18,7 @@ import {
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
+import { generateChatWelcome } from '@/lib/chat-welcome';
 
 const CONTRIBUTOR_FOLLOWUP_PROMPT = `You are Ember collecting one more memory detail after an interview was already completed.
 
@@ -229,6 +230,11 @@ export async function POST(
         image: {
           include: {
             analysis: true,
+            owner: {
+              select: {
+                email: true,
+              },
+            },
             tags: {
               include: {
                 user: {
@@ -295,10 +301,12 @@ export async function POST(
       });
 
       if (session) {
-        // Add welcome message
-        welcomeMessage = contributor.name
-          ? `Hi ${contributor.name}! I'm Ember. Thanks for sharing your memories about this image. To start, can you describe what you see or remember about this moment?`
-          : `Hi! I'm Ember. Thanks for sharing your memories about this image. To start, can you describe what you see or remember about this moment?`;
+        welcomeMessage = await generateChatWelcome({
+          imageId: contributor.imageId,
+          participantRole: isGuestUserEmail(contributor.image.owner.email) ? 'guest' : 'contributor',
+          participantFirstName: contributor.name,
+          situation: 'first_open',
+        });
 
         await prisma.emberMessage.create({
           data: {
@@ -317,8 +325,12 @@ export async function POST(
 
     if (message === '__START__') {
       if (session.status === 'completed') {
-        const restartMessage =
-          "I'm ready for more. Tell me any extra detail, correction, or small moment you want Ember to remember.";
+        const restartMessage = await generateChatWelcome({
+          imageId: contributor.imageId,
+          participantRole: isGuestUserEmail(contributor.image.owner.email) ? 'guest' : 'contributor',
+          participantFirstName: contributor.name,
+          situation: 'returning',
+        });
 
         await prisma.emberSession.update({
           where: { id: session.id },
