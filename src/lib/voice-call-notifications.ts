@@ -4,7 +4,6 @@ import { sendEmail, isEmailConfigured } from '@/lib/email';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewUploadUrl } from '@/lib/uploads';
-import { getOrCreateShortLink } from '@/lib/short-links';
 
 /**
  * Retell disconnection reasons that unambiguously mean the call didn't
@@ -337,7 +336,6 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
     contributor.name?.trim() || contributor.email?.trim() || 'there';
   const targetUrl = `/contribute/${contributor.token}`;
   const inviteUrl = buildAbsoluteUrl(targetUrl);
-  const shortLink = await getOrCreateShortLink(targetUrl);
   const thumbnailUrl = buildAbsoluteUrl(
     getPreviewUploadUrl({
       mediaType: contributor.image.mediaType,
@@ -349,7 +347,7 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
 
   const contributorSms = buildContributorSms({
     ownerFirstName,
-    inviteUrl: shortLink.shortUrl,
+    inviteUrl,
   });
   const contributorEmail = buildContributorEmail({
     contributorName,
