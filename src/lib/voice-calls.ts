@@ -1,8 +1,13 @@
 import type Retell from 'retell-sdk';
 import { chat } from '@/lib/claude';
+import { getAppBaseUrl } from '@/lib/app-url';
 import { prisma } from '@/lib/db';
+import { sendEmail, isEmailConfigured } from '@/lib/email';
 import { getEmberTitle } from '@/lib/ember-title';
+import { getPreviewUploadUrl } from '@/lib/uploads';
 import { createRetellPhoneCall, createRetellWebCall, retrieveRetellCall } from '@/lib/retell';
+import { getOrCreateShortLink } from '@/lib/short-links';
+import { sendSMS } from '@/lib/twilio';
 import {
   extractImportantVoiceCallClips,
   parseVoiceCallTranscriptSegments,
@@ -63,6 +68,62 @@ function stringifyJson(value: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getFirstName(value: string | null | undefined, fallback = 'Someone'): string {
+  const first = value?.trim().split(/\s+/)[0];
+  return first || fallback;
+}
+
+function normalizePhoneForSms(phoneNumber: string): string {
+  if (phoneNumber.startsWith('+')) {
+    return phoneNumber;
+  }
+
+  const digits = phoneNumber.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `+1${digits}`;
+  }
+
+  return `+${digits}`;
+}
+
+function buildAbsoluteUrl(pathOrUrl: string): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+
+  const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  return `${getAppBaseUrl()}${path}`;
+}
+
+function isMissedCallTranscript(transcript: string | null | undefined): boolean {
+  const normalized = transcript
+    ?.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  return (
+    normalized.includes('forwarded to voicemail') ||
+    normalized.includes('trying to reach is not available') ||
+    normalized.includes('please record your message') ||
+    normalized.includes('leave a message') ||
+    normalized.includes('voicemail')
+  );
 }
 
 function toDate(timestampMs: number | undefined): Date | undefined {
@@ -626,6 +687,157 @@ async function syncVoiceCallToConversation(voiceCallId: string) {
   }
 }
 
+function shouldSendMissedCallFollowUp(voiceCall: {
+  status: string;
+  callSuccessful: boolean | null;
+  disconnectionReason: string | null;
+  transcript: string | null;
+}) {
+  if (voiceCall.status !== 'ended') {
+    return false;
+  }
+
+  const disconnectionReason = voiceCall.disconnectionReason?.toLowerCase() || '';
+  return (
+    isMissedCallTranscript(voiceCall.transcript) ||
+    disconnectionReason.includes('voicemail') ||
+    disconnectionReason.includes('no_answer') ||
+    disconnectionReason.includes('no-answer') ||
+    disconnectionReason.includes('not_answer') ||
+    disconnectionReason.includes('not-answer') ||
+    (voiceCall.callSuccessful === false && !voiceCall.transcript?.trim())
+  );
+}
+
+async function sendMissedCallFollowUp(voiceCallId: string) {
+  const alreadySent = await prisma.voiceCallEvent.findFirst({
+    where: {
+      voiceCallId,
+      eventType: 'missed_call_followup_sent',
+    },
+    select: { id: true },
+  });
+
+  if (alreadySent) {
+    return;
+  }
+
+  const voiceCall = await prisma.voiceCall.findUnique({
+    where: { id: voiceCallId },
+    include: {
+      contributor: {
+        include: {
+          user: {
+            select: {
+              email: true,
+              phoneNumber: true,
+            },
+          },
+          image: {
+            include: {
+              owner: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!voiceCall || !shouldSendMissedCallFollowUp(voiceCall)) {
+    return;
+  }
+
+  const contributor = voiceCall.contributor;
+  const image = contributor.image;
+  const isCreator = contributor.userId === image.owner.id;
+
+  if (isCreator) {
+    return;
+  }
+
+  const contributorName = contributor.name?.trim() || getFirstName(contributor.user?.email, 'there');
+  const ownerFirstName = getFirstName(image.owner.name, 'Someone');
+  const targetUrl = `/contribute/${contributor.token}`;
+  const inviteUrl = buildAbsoluteUrl(targetUrl);
+  const shortLink = await getOrCreateShortLink(targetUrl);
+  const thumbnailUrl = buildAbsoluteUrl(
+    getPreviewUploadUrl({
+      mediaType: image.mediaType,
+      filename: image.filename,
+      posterFilename: image.posterFilename,
+    })
+  );
+  const smsRecipient = contributor.phoneNumber || contributor.user?.phoneNumber;
+  const emailRecipient = contributor.email || contributor.user?.email;
+  const smsBody = `Hi, this is ember. ${ownerFirstName} shared a photo and would love your take on that moment. Add it here ${shortLink.shortUrl}`;
+  const previewText = "He’d love your take on that moment";
+  const subject = `${ownerFirstName} shared an ember with you`;
+
+  const sendResults = await Promise.allSettled([
+    smsRecipient
+      ? sendSMS(normalizePhoneForSms(smsRecipient), smsBody)
+      : Promise.resolve('skipped'),
+    emailRecipient && isEmailConfigured()
+      ? sendEmail({
+          to: emailRecipient,
+          subject,
+          text: [
+            `Hi ${contributorName},`,
+            '',
+            `${ownerFirstName} shared an ember with you—a photo and memory—and tried to reach you. We missed you.`,
+            "We’d love your take on that moment. It only takes a minute.",
+            '',
+            inviteUrl,
+            '',
+            'No app needed—just tap and share what you remember.',
+            '',
+            '—Ember',
+          ].join('\n'),
+          html: `
+            <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${escapeHtml(previewText)}</div>
+            <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f7f7f5;padding:32px;">
+              <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid rgba(17,17,17,0.08);border-radius:20px;padding:32px;color:#111111;">
+                <p style="margin:0 0 20px;font-size:16px;line-height:1.6;">Hi ${escapeHtml(contributorName)},</p>
+                <img src="${escapeHtml(thumbnailUrl)}" alt="Shared Ember photo" style="display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 24px;" />
+                <p style="margin:0 0 14px;font-size:16px;line-height:1.7;">${escapeHtml(ownerFirstName)} shared an ember with you—a photo and memory—and tried to reach you. We missed you.</p>
+                <p style="margin:0 0 24px;font-size:16px;line-height:1.7;">We’d love your take on that moment. It only takes a minute.</p>
+                <p style="margin:0 0 24px;">
+                  <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;background:#ff6621;color:#ffffff;text-decoration:none;border-radius:999px;padding:14px 22px;font-weight:700;">Add your memory</a>
+                </p>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#555555;"><a href="${escapeHtml(inviteUrl)}" style="color:#ff6621;">${escapeHtml(inviteUrl)}</a></p>
+                <p style="margin:0;font-size:14px;line-height:1.7;color:#555555;">No app needed—just tap and share what you remember.</p>
+                <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#555555;">—Ember</p>
+              </div>
+            </div>
+          `,
+        })
+      : Promise.resolve('skipped'),
+  ]);
+
+  const failed = sendResults.filter((result) => result.status === 'rejected');
+  if (failed.length > 0) {
+    console.error('Failed to send missed call follow-up:', failed);
+  }
+
+  if (sendResults.some((result) => result.status === 'fulfilled' && result.value !== 'skipped')) {
+    await prisma.voiceCallEvent.create({
+      data: {
+        voiceCallId,
+        eventType: 'missed_call_followup_sent',
+        payloadJson: JSON.stringify({
+          smsSent: Boolean(smsRecipient),
+          emailSent: Boolean(emailRecipient && isEmailConfigured()),
+        }),
+      },
+    });
+  }
+}
+
 export async function refreshVoiceCallFromProvider(voiceCallId: string) {
   const existing = await prisma.voiceCall.findUnique({
     where: { id: voiceCallId },
@@ -656,6 +868,10 @@ export async function refreshVoiceCallFromProvider(voiceCallId: string) {
 
   if (shouldTreatAsAnalyzed) {
     await syncVoiceCallToConversation(updated.id);
+  }
+
+  if (eventType === 'call_ended' || eventType === 'call_analyzed') {
+    await sendMissedCallFollowUp(updated.id);
   }
 
   return prisma.voiceCall.findUnique({
@@ -840,6 +1056,10 @@ export async function processRetellWebhook(rawPayload: unknown) {
 
   if (eventType === 'call_analyzed') {
     await syncVoiceCallToConversation(voiceCall.id);
+  }
+
+  if (eventType === 'call_ended' || eventType === 'call_analyzed') {
+    await sendMissedCallFollowUp(voiceCall.id);
   }
 
   return voiceCall;
