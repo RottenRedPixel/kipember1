@@ -1,7 +1,10 @@
 import { prisma } from '@/lib/db';
 import { sendSMS } from '@/lib/twilio';
 import { sendEmail, isEmailConfigured } from '@/lib/email';
+import { getAppBaseUrl } from '@/lib/app-url';
 import { getEmberTitle } from '@/lib/ember-title';
+import { getPreviewUploadUrl } from '@/lib/uploads';
+import { getOrCreateShortLink } from '@/lib/short-links';
 
 /**
  * Retell disconnection reasons that unambiguously mean the call didn't
@@ -120,16 +123,68 @@ function assembleWithTitleBudget(
   return `${prefix}${safeTitle}${suffix}`;
 }
 
+function getFirstName(value: string | null | undefined, fallback = 'Someone'): string {
+  const first = value?.trim().split(/\s+/)[0];
+  return first || fallback;
+}
+
+function buildAbsoluteUrl(pathOrUrl: string): string {
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+
+  const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  return `${getAppBaseUrl()}${path}`;
+}
+
 function buildContributorSms(params: {
-  contributorName: string | null;
-  emberTitle: string;
-  ownerName: string | null;
+  ownerFirstName: string;
+  inviteUrl: string;
 }): string {
-  const name = truncateForSms(params.contributorName ?? '', 20);
-  const greeting = name ? `Hi ${name}, ` : 'Hi, ';
-  const prefix = `${greeting}we tried calling about "`;
-  const suffix = `" but couldn't connect. We'll try again, or reply any time to share your memory.`;
-  return assembleWithTitleBudget(prefix, params.emberTitle, suffix);
+  return `Hi, this is ember. ${params.ownerFirstName} shared a photo and would love your take on that moment. Add it here ${params.inviteUrl}`;
+}
+
+function buildContributorEmail(params: {
+  contributorName: string;
+  ownerFirstName: string;
+  inviteUrl: string;
+  thumbnailUrl: string;
+}): { subject: string; text: string; html: string } {
+  const subject = `${params.ownerFirstName} shared an ember with you`;
+  const previewText = 'He\u2019d love your take on that moment';
+
+  const text = [
+    `Hi ${params.contributorName},`,
+    '',
+    `${params.ownerFirstName} shared an ember with you\u2014a photo and memory\u2014and tried to reach you. We missed you.`,
+    'We\u2019d love your take on that moment. It only takes a minute.',
+    '',
+    params.inviteUrl,
+    '',
+    'No app needed\u2014just tap and share what you remember.',
+    '',
+    '\u2014Ember',
+  ].join('\n');
+
+  const html = `
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${escapeHtml(previewText)}</div>
+    <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f7f7f5;padding:32px;">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid rgba(17,17,17,0.08);border-radius:20px;padding:32px;color:#111111;">
+        <p style="margin:0 0 20px;font-size:16px;line-height:1.6;">Hi ${escapeHtml(params.contributorName)},</p>
+        <img src="${escapeHtml(params.thumbnailUrl)}" alt="Shared Ember photo" style="display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 24px;" />
+        <p style="margin:0 0 14px;font-size:16px;line-height:1.7;">${escapeHtml(params.ownerFirstName)} shared an ember with you&mdash;a photo and memory&mdash;and tried to reach you. We missed you.</p>
+        <p style="margin:0 0 24px;font-size:16px;line-height:1.7;">We&rsquo;d love your take on that moment. It only takes a minute.</p>
+        <p style="margin:0 0 24px;">
+          <a href="${escapeHtml(params.inviteUrl)}" style="display:inline-block;background:#ff6621;color:#ffffff;text-decoration:none;border-radius:999px;padding:14px 22px;font-weight:700;">Add your memory</a>
+        </p>
+        <p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#555555;"><a href="${escapeHtml(params.inviteUrl)}" style="color:#ff6621;">${escapeHtml(params.inviteUrl)}</a></p>
+        <p style="margin:0;font-size:14px;line-height:1.7;color:#555555;">No app needed&mdash;just tap and share what you remember.</p>
+        <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#555555;">&mdash;Ember</p>
+      </div>
+    </div>
+  `;
+
+  return { subject, text, html };
 }
 
 function buildOwnerSms(params: {
@@ -219,8 +274,8 @@ function escapeHtml(value: string): string {
 
 /**
  * Inspects the voice call and, if it represents a failed/unanswered call
- * that hasn't been notified yet, sends SMS to the contributor, SMS to the
- * image owner (if they have a phone number), and email to the image owner.
+ * that hasn't been notified yet, sends SMS/email to the contributor, plus
+ * owner/admin SMS/email unless the missed-call recipient is the creator.
  *
  * Idempotent: checks and sets `failureNotifiedAt` under a transactional
  * update so concurrent webhooks won't double-send.
@@ -277,11 +332,30 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
   const { contributor } = voiceCall;
   const owner = contributor.image.owner;
   const emberTitle = getEmberTitle(contributor.image);
+  const ownerFirstName = getFirstName(owner.name, 'Someone');
+  const contributorName =
+    contributor.name?.trim() || contributor.email?.trim() || 'there';
+  const targetUrl = `/contribute/${contributor.token}`;
+  const inviteUrl = buildAbsoluteUrl(targetUrl);
+  const shortLink = await getOrCreateShortLink(targetUrl);
+  const thumbnailUrl = buildAbsoluteUrl(
+    getPreviewUploadUrl({
+      mediaType: contributor.image.mediaType,
+      filename: contributor.image.filename,
+      posterFilename: contributor.image.posterFilename,
+    })
+  );
+  const isCreator = contributor.userId === owner.id;
 
   const contributorSms = buildContributorSms({
-    contributorName: contributor.name,
-    emberTitle,
-    ownerName: owner.name,
+    ownerFirstName,
+    inviteUrl: shortLink.shortUrl,
+  });
+  const contributorEmail = buildContributorEmail({
+    contributorName,
+    ownerFirstName,
+    inviteUrl,
+    thumbnailUrl,
   });
   const ownerSms = buildOwnerSms({
     contributorName: contributor.name,
@@ -306,23 +380,41 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
       contributor.phoneNumber,
       (to) => sendSMS(to, contributorSms)
     ),
-    sendChannel('owner-sms', voiceCall.id, owner.phoneNumber, (to) =>
-      sendSMS(to, ownerSms)
-    ),
-    sendChannel('owner-email', voiceCall.id, owner.email, (to) => {
+    sendChannel('contributor-email', voiceCall.id, contributor.email, (to) => {
       if (!isEmailConfigured()) {
         console.warn(
-          `[voice-call-notifications] SMTP not configured; skipping owner email for ${voiceCall.id}`
+          `[voice-call-notifications] SMTP not configured; skipping contributor email for ${voiceCall.id}`
         );
         return Promise.resolve();
       }
       return sendEmail({
         to,
-        subject: ownerEmail.subject,
-        text: ownerEmail.text,
-        html: ownerEmail.html,
+        subject: contributorEmail.subject,
+        text: contributorEmail.text,
+        html: contributorEmail.html,
       });
     }),
+    isCreator
+      ? Promise.resolve()
+      : sendChannel('owner-sms', voiceCall.id, owner.phoneNumber, (to) =>
+          sendSMS(to, ownerSms)
+        ),
+    isCreator
+      ? Promise.resolve()
+      : sendChannel('owner-email', voiceCall.id, owner.email, (to) => {
+          if (!isEmailConfigured()) {
+            console.warn(
+              `[voice-call-notifications] SMTP not configured; skipping owner email for ${voiceCall.id}`
+            );
+            return Promise.resolve();
+          }
+          return sendEmail({
+            to,
+            subject: ownerEmail.subject,
+            text: ownerEmail.text,
+            html: ownerEmail.html,
+          });
+        }),
   ]);
 }
 
@@ -336,7 +428,11 @@ async function sendChannel(
     // Per spec: missing owner phone = silently skip. Same for a contributor
     // with no phone (shouldn't happen — phone calls can't be placed without
     // one — but safe to guard).
-    if (channel === 'contributor-sms' || channel === 'owner-email') {
+    if (
+      channel === 'contributor-sms' ||
+      channel === 'contributor-email' ||
+      channel === 'owner-email'
+    ) {
       console.warn(
         `[voice-call-notifications] skipping ${channel} for ${voiceCallId}: no destination`
       );
