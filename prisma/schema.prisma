@@ -111,11 +111,21 @@ model Contributor {
   voiceCallClips VoiceCallClip[]
   tags         ImageTag[]
   memoryClaims MemoryClaim[]
+  guestViews   GuestView[]
   createdAt    DateTime      @default(now())
 
   @@index([imageId, createdAt])
   @@index([userId, createdAt])
   @@unique([imageId, userId])
+}
+
+model GuestView {
+  id            String      @id @default(cuid())
+  contributorId String
+  contributor   Contributor @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  viewedAt      DateTime    @default(now())
+
+  @@index([contributorId, viewedAt])
 }
 
 model EmberSession {
@@ -375,6 +385,9 @@ model User {
   taggedImages         ImageTag[]   @relation("TaggedUserImages")
   emberSessions        EmberSession[]
   memoryClaims         MemoryClaim[]
+  lastSeenContributionsAt DateTime?
+  lastSeenWikiAt       DateTime?
+  lastSeenGuestViewsAt DateTime?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 }

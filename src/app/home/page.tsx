@@ -8,6 +8,7 @@ import {
   getTotalContributorsForUser,
 } from '@/lib/image-summaries';
 import { getAvatarUrl } from '@/lib/avatar';
+import { getHomeActivity } from '@/lib/home-activity';
 
 export default async function HomePage({
   searchParams,
@@ -38,11 +39,12 @@ export default async function HomePage({
     redirect(query ? `/ember/${legacyId}?${query}` : `/ember/${legacyId}`);
   }
 
-  const [initialImages, initialAvatarUrl, initialTotalContributors, initialContributors] = await Promise.all([
+  const [initialImages, initialAvatarUrl, initialTotalContributors, initialContributors, initialHomeActivity] = await Promise.all([
     getAccessibleImagesForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
     getTotalContributorsForUser(auth.user.id),
     getContributorsListForUser(auth.user.id),
+    getHomeActivity(auth.user.id),
   ]);
 
   return (
@@ -53,6 +55,7 @@ export default async function HomePage({
         initialAvatarUrl={initialAvatarUrl}
         initialTotalContributors={initialTotalContributors}
         initialContributors={initialContributors}
+        initialHomeActivity={initialHomeActivity}
       />
     </Suspense>
   );

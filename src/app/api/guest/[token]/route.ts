@@ -73,6 +73,12 @@ export async function GET(
       );
     }
 
+    // Log a guest view for the owner's home-activity counter. Fire-and-forget;
+    // a DB hiccup here must not block the guest's page load.
+    prisma.guestView.create({ data: { contributorId: contributor.id } }).catch((err) => {
+      console.error('Failed to log guest view:', err);
+    });
+
     const latestVoiceCall = contributor.voiceCalls[0] ?? null;
     if (shouldRefreshVoiceCallStatus(latestVoiceCall)) {
       try {
