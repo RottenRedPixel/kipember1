@@ -1118,8 +1118,6 @@ export default function KipemberWikiContent({
         </WikiCard>
       </WikiSection>
 
-      {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}
-
       <WikiSection
         icon={<History size={17} />}
         title="Story Circle"
@@ -1202,6 +1200,33 @@ export default function KipemberWikiContent({
           )}
         </div>
       </WikiSection>
+
+      {voiceCallClips.length > 0 ? (
+        <WikiSection icon={<Mic size={17} />} title="Voice Clips" complete>
+          {voiceCallClips.map((clip) => (
+            <WikiCard key={clip.id}>
+              <p className="text-white text-sm font-medium">{clip.title}</p>
+              <p className="text-white/30 text-xs mt-0.5">
+                {clip.contributorName} · {formatLongDate(clip.createdAt)}
+              </p>
+              <p className="text-white/70 text-sm leading-relaxed mt-3">{clip.quote}</p>
+              {clip.significance ? (
+                <p className="text-white/50 text-xs leading-relaxed mt-2">{clip.significance}</p>
+              ) : null}
+              {clip.audioUrl ? (
+                <ClipAudioPlayer
+                  src={clip.audioUrl}
+                  className="mt-4"
+                  startMs={clip.startMs}
+                  endMs={clip.endMs}
+                />
+              ) : null}
+            </WikiCard>
+          ))}
+        </WikiSection>
+      ) : null}
+
+      {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}
 
       <WikiSection
         icon={<ImageIcon size={17} />}
@@ -1299,31 +1324,6 @@ export default function KipemberWikiContent({
         </WikiSection>
       ) : null}
 
-      {voiceCallClips.length > 0 ? (
-        <WikiSection icon={<Mic size={17} />} title="Voice Clips" complete>
-          {voiceCallClips.map((clip) => (
-            <WikiCard key={clip.id}>
-              <p className="text-white text-sm font-medium">{clip.title}</p>
-              <p className="text-white/30 text-xs mt-0.5">
-                {clip.contributorName} · {formatLongDate(clip.createdAt)}
-              </p>
-              <p className="text-white/70 text-sm leading-relaxed mt-3">{clip.quote}</p>
-              {clip.significance ? (
-                <p className="text-white/50 text-xs leading-relaxed mt-2">{clip.significance}</p>
-              ) : null}
-              {clip.audioUrl ? (
-                <ClipAudioPlayer
-                  src={clip.audioUrl}
-                  className="mt-4"
-                  startMs={clip.startMs}
-                  endMs={clip.endMs}
-                />
-              ) : null}
-            </WikiCard>
-          ))}
-        </WikiSection>
-      ) : null}
-
       <WikiSection
         icon={<Users size={17} />}
         title="Tagged People"
@@ -1350,11 +1350,11 @@ export default function KipemberWikiContent({
 
       <WikiSection
         icon={<MapPin size={17} />}
-        title="Location"
+        title="Place"
         complete={Boolean(primaryLocationLine || coordinateLine)}
       >
         <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-1.5">Location</p>
+          <p className="text-white/30 text-xs font-medium mb-1.5">Place</p>
           <p className="text-white font-medium text-sm">
             {primaryLocationLine || 'No location data available.'}
           </p>
@@ -1380,6 +1380,13 @@ export default function KipemberWikiContent({
               Looking up an address from the photo GPS metadata...
             </p>
           ) : null}
+          <p className="text-white/30 text-xs mt-3">
+            Source: {detail?.analysis?.confirmedLocation?.confirmedAt
+              ? 'Manual entry'
+              : (latitude != null && longitude != null)
+                ? 'Photo GPS metadata'
+                : 'Not set'}
+          </p>
         </WikiCard>
       </WikiSection>
 
@@ -1392,6 +1399,9 @@ export default function KipemberWikiContent({
           <p className="text-white/30 text-xs font-medium mb-1.5">Photo Timestamp</p>
           <p className="text-white font-medium text-sm">
             {formatLongDate(detail?.analysis?.capturedAt || detail?.createdAt)}
+          </p>
+          <p className="text-white/30 text-xs mt-3">
+            Source: {detail?.analysis?.capturedAt ? 'Photo EXIF metadata' : 'Upload timestamp'}
           </p>
         </WikiCard>
       </WikiSection>
