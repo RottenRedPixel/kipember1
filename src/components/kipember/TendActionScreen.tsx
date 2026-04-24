@@ -675,6 +675,13 @@ export default function TendActionScreen({ action }: { action: string }) {
     : fromParam === 'home'
     ? '/home'
     : action === 'contributors' && view ? listHref : tendModalHref;
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(backHref);
+    }
+  };
   const contributors: TendContributor[] = detail?.contributors || [];
   const contributor: TendContributor | null =
     contributors.find((item) => item.id === view) || null;
@@ -1300,7 +1307,7 @@ export default function TendActionScreen({ action }: { action: string }) {
         backgroundPosition: 'center',
       } : undefined}
     >
-      <Link href={backHref} className="w-[7%] h-full" />
+      <button type="button" onClick={handleBack} className="w-[7%] h-full" style={{ cursor: 'pointer' }} aria-label="Back" />
       <div
         className="w-[93%] h-full flex flex-col slide-in-right"
         style={{ background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }}
@@ -1319,13 +1326,14 @@ export default function TendActionScreen({ action }: { action: string }) {
               <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
             </button>
           ) : (
-            <Link
-              href={backHref}
+            <button
+              type="button"
+              onClick={handleBack}
               className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
-              style={{ opacity: 0.75 }}
+              style={{ opacity: 0.75, cursor: 'pointer' }}
             >
               <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
-            </Link>
+            </button>
           )}
           {contributorSubMeta ? (
             <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
