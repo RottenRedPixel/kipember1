@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { realContributorWhere } from '@/lib/contributors-pool';
 import { getAcceptedFriendIds } from '@/lib/ember-access';
 import type { EmberMediaType } from '@/lib/media';
 
@@ -49,7 +50,7 @@ export function invalidateAccessibleImagesForUser(userId: string) {
 
 export async function getTotalContributorsForUser(userId: string) {
   const contributors = await prisma.contributor.findMany({
-    where: { image: { ownerId: userId } },
+    where: { image: { ownerId: userId }, ...realContributorWhere },
     select: { id: true, userId: true, email: true, phoneNumber: true },
   });
 
@@ -73,7 +74,7 @@ export type ContributorSummary = {
 
 export async function getContributorsListForUser(userId: string): Promise<ContributorSummary[]> {
   const rows = await prisma.contributor.findMany({
-    where: { image: { ownerId: userId } },
+    where: { image: { ownerId: userId }, ...realContributorWhere },
     orderBy: { createdAt: 'asc' },
     select: {
       id: true,
@@ -144,6 +145,7 @@ export async function getAccessibleImagesForUser(userId: string) {
       cropWidth: true,
       cropHeight: true,
       contributors: {
+        where: realContributorWhere,
         select: {
           id: true,
           userId: true,

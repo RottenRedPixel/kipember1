@@ -35,6 +35,18 @@ function pickKey(c: { userId: string | null; email: string | null; phoneNumber: 
   return `r:${c.id}`;
 }
 
+// Share-link contributors are placeholder rows with all 4 identity fields null.
+// They exist only to anchor the share token + guest chat session, and must
+// never surface in any contributor display or count.
+export const realContributorWhere = {
+  OR: [
+    { userId: { not: null } },
+    { email: { not: null } },
+    { phoneNumber: { not: null } },
+    { name: { not: null } },
+  ],
+};
+
 export async function getUnifiedContributorsForUser(
   userId: string,
   currentEmberId?: string | null
@@ -43,7 +55,10 @@ export async function getUnifiedContributorsForUser(
     where: {
       image: { ownerId: userId },
       // Skip the owner's own row if they happen to also be a contributor on their own ember.
-      OR: [{ userId: null }, { NOT: { userId } }],
+      AND: [
+        { OR: [{ userId: null }, { NOT: { userId } }] },
+        realContributorWhere,
+      ],
     },
     orderBy: { createdAt: 'asc' },
     select: {
