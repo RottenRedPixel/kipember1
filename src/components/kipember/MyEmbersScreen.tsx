@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { ChevronDown, Plus, FileStack, LayoutGrid, LayoutList, Users, BookOpen } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import AppHeader from '@/components/kipember/AppHeader';
+import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
 import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
 import type { AccessibleImageSummary } from '@/lib/image-summaries';
@@ -34,26 +35,14 @@ export default function MyEmbersScreen({
   avatarUrl?: string | null;
   userInitials?: string;
 }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [images, setImages] = useState<ImageSummary[]>(initialImages);
-  const [creating, setCreating] = useState(false);
+  const [createFile, setCreateFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  async function handleFileSelect(file: File) {
-    setCreating(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch('/api/images', { method: 'POST', body: formData });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || typeof payload?.id !== 'string') {
-        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
-      }
-      router.push(`/ember/${payload.id}?ember=owner`);
-    } catch {
-      setCreating(false);
-    }
+  function handleFileSelect(file: File) {
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
+    setCreateFile(file);
   }
 
   useEffect(() => {
@@ -95,6 +84,17 @@ export default function MyEmbersScreen({
     isShared ? img.accessType !== 'owner' : img.accessType === 'owner'
   );
   const sorted = sortEmbers(filtered, sort);
+
+  if (createFile) {
+    return (
+      <EmberCreateFlow
+        file={createFile}
+        avatarUrl={avatarUrl}
+        userInitials={userInitials}
+        onCancel={() => setCreateFile(null)}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
@@ -145,9 +145,8 @@ export default function MyEmbersScreen({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={creating}
-              className="flex items-center justify-center rounded-full can-hover-dim disabled:opacity-60"
-              style={{ width: 32, height: 32, background: '#f97316', flexShrink: 0, cursor: creating ? 'default' : 'pointer' }}
+              className="flex items-center justify-center rounded-full can-hover-dim cursor-pointer"
+              style={{ width: 32, height: 32, background: '#f97316', flexShrink: 0 }}
               aria-label="Create new ember"
             >
               <Plus size={16} color="white" strokeWidth={2.5} />
@@ -242,11 +241,10 @@ export default function MyEmbersScreen({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={creating}
-                      className="w-full flex items-center justify-center rounded-full text-white text-sm font-semibold cursor-pointer disabled:opacity-60"
+                      className="w-full flex items-center justify-center rounded-full text-white text-sm font-semibold cursor-pointer"
                       style={{ background: '#f97316', minHeight: 44 }}
                     >
-                      {creating ? 'Creating...' : 'Choose Photo'}
+                      Choose Photo
                     </button>
                   </>
                 ) : null}

@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Activity, ChevronLeft, ChevronRight, Star, Users } from 'lucide-react';
+import { Activity, ChevronRight, Star, Users } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
+import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
 import { getPreviewMediaUrl, type EmberMediaType } from '@/lib/media';
 
 function EmberMark({ size = 18 }: { size?: number }) {
@@ -207,8 +207,6 @@ function Facepile({
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-type Step = 'home' | 'confirm' | 'processing';
-
 const CONTRIBUTOR_COLORS = ['#7c3aed', '#0891b2', '#16a34a', '#b45309', '#db2777', '#2563eb', '#d97706', '#9333ea'];
 
 function colorForKey(key: string) {
@@ -286,15 +284,9 @@ export default function UserHomeScreen({
     })
   );
 
-  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [step, setStep] = useState<Step>('home');
   const [isDragOver, setIsDragOver] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState('');
-  const [createdImageId, setCreatedImageId] = useState<string | null>(null);
+  const [createFile, setCreateFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const [dismissedActivity, setDismissedActivity] = useState<Set<string>>(new Set());
 
@@ -302,11 +294,7 @@ export default function UserHomeScreen({
 
   function handleFile(file: File) {
     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setUploadError('');
-    setStep('confirm');
+    setCreateFile(file);
   }
 
   useEffect(() => {
@@ -319,22 +307,7 @@ export default function UserHomeScreen({
     }
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewUrl]);
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
-
-  useEffect(() => {
-    if (!createdImageId || step !== 'processing') return;
-    const timer = setTimeout(() => {
-      router.replace(`/ember/${createdImageId}?ember=owner`);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [createdImageId, step, router]);
+  }, []);
 
   useEffect(() => {
     void fetch('/api/profile', { cache: 'no-store' })
@@ -348,87 +321,14 @@ export default function UserHomeScreen({
       .catch(() => undefined);
   }, []);
 
-  async function handleCreate() {
-    if (!selectedFile) return;
-    setUploading(true);
-    setUploadError('');
-    setCreatedImageId(null);
-    setStep('processing');
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    try {
-      const response = await fetch('/api/images', { method: 'POST', body: formData });
-      const payload = await response.json().catch(() => ({})) as { id?: string; error?: string };
-      if (!response.ok || typeof payload?.id !== 'string') {
-        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
-      }
-      setCreatedImageId(payload.id);
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'Failed to create ember');
-      setStep('confirm');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  if (step === 'confirm' && previewUrl) {
+  if (createFile) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: 'var(--bg-screen)', paddingTop: 56 }}>
-        <AppHeader avatarUrl={avatarUrl} userInitials={initials(displayName)} userModalHref="/account" />
-        <div className="absolute top-4 left-4" style={{ top: 64 }}>
-          <button
-            type="button"
-            onClick={() => setStep('home')}
-            className="w-11 h-11 rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(255,255,255,0.1)' }}
-          >
-            <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
-          </button>
-        </div>
-        <div className="w-full rounded-2xl overflow-hidden" style={{ maxWidth: 420, border: '1px solid var(--border-default)' }}>
-          <img src={previewUrl} alt="Selected photo" className="w-full h-auto block" />
-        </div>
-        <div className="w-full flex flex-col gap-5 mt-7" style={{ maxWidth: 420 }}>
-          <p className="text-white font-medium text-base text-center leading-snug">Create an ember from this photo?</p>
-          {uploadError ? <p className="text-sm text-center text-red-300">{uploadError}</p> : null}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setStep('home')}
-              className="flex-1 flex items-center justify-center rounded-full text-sm font-medium can-hover-dim"
-              style={{ minHeight: 44, background: 'transparent', border: '1.5px solid var(--border-btn)' }}
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={handleCreate}
-              className="flex-1 flex items-center justify-center rounded-full text-sm font-medium text-white can-hover-dim"
-              style={{ minHeight: 44, background: '#f97316' }}
-            >
-              Create Ember
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'processing') {
-    return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center px-8" style={{ background: 'var(--bg-screen)', paddingTop: 56 }}>
-        <AppHeader avatarUrl={avatarUrl} userInitials={initials(displayName)} userModalHref="/account" />
-        <style>{'@keyframes kipSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }'}</style>
-        <div className="rounded-full flex items-center justify-center" style={{ width: 96, height: 96, background: 'rgba(249,115,22,0.15)', border: '1.5px solid rgba(249,115,22,0.55)', animation: 'kipSpin 1.5s linear infinite' }}>
-          <EmberMark size={40} />
-        </div>
-        <p className="mt-8 font-medium text-base text-white">
-          {createdImageId ? 'Ember created!' : 'Igniting ember'}
-        </p>
-        <p className="mt-1 text-sm text-white/60">
-          {uploadError || (createdImageId ? 'Opening your memory...' : 'Building the ember structure')}
-        </p>
-      </div>
+      <EmberCreateFlow
+        file={createFile}
+        avatarUrl={avatarUrl}
+        userInitials={initials(displayName)}
+        onCancel={() => setCreateFile(null)}
+      />
     );
   }
 
