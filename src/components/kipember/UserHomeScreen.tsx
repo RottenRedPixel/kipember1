@@ -435,156 +435,98 @@ export default function UserHomeScreen({
         </div>
 
         {/* c) Ember activity */}
-        <div className="mt-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Activity size={18} strokeWidth={2} color="white" />
-            <p className="text-base font-bold text-white">Ember Activity</p>
-          </div>
-          <div className="flex flex-col gap-2">
+        {(() => {
+          type ActivityKind = 'contributions' | 'wiki' | 'guestViews';
+          const KIND_META: Record<ActivityKind, { gradient: string; singular: string; plural: string }> = {
+            contributions: { gradient: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)', singular: 'Contribution', plural: 'Contributions' },
+            wiki:          { gradient: 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)', singular: 'Wiki Update',  plural: 'Wiki Updates' },
+            guestViews:    { gradient: 'linear-gradient(135deg, #059669 0%, #065f46 100%)', singular: 'Guest View',   plural: 'Guest Views' },
+          };
+          const combined: Array<HomeActivityItemProp & { kind: ActivityKind }> = [
+            ...((initialHomeActivity?.contributions.items ?? []).map((i) => ({ ...i, kind: 'contributions' as const }))),
+            ...((initialHomeActivity?.wikiUpdates.items   ?? []).map((i) => ({ ...i, kind: 'wiki'          as const }))),
+            ...((initialHomeActivity?.guestViews.items    ?? []).map((i) => ({ ...i, kind: 'guestViews'    as const }))),
+          ];
+          const visibleActivity = combined
+            .filter((item) => !dismissedActivity.has(`${item.kind}:${item.emberId}`))
+            .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+          const displayedActivity = visibleActivity.slice(0, 4);
+          const hasMoreActivity = visibleActivity.length > 4;
 
-            {(initialHomeActivity?.contributions.items ?? []).map((item) => {
-              const dismissKey = `contributions:${item.emberId}`;
-              if (dismissedActivity.has(dismissKey)) return null;
-              return (
-                <SwipeDismiss
-                  key={dismissKey}
-                  onDismiss={() => {
-                    setDismissedActivity(p => new Set([...p, dismissKey]));
-                    fetch('/api/home/mark-seen', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ kind: 'contributions', at: new Date(item.at).toISOString() }),
-                    }).catch(() => {});
-                  }}
-                >
+          return (
+            <div className="mt-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity size={18} strokeWidth={2} color="white" />
+                <p className="text-base font-bold text-white">Ember Activity</p>
+                {hasMoreActivity ? (
                   <Link
-                    href={`/ember/${item.emberId}`}
-                    draggable={false}
-                    className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
-                    style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                    href="/embers"
+                    className="ml-auto text-xs font-medium can-hover"
+                    style={{ color: 'rgba(255,255,255,0.5)' }}
                   >
-                    <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)' }}>
-                      <img
-                        src={getPreviewMediaUrl({
-                          mediaType: item.thumb.mediaType as EmberMediaType,
-                          filename: item.thumb.filename,
-                          posterFilename: item.thumb.posterFilename,
-                        })}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                        <span style={{ color: '#f97316', fontWeight: 700 }}>{item.count}</span>{' '}
-                        {item.count === 1 ? 'Contribution' : 'Contributions'}
-                      </p>
-                      <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {item.emberTitle || 'Untitled'} · {relativeTime(item.at)}
-                      </p>
-                    </div>
-                    {item.faces && item.faces.length > 0 && (
-                      <Facepile people={item.faces} size={36} overlap={11} />
-                    )}
+                    View all →
                   </Link>
-                </SwipeDismiss>
-              );
-            })}
-
-            {(initialHomeActivity?.wikiUpdates.items ?? []).map((item) => {
-              const dismissKey = `wiki:${item.emberId}`;
-              if (dismissedActivity.has(dismissKey)) return null;
-              return (
-                <SwipeDismiss
-                  key={dismissKey}
-                  onDismiss={() => {
-                    setDismissedActivity(p => new Set([...p, dismissKey]));
-                    fetch('/api/home/mark-seen', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ kind: 'wiki', at: new Date(item.at).toISOString() }),
-                    }).catch(() => {});
-                  }}
-                >
-                  <Link
-                    href={`/ember/${item.emberId}`}
-                    draggable={false}
-                    className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
-                    style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-                  >
-                    <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)' }}>
-                      <img
-                        src={getPreviewMediaUrl({
-                          mediaType: item.thumb.mediaType as EmberMediaType,
-                          filename: item.thumb.filename,
-                          posterFilename: item.thumb.posterFilename,
-                        })}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                        <span style={{ color: '#f97316', fontWeight: 700 }}>{item.count}</span>{' '}
-                        {item.count === 1 ? 'Wiki Update' : 'Wiki Updates'}
-                      </p>
-                      <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {item.emberTitle || 'Untitled'} · {relativeTime(item.at)}
-                      </p>
-                    </div>
-                  </Link>
-                </SwipeDismiss>
-              );
-            })}
-
-            {(initialHomeActivity?.guestViews.items ?? []).map((item) => {
-              const dismissKey = `guestViews:${item.emberId}`;
-              if (dismissedActivity.has(dismissKey)) return null;
-              return (
-                <SwipeDismiss
-                  key={dismissKey}
-                  onDismiss={() => {
-                    setDismissedActivity(p => new Set([...p, dismissKey]));
-                    fetch('/api/home/mark-seen', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ kind: 'guestViews', at: new Date(item.at).toISOString() }),
-                    }).catch(() => {});
-                  }}
-                >
-                  <Link
-                    href={`/ember/${item.emberId}`}
-                    draggable={false}
-                    className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
-                    style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-                  >
-                    <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #059669 0%, #065f46 100%)' }}>
-                      <img
-                        src={getPreviewMediaUrl({
-                          mediaType: item.thumb.mediaType as EmberMediaType,
-                          filename: item.thumb.filename,
-                          posterFilename: item.thumb.posterFilename,
-                        })}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                        <span style={{ color: '#f97316', fontWeight: 700 }}>{item.count}</span>{' '}
-                        {item.count === 1 ? 'Guest View' : 'Guest Views'}
-                      </p>
-                      <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                        {item.emberTitle || 'Untitled'} · {relativeTime(item.at)}
-                      </p>
-                    </div>
-                  </Link>
-                </SwipeDismiss>
-              );
-            })}
-
-          </div>
-        </div>
+                ) : null}
+              </div>
+              {visibleActivity.length === 0 ? (
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  No Ember activity yet.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {displayedActivity.map((item) => {
+                    const dismissKey = `${item.kind}:${item.emberId}`;
+                    const meta = KIND_META[item.kind];
+                    return (
+                      <SwipeDismiss
+                        key={dismissKey}
+                        onDismiss={() => {
+                          setDismissedActivity((p) => new Set([...p, dismissKey]));
+                          fetch('/api/home/mark-seen', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ kind: item.kind, at: new Date(item.at).toISOString() }),
+                          }).catch(() => {});
+                        }}
+                      >
+                        <Link
+                          href={`/ember/${item.emberId}`}
+                          draggable={false}
+                          className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
+                          style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                        >
+                          <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: meta.gradient }}>
+                            <img
+                              src={getPreviewMediaUrl({
+                                mediaType: item.thumb.mediaType as EmberMediaType,
+                                filename: item.thumb.filename,
+                                posterFilename: item.thumb.posterFilename,
+                              })}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                              <span style={{ color: '#f97316', fontWeight: 700 }}>{item.count}</span>{' '}
+                              {item.count === 1 ? meta.singular : meta.plural}
+                            </p>
+                            <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                              {item.emberTitle || 'Untitled'} · {relativeTime(item.at)}
+                            </p>
+                          </div>
+                          {item.kind === 'contributions' && item.faces && item.faces.length > 0 && (
+                            <Facepile people={item.faces} size={36} overlap={11} />
+                          )}
+                        </Link>
+                      </SwipeDismiss>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* d) New members */}
         <div className="mt-5 mb-8">

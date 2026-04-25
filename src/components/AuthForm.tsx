@@ -10,7 +10,13 @@ type AuthMode = 'login' | 'signup';
 export default function AuthForm({ mode }: { mode: AuthMode }) {
   const router = useRouter();
   const isSignup = mode === 'signup';
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -24,12 +30,16 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
     setError('');
 
     try {
+      const combinedName = [form.firstName.trim(), form.lastName.trim()]
+        .filter(Boolean)
+        .join(' ');
       const response = await fetch(`/api/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: isSignup ? form.name : undefined,
+          name: isSignup ? combinedName : undefined,
           email: form.email,
+          phoneNumber: isSignup ? form.phoneNumber.trim() || undefined : undefined,
           password: form.password,
         }),
       });
@@ -73,14 +83,26 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {isSignup ? (
-            <Field
-              label="Name"
-              name="name"
-              type="text"
-              placeholder="Your name"
-              value={form.name}
-              onChange={handleChange}
-            />
+            <div className="flex gap-3">
+              <Field
+                label="First Name"
+                name="firstName"
+                type="text"
+                placeholder="First"
+                value={form.firstName}
+                onChange={handleChange}
+                required
+              />
+              <Field
+                label="Last Name"
+                name="lastName"
+                type="text"
+                placeholder="Last"
+                value={form.lastName}
+                onChange={handleChange}
+                required
+              />
+            </div>
           ) : null}
           <Field
             label="Email"
@@ -89,7 +111,18 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
             placeholder="you@example.com"
             value={form.email}
             onChange={handleChange}
+            required
           />
+          {isSignup ? (
+            <Field
+              label="Phone Number (optional)"
+              name="phoneNumber"
+              type="tel"
+              placeholder="Phone number"
+              value={form.phoneNumber}
+              onChange={handleChange}
+            />
+          ) : null}
           <Field
             label="Password"
             name="password"
@@ -97,6 +130,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
             placeholder={isSignup ? 'Create a password' : 'Your password'}
             value={form.password}
             onChange={handleChange}
+            required
           />
 
           {!isSignup ? (
@@ -151,6 +185,7 @@ function Field({
   placeholder,
   value,
   onChange,
+  required,
 }: {
   label: string;
   name: string;
@@ -158,9 +193,10 @@ function Field({
   placeholder: string;
   value: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
       <label className="text-white/60 text-xs font-medium">{label}</label>
       <input
         name={name}
@@ -168,8 +204,9 @@ function Field({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        required={required}
         autoComplete="off"
-        className="h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
+        className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
         style={{
           background: 'var(--bg-input)',
           border: '1px solid var(--border-input)',
