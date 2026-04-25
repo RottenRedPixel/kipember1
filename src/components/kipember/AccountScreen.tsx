@@ -4,13 +4,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Camera, ChevronLeft, ChevronRight,
-  MessageSquarePlus, Phone,
+  KeyRound, MessageSquarePlus, Phone,
   Settings, ShieldAlert, User, UserRound, Users,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
 
-type Section = 'profile' | 'contributors' | 'preferences' | 'account' | null;
+type Section = 'profile' | 'contributors' | 'preferences' | 'password' | 'settings' | null;
 
 type AccountScreenProps = {
   name: string | null;
@@ -143,6 +143,48 @@ export default function AccountScreen({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Update password
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwStatus, setPwStatus] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const pwDirty =
+    pwCurrent.length > 0 &&
+    pwNew.length >= 8 &&
+    pwNew === pwConfirm &&
+    pwNew !== pwCurrent;
+
+  async function handlePasswordSave() {
+    if (!pwDirty || pwSaving) return;
+    setPwSaving(true);
+    setPwError('');
+    setPwStatus('');
+    try {
+      const res = await fetch('/api/profile/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+      });
+      const payload = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok) {
+        setPwError(payload?.error || 'Failed to update password.');
+        return;
+      }
+      setPwStatus('Password updated.');
+      setPwCurrent('');
+      setPwNew('');
+      setPwConfirm('');
+      // Clear the success message after a short dwell so the fields reset cleanly.
+      setTimeout(() => setPwStatus(''), 2500);
+    } catch {
+      setPwError('Network error. Try again.');
+    } finally {
+      setPwSaving(false);
+    }
+  }
+
   // Avatar handlers
   async function handleAvatarUpload(blob: Blob) {
     setAvatarUploading(true);
@@ -205,10 +247,11 @@ export default function AccountScreen({
 
   // Section header config
   const SECTIONS: { key: Exclude<Section, null>; icon: React.ReactNode; label: string }[] = [
-    { key: 'profile',      icon: <User size={20} strokeWidth={1.6} />,       label: 'Profile' },
-    { key: 'contributors', icon: <Users size={20} strokeWidth={1.6} />,      label: 'Contributors' },
-    { key: 'preferences',  icon: <Settings size={20} strokeWidth={1.6} />,   label: 'Preferences' },
-    { key: 'account',      icon: <ShieldAlert size={20} strokeWidth={1.6} />, label: 'Account' },
+    { key: 'profile',      icon: <User size={20} strokeWidth={1.6} />,         label: 'Profile' },
+    { key: 'contributors', icon: <Users size={20} strokeWidth={1.6} />,        label: 'Contributors' },
+    { key: 'preferences',  icon: <Settings size={20} strokeWidth={1.6} />,     label: 'Preferences' },
+    { key: 'password',     icon: <KeyRound size={20} strokeWidth={1.6} />,     label: 'Password' },
+    { key: 'settings',     icon: <ShieldAlert size={20} strokeWidth={1.6} />,  label: 'Settings' },
   ];
 
   const activeSection = SECTIONS.find((s) => s.key === section);
@@ -472,8 +515,66 @@ export default function AccountScreen({
             </div>
           )}
 
-          {/* ── Account ── */}
-          {section === 'account' && (
+          {/* ── Password ── */}
+          {section === 'password' && (
+            <div className="px-5 py-6">
+              <div className="flex flex-col gap-3">
+                <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                  <InputRow
+                    placeholder="Current password"
+                    value={pwCurrent}
+                    onChange={(v) => { setPwCurrent(v); setPwError(''); }}
+                    type="password"
+                  />
+                  <InputRow
+                    placeholder="New password (8+ characters)"
+                    value={pwNew}
+                    onChange={(v) => { setPwNew(v); setPwError(''); }}
+                    type="password"
+                    border
+                  />
+                  <InputRow
+                    placeholder="Confirm new password"
+                    value={pwConfirm}
+                    onChange={(v) => { setPwConfirm(v); setPwError(''); }}
+                    type="password"
+                    border
+                  />
+                </div>
+
+                {pwConfirm.length > 0 && pwNew !== pwConfirm && (
+                  <p className="text-xs px-1" style={{ color: '#f87171' }}>Passwords don&apos;t match.</p>
+                )}
+                {pwError && (
+                  <p className="text-xs px-1" style={{ color: '#f87171' }}>{pwError}</p>
+                )}
+                {pwStatus && (
+                  <p className="text-xs px-1" style={{ color: '#4ade80' }}>{pwStatus}</p>
+                )}
+
+                <div className="flex">
+                  <button
+                    type="button"
+                    onClick={() => void handlePasswordSave()}
+                    disabled={!pwDirty || pwSaving}
+                    className="flex-1 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+                    style={{
+                      background: pwDirty ? '#f97316' : 'var(--bg-surface)',
+                      border: pwDirty ? 'none' : '1px solid var(--border-subtle)',
+                      minHeight: 44,
+                      cursor: pwDirty ? 'pointer' : 'default',
+                      maxWidth: '50%',
+                    }}
+                  >
+                    {pwSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Settings ── */}
+          {section === 'settings' && (
             <div className="px-5 py-6">
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 {confirmDelete ? (
@@ -484,7 +585,7 @@ export default function AccountScreen({
                         type="button"
                         onClick={() => setConfirmDelete(false)}
                         className="flex-1 rounded-full text-white text-sm font-medium"
-                        style={{ border: '1.5px solid var(--border-btn)', minHeight: 40, cursor: 'pointer' }}
+                        style={{ border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: 'pointer' }}
                       >
                         Cancel
                       </button>
@@ -493,7 +594,7 @@ export default function AccountScreen({
                         onClick={() => void handleDeleteAccount()}
                         disabled={deleting}
                         className="flex-1 rounded-full text-white text-sm font-medium disabled:opacity-50"
-                        style={{ background: '#ef4444', minHeight: 40, cursor: 'pointer' }}
+                        style={{ background: '#ef4444', minHeight: 44, cursor: 'pointer' }}
                       >
                         {deleting ? 'Deleting...' : 'Delete Now!'}
                       </button>
@@ -504,7 +605,7 @@ export default function AccountScreen({
                     type="button"
                     onClick={() => setConfirmDelete(true)}
                     className="w-full flex items-center gap-4 px-4 py-4"
-                    style={{ cursor: 'pointer' }}
+                    style={{ minHeight: 44, cursor: 'pointer' }}
                   >
                     <span className="text-sm font-medium" style={{ color: '#f87171' }}>Delete Account</span>
                   </button>
