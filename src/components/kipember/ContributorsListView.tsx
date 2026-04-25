@@ -280,15 +280,17 @@ export default function ContributorsListView({
                     type="button"
                     onClick={() => void handleAddExisting(c.key)}
                     disabled={pendingAdd === c.key}
-                    className="flex items-center justify-center gap-1 rounded-full text-white text-xs font-medium mr-2 px-3 disabled:opacity-50"
+                    aria-label={`Add ${c.name} to this ember`}
+                    className="flex items-center justify-center rounded-full mr-2 disabled:opacity-50"
                     style={{
+                      width: 32,
+                      height: 32,
                       background: '#f97316',
-                      minHeight: 32,
+                      flexShrink: 0,
                       cursor: pendingAdd === c.key ? 'default' : 'pointer',
                     }}
                   >
-                    <UserPlus size={14} strokeWidth={2} />
-                    <span>{pendingAdd === c.key ? 'Adding…' : 'Add'}</span>
+                    <UserPlus size={16} color="white" strokeWidth={2.5} />
                   </button>
                 ) : context.kind === 'ember' && onThis ? (
                   <div className="w-8 h-11 flex items-center justify-center flex-shrink-0 mr-2" style={{ opacity: 0.5 }}>
