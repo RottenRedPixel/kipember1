@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   History,
   Image as ImageIcon,
   MapPin,
+  MessageCircle,
   Mic,
   Phone,
   Play,
@@ -287,6 +288,89 @@ function initials(value: string) {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+}
+
+function DummyEmberCallCard({ personName, avatarUrl }: { personName: string; avatarUrl?: string | null }) {
+  const first = personName.split(' ')[0] || personName;
+  const baseTime = new Date();
+  baseTime.setHours(14, 12, 0, 0);
+  const t = (offsetMinutes: number) => new Date(baseTime.getTime() + offsetMinutes * 60_000).toISOString();
+  const messages: Array<{
+    role: 'assistant' | 'user';
+    content: string;
+    audioUrl: string | null;
+    createdAt: string;
+  }> = [
+    { role: 'assistant', content: `Hey ${first}, can you walk me through what was happening in this moment?`, audioUrl: null, createdAt: t(0) },
+    { role: 'user', content: `It was such a warm afternoon. Everyone had just sat down and we were finally all together in one place.`, audioUrl: '#', createdAt: t(1) },
+    { role: 'assistant', content: 'Who else was there with you that day?', audioUrl: null, createdAt: t(2) },
+    { role: 'user', content: `My sister, her two kids, and a couple of neighbors who stopped by. We didn't plan it — it just happened.`, audioUrl: '#', createdAt: t(3) },
+  ];
+
+  return (
+    <WikiCard>
+      <div className="flex items-center gap-2 mb-3">
+        <AvatarCircle name={personName} avatarUrl={avatarUrl} size={29} />
+        <div
+          className="rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ width: 22, height: 22, background: '#f97316' }}
+        >
+          <Phone size={12} className="text-white" fill="currentColor" stroke="currentColor" />
+        </div>
+        <p className="text-white/30 text-xs font-medium">{personName}&apos;s Ember Call</p>
+      </div>
+      <div className="flex flex-col gap-3">
+        {messages.map((msg, i) => {
+          const isUser = msg.role === 'user';
+          const msgDate = new Date(msg.createdAt);
+          const prevMsg = messages[i - 1];
+          const prevDate = prevMsg ? new Date(prevMsg.createdAt) : null;
+          const showDateDivider = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
+          const timeLabel = msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          const dateDividerLabel = msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          return (
+            <div key={i}>
+              {showDateDivider ? (
+                <div className="flex justify-center my-2">
+                  <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
+                </div>
+              ) : null}
+              <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
+                <span className="flex items-center gap-1 text-white text-xs font-bold">
+                  <Phone size={9} />
+                  {isUser ? first : 'ember'}
+                </span>
+                <div
+                  className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
+                  style={{
+                    background: isUser ? 'rgba(249,115,22,0.18)' : 'var(--bg-ember-bubble)',
+                    border: isUser ? '1px solid rgba(249,115,22,0.45)' : '1px solid var(--border-ember)',
+                  }}
+                >
+                  {msg.content}
+                  {msg.audioUrl ? (
+                    <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
+                      <a
+                        href={msg.audioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
+                        style={{ background: 'rgba(249,115,22,0.85)' }}
+                      >
+                        <Play size={9} className="text-white" />
+                      </a>
+                      <span className="text-white/30 text-xs">Voice recording</span>
+                    </div>
+                  ) : null}
+                </div>
+                <span className="text-white/25 text-[10px] mt-0.5">{timeLabel}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </WikiCard>
+  );
 }
 
 function AvatarCircle({
@@ -1097,72 +1181,81 @@ export default function KipemberWikiContent({
         <div className="flex flex-col gap-4">
           {detail?.chatBlocks && detail.chatBlocks.length > 0 ? (
             detail.chatBlocks.map((block) => (
-              <WikiCard key={block.personName}>
-                <div className="flex items-center gap-2 mb-3">
-                  <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={22} />
-                  <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
-                </div>
-                <div className="flex flex-col gap-3">
-                  {block.messages.map((msg, i) => {
-                    const isUser = msg.role === 'user';
-                    const isVoice = msg.source === 'voice';
-                    const msgDate = new Date(msg.createdAt);
-                    const prevMsg = block.messages[i - 1];
-                    const prevDate = prevMsg ? new Date(prevMsg.createdAt) : null;
-                    const showDateDivider = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
-                    const timeLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                    const dateDividerLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                    return (
-                      <div key={i}>
-                        {showDateDivider && dateDividerLabel ? (
-                          <div className="flex justify-center my-2">
-                            <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
-                          </div>
-                        ) : null}
-                        <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
-                          <span className="flex items-center gap-1 text-white text-xs font-bold">
-                            {isVoice ? <Phone size={9} /> : null}
-                            {isUser ? block.personName.split(' ')[0] : 'ember'}
-                          </span>
-                          {msg.imageFilename ? (
-                            <div className="max-w-[15%] rounded-xl overflow-hidden">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={`/api/uploads/${msg.imageFilename}`} alt="Uploaded" className="w-full h-auto object-cover" />
+              <Fragment key={block.personName}>
+                <WikiCard>
+                  <div className="flex items-center gap-2 mb-3">
+                    <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
+                    <div
+                      className="rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ width: 22, height: 22, background: '#2563eb' }}
+                    >
+                      <MessageCircle size={12} className="text-white" fill="currentColor" stroke="currentColor" />
+                    </div>
+                    <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {block.messages.map((msg, i) => {
+                      const isUser = msg.role === 'user';
+                      const isVoice = msg.source === 'voice';
+                      const msgDate = new Date(msg.createdAt);
+                      const prevMsg = block.messages[i - 1];
+                      const prevDate = prevMsg ? new Date(prevMsg.createdAt) : null;
+                      const showDateDivider = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
+                      const timeLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                      const dateDividerLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                      return (
+                        <div key={i}>
+                          {showDateDivider && dateDividerLabel ? (
+                            <div className="flex justify-center my-2">
+                              <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
                             </div>
-                          ) : (
-                            <div
-                              className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
-                              style={{
-                                background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
-                                border: isUser ? 'none' : '1px solid var(--border-ember)',
-                              }}
-                            >
-                              {msg.content}
-                              {msg.audioUrl ? (
-                                <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
-                                  <a
-                                    href={msg.audioUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
-                                    style={{ background: 'rgba(249,115,22,0.85)' }}
-                                  >
-                                    <Play size={9} className="text-white" />
-                                  </a>
-                                  <span className="text-white/30 text-xs">Voice recording</span>
-                                </div>
-                              ) : null}
-                            </div>
-                          )}
-                          {timeLabel ? (
-                            <span className="text-white/25 text-[10px] mt-0.5">{timeLabel}</span>
                           ) : null}
+                          <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
+                            <span className="flex items-center gap-1 text-white text-xs font-bold">
+                              {isVoice ? <Phone size={9} /> : null}
+                              {isUser ? block.personName.split(' ')[0] : 'ember'}
+                            </span>
+                            {msg.imageFilename ? (
+                              <div className="max-w-[15%] rounded-xl overflow-hidden">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={`/api/uploads/${msg.imageFilename}`} alt="Uploaded" className="w-full h-auto object-cover" />
+                              </div>
+                            ) : (
+                              <div
+                                className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
+                                style={{
+                                  background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
+                                  border: isUser ? 'none' : '1px solid var(--border-ember)',
+                                }}
+                              >
+                                {msg.content}
+                                {msg.audioUrl ? (
+                                  <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
+                                    <a
+                                      href={msg.audioUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
+                                      style={{ background: 'rgba(249,115,22,0.85)' }}
+                                    >
+                                      <Play size={9} className="text-white" />
+                                    </a>
+                                    <span className="text-white/30 text-xs">Voice recording</span>
+                                  </div>
+                                ) : null}
+                              </div>
+                            )}
+                            {timeLabel ? (
+                              <span className="text-white/25 text-[10px] mt-0.5">{timeLabel}</span>
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </WikiCard>
+                      );
+                    })}
+                  </div>
+                </WikiCard>
+                <DummyEmberCallCard personName={block.personName} avatarUrl={block.avatarUrl} />
+              </Fragment>
             ))
           ) : (
             <WikiCard>
