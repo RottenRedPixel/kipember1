@@ -289,6 +289,53 @@ const STORY_CUT_PROMPT_KEYS: Record<SnapshotStyle, string> = {
   movieTrailer: 'snapshots.movie_trailer',
 };
 
+const SNAPSHOT_GENERATE_CORE_PROMPT = `You generate Snapshot scripts for Ember.
+
+Snapshots are NOT generic wiki narration. They are short trailer-like memory playbacks.
+
+{{stylePrompt}}
+
+Rules:
+- Use only the provided Ember context, Story Circle conversations, contributor quotes, media, and call summaries.
+- Keep contributor quotes exact when you use them. Do not rewrite, paraphrase, summarize, or improve a contributor quote.
+- Use VOICE blocks only for Ember AI connective lines.
+- Use MEDIA blocks with mediaType AUDIO whenever you want a real recorded clip to be heard.
+- Treat this as a short memory trailer: concise, vivid, emotionally grounded.
+- Prefer real contributor quotes and voice clips whenever they add color or specificity.
+- If direct contributor material exists, weave it in instead of over-explaining with Ember.
+- If context is thin, stay emotionally grounded without inventing specifics.
+- Always include the cover photo as the first media block.
+- Use supporting media blocks only when they help the flow.
+- Selected audio clips are for inline story moments, not constant background ambience.
+- If selected audio clips exist and they add meaning, place them at the best emotional beat in the block order.
+- When multiple selected audio clips are relevant, weave them through the Snapshot instead of bunching them all at the end.
+- If a selected media item is a voice clip, preserve its clipStartMs and clipEndMs when you emit that media block.
+- Build a clear emotional arc that matches the selected style.
+- The script should read like a polished snapshot, not like a wiki section list.
+- Respect the requested voice casting. If Ember voice is disabled, do not create EMBER VOICE lines.
+- Do not create NARRATOR lines.
+- Keep narratorVoiceLines empty.
+- Do not create contributor VOICE blocks unless there is no recorded clip to use and the user explicitly has no audio for that beat.
+- Return JSON only matching the schema exactly.`;
+
+const SNAPSHOT_GENERATE_USER_PROMPT = `Create a Snapshot for this Ember.
+
+STORY MATERIAL
+{{storyContext}}
+
+STORY CONFIGURATION
+- Title: {{storyTitle}}
+- Duration: {{durationSeconds}} seconds
+- Target spoken length: approximately {{wordCount}} words
+- Focus: {{storyFocus}}
+- Owner First Name: {{ownerFirstName}}
+- Selected Contributors: {{selectedContributors}}
+- Ember Voice enabled: {{includeEmberVoice}}
+- Ember Voice label: {{emberVoiceLabel}}
+- Voice casting info: Use Ember only for AI-written lines. Use media AUDIO blocks for real recorded clips whenever possible. Contributor names should appear in exact quotes and clip references only.
+
+Build the JSON blocks in order so this snapshot could be rendered later as audio plus media.`;
+
 function clampDuration(value: number) {
   if (!Number.isFinite(value)) {
     return 10;
@@ -643,6 +690,20 @@ export async function generateSnapshot(
   ]);
 
   const openai = getOpenAIClient();
+  const corePrompt = await renderPromptTemplate('snapshots.generate.core', SNAPSHOT_GENERATE_CORE_PROMPT, {
+    stylePrompt,
+  });
+  const userPrompt = await renderPromptTemplate('snapshots.generate.user', SNAPSHOT_GENERATE_USER_PROMPT, {
+    storyContext,
+    storyTitle,
+    durationSeconds,
+    wordCount,
+    storyFocus,
+    ownerFirstName,
+    selectedContributors: Array.from(contributorNameSet).join(', ') || 'None',
+    includeEmberVoice: includeEmberVoice ? 'yes' : 'no',
+    emberVoiceLabel,
+  });
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('snapshots.generate', getSnapshotModel()),
     input: [
@@ -652,34 +713,7 @@ export async function generateSnapshot(
         content: [
           {
             type: 'input_text',
-            text: `You generate Snapshot scripts for Ember.
-
-Snapshots are NOT generic wiki narration. They are short trailer-like memory playbacks.
-
-${stylePrompt}
-
-Rules:
-- Use only the provided Ember context, Story Circle conversations, contributor quotes, media, and call summaries.
-- Keep contributor quotes exact when you use them. Do not rewrite, paraphrase, summarize, or improve a contributor quote.
-- Use VOICE blocks only for Ember AI connective lines.
-- Use MEDIA blocks with mediaType AUDIO whenever you want a real recorded clip to be heard.
-- Treat this as a short memory trailer: concise, vivid, emotionally grounded.
-- Prefer real contributor quotes and voice clips whenever they add color or specificity.
-- If direct contributor material exists, weave it in instead of over-explaining with Ember.
-- If context is thin, stay emotionally grounded without inventing specifics.
-- Always include the cover photo as the first media block.
-- Use supporting media blocks only when they help the flow.
-- Selected audio clips are for inline story moments, not constant background ambience.
-- If selected audio clips exist and they add meaning, place them at the best emotional beat in the block order.
-- When multiple selected audio clips are relevant, weave them through the Snapshot instead of bunching them all at the end.
-- If a selected media item is a voice clip, preserve its clipStartMs and clipEndMs when you emit that media block.
-- Build a clear emotional arc that matches the selected style.
-- The script should read like a polished snapshot, not like a wiki section list.
-- Respect the requested voice casting. If Ember voice is disabled, do not create EMBER VOICE lines.
-- Do not create NARRATOR lines.
-- Keep narratorVoiceLines empty.
-- Do not create contributor VOICE blocks unless there is no recorded clip to use and the user explicitly has no audio for that beat.
-- Return JSON only matching the schema exactly.`,
+            text: corePrompt,
           },
         ],
       },
@@ -689,23 +723,7 @@ Rules:
         content: [
           {
             type: 'input_text',
-            text: `Create a Snapshot for this Ember.
-
-STORY MATERIAL
-${storyContext}
-
-STORY CONFIGURATION
-- Title: ${storyTitle}
-- Duration: ${durationSeconds} seconds
-- Target spoken length: approximately ${wordCount} words
-- Focus: ${storyFocus}
-- Owner First Name: ${ownerFirstName}
-- Selected Contributors: ${Array.from(contributorNameSet).join(', ') || 'None'}
-- Ember Voice enabled: ${includeEmberVoice ? 'yes' : 'no'}
-- Ember Voice label: ${emberVoiceLabel}
-- Voice casting info: Use Ember only for AI-written lines. Use media AUDIO blocks for real recorded clips whenever possible. Contributor names should appear in exact quotes and clip references only.
-
-Build the JSON blocks in order so this snapshot could be rendered later as audio plus media.`,
+            text: userPrompt,
           },
         ],
       },

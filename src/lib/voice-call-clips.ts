@@ -1,4 +1,23 @@
 import { getConfiguredOpenAIModel, getOpenAIClient, getWikiStructureModel } from '@/lib/openai';
+import { renderPromptTemplate } from '@/lib/control-plane';
+
+const VOICE_CLIP_EXTRACT_CORE_PROMPT = `You identify the 0-3 strongest clip-worthy moments from an Ember voice interview.
+
+Rules:
+- Prefer the contributor's own words over the agent's prompts.
+- Every quote must be copied exactly from a single listed segment.
+- Choose only lines that feel emotionally specific, vivid, or meaningfully clarifying.
+- Avoid generic filler, greetings, logistics, and repetitive back-and-forth.
+- canUseForTitle should be true only if the quote contains a distinctive phrase or idea that could plausibly inspire a smart title later.
+- Keep titles short, 2-6 words.
+- significance should briefly explain why the moment matters for the memory wiki or story cut.
+- Return JSON only.`;
+
+const VOICE_CLIP_EXTRACT_USER_PROMPT = `Image title: {{imageTitle}}
+Contributor: {{contributorName}}
+
+Transcript segments:
+{{segmentList}}`;
 
 type TranscriptRole = 'agent' | 'user' | 'transfer_target';
 
@@ -269,6 +288,12 @@ export async function extractImportantVoiceCallClips({
       endMs: segment.endMs,
       text: segment.content,
     }));
+  const corePrompt = await renderPromptTemplate('voice.clip_extract.core', VOICE_CLIP_EXTRACT_CORE_PROMPT);
+  const userPrompt = await renderPromptTemplate('voice.clip_extract.user', VOICE_CLIP_EXTRACT_USER_PROMPT, {
+    imageTitle,
+    contributorName,
+    segmentList: JSON.stringify(segmentList, null, 2),
+  });
 
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('voice.clip_extract', getWikiStructureModel()),
@@ -279,17 +304,7 @@ export async function extractImportantVoiceCallClips({
         content: [
           {
             type: 'input_text',
-            text: `You identify the 0-3 strongest clip-worthy moments from an Ember voice interview.
-
-Rules:
-- Prefer the contributor's own words over the agent's prompts.
-- Every quote must be copied exactly from a single listed segment.
-- Choose only lines that feel emotionally specific, vivid, or meaningfully clarifying.
-- Avoid generic filler, greetings, logistics, and repetitive back-and-forth.
-- canUseForTitle should be true only if the quote contains a distinctive phrase or idea that could plausibly inspire a smart title later.
-- Keep titles short, 2-6 words.
-- significance should briefly explain why the moment matters for the memory wiki or story cut.
-- Return JSON only.`,
+            text: corePrompt,
           },
         ],
       },
@@ -299,11 +314,7 @@ Rules:
         content: [
           {
             type: 'input_text',
-            text: `Image title: ${imageTitle}
-Contributor: ${contributorName}
-
-Transcript segments:
-${JSON.stringify(segmentList, null, 2)}`,
+            text: userPrompt,
           },
         ],
       },

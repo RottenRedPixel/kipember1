@@ -2,6 +2,7 @@ import { readFile } from 'fs/promises';
 import exifr from 'exifr';
 import sharp from 'sharp';
 import { prisma } from '@/lib/db';
+import { renderPromptTemplate } from '@/lib/control-plane';
 import { getConfiguredOpenAIModel, getImageAnalysisModel, getOpenAIClient } from '@/lib/openai';
 import { getUploadPath, inferImageMimeType } from '@/lib/uploads';
 
@@ -903,80 +904,9 @@ function parseJsonFromText(text: string): unknown {
   }
 }
 
-async function repairVisionJson(responseText: string): Promise<unknown> {
-  const repairSource = extractBalancedJsonObject(responseText) || sanitizeJsonCandidate(responseText);
-  const openai = getOpenAIClient();
-  const repairMessage = await openai.responses.create({
-    model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
-    input: [
-      {
-        role: 'developer',
-        type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: 'You repair malformed JSON responses for an image-analysis pipeline. Return JSON only. Preserve grounded details, and use short neutral fallbacks, null, or [] when fields are missing.',
-          },
-        ],
-      },
-      {
-        role: 'user',
-        type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly.\n\nMalformed JSON:\n${repairSource}`,
-          },
-        ],
-      },
-    ],
-    text: {
-      verbosity: 'low',
-      format: {
-        type: 'json_schema',
-        name: 'ember_image_analysis_repair',
-        description: 'Repaired JSON for Ember image analysis.',
-        schema: VISION_SCHEMA,
-        strict: false,
-      },
-    },
-  });
+const IMAGE_ANALYSIS_REPAIR_PROMPT = `You repair malformed JSON responses for an image-analysis pipeline. Return JSON only. Preserve grounded details, and use short neutral fallbacks, null, or [] when fields are missing.`;
 
-  return parseJsonFromText(repairMessage.output_text || '');
-}
-
-async function requestVisionAnalysisText({
-  buffer,
-  mimeType,
-  originalName,
-  userDescription,
-  metadataSummary,
-  conciseMode,
-}: {
-  buffer: Buffer;
-  mimeType: string;
-  originalName: string;
-  userDescription: string | null;
-  metadataSummary: string | null;
-  conciseMode: boolean;
-}) {
-  const imageSource = await toBase64ImageSource(buffer, mimeType);
-  if (!imageSource) {
-    throw new Error(`Visual analysis does not support ${mimeType}`);
-  }
-
-  const openai = getOpenAIClient();
-
-  const response = await openai.responses.create({
-    model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
-    input: [
-      {
-        role: 'developer',
-        type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: `You are analyzing an image to transform it into a meaningful, searchable memory.
+const IMAGE_ANALYSIS_CORE_PROMPT = `You are analyzing an image to transform it into a meaningful, searchable memory.
 
 CORE RULES:
 - Only describe what is visually supported.
@@ -990,7 +920,7 @@ CORE RULES:
 - Never use the upload filename, file extension, or generic placeholders as the title.
 - Return valid JSON only. Do not include markdown, commentary, or code fences.
 - The JSON must match this schema exactly:
-${JSON.stringify(VISION_SCHEMA)}
+{{schemaJson}}
 
 Use this review framework and map it into the JSON:
 
@@ -1047,10 +977,110 @@ Use this review framework and map it into the JSON:
 
 Also fill peopleObserved, placeSignals, notableThings, activities, and visibleText with the strongest grounded observations.
 Use "unknown", null, or [] instead of guessing.
-${conciseMode ? `
-Keep each string concise.
+{{conciseInstructions}}`;
+
+const IMAGE_ANALYSIS_USER_PROMPT = `Filename: {{originalName}}
+User description: {{userDescription}}
+Metadata summary: {{metadataSummary}}
+Analyze this image as a memory reviewer for Ember.
+Make it useful for search, recall, and future conversation.
+The title should read like a human memory label, not a filename.
+Only include relationships or event labels when they are strongly implied by the image.
+If a detail is uncertain, mark it as unknown or lower-confidence instead of inventing it.
+{{modeInstruction}}`;
+
+async function repairVisionJson(responseText: string): Promise<unknown> {
+  const repairSource = extractBalancedJsonObject(responseText) || sanitizeJsonCandidate(responseText);
+  const openai = getOpenAIClient();
+  const repairPrompt = await renderPromptTemplate('image_analysis.repair', IMAGE_ANALYSIS_REPAIR_PROMPT);
+  const repairMessage = await openai.responses.create({
+    model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
+    input: [
+      {
+        role: 'developer',
+        type: 'message',
+        content: [
+          {
+            type: 'input_text',
+            text: repairPrompt,
+          },
+        ],
+      },
+      {
+        role: 'user',
+        type: 'message',
+        content: [
+          {
+            type: 'input_text',
+            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly.\n\nMalformed JSON:\n${repairSource}`,
+          },
+        ],
+      },
+    ],
+    text: {
+      verbosity: 'low',
+      format: {
+        type: 'json_schema',
+        name: 'ember_image_analysis_repair',
+        description: 'Repaired JSON for Ember image analysis.',
+        schema: VISION_SCHEMA,
+        strict: false,
+      },
+    },
+  });
+
+  return parseJsonFromText(repairMessage.output_text || '');
+}
+
+async function requestVisionAnalysisText({
+  buffer,
+  mimeType,
+  originalName,
+  userDescription,
+  metadataSummary,
+  conciseMode,
+}: {
+  buffer: Buffer;
+  mimeType: string;
+  originalName: string;
+  userDescription: string | null;
+  metadataSummary: string | null;
+  conciseMode: boolean;
+}) {
+  const imageSource = await toBase64ImageSource(buffer, mimeType);
+  if (!imageSource) {
+    throw new Error(`Visual analysis does not support ${mimeType}`);
+  }
+
+  const openai = getOpenAIClient();
+  const conciseInstructions = conciseMode
+    ? `Keep each string concise.
 Limit arrays to the strongest items.
-Prefer null over long speculative prose.` : ''}`,
+Prefer null over long speculative prose.`
+    : '';
+  const developerPrompt = await renderPromptTemplate('image_analysis.core', IMAGE_ANALYSIS_CORE_PROMPT, {
+    schemaJson: JSON.stringify(VISION_SCHEMA),
+    conciseInstructions,
+  });
+  const userPrompt = await renderPromptTemplate('image_analysis.user', IMAGE_ANALYSIS_USER_PROMPT, {
+    originalName,
+    userDescription: userDescription || 'None provided.',
+    metadataSummary: metadataSummary || 'No metadata available.',
+    modeInstruction: conciseMode
+      ? 'Be brief enough that the full response remains compact and valid JSON.'
+      : 'Write naturally, but keep the JSON compact and valid.',
+  });
+
+  const response = await openai.responses.create({
+    model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
+    input: [
+      {
+        role: 'developer',
+        type: 'message',
+        content: [
+          {
+            type: 'input_text',
+            text: developerPrompt,
           },
         ],
       },
@@ -1059,19 +1089,7 @@ Prefer null over long speculative prose.` : ''}`,
         content: [
           {
             type: 'input_text',
-            text: [
-              `Filename: ${originalName}`,
-              `User description: ${userDescription || 'None provided.'}`,
-              `Metadata summary: ${metadataSummary || 'No metadata available.'}`,
-              'Analyze this image as a memory reviewer for Ember.',
-              'Make it useful for search, recall, and future conversation.',
-              'The title should read like a human memory label, not a filename.',
-              'Only include relationships or event labels when they are strongly implied by the image.',
-              'If a detail is uncertain, mark it as unknown or lower-confidence instead of inventing it.',
-              conciseMode
-                ? 'Be brief enough that the full response remains compact and valid JSON.'
-                : 'Write naturally, but keep the JSON compact and valid.',
-            ].join('\n'),
+            text: userPrompt,
           },
           {
             type: 'input_image',

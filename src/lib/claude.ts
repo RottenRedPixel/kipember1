@@ -649,6 +649,45 @@ WIKI CONTENT:
 RAW CONTRIBUTOR RESPONSES:
 {{responsesContext}}`;
 
+const DEFAULT_WIKI_STRUCTURE_PROMPT = `You turn Ember evidence into a clean structured memory object.
+
+Rules:
+- Use only supported evidence.
+- Contributor memories, confirmed tags, and confirmed location are strongest.
+- Voice-call highlights are direct evidence from the recorded memory conversation and should be treated as especially valuable when they contain vivid or emotionally specific wording.
+- If contributor memories exist, let them drive the overview and story instead of metadata or visual-analysis filler.
+- The memory should feel like the moment people described, not like a camera report.
+- Do not invent identities, relationships, motives, or backstory.
+- Treat confirmedTags as explicit human-confirmed labels attached to the image.
+- If confirmed tags cover the visible people in the photo, do not generate identity ambiguity or open questions about who is who.
+- Contributor memories override weaker image-analysis guesses. If a contributor says Santa was a statue, use that over any weaker visual interpretation.
+- If contributor memories say a tagged person is the contributor's child/son/daughter and the photo clearly shows a child plus an adult, resolve that naturally instead of keeping it ambiguous.
+- Prefer contributor-supplied facts such as why the moment mattered, how it happened, little reactions, and follow-up details over clothing or camera trivia.
+- Do not surface corrective phrasing as a memorable detail. Fold clarifications into the story naturally when needed, instead of lines like "X was a statue, not a person."
+- Do not keep mundane observations from the image alone unless a contributor made them meaningful.
+- Do not create open questions that are already answered by contributor memories, confirmed tags, or metadata.
+- Do not create nitpicky open questions about clothing, posture, or other ordinary details unless a contributor explicitly made them meaningful.
+- Open questions should be 0-3 high-value unresolved gaps only.
+- If a tagged name still cannot be visually mapped with confidence, keep that ambiguity in people.ambiguities.
+- Keep every string concise and useful.
+- detailsWorthKeeping should contain 2-5 vivid grounded details that a person would genuinely want to remember later.
+- story.main should be 2-4 sentences and should include the strongest human memory details when available.
+- story.significance should explain why the moment mattered in human terms when the evidence supports it.
+- quotes must only contain direct contributor wording worth preserving; otherwise [].
+- Prefer direct contributor wording from voice-call highlights when it is more vivid than the typed responses.
+- metadata should contain at most 4 high-value items and should stay secondary to the memory itself.
+- sportsSnapshot should be null when not relevant.
+- Return JSON only that matches the schema exactly.`;
+
+const DEFAULT_SNAPSHOT_NARRATION_PROMPT = `You write warm narration scripts for family memory snapshots.
+Write approximately {{targetWords}} words (targeting {{durationSeconds}} seconds of spoken audio at a natural pace).
+Use a natural, conversational tone - like a thoughtful friend describing a meaningful moment.
+{{peopleInstruction}}{{requiredPeopleInstruction}}Use all available context: the wiki, contributor memories, voice call highlights, and visual details - not just the image summary.
+Prioritize personal details and real moments over generic descriptions.
+Do not invent facts not present in the context.
+Do not use filler phrases like "In this heartwarming snapshot" or "A beautiful memory".
+Return only the narration text, nothing else.`;
+
 type ClaudeChatOptions = {
   capabilityKey?: string;
   fallbackModel?: string;
@@ -770,6 +809,7 @@ export async function generateWiki({
   };
 
   const openai = getOpenAIClient();
+  const structurePrompt = await renderPromptTemplate('wiki.structure.core', DEFAULT_WIKI_STRUCTURE_PROMPT);
   const structuredResponse = await openai.responses.create({
     model: await getConfiguredOpenAIModel('wiki.structure', getWikiStructureModel()),
     input: [
@@ -779,35 +819,7 @@ export async function generateWiki({
         content: [
           {
             type: 'input_text',
-            text: `You turn Ember evidence into a clean structured memory object.
-
-Rules:
-- Use only supported evidence.
-- Contributor memories, confirmed tags, and confirmed location are strongest.
-- Voice-call highlights are direct evidence from the recorded memory conversation and should be treated as especially valuable when they contain vivid or emotionally specific wording.
-- If contributor memories exist, let them drive the overview and story instead of metadata or visual-analysis filler.
-- The memory should feel like the moment people described, not like a camera report.
-- Do not invent identities, relationships, motives, or backstory.
-- Treat confirmedTags as explicit human-confirmed labels attached to the image.
-- If confirmed tags cover the visible people in the photo, do not generate identity ambiguity or open questions about who is who.
-- Contributor memories override weaker image-analysis guesses. If a contributor says Santa was a statue, use that over any weaker visual interpretation.
-- If contributor memories say a tagged person is the contributor's child/son/daughter and the photo clearly shows a child plus an adult, resolve that naturally instead of keeping it ambiguous.
-- Prefer contributor-supplied facts such as why the moment mattered, how it happened, little reactions, and follow-up details over clothing or camera trivia.
-- Do not surface corrective phrasing as a memorable detail. Fold clarifications into the story naturally when needed, instead of lines like "X was a statue, not a person."
-- Do not keep mundane observations from the image alone unless a contributor made them meaningful.
-- Do not create open questions that are already answered by contributor memories, confirmed tags, or metadata.
-- Do not create nitpicky open questions about clothing, posture, or other ordinary details unless a contributor explicitly made them meaningful.
-- Open questions should be 0-3 high-value unresolved gaps only.
-- If a tagged name still cannot be visually mapped with confidence, keep that ambiguity in people.ambiguities.
-- Keep every string concise and useful.
-- detailsWorthKeeping should contain 2-5 vivid grounded details that a person would genuinely want to remember later.
-- story.main should be 2-4 sentences and should include the strongest human memory details when available.
-- story.significance should explain why the moment mattered in human terms when the evidence supports it.
-- quotes must only contain direct contributor wording worth preserving; otherwise [].
-- Prefer direct contributor wording from voice-call highlights when it is more vivid than the typed responses.
-- metadata should contain at most 4 high-value items and should stay secondary to the memory itself.
-- sportsSnapshot should be null when not relevant.
-- Return JSON only that matches the schema exactly.`,
+            text: structurePrompt,
           },
         ],
       },
@@ -945,14 +957,18 @@ export async function generateSnapshotScript({
     .filter(Boolean)
     .join('\n\n');
 
-  const systemPrompt = `You write warm narration scripts for family memory snapshots.
-Write approximately ${targetWords} words (targeting ${durationSeconds} seconds of spoken audio at a natural pace).
-Use a natural, conversational tone — like a thoughtful friend describing a meaningful moment.
-${taggedPeople.length > 0 ? `The people in this photo are: ${taggedPeople.join(', ')}. Use their names naturally in the narration — this makes the memory feel personal and real.\n` : ''}${requiredPeople.length > 0 ? `REQUIRED: You must mention each of the following people by name at least once in the narration: ${requiredPeople.join(', ')}.\n` : ''}Use all available context: the wiki, contributor memories, voice call highlights, and visual details — not just the image summary.
-Prioritize personal details and real moments over generic descriptions.
-Do not invent facts not present in the context.
-Do not use filler phrases like "In this heartwarming snapshot" or "A beautiful memory".
-Return only the narration text, nothing else.`;
+  const systemPrompt = await renderPromptTemplate('narration.snapshot_script', DEFAULT_SNAPSHOT_NARRATION_PROMPT, {
+    targetWords,
+    durationSeconds,
+    peopleInstruction:
+      taggedPeople.length > 0
+        ? `The people in this photo are: ${taggedPeople.join(', ')}. Use their names naturally in the narration - this makes the memory feel personal and real.\n`
+        : '',
+    requiredPeopleInstruction:
+      requiredPeople.length > 0
+        ? `REQUIRED: You must mention each of the following people by name at least once in the narration: ${requiredPeople.join(', ')}.\n`
+        : '',
+  });
 
   return chat(systemPrompt, [
     { role: 'user', content: context },

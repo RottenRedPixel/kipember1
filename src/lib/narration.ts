@@ -3,6 +3,19 @@ import {
   getNarrationCleanupModel,
   getOpenAIClient,
 } from '@/lib/openai';
+import { renderPromptTemplate } from '@/lib/control-plane';
+
+const NARRATION_CLEANUP_PROMPT = `You rewrite Ember memory text into a single spoken narration script.
+
+Rules:
+- Keep only the strongest story details.
+- Remove repetition across categories or sections.
+- Do not add facts.
+- Do not add headings, labels, bullets, metadata, timestamps, coordinates, camera details, or open questions.
+- Keep it in plain natural English for text-to-speech.
+- Make it sound like a short human story being read aloud.
+- Preserve names and factual details that matter to the memory.
+- Output plain text only.`;
 
 function stripInlineMarkdown(value: string) {
   return value
@@ -182,6 +195,7 @@ export async function cleanNarrationScript(narrationText: string) {
 
   try {
     const openai = getOpenAIClient();
+    const cleanupPrompt = await renderPromptTemplate('narration.cleanup', NARRATION_CLEANUP_PROMPT);
     const response = await openai.responses.create({
       model: await getConfiguredOpenAIModel(
         'narration.cleanup',
@@ -194,17 +208,7 @@ export async function cleanNarrationScript(narrationText: string) {
           content: [
             {
               type: 'input_text',
-              text: `You rewrite Ember memory text into a single spoken narration script.
-
-Rules:
-- Keep only the strongest story details.
-- Remove repetition across categories or sections.
-- Do not add facts.
-- Do not add headings, labels, bullets, metadata, timestamps, coordinates, camera details, or open questions.
-- Keep it in plain natural English for text-to-speech.
-- Make it sound like a short human story being read aloud.
-- Preserve names and factual details that matter to the memory.
-- Output plain text only.`,
+              text: cleanupPrompt,
             },
           ],
         },
