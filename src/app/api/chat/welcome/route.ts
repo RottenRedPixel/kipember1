@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { requireApiUser } from '@/lib/auth-server';
 import { prisma } from '@/lib/db';
-import { generateChatWelcome, type ChatWelcomeRole, type ChatWelcomeSituation } from '@/lib/chat-welcome';
+import { generateEmberChatReply } from '@/lib/ember-chat-reply';
 import {
   ensureEmberSession,
   type EmberParticipantType,
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => null);
     const imageId = typeof body?.imageId === 'string' ? body.imageId : '';
-    const situation: ChatWelcomeSituation =
+    const situation: 'first_open' | 'returning' =
       body?.situation === 'returning' ? 'returning' : 'first_open';
 
     if (!imageId) {
@@ -83,12 +83,9 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    const welcome = await generateChatWelcome({
-      imageId,
-      participantRole: participant.participantType as ChatWelcomeRole,
-      participantFirstName: auth.user.name,
-      situation,
-    });
+    const welcome = await generateEmberChatReply(
+      situation === 'returning' ? 'welcome_returning' : 'welcome_first_open'
+    );
 
     await prisma.emberMessage.create({
       data: {

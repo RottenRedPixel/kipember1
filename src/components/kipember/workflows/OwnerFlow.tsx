@@ -180,13 +180,13 @@ export default function OwnerFlow({
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || 'Failed to send message.');
-      const reply = typeof payload?.response === 'string' && payload.response.trim().length > 0
-        ? payload.response.trim() : 'Ember saved that to the memory.';
-      setMessages((current) => [...current, { role: 'assistant', content: reply }]);
+      const reply = typeof payload?.response === 'string' ? payload.response.trim() : '';
+      if (reply) {
+        setMessages((current) => [...current, { role: 'assistant', content: reply }]);
+      }
       onConversationStateChange?.(true);
     } catch (sendError) {
-      setMessages((current) => [...current, { role: 'assistant', content: sendError instanceof Error ? sendError.message : 'Sorry, something went wrong. Please try again.' }]);
-      onConversationStateChange?.(true);
+      setError(sendError instanceof Error ? sendError.message : 'Something went wrong.');
     } finally {
       setIsSending(false);
     }
@@ -206,10 +206,16 @@ export default function OwnerFlow({
       if (!response.ok) throw new Error(payload?.error || 'Failed to add content.');
       const uploadedFilename: string | null = payload?.attachment?.filename ?? null;
       if (uploadedFilename) {
-        void fetch('/api/chat', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ imageId, imageFilename: uploadedFilename }) });
+        const patchRes = await fetch('/api/chat', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageId, imageFilename: uploadedFilename }),
+        });
+        const patchPayload = await patchRes.json().catch(() => null);
+        const reply = typeof patchPayload?.response === 'string' ? patchPayload.response.trim() : '';
         setMessages((prev) => [
           ...prev.map((m) => m.imageUrl === previewUrl ? { ...m, imageUrl: undefined, imageFilename: uploadedFilename } : m),
-          { role: 'assistant' as const, content: "Got it! I received your photo and I'm starting to analyze it." },
+          ...(reply ? [{ role: 'assistant' as const, content: reply }] : []),
         ]);
         onConversationStateChange?.(true);
       }

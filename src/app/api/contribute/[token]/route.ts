@@ -1,57 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { chat } from '@/lib/claude';
-import { renderPromptTemplate } from '@/lib/control-plane';
 import {
   emberSessionParticipantWhere,
   ensureEmberSession,
 } from '@/lib/ember-sessions';
-import { isGuestUserEmail } from '@/lib/guest-embers';
-import {
-  buildInterviewKnownContextFromImage,
-  getKnownInterviewSteps,
-  getNextInterviewStep,
-  INTERVIEW_QUESTIONS,
-  isInterviewQuestionType,
-  type InterviewKnownContext,
-} from '@/lib/interview-flow';
-import { generateWikiForImage } from '@/lib/wiki-generator';
-import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { generateEmberChatReply } from '@/lib/ember-chat-reply';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
-import { generateChatWelcome } from '@/lib/chat-welcome';
-
-const CONTRIBUTOR_FOLLOWUP_PROMPT = `You are Ember collecting one more memory detail after an interview was already completed.
-
-Your job:
-1. Briefly acknowledge the new detail without embellishing it.
-2. Invite one more small detail only if it feels natural.
-
-Rules:
-- Do not add facts the contributor did not say.
-- Keep it to at most 2 short sentences.
-- Sound warm and concise.
-- End by making it clear they can add more or stop whenever they want.`;
-
-const CONTRIBUTOR_CORE_PROMPT_TEMPLATE = `You are Ember, guiding someone through a short memory interview about a photo.
-You just received their answer to the "{{currentStep}}" topic.
-
-Your job:
-1. Briefly acknowledge only what they actually said.
-2. Ask the next useful question naturally, or wrap up if the interview is complete.
-
-Rules:
-- Do not embellish, dramatize, or add facts the contributor did not say.
-- Do not reinterpret objects or people. If the contributor says "statue", "doll", "decoration", or similar, keep that wording.
-- Do not ask for facts already known from metadata, tags, or earlier answers.
-- Do not ask for date/time if metadata already provides it.
-- Do not ask for location if metadata already provides it.
-- Keep the whole response to at most 2 short sentences.
-- Sound warm, but restrained and grounded.
-
-Known context:
-{{knownFacts}}
-
-{{nextStepInstructions}}`;
 
 // GET - Fetch contributor info and session
 export async function GET(
@@ -187,7 +141,6 @@ export async function GET(
           title: refreshedContributor.image.title,
           description: refreshedContributor.image.description,
         },
-        guestFlow: isGuestUserEmail(refreshedContributor.image.owner.email),
         conversation: refreshedContributor.emberSession,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
       },
@@ -211,7 +164,7 @@ export async function GET(
   }
 }
 
-// POST - Handle chat message from contributor
+// POST - Handle chat message from contributor / guest
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -226,41 +179,7 @@ export async function POST(
 
     const contributor = await prisma.contributor.findUnique({
       where: { token },
-      include: {
-        image: {
-          include: {
-            analysis: true,
-            owner: {
-              select: {
-                email: true,
-              },
-            },
-            tags: {
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-                contributor: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        emberSession: {
-          include: {
-            messages: {
-              orderBy: { createdAt: 'asc' },
-            },
-          },
-        },
-      },
+      select: { id: true, imageId: true },
     });
 
     if (!contributor) {
@@ -268,106 +187,58 @@ export async function POST(
     }
 
     const sessionIdentity = {
-      imageId: contributor.image.id,
+      imageId: contributor.imageId,
       sessionType: 'chat' as const,
       participantType: 'contributor' as const,
       participantId: contributor.id,
     };
 
-    // Create session if doesn't exist
     let session = await prisma.emberSession.findUnique({
       where: emberSessionParticipantWhere(sessionIdentity),
-      include: {
-        messages: {
-          orderBy: { createdAt: 'asc' },
-        },
-      },
     });
-    let welcomeMessage: string | null = null;
+
+    const isStart = message === '__START__';
+
     if (!session) {
-      const created = await ensureEmberSession({
+      session = await ensureEmberSession({
         ...sessionIdentity,
         contributorId: contributor.id,
         status: 'active',
-        currentStep: 'context',
       });
-      session = await prisma.emberSession.findUniqueOrThrow({
-        where: { id: created.id },
-        include: {
-          messages: {
-            orderBy: { createdAt: 'asc' },
-          },
+
+      const welcome = await generateEmberChatReply('welcome_first_open');
+      await prisma.emberMessage.create({
+        data: {
+          sessionId: session.id,
+          role: 'assistant',
+          content: welcome,
+          source: 'web',
         },
       });
 
-      if (session) {
-        welcomeMessage = await generateChatWelcome({
-          imageId: contributor.imageId,
-          participantRole: isGuestUserEmail(contributor.image.owner.email) ? 'guest' : 'contributor',
-          participantFirstName: contributor.name,
-          situation: 'first_open',
-        });
-
-        await prisma.emberMessage.create({
-          data: {
-            sessionId: session.id,
-            role: 'assistant',
-            content: welcomeMessage,
-            source: 'web',
-          },
-        });
+      if (isStart) {
+        return NextResponse.json({ response: welcome });
       }
-    }
-
-    if (!session) {
-      return NextResponse.json({ error: 'Failed to start session' }, { status: 500 });
-    }
-
-    if (message === '__START__') {
-      if (session.status === 'completed') {
-        const restartMessage = await generateChatWelcome({
-          imageId: contributor.imageId,
-          participantRole: isGuestUserEmail(contributor.image.owner.email) ? 'guest' : 'contributor',
-          participantFirstName: contributor.name,
-          situation: 'returning',
-        });
-
-        await prisma.emberSession.update({
-          where: { id: session.id },
-          data: {
-            status: 'active',
-            currentStep: 'followup',
-          },
-        });
-
-        await prisma.emberMessage.create({
-          data: {
-            sessionId: session.id,
-            role: 'assistant',
-            content: restartMessage,
-            source: 'web',
-          },
-        });
-
-        return NextResponse.json({
-          response: restartMessage,
-          isComplete: false,
-        });
-      }
-
-      const latestAssistantMessage =
-        session.messages
-          ?.slice()
-          .reverse()
-          .find((entry) => entry.role === 'assistant')?.content || welcomeMessage;
-
-      return NextResponse.json({
-        response: latestAssistantMessage || 'Thanks for joining the interview.',
-        isComplete: session.status === 'completed',
+    } else if (isStart) {
+      const latest = await prisma.emberMessage.findFirst({
+        where: { sessionId: session.id, role: 'assistant' },
+        orderBy: { createdAt: 'desc' },
       });
+      if (latest) {
+        return NextResponse.json({ response: latest.content });
+      }
+      const welcome = await generateEmberChatReply('welcome_returning');
+      await prisma.emberMessage.create({
+        data: {
+          sessionId: session.id,
+          role: 'assistant',
+          content: welcome,
+          source: 'web',
+        },
+      });
+      return NextResponse.json({ response: welcome });
     }
 
-    // Save user message
     await prisma.emberMessage.create({
       data: {
         sessionId: session.id,
@@ -377,259 +248,20 @@ export async function POST(
       },
     });
 
-    // Get updated session with all messages
-    const updatedSession = await prisma.emberSession.findUnique({
-      where: { id: session.id },
-      include: {
-        messages: { orderBy: { createdAt: 'asc' } },
-      },
-    });
+    const reply = await generateEmberChatReply('message');
 
-    // Generate AI response based on interview flow
-    const response = await generateInterviewResponse(
-      updatedSession!,
-      message,
-      buildInterviewKnownContext(contributor)
-    );
-
-    // Save assistant response
     await prisma.emberMessage.create({
       data: {
         sessionId: session.id,
         role: 'assistant',
-        content: response.message,
+        content: reply,
         source: 'web',
       },
     });
 
-    // Save structured answer if applicable
-    if (response.questionType && response.answer) {
-      const structuredMessage = await prisma.emberMessage.create({
-        data: {
-          sessionId: session.id,
-          role: 'user',
-          content: response.answer,
-          source: 'web',
-          questionType: response.questionType,
-          question: response.question || '',
-        },
-      });
-      await reconcileEmberMessageSafely(
-        structuredMessage.id,
-        'Contributor interview memory reconciliation'
-      );
-    }
-
-    // Update session step
-    if (response.nextStep) {
-      await prisma.emberSession.update({
-        where: { id: session.id },
-        data: {
-          currentStep: response.nextStep,
-          status: response.nextStep === 'completed' ? 'completed' : 'active',
-        },
-      });
-    }
-
-    let memoryCreated = false;
-    const shouldRefreshWiki =
-      response.nextStep === 'completed' || response.questionType === 'followup';
-
-    if (shouldRefreshWiki) {
-      try {
-        await generateWikiForImage(contributor.imageId);
-        memoryCreated = true;
-      } catch (wikiError) {
-        console.error('Failed to refresh memory after web interview:', wikiError);
-      }
-    }
-
-    return NextResponse.json({
-      response: response.message,
-      isComplete: response.nextStep === 'completed',
-      memoryCreated,
-    });
+    return NextResponse.json({ response: reply });
   } catch (error) {
     console.error('Chat error:', error);
     return NextResponse.json({ error: 'Failed to process message' }, { status: 500 });
   }
-}
-
-type InterviewSession = {
-  currentStep: string | null;
-  status: string;
-  messages: Array<{
-    role: string;
-    content: string;
-    questionType?: string | null;
-    question?: string | null;
-  }>;
-};
-
-function buildInterviewKnownContext(contributor: {
-  image: {
-    originalName: string;
-    title: string | null;
-    description: string | null;
-    analysis: {
-      summary: string | null;
-      visualDescription: string | null;
-      capturedAt: Date | null;
-      latitude: number | null;
-      longitude: number | null;
-      metadataJson: string | null;
-    } | null;
-    tags: Array<{
-      label: string;
-      user: {
-        name: string | null;
-        email: string;
-      } | null;
-      contributor: {
-        name: string | null;
-        email: string | null;
-      } | null;
-    }>;
-  };
-}): InterviewKnownContext {
-  return buildInterviewKnownContextFromImage(contributor.image);
-}
-
-async function generateInterviewResponse(
-  session: InterviewSession,
-  userMessage: string,
-  knownContext: InterviewKnownContext
-): Promise<{
-  message: string;
-  questionType?: string;
-  question?: string;
-  answer?: string;
-  nextStep?: string;
-}> {
-  const currentStep = session.currentStep ?? 'context';
-  const messages = session.messages;
-  const conversationHistory = messages.map((m) => ({
-    role: m.role as 'user' | 'assistant',
-    content: m.content,
-  }));
-
-  // Structured answers are messages with questionType set
-  const structuredAnswers = messages.filter((m) => m.role === 'user' && m.questionType);
-
-  // If already completed
-  if (currentStep === 'completed') {
-    return {
-      message: "Thanks again for sharing! Your memories have been recorded. Feel free to close this page.",
-    };
-  }
-
-  if (currentStep === 'followup') {
-    const shouldCloseFollowup = /^(no|nope|nah|that'?s all|thats all|nothing else|all i have|all i remember)\b/i.test(
-      userMessage.trim()
-    );
-
-    if (shouldCloseFollowup) {
-      return {
-        message: 'Thanks. Ember has everything you wanted to add, and the memory will stay updated.',
-        questionType: 'followup',
-        question: 'Additional detail',
-        answer: userMessage,
-        nextStep: 'completed',
-      };
-    }
-
-    const followupPrompt = await renderPromptTemplate(
-      'contributor_interview.followup',
-      CONTRIBUTOR_FOLLOWUP_PROMPT
-    );
-
-    const followupResponse = await chat(followupPrompt, [
-      ...conversationHistory,
-      { role: 'user', content: userMessage },
-    ], {
-      capabilityKey: 'voice.transcript_extract',
-      maxTokens: 256,
-    });
-
-    return {
-      message: followupResponse,
-      questionType: 'followup',
-      question: 'Additional detail',
-      answer: userMessage,
-      nextStep: 'followup',
-    };
-  }
-
-  const answeredSteps = new Set(
-    structuredAnswers
-      .map((m) => m.questionType)
-      .filter((qt): qt is string => Boolean(qt))
-  );
-  answeredSteps.add(currentStep);
-
-  const nextStep = getNextInterviewStep({
-    currentStep,
-    answeredSteps,
-    knownSteps: getKnownInterviewSteps(knownContext),
-  });
-
-  const knownFacts = [
-    `Ember title: ${knownContext.imageTitle}`,
-    knownContext.imageDescription
-      ? `Image description: ${knownContext.imageDescription}`
-      : null,
-    knownContext.analysisSummary
-      ? `Image analysis summary: ${knownContext.analysisSummary}`
-      : null,
-    knownContext.confirmedPeople.length > 0
-      ? `Confirmed tagged people: ${knownContext.confirmedPeople.join(', ')}`
-      : null,
-    knownContext.knownWhen
-      ? `Known capture time from metadata: ${knownContext.knownWhen}`
-      : null,
-    knownContext.knownWhere
-      ? `Known location from metadata: ${knownContext.knownWhere}`
-      : null,
-    structuredAnswers.length > 0
-      ? `Answers already collected:\n${structuredAnswers
-          .map((m) => `- ${m.questionType}: ${m.content}`)
-          .join('\n')}`
-      : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  const nextStepInstructions =
-    nextStep !== 'completed'
-      ? `Next question topic: "${nextStep}"
-Standard question intent: "${INTERVIEW_QUESTIONS[nextStep]}"
-Rephrase it naturally based on the conversation flow and known context.`
-      : 'The interview is complete. Thank them briefly and say Ember will update the memory with what they shared.';
-  const systemPrompt = await renderPromptTemplate(
-    'contributor_interview.core',
-    CONTRIBUTOR_CORE_PROMPT_TEMPLATE,
-    {
-      currentStep,
-      knownFacts: knownFacts || 'No extra confirmed context.',
-      nextStepInstructions,
-    }
-  );
-
-  const aiResponse = await chat(systemPrompt, [
-    ...conversationHistory,
-    { role: 'user', content: userMessage },
-  ], {
-    capabilityKey: 'voice.transcript_extract',
-    maxTokens: 256,
-  });
-
-  return {
-    message: aiResponse,
-    questionType: currentStep,
-    question: isInterviewQuestionType(currentStep)
-      ? INTERVIEW_QUESTIONS[currentStep]
-      : currentStep,
-    answer: userMessage,
-    nextStep: nextStep,
-  };
 }

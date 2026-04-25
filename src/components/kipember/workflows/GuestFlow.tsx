@@ -53,6 +53,29 @@ export default function GuestFlow({ token }: { token: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function loadWelcome() {
+      try {
+        const response = await fetch(`/api/contribute/${token}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: '__START__' }),
+        });
+        if (!response.ok) return;
+        const payload = await response.json().catch(() => null);
+        const greeting = typeof payload?.response === 'string' ? payload.response.trim() : '';
+        if (!cancelled && greeting) {
+          setMessages((current) => (current.length === 0 ? [{ role: 'assistant', content: greeting }] : current));
+        }
+      } catch {
+        /* no-op */
+      }
+    }
+    void loadWelcome();
+    return () => { cancelled = true; };
+  }, [token]);
+
   async function sendMessage(message: string) {
     const trimmed = message.trim();
     if (!trimmed || isSending) return;
@@ -72,23 +95,12 @@ export default function GuestFlow({ token }: { token: string }) {
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || 'Failed to send message.');
 
-      const reply =
-        typeof payload?.response === 'string' && payload.response.trim().length > 0
-          ? payload.response.trim()
-          : 'Ember saved that to the memory.';
-
-      setMessages((current) => [...current, { role: 'assistant', content: reply }]);
+      const reply = typeof payload?.response === 'string' ? payload.response.trim() : '';
+      if (reply) {
+        setMessages((current) => [...current, { role: 'assistant', content: reply }]);
+      }
     } catch (sendError) {
-      setMessages((current) => [
-        ...current,
-        {
-          role: 'assistant',
-          content:
-            sendError instanceof Error
-              ? sendError.message
-              : 'Sorry, something went wrong. Please try again.',
-        },
-      ]);
+      setError(sendError instanceof Error ? sendError.message : 'Something went wrong.');
     } finally {
       setIsSending(false);
     }
@@ -167,20 +179,7 @@ export default function GuestFlow({ token }: { token: string }) {
     <div className="relative z-[1] px-4 pb-4 pt-1">
       <div className="max-h-[34vh] overflow-y-auto pb-4 pr-1 no-scrollbar">
         <div className="flex flex-col gap-4">
-          {/* Greeting */}
-          <div className="flex flex-col gap-2 items-start">
-            <span className="pl-1 text-xs font-bold text-white">ember</span>
-            <div
-              className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
-              style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-            >
-              <p className="text-sm leading-relaxed text-white/90">
-                Ask ember anything about this memory and discover a whole new way of preserving memories.
-              </p>
-            </div>
-          </div>
-
-          {/* Conversation messages */}
+          {/* Conversation messages (greeting comes from the unified Ember reply) */}
           {messages.map((message, index) =>
             message.role === 'user' ? (
               <div key={index} className="flex flex-col items-end gap-1">
