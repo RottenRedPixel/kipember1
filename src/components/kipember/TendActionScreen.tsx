@@ -20,6 +20,7 @@ import KipemberWikiContent, {
   type KipemberContributor,
   type KipemberWikiDetail,
 } from '@/components/kipember/KipemberWikiContent';
+import KipemberChecklistContent from '@/components/kipember/KipemberChecklistContent';
 import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
@@ -1682,6 +1683,8 @@ export default function TendActionScreen({ action }: { action: string }) {
           ) : null}
 
           {action === 'view-wiki' ? <KipemberWikiContent detail={detail} /> : null}
+
+          {action === 'checklist' ? <KipemberChecklistContent detail={detail} /> : null}
 
           {action === 'edit-title' ? (
             <>

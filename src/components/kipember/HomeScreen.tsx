@@ -20,6 +20,7 @@ import {
   Settings,
   Leaf,
   Link2,
+  ListChecks,
   Mail,
   MessageCircle,
   Share2,
@@ -1062,6 +1063,7 @@ export default function HomeScreen({
                 <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
                 <SvgItem label="Frame" href={selectedImageId ? `/tend/frame?id=${selectedImageId}` : '/tend/frame'} icon={ScanLine} />
                 <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
+                <SvgItem label="Checklist" href={selectedImageId ? `/tend/checklist?id=${selectedImageId}` : '/tend/checklist'} icon={ListChecks} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
                 <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=owner` : '/home'} icon={PlusCircle} />
