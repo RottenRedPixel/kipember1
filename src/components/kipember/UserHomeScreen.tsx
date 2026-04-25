@@ -155,7 +155,7 @@ function Facepile({
   size = 30,
   overlap = 10,
 }: {
-  people: Array<{ initials: string; color: string; avatarUrl?: string }>;
+  people: Array<{ initials: string; color: string; avatarUrl?: string | null }>;
   max?: number;
   size?: number;
   overlap?: number;
