@@ -243,22 +243,12 @@ async function generateThreeTitles(mode: 'analysis' | 'context', context: TitleP
     model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
       {
-        role: 'developer',
-        type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: prompt,
-          },
-        ],
-      },
-      {
         role: 'user',
         type: 'message',
         content: [
           {
             type: 'input_text',
-            text: `Generate titles for mode: ${mode}`,
+            text: prompt,
           },
         ],
       },
@@ -295,22 +285,12 @@ async function generateQuotedTitleSuggestions(
       model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
       input: [
         {
-          role: 'developer',
-          type: 'message',
-          content: [
-            {
-              type: 'input_text',
-              text: prompt,
-            },
-          ],
-        },
-        {
           role: 'user',
           type: 'message',
           content: [
             {
               type: 'input_text',
-              text: 'Generate quote-based title suggestions.',
+              text: prompt,
             },
           ],
         },
@@ -354,6 +334,14 @@ async function generateQuotedTitleSuggestions(
     if (suggestions.length > 0) {
       return suggestions.slice(0, 3);
     }
+
+    const plainTitles = parseTitleList(response.output_text || '');
+    if (plainTitles.length > 0) {
+      return plainTitles.slice(0, 3).map((title, index) => ({
+        ...limitedEntries[Math.min(index, limitedEntries.length - 1)],
+        title: normalizeQuotedTitle(title),
+      }));
+    }
   } catch (error) {
     console.error('Quoted title suggestion error:', error);
   }
@@ -383,22 +371,12 @@ async function generateSingleTitle(context: TitlePromptContext) {
     model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
       {
-        role: 'developer',
-        type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: prompt,
-          },
-        ],
-      },
-      {
         role: 'user',
         type: 'message',
         content: [
           {
             type: 'input_text',
-            text: 'Generate one best title.',
+            text: prompt,
           },
         ],
       },
