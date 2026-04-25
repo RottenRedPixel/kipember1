@@ -50,15 +50,6 @@ type ParsedSceneInsights = {
     energyLevel: string | null;
     socialEnergy: string | null;
   };
-  storyElements: {
-    storyThisImageTells: string | null;
-    emberStory: string | null;
-    whyThisMomentMightMatter: string | null;
-    whatMakesThisPhotoSpecial: string | null;
-    meaningfulDetails: string | null;
-    whatMightHaveHappenedBefore: string | null;
-    whatMightHappenNext: string | null;
-  };
 };
 
 const EMPTY_SCENE_INSIGHTS: ParsedSceneInsights = {
@@ -99,15 +90,6 @@ const EMPTY_SCENE_INSIGHTS: ParsedSceneInsights = {
     individualEmotions: null,
     energyLevel: null,
     socialEnergy: null,
-  },
-  storyElements: {
-    storyThisImageTells: null,
-    emberStory: null,
-    whyThisMomentMightMatter: null,
-    whatMakesThisPhotoSpecial: null,
-    meaningfulDetails: null,
-    whatMightHaveHappenedBefore: null,
-    whatMightHappenNext: null,
   },
 };
 
@@ -160,10 +142,6 @@ function parseSceneInsights(value: string | null): ParsedSceneInsights {
       emotionalContext: {
         ...EMPTY_SCENE_INSIGHTS.emotionalContext,
         ...parsed.emotionalContext,
-      },
-      storyElements: {
-        ...EMPTY_SCENE_INSIGHTS.storyElements,
-        ...parsed.storyElements,
       },
     };
   } catch {

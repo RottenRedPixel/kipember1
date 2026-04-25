@@ -93,15 +93,6 @@ type AnalysisSceneInsights = {
     energyLevel?: string | null;
     socialEnergy?: string | null;
   } | null;
-  storyElements?: {
-    storyThisImageTells?: string | null;
-    emberStory?: string | null;
-    whyThisMomentMightMatter?: string | null;
-    whatMakesThisPhotoSpecial?: string | null;
-    meaningfulDetails?: string | null;
-    whatMightHaveHappenedBefore?: string | null;
-    whatMightHappenNext?: string | null;
-  } | null;
 } | null;
 
 export type KipemberContributor = {
@@ -411,7 +402,6 @@ function buildStructuredAnalysisText(
   const setting = sceneInsights?.settingAndEnvironment;
   const activities = sceneInsights?.activitiesAndContext;
   const emotional = sceneInsights?.emotionalContext;
-  const story = sceneInsights?.storyElements;
 
   const numberOfPeople =
     typeof people?.numberOfPeopleVisible === 'number'
@@ -436,14 +426,7 @@ function buildStructuredAnalysisText(
     activities?.interactionsBetweenPeople,
     emotional?.socialEnergy,
   ]).join('. ');
-  const storyTells = joinDistinct([
-    story?.storyThisImageTells,
-    story?.emberStory,
-    story?.whyThisMomentMightMatter,
-    story?.whatMakesThisPhotoSpecial,
-    story?.meaningfulDetails,
-    analysis?.summary,
-  ]).join(' ');
+  const summary = analysis?.summary || null;
 
   const hasStructuredContent = Boolean(
     numberOfPeople ||
@@ -461,9 +444,7 @@ function buildStructuredAnalysisText(
       overallMood ||
       emotional?.emotionalExpressions ||
       socialDynamics ||
-      storyTells ||
-      story?.whatMightHaveHappenedBefore ||
-      story?.whatMightHappenNext
+      summary
   );
 
   if (!hasStructuredContent) {
@@ -535,22 +516,12 @@ function buildStructuredAnalysisText(
     sections.push(...emotionalLines);
   }
 
-  const storyLines: string[] = [];
-  appendAnalysisLine(storyLines, 'What Does This Tell Us?', storyTells);
-  appendAnalysisLine(
-    storyLines,
-    'What Likely Happened Before?',
-    story?.whatMightHaveHappenedBefore
-  );
-  appendAnalysisLine(
-    storyLines,
-    'What Likely Happened Next?',
-    story?.whatMightHappenNext
-  );
-  if (storyLines.length > 0) {
+  const summaryLines: string[] = [];
+  appendAnalysisLine(summaryLines, 'Summary', summary);
+  if (summaryLines.length > 0) {
     sections.push('');
-    sections.push('**STORY ELEMENTS:**');
-    sections.push(...storyLines);
+    sections.push('**SUMMARY:**');
+    sections.push(...summaryLines);
   }
 
   return sections.join('\n');

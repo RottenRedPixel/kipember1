@@ -66,15 +66,6 @@ type ParsedVisionAnalysis = {
       energyLevel: string | null;
       socialEnergy: string | null;
     };
-    storyElements: {
-      storyThisImageTells: string | null;
-      emberStory: string | null;
-      whyThisMomentMightMatter: string | null;
-      whatMakesThisPhotoSpecial: string | null;
-      meaningfulDetails: string | null;
-      whatMightHaveHappenedBefore: string | null;
-      whatMightHappenNext: string | null;
-    };
   };
 };
 
@@ -185,7 +176,6 @@ const VISION_SCHEMA = {
         'activitiesAndContext',
         'technicalDetails',
         'emotionalContext',
-        'storyElements',
       ],
       properties: {
         peopleAndDemographics: {
@@ -343,42 +333,6 @@ const VISION_SCHEMA = {
             },
           },
         },
-        storyElements: {
-          type: 'object',
-          additionalProperties: false,
-          required: [
-            'storyThisImageTells',
-            'emberStory',
-            'whyThisMomentMightMatter',
-            'whatMakesThisPhotoSpecial',
-            'meaningfulDetails',
-            'whatMightHaveHappenedBefore',
-            'whatMightHappenNext',
-          ],
-          properties: {
-            storyThisImageTells: {
-              anyOf: [{ type: 'string' }, { type: 'null' }],
-            },
-            emberStory: {
-              anyOf: [{ type: 'string' }, { type: 'null' }],
-            },
-            whyThisMomentMightMatter: {
-              anyOf: [{ type: 'string' }, { type: 'null' }],
-            },
-            whatMakesThisPhotoSpecial: {
-              anyOf: [{ type: 'string' }, { type: 'null' }],
-            },
-            meaningfulDetails: {
-              anyOf: [{ type: 'string' }, { type: 'null' }],
-            },
-            whatMightHaveHappenedBefore: {
-              anyOf: [{ type: 'string' }, { type: 'null' }],
-            },
-            whatMightHappenNext: {
-              anyOf: [{ type: 'string' }, { type: 'null' }],
-            },
-          },
-        },
       },
     },
   },
@@ -422,15 +376,6 @@ const EMPTY_SCENE_INSIGHTS: ParsedVisionAnalysis['sceneInsights'] = {
     individualEmotions: null,
     energyLevel: null,
     socialEnergy: null,
-  },
-  storyElements: {
-    storyThisImageTells: null,
-    emberStory: null,
-    whyThisMomentMightMatter: null,
-    whatMakesThisPhotoSpecial: null,
-    meaningfulDetails: null,
-    whatMightHaveHappenedBefore: null,
-    whatMightHappenNext: null,
   },
 };
 
@@ -508,7 +453,6 @@ function normalizeSceneInsights(value: unknown): ParsedVisionAnalysis['sceneInsi
   const activities = record.activitiesAndContext as Record<string, unknown> | undefined;
   const technical = record.technicalDetails as Record<string, unknown> | undefined;
   const emotional = record.emotionalContext as Record<string, unknown> | undefined;
-  const story = record.storyElements as Record<string, unknown> | undefined;
 
   return {
     peopleAndDemographics: {
@@ -553,16 +497,6 @@ function normalizeSceneInsights(value: unknown): ParsedVisionAnalysis['sceneInsi
       individualEmotions: sanitizeNullableString(emotional?.individualEmotions),
       energyLevel: sanitizeNullableString(emotional?.energyLevel),
       socialEnergy: sanitizeNullableString(emotional?.socialEnergy),
-    },
-    storyElements: {
-      ...EMPTY_SCENE_INSIGHTS.storyElements,
-      storyThisImageTells: sanitizeNullableString(story?.storyThisImageTells),
-      emberStory: sanitizeNullableString(story?.emberStory),
-      whyThisMomentMightMatter: sanitizeNullableString(story?.whyThisMomentMightMatter),
-      whatMakesThisPhotoSpecial: sanitizeNullableString(story?.whatMakesThisPhotoSpecial),
-      meaningfulDetails: sanitizeNullableString(story?.meaningfulDetails),
-      whatMightHaveHappenedBefore: sanitizeNullableString(story?.whatMightHaveHappenedBefore),
-      whatMightHappenNext: sanitizeNullableString(story?.whatMightHappenNext),
     },
   };
 }
@@ -954,25 +888,10 @@ Use this review framework and map it into the JSON:
 - Visible emotional expressions -> sceneInsights.emotionalContext.emotionalExpressions
 - Energy level -> sceneInsights.emotionalContext.energyLevel
 
-5. MEMORY SIGNALS
-- Why this moment might matter -> sceneInsights.storyElements.whyThisMomentMightMatter
-- What makes this photo special -> sceneInsights.storyElements.whatMakesThisPhotoSpecial
-- Small but meaningful details -> sceneInsights.storyElements.meaningfulDetails
-
-6. EMBER STORY
-- Write 3-5 sentences like a human recalling the moment.
-- Put the full memory-style version in sceneInsights.storyElements.emberStory.
-- Keep summary as a concise overview.
-- Keep visualDescription as a grounded visual description.
-
-7. BEFORE & AFTER
-- 30 seconds before -> sceneInsights.storyElements.whatMightHaveHappenedBefore
-- 30 seconds after -> sceneInsights.storyElements.whatMightHappenNext
-
-8. CONTEXT GAPS
+5. CONTEXT GAPS
 - Put 3-5 missing-but-useful questions in openQuestions.
 
-9. SEARCH TAGS
+6. SEARCH TAGS
 - Put 10-15 useful retrieval tags in searchableKeywords.
 
 Also fill peopleObserved, placeSignals, notableThings, activities, and visibleText with the strongest grounded observations.

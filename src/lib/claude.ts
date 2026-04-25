@@ -93,15 +93,6 @@ type WikiImageAnalysis = {
       energyLevel: string | null;
       socialEnergy: string | null;
     };
-    storyElements: {
-      storyThisImageTells: string | null;
-      emberStory: string | null;
-      whyThisMomentMightMatter: string | null;
-      whatMakesThisPhotoSpecial: string | null;
-      meaningfulDetails: string | null;
-      whatMightHaveHappenedBefore: string | null;
-      whatMightHappenNext: string | null;
-    };
   };
 };
 
@@ -780,7 +771,6 @@ export async function generateWiki({
             settingAndEnvironment: analysis.sceneInsights.settingAndEnvironment,
             activitiesAndContext: analysis.sceneInsights.activitiesAndContext,
             emotionalContext: analysis.sceneInsights.emotionalContext,
-            storyElements: analysis.sceneInsights.storyElements,
             metadata: {
               capturedAt: analysis.capturedAt,
               latitude: analysis.latitude,
