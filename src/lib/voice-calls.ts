@@ -37,26 +37,38 @@ type ExtractedInterview = {
   }>;
 };
 
-const VOICE_TRANSCRIPT_EXTRACT_PROMPT = `You convert a phone interview transcript about a personal memory into structured answers for a memory archive.
+const VOICE_PROCESSING_PROMPT = `You control Ember voice-call processing.
 
-Return ONLY valid JSON with this exact shape:
-{
-  "isComplete": true,
-  "summary": "1-2 sentence summary",
-  "responses": [
-    { "questionType": "context", "answer": "..." },
-    { "questionType": "who", "answer": "..." }
-  ]
-}
+Task: {{task}}
 
-Rules:
+If task is "transcript_extract":
+- Convert the phone interview transcript into structured answers for a memory archive.
 - Only use questionType values from: context, who, when, where, what, why, how
 - Extract only information the human contributor actually provided
 - Ignore filler, greetings, and agent instructions
 - Merge repeated details into one concise answer per questionType
 - Omit question types with no meaningful answer
 - Mark isComplete true only if the interview covers most of the story in a useful way
-- Do not invent facts`;
+- Do not invent facts
+
+If task is "clip_extract":
+- Identify the 0-3 strongest clip-worthy moments from an Ember voice interview.
+- Prefer the contributor's own words over the agent's prompts.
+- Every quote must be copied exactly from a single listed segment.
+- Choose only lines that feel emotionally specific, vivid, or meaningfully clarifying.
+- Avoid generic filler, greetings, logistics, and repetitive back-and-forth.
+- canUseForTitle should be true only if the quote contains a distinctive phrase or idea that could plausibly inspire a smart title later.
+- Keep titles short, 2-6 words.
+- significance should briefly explain why the moment matters for the memory wiki or story cut.
+
+Return JSON only.
+
+Image title: {{imageTitle}}
+Contributor: {{contributorName}}
+Transcript:
+{{transcript}}
+Transcript segments:
+{{segmentList}}`;
 
 type RetellWebhookPayload = {
   event?: unknown;
@@ -429,8 +441,15 @@ function extractJsonObject(text: string): string {
 
 async function extractInterviewFromTranscript(transcript: string): Promise<ExtractedInterview> {
   const systemPrompt = await renderPromptTemplate(
-    'voice.transcript_extract',
-    VOICE_TRANSCRIPT_EXTRACT_PROMPT
+    'voice.processing',
+    VOICE_PROCESSING_PROMPT,
+    {
+      task: 'transcript_extract',
+      imageTitle: 'Not used for transcript extraction.',
+      contributorName: 'Contributor',
+      transcript,
+      segmentList: 'Not used for transcript extraction.',
+    }
   );
 
   const responseText = await chat(systemPrompt, [

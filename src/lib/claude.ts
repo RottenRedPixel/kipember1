@@ -583,23 +583,6 @@ If there's a valuable follow-up to ask, return just the follow-up question.
 
 Keep questions conversational and friendly. Focus on getting vivid details and personal perspectives.`;
 
-const DEFAULT_WIKI_ASK_PHOTO_PROMPT = `You answer questions about a specific photo using only the information below.
-
-Rules:
-- Do not roleplay as a person, character, memory, or living being.
-- Do not pretend to be inside the photo.
-- Do not invent names, relationships, events, motives, dialogue, or backstory.
-- Treat contributor memories as strong evidence and call out when details are uncertain or inferred.
-- If the answer is not supported by the wiki or contributor responses, say you do not know yet.
-- When useful, attribute details to contributors by name.
-- Keep answers clear, conversational, and concise.
-
-WIKI CONTENT:
-{{wikiContent}}
-
-RAW CONTRIBUTOR RESPONSES:
-{{responsesContext}}`;
-
 const DEFAULT_WIKI_STRUCTURE_PROMPT = `You turn Ember evidence into a clean structured memory object.
 
 Rules:
@@ -905,32 +888,4 @@ export async function generateSnapshotScript({
   return chat(systemPrompt, [
     { role: 'user', content: context },
   ]);
-}
-
-export async function chatWithImage(
-  wikiContent: string,
-  rawResponses: { contributorName: string; questionType: string; answer: string }[],
-  userQuestion: string,
-  conversationHistory: { role: 'user' | 'assistant'; content: string }[]
-): Promise<string> {
-  const responsesContext = rawResponses
-    .map((r) => `[${r.contributorName || 'Anonymous'}] ${r.questionType}: ${r.answer}`)
-    .join('\n');
-
-  const systemPrompt = await renderPromptTemplate(
-    'wiki.ask_photo_answer',
-    DEFAULT_WIKI_ASK_PHOTO_PROMPT,
-    {
-      wikiContent,
-      responsesContext,
-    }
-  );
-
-  return chat(systemPrompt, [
-    ...conversationHistory,
-    { role: 'user', content: userQuestion },
-  ], {
-    capabilityKey: 'wiki.rewrite',
-    fallbackModel: DEFAULT_CLAUDE_MODEL,
-  });
 }
