@@ -19,13 +19,28 @@ type SmartTitleSuggestionCache = {
   contributorQuotes: ContributorQuoteSuggestion[];
 };
 
-const TITLE_SUGGESTIONS_BASE_PROMPT = (modeInstruction: string) => `You are generating Ember titles.
+type TitleSuggestionMode = 'analysis' | 'context' | 'quote' | 'single';
 
-Based on the context above, generate 3 creative and memorable titles for this moment.
+const TITLE_SUGGESTIONS_PROMPT = `You generate Ember titles from categorized memory context.
 
-${modeInstruction}
+MODE: {{mode}}
 
-Each title should:
+VISUAL ANALYSIS CONTEXT:
+{{analysisContext}}
+
+HUMAN MEMORY CONTEXT:
+{{humanContext}}
+
+QUOTE ENTRIES:
+{{quoteEntries}}
+
+FULL EMBER CONTEXT:
+{{fullContext}}
+
+PREFERRED PEOPLE:
+{{preferredPeopleHint}}
+
+Shared title rules:
 - Be 2-6 words long
 - Be 40 characters or fewer (hard limit, including spaces)
 - Capture the essence of the memory
@@ -34,54 +49,16 @@ Each title should:
 - Use specific details when possible
 - Prefer distinctive phrases or emotional beats from voice-call highlights when they are present
 
-Return the titles as a simple list, one per line, without numbers or bullets.`;
+Mode rules:
+- analysis: Generate exactly 3 title ideas using only visual analysis context, metadata, confirmed people, confirmed location, and visible scene clues. Do not invent personal backstory or emotions from human memory.
+- context: Generate exactly 3 title ideas using human memory context, contributor memories, voice call summaries, voice call highlights, supporting media notes, and wiki context. Prefer this over visual-only scene labels when human context exists.
+- quote: Choose up to 3 of the strongest quote entries and turn each into a short title. Use the speaker's wording as much as possible. Return strict JSON only as an array like [{"index":1,"title":"\\"Best Coffee Ever\\""}].
+- single: Generate exactly 1 polished title from all available categorized context. Strongly prefer tagged people, relationships, contributor memories, voice call highlights, wiki details, and then visual context.
 
-const QUOTED_TITLE_PROMPT = `You are generating quote-based Ember title options from real owner and contributor wording.
-
-Choose up to 3 of the strongest quote snippets below and turn each one into a short title.
-
-Rules:
-- Use the speaker's actual wording as much as possible.
-- Light trimming is allowed, but do not invent facts or rewrite the meaning.
-- Each title must be 2-8 words.
-- Each title must be 40 characters or fewer (hard limit, including spaces and the surrounding quotes).
-- Each title must be wrapped in double quotes.
-- Prefer vivid, memorable, title-worthy wording.
-- Prefer statements over questions when possible.
-- Return strict JSON only.
-
-Return a JSON array like:
-[{"index":1,"title":"\\"Best Coffee Ever\\""}]`;
-
-const SINGLE_TITLE_PROMPT = `You are analyzing a rich memory wiki called an "Ember" to create the perfect title.
-
-This Ember contains layered stories, conversations, and context from multiple contributors.
-
-TASK:
-Analyze all the context deeply and generate ONE perfect title that:
-1. Captures the emotional essence
-2. Reflects the key narrative
-3. Incorporates unique details
-4. Resonates personally
-5. Still feels meaningful years from now
-
-Consider:
-- The story conversations and how people are talking about this moment
-- Any important quoted moment pulled from a voice call
-- The relationships between tagged people
-- The setting and context from image analysis
-- Emotional undertones or significance mentioned
-- Specific details that make this memory unique
-
-PRIORITY (in order):
-- If specific people are tagged in the photo, strongly prefer a title that names them or captures their relationship (e.g. "Zia and Anna at the Beach" or "Mom's First La Jolla Visit")
-- Use real wording or emotional details from contributor memories and voice call highlights when present
-- Draw on wiki content for specific personal details that make this memory unique
-- Fall back to visual scene details only when no personal context is available
-
-Generate ONE thoughtful, evocative title between 2 and 8 words.
-The title must be 40 characters or fewer (hard limit, including spaces).
-Return ONLY the title, with no explanation.`;
+Output:
+- For analysis and context modes, return a simple list, one title per line, without numbers or bullets.
+- For quote mode, return strict JSON only.
+- For single mode, return only the title, with no explanation.`;
 
 function normalizeTitleLine(value: string) {
   return value
@@ -221,34 +198,47 @@ function parseSmartTitleSuggestionCache(value: string | null | undefined): Smart
   }
 }
 
-async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'context', preferredPeople?: string[]) {
-  const openai = getOpenAIClient();
-  const modeInstruction =
-    mode === 'analysis'
-      ? `Generate titles using only what can be inferred from the image itself and its metadata.
-- Focus on visible people, setting, activity, mood, place, and time clues.
-- Do not invent personal backstory or emotions that only come from conversations.
-- Keep the titles visually grounded.`
-      : `Generate titles using the human context supplied by the owner or contributors.
-- Prefer memorable details from typed memories, voice statements, call highlights, and wiki context.
-- Use real wording or emotional details from the people involved when possible.
-- Avoid titles that only restate the visual scene if a richer human story is present.`;
+type TitlePromptContext = {
+  analysisContext: string;
+  humanContext: string;
+  quoteEntries: Array<{
+    contributorName: string;
+    quote: string;
+    source: 'voice' | 'text';
+  }>;
+  fullContext: string;
+  preferredPeople: string[];
+};
+
+async function renderTitlePrompt(mode: TitleSuggestionMode, context: TitlePromptContext) {
   const preferredPeopleHint =
-    preferredPeople && preferredPeople.length > 0
-      ? `Preferred people to mention (use their names in the title if possible): ${preferredPeople.join(', ')}`
-      : '';
-  const basePrompt = await renderPromptTemplate(
-    mode === 'analysis' ? 'title_suggestions.analysis' : 'title_suggestions.context',
-    TITLE_SUGGESTIONS_BASE_PROMPT(modeInstruction),
-    {
-      modeInstruction,
-      preferredPeopleHint,
-    }
-  );
-  const prompt =
-    preferredPeopleHint && !basePrompt.includes(preferredPeopleHint)
-      ? `${basePrompt}\n\n${preferredPeopleHint}`
-      : basePrompt;
+    context.preferredPeople.length > 0
+      ? `Use these names in the title if possible: ${context.preferredPeople.join(', ')}`
+      : 'None provided.';
+  const quoteEntries =
+    context.quoteEntries.length > 0
+      ? context.quoteEntries
+          .slice(0, 12)
+          .map(
+            (entry, index) =>
+              `${index + 1}. ${entry.contributorName} [${entry.source}] "${entry.quote}"`
+          )
+          .join('\n')
+      : 'No quote entries provided.';
+
+  return renderPromptTemplate('title_suggestions.prompt', TITLE_SUGGESTIONS_PROMPT, {
+    mode,
+    analysisContext: context.analysisContext || 'No visual analysis context provided.',
+    humanContext: context.humanContext || 'No human memory context provided.',
+    quoteEntries,
+    fullContext: context.fullContext || 'No full Ember context provided.',
+    preferredPeopleHint,
+  });
+}
+
+async function generateThreeTitles(mode: 'analysis' | 'context', context: TitlePromptContext) {
+  const openai = getOpenAIClient();
+  const prompt = await renderTitlePrompt(mode, context);
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
@@ -268,7 +258,7 @@ async function generateThreeTitles(emberContext: string, mode: 'analysis' | 'con
         content: [
           {
             type: 'input_text',
-            text: emberContext,
+            text: `Generate titles for mode: ${mode}`,
           },
         ],
       },
@@ -286,7 +276,8 @@ async function generateQuotedTitleSuggestions(
     contributorName: string;
     quote: string;
     source: 'voice' | 'text';
-  }>
+  }>,
+  context: TitlePromptContext
 ) {
   if (entries.length === 0) {
     return [];
@@ -294,7 +285,10 @@ async function generateQuotedTitleSuggestions(
 
   const limitedEntries = entries.slice(0, 12);
   const openai = getOpenAIClient();
-  const prompt = await renderPromptTemplate('title_suggestions.quote', QUOTED_TITLE_PROMPT);
+  const prompt = await renderTitlePrompt('quote', {
+    ...context,
+    quoteEntries: limitedEntries,
+  });
 
   try {
     const response = await openai.responses.create({
@@ -316,12 +310,7 @@ async function generateQuotedTitleSuggestions(
           content: [
             {
               type: 'input_text',
-              text: limitedEntries
-                .map(
-                  (entry, index) =>
-                    `${index + 1}. ${entry.contributorName} [${entry.source}] "${entry.quote}"`
-                )
-                .join('\n'),
+              text: 'Generate quote-based title suggestions.',
             },
           ],
         },
@@ -387,9 +376,9 @@ async function generateQuotedTitleSuggestions(
     .slice(0, 3);
 }
 
-async function generateSingleTitle(emberContext: string) {
+async function generateSingleTitle(context: TitlePromptContext) {
   const openai = getOpenAIClient();
-  const prompt = await renderPromptTemplate('title_suggestions.single', SINGLE_TITLE_PROMPT);
+  const prompt = await renderTitlePrompt('single', context);
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
@@ -409,7 +398,7 @@ async function generateSingleTitle(emberContext: string) {
         content: [
           {
             type: 'input_text',
-            text: emberContext,
+            text: 'Generate one best title.',
           },
         ],
       },
@@ -565,10 +554,17 @@ export async function GET(
           .map((entry) => [`${entry.contributorName.toLowerCase()}::${entry.quote.toLowerCase()}`, entry] as const)
       ).values()
     );
+    const titlePromptContext: TitlePromptContext = {
+      analysisContext: analysisContext || context.promptContext,
+      humanContext: humanContext || context.promptContext,
+      quoteEntries: quoteSourceEntries,
+      fullContext: context.promptContext,
+      preferredPeople,
+    };
     const [analysisSuggestions, contextSuggestions, contributorQuotes] = await Promise.all([
-      generateThreeTitles(analysisContext || context.promptContext, 'analysis', preferredPeople.length > 0 ? preferredPeople : undefined),
-      generateThreeTitles(humanContext || context.promptContext, 'context', preferredPeople.length > 0 ? preferredPeople : undefined),
-      generateQuotedTitleSuggestions(quoteSourceEntries),
+      generateThreeTitles('analysis', titlePromptContext),
+      generateThreeTitles('context', titlePromptContext),
+      generateQuotedTitleSuggestions(quoteSourceEntries, titlePromptContext),
     ]);
     const suggestions = Array.from(
       new Set(
@@ -629,7 +625,35 @@ export async function POST(
       return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
     }
 
-    const title = await generateSingleTitle(context.promptContext);
+    const quoteSourceEntries = Array.from(
+      new Map(
+        [
+          ...context.callHighlights.map((clip) => ({
+            contributorName: clip.contributorName,
+            quote: clip.quote,
+            source: 'voice' as const,
+          })),
+          ...context.contributorMemories.map((memory) => ({
+            contributorName: memory.contributorName,
+            quote: memory.answer,
+            source: memory.source === 'voice' ? ('voice' as const) : ('text' as const),
+          })),
+        ]
+          .map((entry) => ({
+            ...entry,
+            quote: trimQuote(entry.quote),
+          }))
+          .filter((entry) => entry.quote)
+          .map((entry) => [`${entry.contributorName.toLowerCase()}::${entry.quote.toLowerCase()}`, entry] as const)
+      ).values()
+    );
+    const title = await generateSingleTitle({
+      analysisContext: context.promptContext,
+      humanContext: context.promptContext,
+      quoteEntries: quoteSourceEntries,
+      fullContext: context.promptContext,
+      preferredPeople: context.confirmedPeople,
+    });
 
     if (!title) {
       return NextResponse.json(
