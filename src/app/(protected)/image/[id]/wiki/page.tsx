@@ -243,8 +243,7 @@ export default function WikiPage() {
               </h1>
               <p className="ember-copy mx-auto mt-4 max-w-2xl text-sm">
                 Once contributors complete enough of the memory interview, Ember can
-                synthesize the current record into a clean wiki. Kids Mode builds from
-                that wiki, so this is the main unlock step.
+                synthesize the current record into a clean wiki.
               </p>
             </div>
           )}
@@ -257,7 +256,7 @@ export default function WikiPage() {
               Keep the memory current
             </h2>
             <p className="ember-copy mt-3 text-sm">
-              Regenerate after new contributors, tags, added photos, or sports details have been added.
+              Regenerate after new contributors, tags, or added photos have been added.
             </p>
 
             <button
@@ -315,17 +314,9 @@ export default function WikiPage() {
           <section className="ember-panel rounded-[2.25rem] p-6">
             <p className="ember-eyebrow">Modes</p>
             <div className="mt-4 grid gap-3">
-              <Link href={`/image/${params.id}/kids`} className="ember-button-secondary w-full justify-between">
-                <span>Kids mode</span>
-                <span>Storybook</span>
-              </Link>
               <Link href={`/image/${params.id}/story-circle`} className="ember-button-secondary w-full justify-between">
                 <span>Story circle</span>
                 <span>Thread</span>
-              </Link>
-              <Link href={`/image/${params.id}/sports`} className="ember-button-secondary w-full justify-between">
-                <span>Sports mode</span>
-                <span>Stats</span>
               </Link>
               <Link href={`/image/${params.id}/chat`} className="ember-button-secondary w-full justify-between">
                 <span>Ask Ember</span>

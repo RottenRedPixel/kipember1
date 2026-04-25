@@ -1,6 +1,5 @@
 import { prisma } from '../db';
-import type { ContextRetriever, ContextContent } from './index';
-import { formatSportsModeContext } from '@/lib/sports-mode';
+import type { ContextRetriever } from './index';
 
 /**
  * Simple context retriever that concatenates all content
@@ -10,7 +9,7 @@ export class SimpleRetriever implements ContextRetriever {
   /**
    * No-op for simple retriever - content is already in database
    */
-  async indexContent(_imageId: string, _content: ContextContent[]): Promise<void> {
+  async indexContent(): Promise<void> {
     // Content is stored in database, no additional indexing needed
     return;
   }
@@ -29,7 +28,6 @@ export class SimpleRetriever implements ContextRetriever {
     const image = await prisma.image.findUnique({
       where: { id: imageId },
       include: {
-        sportsMode: true,
         contributors: {
           include: {
             emberSession: {
@@ -148,10 +146,6 @@ export class SimpleRetriever implements ContextRetriever {
 
     if (voiceClips.length > 0) {
       sections.push('=== IMPORTANT VOICE CLIPS ===\n' + voiceClips.join('\n\n'));
-    }
-
-    if (image.sportsMode) {
-      sections.push('=== SPORTS MODE ===\n' + formatSportsModeContext(image.sportsMode));
     }
 
     const fullContext = sections.join('\n\n');

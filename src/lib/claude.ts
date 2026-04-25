@@ -96,24 +96,6 @@ type WikiImageAnalysis = {
   };
 };
 
-type WikiSportsMode = {
-  sportType: string | null;
-  subjectName: string | null;
-  teamName: string | null;
-  opponentName: string | null;
-  eventName: string | null;
-  season: string | null;
-  outcome: string | null;
-  finalScore: string | null;
-  rawDetails: string;
-  summary: string | null;
-  statLines: {
-    label: string;
-    value: string;
-  }[];
-  highlights: string[];
-};
-
 type WikiConfirmedTag = {
   label: string;
   userId: string | null;
@@ -152,10 +134,6 @@ type StructuredMemory = {
   quotes: StructuredMemoryQuote[];
   openQuestions: string[];
   metadata: StructuredMemoryMetadataItem[];
-  sportsSnapshot: {
-    summary: string;
-    details: string[];
-  } | null;
 };
 
 type ContributorMemoryTopic = {
@@ -193,7 +171,6 @@ const STRUCTURED_MEMORY_SCHEMA = {
     'quotes',
     'openQuestions',
     'metadata',
-    'sportsSnapshot',
   ],
   properties: {
     title: { type: 'string' },
@@ -258,23 +235,6 @@ const STRUCTURED_MEMORY_SCHEMA = {
           value: { type: 'string' },
         },
       },
-    },
-    sportsSnapshot: {
-      anyOf: [
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: ['summary', 'details'],
-          properties: {
-            summary: { type: 'string' },
-            details: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-          },
-        },
-        { type: 'null' },
-      ],
     },
   },
 } as const;
@@ -667,7 +627,6 @@ Rules:
 - quotes must only contain direct contributor wording worth preserving; otherwise [].
 - Prefer direct contributor wording from voice-call highlights when it is more vivid than the typed responses.
 - metadata should contain at most 4 high-value items and should stay secondary to the memory itself.
-- sportsSnapshot should be null when not relevant.
 - Return JSON only that matches the schema exactly.`;
 
 const DEFAULT_SNAPSHOT_NARRATION_PROMPT = `You write warm narration scripts for family memory snapshots.
@@ -715,7 +674,6 @@ export async function generateWiki({
   responses,
   callSummaries,
   callHighlights,
-  sportsMode,
 }: {
   imageTitle: string;
   imageDescription: string | null;
@@ -730,7 +688,6 @@ export async function generateWiki({
   responses: WikiContributorResponse[];
   callSummaries: WikiContributorCallSummary[];
   callHighlights: WikiContributorCallHighlight[];
-  sportsMode: WikiSportsMode | null;
 }): Promise<string> {
   const hasMeaningfulAutoAnalysis = Boolean(
     analysis &&
@@ -781,21 +738,6 @@ export async function generateWiki({
             },
           }
         : null,
-    sportsMode: sportsMode
-      ? {
-          sportType: sportsMode.sportType,
-          subjectName: sportsMode.subjectName,
-          teamName: sportsMode.teamName,
-          opponentName: sportsMode.opponentName,
-          eventName: sportsMode.eventName,
-          season: sportsMode.season,
-          outcome: sportsMode.outcome,
-          finalScore: sportsMode.finalScore,
-          summary: sportsMode.summary,
-          statLines: sportsMode.statLines,
-          highlights: sportsMode.highlights,
-        }
-      : null,
   };
 
   const openai = getOpenAIClient();

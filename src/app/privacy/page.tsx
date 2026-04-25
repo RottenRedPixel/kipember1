@@ -20,7 +20,7 @@ const collectionItems = [
 
 const useItems = [
   'Provide account access and keep a shared memory archive tied to the right people.',
-  'Generate wiki pages, kids stories, chat responses, and other memory outputs from the content you submit.',
+  'Generate wiki pages, chat responses, and other memory outputs from the content you submit.',
   'Support contributor invitations, voice interviews, and ongoing collaboration around a memory.',
   'Secure and maintain the service, including session management and access control.',
 ];

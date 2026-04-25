@@ -244,7 +244,6 @@ export async function GET(
         voiceCallClips: [],
         wiki: null,
         snapshot: null,
-        sportsMode: null,
       });
     }
 
@@ -414,16 +413,6 @@ export async function GET(
               emberVoiceLabel: true,
               narratorVoiceId: true,
               narratorVoiceLabel: true,
-              updatedAt: true,
-            },
-          },
-          sportsMode: {
-            select: {
-              id: true,
-              sportType: true,
-              subjectName: true,
-              finalScore: true,
-              outcome: true,
               updatedAt: true,
             },
           },
@@ -757,7 +746,6 @@ export async function GET(
             selectedContributorIds: safeParseJson(image.snapshot.selectedContributorJson, []),
           }
         : null,
-      sportsMode: image.sportsMode,
       chatBlocks,
     });
   } catch (error) {

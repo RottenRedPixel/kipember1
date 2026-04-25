@@ -21,10 +21,6 @@ export function getOpenAIClient(): OpenAI {
   return client;
 }
 
-export function getKidsImageModel(): string {
-  return process.env.OPENAI_KIDS_IMAGE_MODEL || 'gpt-image-1.5';
-}
-
 export function getImageAnalysisModel(): string {
   return process.env.OPENAI_IMAGE_ANALYSIS_MODEL || 'gpt-5-mini';
 }

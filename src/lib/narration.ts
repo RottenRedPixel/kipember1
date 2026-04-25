@@ -61,7 +61,6 @@ function shouldSkipHeading(heading: string) {
     normalized.includes('timeline') ||
     normalized.includes('scene insight') ||
     normalized.includes('technical') ||
-    normalized.includes('sports snapshot') ||
     normalized.includes('people') ||
     normalized.includes('location')
   );

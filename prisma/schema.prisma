@@ -35,8 +35,6 @@ model Image {
   analysis     ImageAnalysis?
   contributors Contributor[]
   wiki         Wiki?
-  kidsStory    KidsStory?
-  sportsMode   SportsMode?
   snapshot     Snapshot?
   emberSessions EmberSession[]
   tags         ImageTag[]
@@ -256,58 +254,6 @@ model Wiki {
   version   Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model KidsStory {
-  id          String          @id @default(cuid())
-  imageId      String          @unique
-  image        Image           @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  title        String
-  subtitle     String?
-  summary      String?
-  visualStyle  String?
-  status       String          @default("ready") // generating, ready, error
-  errorMessage String?
-  version      Int             @default(1)
-  panels       KidsStoryPanel[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-}
-
-model KidsStoryPanel {
-  id          String    @id @default(cuid())
-  storyId      String
-  story        KidsStory @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  position     Int
-  title        String
-  caption      String
-  imagePrompt  String
-  filename     String
-  createdAt    DateTime  @default(now())
-
-  @@unique([storyId, position])
-  @@index([storyId, position])
-}
-
-model SportsMode {
-  id            String   @id @default(cuid())
-  imageId        String   @unique
-  image          Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  sportType      String?
-  subjectName    String?
-  teamName       String?
-  opponentName   String?
-  eventName      String?
-  season         String?
-  outcome        String?
-  finalScore     String?
-  rawDetails     String
-  summary        String?
-  statLinesJson  String?
-  highlightsJson String?
-  parsedAt       DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
 }
 
 model Snapshot {

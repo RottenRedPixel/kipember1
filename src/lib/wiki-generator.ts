@@ -3,7 +3,6 @@ import { getEmberTitle } from './ember-title';
 import { ensureImageAnalysisForImage } from './image-analysis';
 import { parseConfirmedLocationContext } from './location-suggestions';
 import { generateWiki } from './claude';
-import { parseSportsHighlightsJson, parseSportsModeJson } from './sports-mode';
 
 type ParsedEntity = {
   label: string;
@@ -317,7 +316,6 @@ async function fetchImageForWiki(imageId: string) {
           createdAt: true,
         },
       },
-      sportsMode: true,
       tags: {
         include: {
           user: {
@@ -749,7 +747,6 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   if (
     !image.analysis &&
-    !image.sportsMode &&
     allResponses.length === 0 &&
     callHighlights.length === 0 &&
     !image.description?.trim() &&
@@ -803,23 +800,6 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
         sceneInsights: parseSceneInsights(image.analysis.sceneInsightsJson),
       }
     : null;
-  const sportsContext = image.sportsMode
-    ? {
-        sportType: image.sportsMode.sportType,
-        subjectName: image.sportsMode.subjectName,
-        teamName: image.sportsMode.teamName,
-        opponentName: image.sportsMode.opponentName,
-        eventName: image.sportsMode.eventName,
-        season: image.sportsMode.season,
-        outcome: image.sportsMode.outcome,
-        finalScore: image.sportsMode.finalScore,
-        rawDetails: image.sportsMode.rawDetails,
-        summary: image.sportsMode.summary,
-        statLines: parseSportsModeJson(image.sportsMode.statLinesJson),
-        highlights: parseSportsHighlightsJson(image.sportsMode.highlightsJson),
-      }
-    : null;
-
   let storySnapshot = '';
   try {
     storySnapshot = await generateWiki({
@@ -829,7 +809,6 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       confirmedTags,
       confirmedLocation,
       analysis: analysisContext,
-      sportsMode: sportsContext,
       responses: allResponses,
       callSummaries,
       callHighlights,

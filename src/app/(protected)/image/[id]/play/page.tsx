@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import MediaPreview from '@/components/MediaPreview';
 import type { NarrationPreference } from '@/lib/elevenlabs';
-import { Play, BookOpen, Sparkles, Globe } from 'lucide-react';
+import { Play, Sparkles } from 'lucide-react';
 
 type PlayPageData = {
   id: string;
@@ -280,18 +280,7 @@ export default function PlayEmberPage() {
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Link
-          href={`/image/${imageId}/kids`}
-          className="ember-card rounded-[1.8rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
-        >
-          <BookOpen className="h-5 w-5 text-[var(--ember-orange)]" />
-          <div className="mt-4 text-xl font-semibold text-[var(--ember-text)]">Kids Mode</div>
-          <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
-            Turn the memory into an illustrated storybook.
-          </p>
-        </Link>
-
+      <section className="mt-6 grid gap-4 md:grid-cols-2">
         <button
           type="button"
           onClick={handleNarrationToggle}
@@ -319,17 +308,6 @@ export default function PlayEmberPage() {
           <div className="mt-4 text-xl font-semibold text-[var(--ember-text)]">Story Circle</div>
           <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
             See the full conversation trail behind the memory.
-          </p>
-        </Link>
-
-        <Link
-          href={`/image/${imageId}/sports`}
-          className="ember-card rounded-[1.8rem] px-5 py-5 transition hover:border-[rgba(255,102,33,0.24)]"
-        >
-          <Globe className="h-5 w-5 text-[var(--ember-orange)]" />
-          <div className="mt-4 text-xl font-semibold text-[var(--ember-text)]">Sports Mode</div>
-          <p className="mt-2 text-sm leading-7 text-[var(--ember-muted)]">
-            Add structured stats and the game story when the memory is sports-related.
           </p>
         </Link>
       </section>

@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS "KidsStoryPanel";
+DROP TABLE IF EXISTS "KidsStory";
+DROP TABLE IF EXISTS "SportsMode";
