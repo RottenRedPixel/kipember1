@@ -2,6 +2,7 @@
 
 import { ImagePlus, Mic, Pause, Phone, Play, SendHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import CallsPlaceholderList from '@/components/kipember/workflows/CallsPlaceholderList';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -66,9 +67,15 @@ function AudioPlayer({ src }: { src: string }) {
 export default function ContributorFlow({
   imageId,
   onConversationStateChange,
+  onHasChatsChange,
+  onHasCallsChange,
+  chatTab = 'chats',
 }: {
   imageId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
+  onHasChatsChange?: (hasChats: boolean) => void;
+  onHasCallsChange?: (hasCalls: boolean) => void;
+  chatTab?: 'chats' | 'calls';
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -86,6 +93,11 @@ export default function ContributorFlow({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    onHasChatsChange?.(messages.some((m) => m.source !== 'voice'));
+    onHasCallsChange?.(messages.some((m) => m.source === 'voice'));
+  }, [messages, onHasChatsChange, onHasCallsChange]);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,7 +255,11 @@ export default function ContributorFlow({
         }}
       />
 
-      {!isLoadingHistory ? (
+      {chatTab === 'calls' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
+          <CallsPlaceholderList />
+        </div>
+      ) : !isLoadingHistory ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <div className="flex flex-col gap-4">
             {messages.map((message, index) => {
