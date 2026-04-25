@@ -840,7 +840,7 @@ function parseJsonFromText(text: string): unknown {
 
 const IMAGE_ANALYSIS_REPAIR_PROMPT = `You repair malformed JSON responses for an image-analysis pipeline. Return JSON only. Preserve grounded details, and use short neutral fallbacks, null, or [] when fields are missing.`;
 
-const IMAGE_ANALYSIS_CORE_PROMPT = `You are analyzing an image to transform it into a meaningful, searchable memory.
+const IMAGE_ANALYSIS_PROMPT = `You are analyzing an image to transform it into a meaningful, searchable memory.
 
 CORE RULES:
 - Only describe what is visually supported.
@@ -896,9 +896,9 @@ Use this review framework and map it into the JSON:
 
 Also fill peopleObserved, placeSignals, notableThings, activities, and visibleText with the strongest grounded observations.
 Use "unknown", null, or [] instead of guessing.
-{{conciseInstructions}}`;
 
-const IMAGE_ANALYSIS_USER_PROMPT = `Filename: {{originalName}}
+IMAGE CONTEXT:
+Filename: {{originalName}}
 User description: {{userDescription}}
 Metadata summary: {{metadataSummary}}
 Analyze this image as a memory reviewer for Ember.
@@ -906,7 +906,8 @@ Make it useful for search, recall, and future conversation.
 The title should read like a human memory label, not a filename.
 Only include relationships or event labels when they are strongly implied by the image.
 If a detail is uncertain, mark it as unknown or lower-confidence instead of inventing it.
-{{modeInstruction}}`;
+{{modeInstruction}}
+{{conciseInstructions}}`;
 
 async function repairVisionJson(responseText: string): Promise<unknown> {
   const repairSource = extractBalancedJsonObject(responseText) || sanitizeJsonCandidate(responseText);
@@ -977,38 +978,26 @@ async function requestVisionAnalysisText({
 Limit arrays to the strongest items.
 Prefer null over long speculative prose.`
     : '';
-  const developerPrompt = await renderPromptTemplate('image_analysis.core', IMAGE_ANALYSIS_CORE_PROMPT, {
+  const analysisPrompt = await renderPromptTemplate('image_analysis.prompt', IMAGE_ANALYSIS_PROMPT, {
     schemaJson: JSON.stringify(VISION_SCHEMA),
-    conciseInstructions,
-  });
-  const userPrompt = await renderPromptTemplate('image_analysis.user', IMAGE_ANALYSIS_USER_PROMPT, {
     originalName,
     userDescription: userDescription || 'None provided.',
     metadataSummary: metadataSummary || 'No metadata available.',
     modeInstruction: conciseMode
       ? 'Be brief enough that the full response remains compact and valid JSON.'
       : 'Write naturally, but keep the JSON compact and valid.',
+    conciseInstructions,
   });
 
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
     input: [
       {
-        role: 'developer',
-        type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: developerPrompt,
-          },
-        ],
-      },
-      {
         role: 'user',
         content: [
           {
             type: 'input_text',
-            text: userPrompt,
+            text: analysisPrompt,
           },
           {
             type: 'input_image',
