@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Camera, ChevronLeft, ChevronRight,
-  KeyRound, MessageSquarePlus, Phone,
-  Settings, ShieldAlert, User, UserRound, Users,
+  KeyRound,
+  Settings, ShieldAlert, User, Users,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
+import ContributorsListView from '@/components/kipember/ContributorsListView';
+import type { UnifiedContributor } from '@/lib/contributors-pool';
 
 type Section = 'profile' | 'contributors' | 'preferences' | 'password' | 'settings' | null;
 
@@ -120,22 +122,13 @@ export default function AccountScreen({
     setIsDark(localStorage.getItem('ember-theme') !== 'light');
   }, []);
 
-  // Contacts
-  type Contact = {
-    id: string;
-    emberId: string;
-    name: string | null;
-    phoneNumber: string | null;
-    email: string | null;
-    avatarFilename: string | null;
-    emberTitles: string[];
-  };
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  // Unified contributor pool — same data the /tend/contributors view uses.
+  const [contributorPool, setContributorPool] = useState<UnifiedContributor[]>([]);
 
   useEffect(() => {
-    void fetch('/api/user/contacts')
+    void fetch('/api/contributors/pool', { cache: 'no-store' })
       .then((r) => r.json())
-      .then((d) => { if (Array.isArray(d?.contacts)) setContacts(d.contacts); })
+      .then((d) => { if (Array.isArray(d?.contributors)) setContributorPool(d.contributors); })
       .catch(() => undefined);
   }, []);
 
@@ -448,51 +441,20 @@ export default function AccountScreen({
 
           {/* ── Contributors ── */}
           {section === 'contributors' && (
-            <div className="px-5 py-6 flex flex-col gap-4">
-              {contacts.length === 0 ? (
-                <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                  <p className="text-white/30 text-sm px-4 py-4">No contributors yet.</p>
-                </div>
-              ) : contacts.map((c) => {
-                const label = c.name || c.phoneNumber || c.email || 'Unknown';
-                const ini = label.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-                return (
-                  <div
-                    key={c.id}
-                    className="flex items-center rounded-xl overflow-hidden"
-                    style={{ background: 'rgba(255,255,255,0.05)' }}
-                  >
-                    <Link
-                      href={`/tend/contributors?id=${c.emberId}&view=${c.id}&from=account`}
-                      className="flex items-center gap-3 flex-1 min-w-0 px-4 py-3 can-hover"
-                      style={{ minHeight: 44, opacity: 0.9 }}
-                    >
-                      <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
-                        {c.avatarFilename ? (
-                          <img src={`/api/uploads/${c.avatarFilename}`} alt={label} className="w-full h-full object-cover" />
-                        ) : ini}
-                      </div>
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="text-white text-sm font-medium truncate">{label}</span>
-                        {c.emberTitles.length === 1 ? (
-                          <span className="text-white/25 text-xs truncate">{c.emberTitles[0]}</span>
-                        ) : c.emberTitles.length > 1 ? (
-                          <span className="text-white/25 text-xs truncate">Contributed to multiple embers</span>
-                        ) : null}
-                      </div>
-                    </Link>
-                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
-                      <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
-                    </div>
-                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
-                      <MessageSquarePlus size={15} color="var(--text-primary)" strokeWidth={1.8} />
-                    </div>
-                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0 mr-2" style={{ opacity: 0.4 }}>
-                      <UserRound size={15} color="var(--text-primary)" strokeWidth={1.8} />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="px-5 py-6">
+              <ContributorsListView
+                contributors={contributorPool}
+                context={{
+                  kind: 'account',
+                  rowDetailHref: ({ contributor }) => {
+                    // Pick the first ember this person is on as the detail context.
+                    // The detail screen needs an ember to scope the view.
+                    const ember = contributor.embers[0];
+                    if (!ember) return '/account';
+                    return `/tend/contributors?id=${ember.id}&view=${ember.contributorId}&from=account`;
+                  },
+                }}
+              />
             </div>
           )}
 

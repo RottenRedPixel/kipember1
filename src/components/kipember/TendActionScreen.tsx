@@ -21,6 +21,8 @@ import KipemberWikiContent, {
   type KipemberWikiDetail,
 } from '@/components/kipember/KipemberWikiContent';
 import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor';
+import ContributorsListView from '@/components/kipember/ContributorsListView';
+import type { UnifiedContributor } from '@/lib/contributors-pool';
 
 const fieldStyle = {
   background: 'var(--bg-input)',
@@ -365,7 +367,10 @@ export default function TendActionScreen({ action }: { action: string }) {
   const title = TEND_ACTIONS[action];
   const imageId = searchParams.get('id');
   const view = searchParams.get('view');
+  const filterParam = searchParams.get('filter');
+  const contributorFilter: 'ember' | 'all' = filterParam === 'all' ? 'all' : 'ember';
   const [detail, setDetail] = useState<TendDetail | null>(null);
+  const [contributorPool, setContributorPool] = useState<UnifiedContributor[] | null>(null);
   const [cachedCoverUrl, setCachedCoverUrl] = useState<string | null>(null);
   useEffect(() => {
     const id = new URLSearchParams(window.location.search).get('id');
@@ -666,8 +671,31 @@ export default function TendActionScreen({ action }: { action: string }) {
     };
   }, [action, view]);
 
+  // Load the unified contributor pool when on the contributors list view.
+  // Powers both the "This Ember" and "All" filters; back-nav preserves filter via URL.
+  useEffect(() => {
+    if (action !== 'contributors' || view) return;
+    let cancelled = false;
+    async function load() {
+      try {
+        const qs = imageId ? `?emberId=${encodeURIComponent(imageId)}` : '';
+        const res = await fetch(`/api/contributors/pool${qs}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const payload = (await res.json()) as { contributors?: UnifiedContributor[] };
+        if (!cancelled && payload?.contributors) setContributorPool(payload.contributors);
+      } catch {
+        /* leave pool null; UI shows empty state */
+      }
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [action, view, imageId]);
+
   const TendIcon = TEND_ICONS[action];
-  const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}` : '/tend/contributors';
+  const filterSuffix = contributorFilter === 'all' ? '&filter=all' : '';
+  const listHref = resolvedImageId ? `/tend/contributors?id=${resolvedImageId}${filterSuffix}` : '/tend/contributors';
   const tendModalHref = resolvedImageId ? `/ember/${resolvedImageId}?m=tend` : '/home';
   const fromParam = searchParams.get('from');
   const backHref = fromParam === 'account'
@@ -1353,77 +1381,32 @@ export default function TendActionScreen({ action }: { action: string }) {
 
         <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
           {action === 'contributors' && !view ? (
-            <>
-              {(() => {
-                const nonOwnerContributors = contributors.filter(
-                  (c) => c.userId !== detail?.owner?.id && c.user?.id !== detail?.owner?.id
-                );
-                if (nonOwnerContributors.length === 0) {
-                  return (
-                    <WikiCard>
-                      <p className="text-white/30 text-sm">No contributors yet.</p>
-                    </WikiCard>
-                  );
-                }
-                return nonOwnerContributors.map((item) => {
-                  const label = contributorDisplayName(item);
-                  const phoneNumber = contributorPhone(item);
-                  const canTextOrCopy = Boolean(phoneNumber || item.token);
-                  const textDisabled =
-                    !canManageContributors ||
-                    !canTextOrCopy ||
-                    sendingContributorId === item.id;
-                  const callDisabled =
-                    !canManageContributors ||
-                    !canTextOrCopy ||
-                    callingContributorId === item.id;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="flex items-center rounded-xl overflow-hidden"
-                      style={{ background: 'rgba(255,255,255,0.05)' }}
-                    >
-                      <Link
-                        href={`${listHref}&view=${item.id}`}
-                        className="flex items-center gap-3 flex-1 px-4 py-3 can-hover"
-                        style={{ minHeight: 44, opacity: 0.9 }}
-                      >
-                        <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
-                          {item.user?.avatarFilename ? (
-                            <img src={`/api/uploads/${item.user.avatarFilename}`} alt={label} className="w-full h-full object-cover" />
-                          ) : initials(label)}
-                        </div>
-                        <span className="text-white text-sm font-medium">{label}</span>
-                      </Link>
-                      <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
-                        <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
-                      </div>
-                      <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
-                        <MessageSquarePlus size={15} color="var(--text-primary)" strokeWidth={1.8} />
-                      </div>
-                      <Link
-                        href={`${listHref}&view=${item.id}`}
-                        className="w-8 h-11 flex items-center justify-center can-hover flex-shrink-0 mr-2"
-                        style={{ opacity: 0.4 }}
-                        aria-label={`View ${label}`}
-                      >
-                        <UserRound size={15} color="var(--text-primary)" strokeWidth={1.8} />
-                      </Link>
-                    </div>
-                  );
-                });
-              })()}
-              <div className="flex justify-end">
-                <Link
-                  href={`${listHref}&view=add`}
-                  className="w-1/2 flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium can-hover-dim btn-primary"
-                  style={{ background: '#f97316', minHeight: 44 }}
-                >
-                  Add Contributor
-                </Link>
-              </div>
-            </>
+            (() => {
+              if (!resolvedImageId) return null;
+              const baseHref = `/tend/contributors?id=${resolvedImageId}`;
+              const fromSuffix = fromParam ? `&from=${fromParam}` : '';
+              const filtered = (contributorPool ?? []).filter((c) =>
+                contributorFilter === 'ember' ? c.onThisEmber : true
+              );
+              return (
+                <ContributorsListView
+                  contributors={filtered}
+                  context={{
+                    kind: 'ember',
+                    emberId: resolvedImageId,
+                    canManage: canManageContributors,
+                    addNewHref: `${baseHref}${filterSuffix}&view=add${fromSuffix}`,
+                    rowDetailHref: ({ contributorIdOnThisEmber }) =>
+                      `${baseHref}${filterSuffix}&view=${contributorIdOnThisEmber}${fromSuffix}`,
+                    filter: contributorFilter,
+                    filterHrefs: {
+                      ember: `${baseHref}${fromSuffix}`,
+                      all: `${baseHref}&filter=all${fromSuffix}`,
+                    },
+                  }}
+                />
+              );
+            })()
           ) : null}
 
           {action === 'contributors' && view === 'add' ? (
