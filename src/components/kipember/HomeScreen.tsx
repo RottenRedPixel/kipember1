@@ -1056,13 +1056,13 @@ export default function HomeScreen({
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
             {displayImage?.accessType === 'contributor' ? (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=${displayImage?.accessType === 'contributor' ? 'contributor' : 'owner'}` : '/home'} icon={PlusCircle} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=contributor` : '/home'} icon={PlusCircle} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="View Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
               </>
             ) : (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=${displayImage?.accessType === 'contributor' ? 'contributor' : 'owner'}` : '/home'} icon={PlusCircle} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=owner` : '/home'} icon={PlusCircle} />
                 <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
                 <SvgItem label="Edit Time & Place" href={selectedImageId ? `/tend/edit-time-place?id=${selectedImageId}` : '/tend/edit-time-place'} icon={Clock} />
                 <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
