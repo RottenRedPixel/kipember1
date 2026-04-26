@@ -390,12 +390,12 @@ function PlaceholderEntryRow({ entry }: { entry: PlaceholderEntry }) {
           src={entry.source.avatarUrl}
           alt={entry.source.name}
           className="rounded-full object-cover flex-shrink-0"
-          style={{ width: 26, height: 26 }}
+          style={{ width: 29, height: 29 }}
         />
       ) : (
         <div
           className="rounded-full flex items-center justify-center text-white flex-shrink-0"
-          style={{ width: 26, height: 26, background: entry.source.color, fontSize: 10, fontWeight: 600 }}
+          style={{ width: 29, height: 29, background: entry.source.color, fontSize: 11, fontWeight: 600 }}
         >
           {initials(entry.source.name)}
         </div>
@@ -465,12 +465,12 @@ function PlaceholderEmotionalCard() {
                 src={row.person.avatarUrl}
                 alt={row.person.name}
                 className="rounded-full object-cover flex-shrink-0"
-                style={{ width: 26, height: 26 }}
+                style={{ width: 29, height: 29 }}
               />
             ) : (
               <div
                 className="rounded-full flex items-center justify-center text-white flex-shrink-0"
-                style={{ width: 26, height: 26, background: row.person.color, fontSize: 10, fontWeight: 600 }}
+                style={{ width: 29, height: 29, background: row.person.color, fontSize: 11, fontWeight: 600 }}
               >
                 {initials(row.person.name)}
               </div>
@@ -613,7 +613,7 @@ function DummyEmberCallCard({ personName, avatarUrl }: { personName: string; ava
 function AvatarCircle({
   name,
   avatarUrl,
-  size = 32,
+  size = 29,
   bgColor = 'rgba(255,255,255,0.15)',
 }: {
   name: string;
@@ -1629,6 +1629,114 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
+        icon={<Sparkles size={17} />}
+        title="Image Analysis"
+        complete={Boolean(
+          detail?.analysis?.sceneInsights ||
+            detail?.analysis?.summary ||
+            detail?.analysis?.visualDescription ||
+            detail?.analysis?.metadataSummary
+        )}
+      >
+        <WikiCard>
+          {detail ? (
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+                style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+              >
+                <MediaPreview
+                  mediaType={detail.mediaType}
+                  filename={detail.filename}
+                  posterFilename={detail.posterFilename}
+                  originalName={detail.originalName}
+                  usePosterForVideo
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <p className="text-white/50 text-xs font-medium break-words">{detail.originalName}</p>
+            </div>
+          ) : null}
+          <div className="flex flex-col gap-1">
+            {buildStructuredAnalysisText(detail?.analysis || null)
+              .split('\n')
+              .map((line, index) => {
+                const cleaned = line.replace(/\*\*/g, '').trim();
+
+                if (!cleaned) {
+                  return <div key={`analysis-gap-${index}`} className="h-2" />;
+                }
+
+                const isBold = line.startsWith('**') && line.endsWith('**');
+                return (
+                  <p
+                    key={`analysis-line-${index}`}
+                    className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
+                  >
+                    {cleaned}
+                  </p>
+                );
+              })}
+          </div>
+          <p className="text-white/30 text-xs mt-4">
+            Source: GPT-4o
+            {formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)
+              ? ` · Analyzed: ${formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)}`
+              : ''}
+          </p>
+        </WikiCard>
+
+        {visualAttachments
+          .filter((a) => a.analysisText)
+          .map((attachment) => {
+            let parsedAnalysis: KipemberWikiDetail['analysis'] | null = null;
+            try {
+              parsedAnalysis = JSON.parse(attachment.analysisText!) as KipemberWikiDetail['analysis'];
+            } catch {
+              parsedAnalysis = null;
+            }
+            const analysisText = buildStructuredAnalysisText(parsedAnalysis);
+
+            return (
+              <WikiCard key={`analysis-${attachment.id}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+                    style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                  >
+                    <MediaPreview
+                      mediaType={attachment.mediaType}
+                      filename={attachment.filename}
+                      posterFilename={attachment.posterFilename}
+                      originalName={attachment.originalName}
+                      usePosterForVideo
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <p className="text-white/50 text-xs font-medium break-words">{attachment.originalName}</p>
+                </div>
+                <div className="flex flex-col gap-1">
+                  {analysisText.split('\n').map((line, index) => {
+                    const cleaned = line.replace(/\*\*/g, '').trim();
+                    if (!cleaned) return <div key={`att-gap-${attachment.id}-${index}`} className="h-2" />;
+                    const isBold = line.startsWith('**') && line.endsWith('**');
+                    return (
+                      <p
+                        key={`att-line-${attachment.id}-${index}`}
+                        className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
+                      >
+                        {cleaned}
+                      </p>
+                    );
+                  })}
+                </div>
+                <p className="text-white/30 text-xs mt-4">Source: GPT-4o</p>
+              </WikiCard>
+            );
+          })}
+      </WikiSection>
+
+      <WikiSection
         icon={<History size={17} />}
         title="Story Circle"
         complete={totalStoryMessages > 0}
@@ -1785,114 +1893,6 @@ export default function KipemberWikiContent({
 
       <WikiSection icon={<Sparkles size={17} />} title="Extra stories" complete={false}>
         <PlaceholderStoriesCard />
-      </WikiSection>
-
-      <WikiSection
-        icon={<Sparkles size={17} />}
-        title="Image Analysis"
-        complete={Boolean(
-          detail?.analysis?.sceneInsights ||
-            detail?.analysis?.summary ||
-            detail?.analysis?.visualDescription ||
-            detail?.analysis?.metadataSummary
-        )}
-      >
-        <WikiCard>
-          {detail ? (
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
-                style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-              >
-                <MediaPreview
-                  mediaType={detail.mediaType}
-                  filename={detail.filename}
-                  posterFilename={detail.posterFilename}
-                  originalName={detail.originalName}
-                  usePosterForVideo
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <p className="text-white/50 text-xs font-medium break-words">{detail.originalName}</p>
-            </div>
-          ) : null}
-          <div className="flex flex-col gap-1">
-            {buildStructuredAnalysisText(detail?.analysis || null)
-              .split('\n')
-              .map((line, index) => {
-                const cleaned = line.replace(/\*\*/g, '').trim();
-
-                if (!cleaned) {
-                  return <div key={`analysis-gap-${index}`} className="h-2" />;
-                }
-
-                const isBold = line.startsWith('**') && line.endsWith('**');
-                return (
-                  <p
-                    key={`analysis-line-${index}`}
-                    className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
-                  >
-                    {cleaned}
-                  </p>
-                );
-              })}
-          </div>
-          <p className="text-white/30 text-xs mt-4">
-            Source: GPT-4o
-            {formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)
-              ? ` · Analyzed: ${formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)}`
-              : ''}
-          </p>
-        </WikiCard>
-
-        {visualAttachments
-          .filter((a) => a.analysisText)
-          .map((attachment) => {
-            let parsedAnalysis: KipemberWikiDetail['analysis'] | null = null;
-            try {
-              parsedAnalysis = JSON.parse(attachment.analysisText!) as KipemberWikiDetail['analysis'];
-            } catch {
-              parsedAnalysis = null;
-            }
-            const analysisText = buildStructuredAnalysisText(parsedAnalysis);
-
-            return (
-              <WikiCard key={`analysis-${attachment.id}`}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
-                    style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-                  >
-                    <MediaPreview
-                      mediaType={attachment.mediaType}
-                      filename={attachment.filename}
-                      posterFilename={attachment.posterFilename}
-                      originalName={attachment.originalName}
-                      usePosterForVideo
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <p className="text-white/50 text-xs font-medium break-words">{attachment.originalName}</p>
-                </div>
-                <div className="flex flex-col gap-1">
-                  {analysisText.split('\n').map((line, index) => {
-                    const cleaned = line.replace(/\*\*/g, '').trim();
-                    if (!cleaned) return <div key={`att-gap-${attachment.id}-${index}`} className="h-2" />;
-                    const isBold = line.startsWith('**') && line.endsWith('**');
-                    return (
-                      <p
-                        key={`att-line-${attachment.id}-${index}`}
-                        className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
-                      >
-                        {cleaned}
-                      </p>
-                    );
-                  })}
-                </div>
-                <p className="text-white/30 text-xs mt-4">Source: GPT-4o</p>
-              </WikiCard>
-            );
-          })}
       </WikiSection>
 
       {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}
