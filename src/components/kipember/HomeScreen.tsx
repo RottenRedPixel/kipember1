@@ -228,37 +228,21 @@ function WorkflowSlot({
   flow,
   imageId,
   onConversationStateChange,
-  onHasChatsChange,
-  onHasCallsChange,
   chatTab,
 }: {
   flow: HomeEmberFlow;
   imageId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
-  onHasChatsChange: (hasChats: boolean) => void;
-  onHasCallsChange: (hasCalls: boolean) => void;
   chatTab: 'chats' | 'calls';
 }) {
   switch (flow) {
     case 'owner':
       return imageId ? (
-        <OwnerFlow
-          imageId={imageId}
-          onConversationStateChange={onConversationStateChange}
-          onHasChatsChange={onHasChatsChange}
-          onHasCallsChange={onHasCallsChange}
-          chatTab={chatTab}
-        />
+        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} chatTab={chatTab} />
       ) : null;
     case 'contributor':
       return imageId ? (
-        <ContributorFlow
-          imageId={imageId}
-          onConversationStateChange={onConversationStateChange}
-          onHasChatsChange={onHasChatsChange}
-          onHasCallsChange={onHasCallsChange}
-          chatTab={chatTab}
-        />
+        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} chatTab={chatTab} />
       ) : null;
     default:
       return null;
@@ -313,8 +297,6 @@ export default function HomeScreen({
   const [uploadError, setUploadError] = useState('');
   const [storedTheme, setStoredTheme] = useState<string | null>(null);
   const [hasConversationHistory, setHasConversationHistory] = useState(false);
-  const [hasChats, setHasChats] = useState(false);
-  const [hasCalls, setHasCalls] = useState(false);
   const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [photoOpacity, setPhotoOpacity] = useState(1);
@@ -340,9 +322,7 @@ export default function HomeScreen({
   const flow = parseHomeEmberFlow(rawFlow);
   const emberOpen = flow !== null;
   const chatExpanded = emberOpen && view === 'full';
-  const rawChatTab = params.get('chat') === 'calls' ? 'calls' : 'chats';
-  const showChatTabs = emberOpen && hasChats && hasCalls;
-  const chatTab: 'chats' | 'calls' = showChatTabs ? rawChatTab : 'chats';
+  const chatTab: 'chats' | 'calls' = params.get('chat') === 'calls' ? 'calls' : 'chats';
   const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
   const swipeEnabled = !firstEmber && !emberOpen && !modal && !step && images.length > 1;
   const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
@@ -1135,7 +1115,7 @@ export default function HomeScreen({
                 </span>
               </span>
             </Link>
-            {showChatTabs ? (
+            {flow ? (
               <div
                 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 rounded-xl p-1"
                 style={{ background: 'var(--bg-surface)' }}
@@ -1204,8 +1184,6 @@ export default function HomeScreen({
                 flow={flow}
                 imageId={selectedImageId}
                 onConversationStateChange={setHasConversationHistory}
-                onHasChatsChange={setHasChats}
-                onHasCallsChange={setHasCalls}
                 chatTab={chatTab}
               />
             </div>

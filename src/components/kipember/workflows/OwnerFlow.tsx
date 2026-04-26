@@ -67,14 +67,10 @@ function AudioPlayer({ src }: { src: string }) {
 export default function OwnerFlow({
   imageId,
   onConversationStateChange,
-  onHasChatsChange,
-  onHasCallsChange,
   chatTab = 'chats',
 }: {
   imageId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
-  onHasChatsChange?: (hasChats: boolean) => void;
-  onHasCallsChange?: (hasCalls: boolean) => void;
   chatTab?: 'chats' | 'calls';
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -95,11 +91,6 @@ export default function OwnerFlow({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
-
-  useEffect(() => {
-    onHasChatsChange?.(messages.some((m) => m.source !== 'voice'));
-    onHasCallsChange?.(messages.some((m) => m.source === 'voice'));
-  }, [messages, onHasChatsChange, onHasCallsChange]);
 
   useEffect(() => {
     let cancelled = false;
