@@ -2,7 +2,7 @@ import { Prisma } from '@/generated/prisma/client';
 import { prisma } from '@/lib/db';
 
 export type EmberParticipantType = 'owner' | 'contributor' | 'guest';
-export type EmberSessionType = 'chat' | 'call';
+export type EmberSessionType = 'chat' | 'call' | 'voice';
 
 export type EmberSessionIdentity = {
   imageId: string;
