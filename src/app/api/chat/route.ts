@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ask Ember is currently disabled' }, { status: 503 });
     }
 
-    const { imageId, message, inputMode } = await request.json();
+    const { imageId, message } = await request.json();
     if (!imageId || !message) {
       return NextResponse.json({ error: 'imageId and message are required' }, { status: 400 });
     }
@@ -88,13 +88,11 @@ export async function POST(request: NextRequest) {
         sessionId: session.id,
         role: 'user',
         content: message,
-        source: inputMode === 'voice' ? 'voice' : 'web',
+        source: 'web',
       },
     });
 
-    const response = await generateEmberChatReply(
-      inputMode === 'voice' ? 'voice_message' : 'message'
-    );
+    const response = await generateEmberChatReply('message');
 
     await prisma.emberMessage.create({
       data: { sessionId: session.id, role: 'assistant', content: response },

@@ -20,7 +20,6 @@ import {
   Settings,
   Leaf,
   Link2,
-  ListChecks,
   Mail,
   MessageCircle,
   Share2,
@@ -233,7 +232,7 @@ function WorkflowSlot({
   flow: HomeEmberFlow;
   imageId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
-  chatTab: 'chats' | 'calls';
+  chatTab: 'chats' | 'voice' | 'calls';
 }) {
   switch (flow) {
     case 'owner':
@@ -322,7 +321,9 @@ export default function HomeScreen({
   const flow = parseHomeEmberFlow(rawFlow);
   const emberOpen = flow !== null;
   const chatExpanded = emberOpen && view === 'full';
-  const chatTab: 'chats' | 'calls' = params.get('chat') === 'calls' ? 'calls' : 'chats';
+  const rawChatParam = params.get('chat');
+  const chatTab: 'chats' | 'voice' | 'calls' =
+    rawChatParam === 'voice' ? 'voice' : rawChatParam === 'calls' ? 'calls' : 'chats';
   const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
   const swipeEnabled = !firstEmber && !emberOpen && !modal && !step && images.length > 1;
   const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
@@ -1055,21 +1056,20 @@ export default function HomeScreen({
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
             {displayImage?.accessType === 'contributor' ? (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=contributor` : '/home'} icon={PlusCircle} />
+                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=${displayImage?.accessType === 'contributor' ? 'contributor' : 'owner'}` : '/home'} icon={PlusCircle} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="View Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
               </>
             ) : (
               <>
+                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=${displayImage?.accessType === 'contributor' ? 'contributor' : 'owner'}` : '/home'} icon={PlusCircle} />
                 <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
                 <SvgItem label="Edit Time & Place" href={selectedImageId ? `/tend/edit-time-place?id=${selectedImageId}` : '/tend/edit-time-place'} icon={Clock} />
                 <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
                 <SvgItem label="Frame" href={selectedImageId ? `/tend/frame?id=${selectedImageId}` : '/tend/frame'} icon={ScanLine} />
                 <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
-                <SvgItem label="Checklist" href={selectedImageId ? `/tend/checklist?id=${selectedImageId}` : '/tend/checklist'} icon={ListChecks} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
                 <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
-                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=owner` : '/home'} icon={PlusCircle} />
                 <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
               </>
             )}
@@ -1090,7 +1090,7 @@ export default function HomeScreen({
         <div
           className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
           style={{
-            top: chatExpanded ? '25%' : emberOpen ? '55%' : 'auto',
+            top: chatExpanded ? '25%' : emberOpen ? '65%' : 'auto',
             background: 'var(--bg-screen)',
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
@@ -1129,6 +1129,16 @@ export default function HomeScreen({
                   }}
                 >
                   Chats
+                </Link>
+                <Link
+                  href={buildHomeHref({ chat: 'voice' })}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  style={{
+                    background: chatTab === 'voice' ? 'var(--bg-screen)' : 'transparent',
+                    color: chatTab === 'voice' ? '#ffffff' : 'var(--text-secondary)',
+                  }}
+                >
+                  Voice
                 </Link>
                 <Link
                   href={buildHomeHref({ chat: 'calls' })}

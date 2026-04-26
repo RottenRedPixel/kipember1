@@ -137,7 +137,7 @@ model EmberSession {
   browserId        String?
   participantType  String                             // owner | contributor | guest
   participantId    String                             // user, contributor, or browser identifier for session grouping
-  sessionType      String         @default("chat")    // chat | call
+  sessionType      String         @default("chat")    // chat | call | voice
   status           String         @default("active")  // active, completed
   currentStep      String?                            // interview state: greeting, context, who, what, when, where, why, how, followup, closing
   personaName      String?
@@ -167,6 +167,7 @@ model EmberMessage {
   content       String
   source        String       @default("web") // web, sms, voice
   imageFilename String?
+  audioFilename String?
   question      String?      // for structured Q&A (from interview responses)
   questionType  String?      // context, who, what, when, where, why, how, followup
   createdAt     DateTime     @default(now())

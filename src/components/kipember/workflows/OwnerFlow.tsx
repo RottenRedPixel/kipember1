@@ -1,8 +1,10 @@
 'use client';
 
-import { ImagePlus, Mic, Pause, Phone, Play, SendHorizontal } from 'lucide-react';
+import { ImagePlus, Mic, Pause, Phone, Play, SendHorizontal, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import CallsPlaceholderList from '@/components/kipember/workflows/CallsPlaceholderList';
+import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
+import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -71,8 +73,9 @@ export default function OwnerFlow({
 }: {
   imageId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
-  chatTab?: 'chats' | 'calls';
+  chatTab?: 'chats' | 'voice' | 'calls';
 }) {
+  const voice = useVoiceRecording(imageId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -275,11 +278,17 @@ export default function OwnerFlow({
         }}
       />
 
-      {chatTab === 'calls' ? (
+      {chatTab === 'voice' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
+          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} />
+        </div>
+      ) : chatTab === 'calls' ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <CallsPlaceholderList />
         </div>
-      ) : !isLoadingHistory ? (
+      ) : isLoadingHistory ? (
+        <div className="flex-1 min-h-0" />
+      ) : (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <div className="flex flex-col gap-4">
             {messages.map((message, index) => {
@@ -332,7 +341,7 @@ export default function OwnerFlow({
             <div ref={messagesEndRef} />
           </div>
         </div>
-      ) : null}
+      )}
 
       <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2 flex-shrink-0">
         <button type="button" onClick={() => void triggerSelfInvite()} disabled={isCalling || hasPhoneNumber === false} className="flex h-11 w-11 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer" style={{ background: isCalling ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)', color: '#f97316' }} aria-label="Call my phone">
@@ -343,8 +352,18 @@ export default function OwnerFlow({
         </button>
         <div className="relative min-w-0 flex-1">
           <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Chat with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
-          <button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} disabled={isSending} className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer" style={{ color: isRecording ? 'white' : 'rgba(255,255,255,0.5)', background: isRecording ? 'rgba(249,115,22,0.95)' : 'transparent' }} aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}>
-            <Mic size={15} />
+          <button
+            type="button"
+            onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
+            disabled={voice.isUploading}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
+            style={{
+              color: voice.isRecording ? 'white' : 'rgba(255,255,255,0.5)',
+              background: voice.isRecording ? 'rgba(249,115,22,0.95)' : 'transparent',
+            }}
+            aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
+          >
+            {voice.isRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
           </button>
         </div>
         <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
@@ -352,12 +371,15 @@ export default function OwnerFlow({
         </button>
       </form>
 
-      {isRecording || isUploading || error || status ? (
+      {voice.isRecording || voice.isUploading || voice.error || isUploading || error || status ? (
         <div className="px-2 pt-2 text-xs">
           {error ? <p className="text-[rgba(255,180,180,0.92)]">{error}</p>
+            : voice.error ? <p className="text-[rgba(255,180,180,0.92)]">{voice.error}</p>
             : status ? <p className="text-white/48">{status}</p>
+            : voice.isRecording ? <p className="text-white/48">Recording — tap the square to stop.</p>
+            : voice.isUploading ? <p className="text-white/48">Saving voice message…</p>
             : isUploading ? <p className="text-white/48">Adding to this memory...</p>
-            : <p className="text-white/48">Listening...</p>}
+            : null}
         </div>
       ) : null}
     </div>

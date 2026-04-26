@@ -7,8 +7,10 @@ import {
   Clock,
   FileText,
   GitCompareArrows,
+  Heart,
   History,
   Image as ImageIcon,
+  Lightbulb,
   MapPin,
   MessageCircle,
   Mic,
@@ -124,6 +126,13 @@ export type KipemberTag = {
   topPct?: number | null;
   widthPct?: number | null;
   heightPct?: number | null;
+  createdAt?: string | Date;
+  createdBy?: {
+    id: string;
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+  } | null;
 };
 
 export type KipemberAttachment = {
@@ -288,6 +297,211 @@ function initials(value: string) {
     .join('')
     .slice(0, 2)
     .toUpperCase();
+}
+
+// ─── Placeholder Why / Emotional / Stories sections ──────────────────────────
+// These mirror the styling from the (now-removed) Checklist screen with dummy
+// data, ready to wire to real sources later.
+
+const PLACEHOLDER_PERSON_COLORS = ['#2563eb', '#7c3aed', '#16a34a', '#b45309', '#db2777', '#0891b2'];
+
+function colorForName(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return PLACEHOLDER_PERSON_COLORS[h % PLACEHOLDER_PERSON_COLORS.length];
+}
+
+function relativeAt(value: string) {
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Date.now() - then;
+  const m = Math.round(diff / 60_000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.round(h / 24);
+  if (d < 7) return `${d}d`;
+  return `${Math.round(d / 7)}w`;
+}
+
+type PlaceholderPerson = {
+  name: string;
+  avatarUrl?: string | null;
+  color: string;
+};
+
+type PlaceholderEntry = {
+  value: string;
+  source: PlaceholderPerson;
+  channel: 'chat' | 'call';
+  at: string;
+};
+
+function PlaceholderSourcePill({ entry }: { entry: PlaceholderEntry }) {
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5">
+      {entry.source.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={entry.source.avatarUrl}
+          alt={entry.source.name}
+          className="rounded-full object-cover flex-shrink-0"
+          style={{ width: 18, height: 18 }}
+        />
+      ) : (
+        <div
+          className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+          style={{ width: 18, height: 18, background: entry.source.color, fontSize: 9, fontWeight: 600 }}
+        >
+          {initials(entry.source.name)}
+        </div>
+      )}
+      <span className="text-white/60 text-[11px]">{entry.source.name.split(/\s+/)[0] || entry.source.name}</span>
+      {entry.channel === 'chat' ? (
+        <MessageCircle size={10} className="text-white/40" fill="currentColor" stroke="currentColor" />
+      ) : (
+        <Phone size={10} className="text-white/40" fill="currentColor" stroke="currentColor" />
+      )}
+      <span className="text-white/30 text-[10px]">· {relativeAt(entry.at)}</span>
+    </div>
+  );
+}
+
+function buildPlaceholderPeople() {
+  const personA: PlaceholderPerson = { name: 'Owner', avatarUrl: null, color: PLACEHOLDER_PERSON_COLORS[0] };
+  const personB: PlaceholderPerson = { name: 'Sarah', avatarUrl: null, color: colorForName('Sarah') };
+  const personC: PlaceholderPerson = { name: 'Mom', avatarUrl: null, color: colorForName('Mom') };
+  return { personA, personB, personC };
+}
+
+function PlaceholderWhyCard() {
+  const { personC } = buildPlaceholderPeople();
+  const at = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+  const entries: PlaceholderEntry[] = [
+    {
+      value: "We hadn't all been together since Christmas — the holidays were a blur",
+      source: personC,
+      channel: 'call',
+      at,
+    },
+  ];
+  return (
+    <WikiCard>
+      <div className="flex flex-col gap-2">
+        {entries.map((entry, i) => (
+          <div
+            key={i}
+            className="rounded-lg px-3 py-2"
+            style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+          >
+            <p className="text-white/85 text-xs leading-relaxed">{entry.value}</p>
+            <PlaceholderSourcePill entry={entry} />
+          </div>
+        ))}
+      </div>
+    </WikiCard>
+  );
+}
+
+function PlaceholderEmotionalCard() {
+  const { personA, personB, personC } = buildPlaceholderPeople();
+  const t = (mins: number) => new Date(Date.now() - mins * 60_000).toISOString();
+  const rows: Array<{
+    person: PlaceholderPerson;
+    value: string | null;
+    channel: 'chat' | 'call' | null;
+    at: string | null;
+  }> = [
+    { person: personA, value: 'happy, relaxed, proud', channel: 'chat', at: t(120) },
+    { person: personB, value: 'tired but joyful', channel: 'call', at: t(30) },
+    { person: personC, value: null, channel: null, at: null },
+  ];
+  return (
+    <WikiCard>
+      <div className="flex flex-col gap-2">
+        {rows.map((row, i) => (
+          <div
+            key={i}
+            className="rounded-lg px-3 py-2 flex items-center gap-2.5"
+            style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+          >
+            {row.person.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={row.person.avatarUrl}
+                alt={row.person.name}
+                className="rounded-full object-cover flex-shrink-0"
+                style={{ width: 26, height: 26 }}
+              />
+            ) : (
+              <div
+                className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+                style={{ width: 26, height: 26, background: row.person.color, fontSize: 10, fontWeight: 600 }}
+              >
+                {initials(row.person.name)}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-xs font-medium">
+                {row.person.name.split(/\s+/)[0] || row.person.name}
+              </p>
+              {row.value ? (
+                <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{row.value}&rdquo;</p>
+              ) : (
+                <p className="text-white/25 text-[11px] mt-0.5 italic">no answer yet</p>
+              )}
+            </div>
+            {row.value && row.channel ? (
+              <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
+                {row.channel === 'chat' ? (
+                  <MessageCircle size={10} fill="currentColor" stroke="currentColor" />
+                ) : (
+                  <Phone size={10} fill="currentColor" stroke="currentColor" />
+                )}
+                <span>{row.at ? relativeAt(row.at) : ''}</span>
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </WikiCard>
+  );
+}
+
+function PlaceholderStoriesCard() {
+  const { personA, personC } = buildPlaceholderPeople();
+  const t = (mins: number) => new Date(Date.now() - mins * 60_000).toISOString();
+  const stories: PlaceholderEntry[] = [
+    {
+      value: 'Liam laughed for the first time when his uncle made a face at him across the table.',
+      source: personC,
+      channel: 'call',
+      at: t(1440),
+    },
+    {
+      value: "Sarah brought her dog and the dog ate half the cake before anyone noticed.",
+      source: personA,
+      channel: 'chat',
+      at: t(120),
+    },
+  ];
+  return (
+    <WikiCard>
+      <div className="flex flex-col gap-2">
+        {stories.map((entry, i) => (
+          <div
+            key={i}
+            className="rounded-lg px-3 py-2"
+            style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+          >
+            <p className="text-white/85 text-xs leading-relaxed">{entry.value}</p>
+            <PlaceholderSourcePill entry={entry} />
+          </div>
+        ))}
+      </div>
+    </WikiCard>
+  );
 }
 
 function DummyEmberCallCard({ personName, avatarUrl }: { personName: string; avatarUrl?: string | null }) {
@@ -551,7 +765,7 @@ function buildStructuredAnalysisText(
   appendAnalysisLine(peopleLines, 'Body Language', people?.bodyLanguageAndExpressions);
   appendAnalysisLine(peopleLines, 'Relationships', relationships);
   if (peopleLines.length > 0) {
-    sections.push('**PEOPLE & DEMOGRAPHICS:**');
+    sections.push('**PEOPLE:**');
     sections.push(...peopleLines);
   }
 
@@ -1388,6 +1602,10 @@ export default function KipemberWikiContent({
         </WikiSection>
       ) : null}
 
+      <WikiSection icon={<Lightbulb size={17} />} title="Why" complete={false}>
+        <PlaceholderWhyCard />
+      </WikiSection>
+
       <WikiSection
         icon={<Users size={17} />}
         title="Tagged People"
@@ -1410,6 +1628,14 @@ export default function KipemberWikiContent({
             <p className="text-white/30 text-sm">No people tagged yet.</p>
           )}
         </WikiCard>
+      </WikiSection>
+
+      <WikiSection icon={<Heart size={17} />} title="Emotional state" complete={false}>
+        <PlaceholderEmotionalCard />
+      </WikiSection>
+
+      <WikiSection icon={<Sparkles size={17} />} title="Extra stories" complete={false}>
+        <PlaceholderStoriesCard />
       </WikiSection>
 
       <WikiSection

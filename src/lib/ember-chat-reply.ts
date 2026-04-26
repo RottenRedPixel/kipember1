@@ -6,8 +6,7 @@ export type EmberChatTrigger =
   | 'welcome_returning'
   | 'message'
   | 'photo_upload'
-  | 'video_upload'
-  | 'voice_message';
+  | 'video_upload';
 
 const EMBER_CHAT_UNIFIED_FALLBACK_PROMPT = `You are Ember, the chat that lives inside a memory-keeping app.
 

@@ -47,13 +47,13 @@ export default function CallsPlaceholderList() {
                 {isUser ? 'you' : 'ember'}
               </span>
               <div
-                className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
+                className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
                 style={{
                   background: isUser ? 'rgba(249,115,22,0.18)' : 'var(--bg-ember-bubble)',
                   border: isUser ? '1px solid rgba(249,115,22,0.45)' : '1px solid var(--border-ember)',
                 }}
               >
-                {msg.content}
+                <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">{msg.content}</p>
                 {msg.audioUrl ? (
                   <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
                     <a

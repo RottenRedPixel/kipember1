@@ -368,6 +368,14 @@ export async function GET(
                   inviteSent: true,
                 },
               },
+              createdByUser: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  avatarFilename: true,
+                },
+              },
             },
           },
           attachments: {
@@ -699,7 +707,19 @@ export async function GET(
           ? image.contributors.find((contributor) => contributor.userId === auth.user.id) || null
           : null,
       attachments: image.attachments,
-      tags: image.tags,
+      tags: image.tags.map((tag) => ({
+        ...tag,
+        createdBy: tag.createdByUser
+          ? {
+              id: tag.createdByUser.id,
+              name: tag.createdByUser.name,
+              email: tag.createdByUser.email,
+              avatarUrl: tag.createdByUser.avatarFilename
+                ? `/api/uploads/${tag.createdByUser.avatarFilename}`
+                : null,
+            }
+          : null,
+      })),
       friends,
       tagIdentities: Array.from(tagIdentityMap.values()).slice(0, 12),
       analysis: image.analysis

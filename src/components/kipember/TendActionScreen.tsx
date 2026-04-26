@@ -20,7 +20,6 @@ import KipemberWikiContent, {
   type KipemberContributor,
   type KipemberWikiDetail,
 } from '@/components/kipember/KipemberWikiContent';
-import KipemberChecklistContent from '@/components/kipember/KipemberChecklistContent';
 import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
@@ -1125,21 +1124,6 @@ export default function TendActionScreen({ action }: { action: string }) {
     }
   }
 
-  async function addAttachment(file: File) {
-    if (!resolvedImageId) {
-      return;
-    }
-    const formData = new FormData();
-    formData.append('file', file);
-    const response = await fetch(`/api/images/${resolvedImageId}/attachments`, {
-      method: 'POST',
-      body: formData,
-    });
-    const payload = await response.json().catch(() => ({}));
-    setStatus(response.ok ? 'Content added.' : payload?.error || 'Failed to add content.');
-    await refreshDetail();
-  }
-
   // Keep refs in sync so drag-end closure always has fresh values
   useEffect(() => { faceTagsRef.current = faceTags; }, [faceTags]);
   savePositionRef.current = (tagId: string) => {
@@ -1684,8 +1668,6 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'view-wiki' ? <KipemberWikiContent detail={detail} /> : null}
 
-          {action === 'checklist' ? <KipemberChecklistContent detail={detail} /> : null}
-
           {action === 'edit-title' ? (
             <>
               {/* Ember title input */}
@@ -1842,31 +1824,6 @@ export default function TendActionScreen({ action }: { action: string }) {
             />
           ) : null}
 
-          {action === 'add-content' ? (
-            <>
-              <label
-                className="w-full rounded-full text-white text-sm font-medium btn-primary flex items-center justify-center"
-                style={{ background: '#f97316', minHeight: 44 }}
-              >
-                Add Photo or Video
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      void addAttachment(file);
-                    }
-                  }}
-                />
-              </label>
-              {(detail?.attachments || []).map((attachment) => (
-                <WikiCard key={attachment.id}>
-                  <p className="text-white/90 text-sm">{attachment.originalName}</p>
-                </WikiCard>
-              ))}
-            </>
-          ) : null}
 
           {action === 'settings' ? (
             <>
