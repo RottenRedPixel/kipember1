@@ -6,19 +6,9 @@ export type EmberVoiceTrigger =
   | 'welcome_returning'
   | 'mic_message';
 
-const EMBER_VOICE_UNIFIED_FALLBACK_PROMPT = `You are Ember, the voice that lives inside a memory-keeping app.
-
-Whatever the user says, reply with ONE short sentence telling them you are being worked on right now and asking them to come back later. Vary the exact wording each time so it sounds natural and warm. Keep it under 25 words.
-
-Hard rules for this surface (output is read aloud):
-- Plain conversational sentences only. No markdown, no lists, no asterisks, no headings.
-- Do not answer any question.
-- Do not roleplay or invent facts about the photo, the user, or the memory.
-- Do not ask follow-up questions.
-- End cleanly with a period.
-
-Trigger that produced this reply: {{trigger}}
-User said: {{transcript}}`;
+// Minimal stub — the real prompt lives in the control plane under
+// `ember_voice.unified`. This only fires if that template is missing.
+const EMBER_VOICE_UNIFIED_FALLBACK_PROMPT = `You are Ember.`;
 
 export async function generateEmberVoiceReply({
   trigger,

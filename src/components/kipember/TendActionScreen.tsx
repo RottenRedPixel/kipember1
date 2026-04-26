@@ -1944,7 +1944,7 @@ export default function TendActionScreen({ action }: { action: string }) {
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <MapPin size={17} color="var(--text-secondary)" strokeWidth={1.6} />
-                  <h3 className="text-white font-medium text-base">Location</h3>
+                  <h3 className="text-white font-medium text-base">Place</h3>
                 </div>
                 <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                   <input

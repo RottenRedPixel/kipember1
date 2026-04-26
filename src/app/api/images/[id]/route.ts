@@ -602,6 +602,7 @@ export async function GET(
     let chatBlocks: Array<{
       personName: string;
       avatarUrl: string | null;
+      isOwner: boolean;
       messages: Array<{
         role: string;
         content: string;
@@ -613,7 +614,7 @@ export async function GET(
     }> = [];
     try {
       const emberSessions = await prisma.emberSession.findMany({
-        where: { imageId: id, sessionType: { in: ['chat', 'call'] } },
+        where: { imageId: id, sessionType: { in: ['chat', 'call', 'voice'] } },
         include: {
           user: { select: { id: true, name: true, email: true, avatarFilename: true } },
           contributor: { select: { id: true, name: true, email: true } },
@@ -629,7 +630,7 @@ export async function GET(
         audioUrl?: string | null;
         createdAt: string;
       };
-      const byPerson = new Map<string, { personName: string; avatarUrl: string | null; messages: ChatMessage[] }>();
+      const byPerson = new Map<string, { personName: string; avatarUrl: string | null; isOwner: boolean; messages: ChatMessage[] }>();
       for (const session of emberSessions) {
         const personName =
           session.user?.name ||
@@ -643,7 +644,8 @@ export async function GET(
           session.participantId ||
           personName;
         const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
-        const bucket = byPerson.get(personKey) || { personName, avatarUrl, messages: [] };
+        const isOwner = session.userId === image.ownerId;
+        const bucket = byPerson.get(personKey) || { personName, avatarUrl, isOwner, messages: [] };
         for (const msg of session.messages) {
           if (msg.questionType) continue;
           bucket.messages.push({

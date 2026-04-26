@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
 import {
   AlertTriangle,
@@ -14,6 +15,7 @@ import {
   MapPin,
   MessageCircle,
   Mic,
+  PencilLine,
   Phone,
   Play,
   RefreshCw,
@@ -208,6 +210,7 @@ export type KipemberWikiDetail = {
   chatBlocks?: Array<{
     personName: string;
     avatarUrl?: string | null;
+    isOwner?: boolean;
     messages: Array<{
       role: string;
       content: string;
@@ -387,20 +390,18 @@ function PlaceholderWhyCard() {
     },
   ];
   return (
-    <WikiCard>
-      <div className="flex flex-col gap-2">
-        {entries.map((entry, i) => (
-          <div
-            key={i}
-            className="rounded-lg px-3 py-2"
-            style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-          >
-            <p className="text-white/85 text-xs leading-relaxed">{entry.value}</p>
-            <PlaceholderSourcePill entry={entry} />
-          </div>
-        ))}
-      </div>
-    </WikiCard>
+    <div className="flex flex-col gap-2">
+      {entries.map((entry, i) => (
+        <div
+          key={i}
+          className="rounded-lg px-3 py-2"
+          style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+        >
+          <p className="text-white/85 text-xs leading-relaxed">{entry.value}</p>
+          <PlaceholderSourcePill entry={entry} />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -418,9 +419,8 @@ function PlaceholderEmotionalCard() {
     { person: personC, value: null, channel: null, at: null },
   ];
   return (
-    <WikiCard>
-      <div className="flex flex-col gap-2">
-        {rows.map((row, i) => (
+    <div className="flex flex-col gap-2">
+      {rows.map((row, i) => (
           <div
             key={i}
             className="rounded-lg px-3 py-2 flex items-center gap-2.5"
@@ -464,8 +464,7 @@ function PlaceholderEmotionalCard() {
             ) : null}
           </div>
         ))}
-      </div>
-    </WikiCard>
+    </div>
   );
 }
 
@@ -487,20 +486,18 @@ function PlaceholderStoriesCard() {
     },
   ];
   return (
-    <WikiCard>
-      <div className="flex flex-col gap-2">
-        {stories.map((entry, i) => (
-          <div
-            key={i}
-            className="rounded-lg px-3 py-2"
-            style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-          >
-            <p className="text-white/85 text-xs leading-relaxed">{entry.value}</p>
-            <PlaceholderSourcePill entry={entry} />
-          </div>
-        ))}
-      </div>
-    </WikiCard>
+    <div className="flex flex-col gap-2">
+      {stories.map((entry, i) => (
+        <div
+          key={i}
+          className="rounded-lg px-3 py-2"
+          style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+        >
+          <p className="text-white/85 text-xs leading-relaxed">{entry.value}</p>
+          <PlaceholderSourcePill entry={entry} />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -825,16 +822,23 @@ function buildStructuredAnalysisText(
   return sections.join('\n');
 }
 
-function WikiBadge({ complete }: { complete: boolean }) {
+function WikiBadge({ complete, label }: { complete: boolean; label?: React.ReactNode }) {
+  // Three palettes:
+  //   complete           → green
+  //   not complete + default "Not Complete" → red
+  //   not complete + custom label (e.g. "Need to tag 2 People") → orange
+  const hasCustomLabel = label != null;
+  const palette = complete
+    ? { bg: 'rgba(34,197,94,0.15)', fg: '#4ade80' }
+    : hasCustomLabel
+      ? { bg: 'rgba(249,115,22,0.15)', fg: '#f97316' }
+      : { bg: 'rgba(239,68,68,0.15)', fg: '#f87171' };
   return (
     <span
       className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0"
-      style={{
-        background: complete ? 'rgba(34,197,94,0.15)' : 'rgba(249,115,22,0.15)',
-        color: complete ? '#4ade80' : '#f97316',
-      }}
+      style={{ background: palette.bg, color: palette.fg }}
     >
-      {complete ? 'Complete' : 'Not Complete'}
+      {label ?? (complete ? 'Complete' : 'Not Complete')}
     </span>
   );
 }
@@ -843,11 +847,15 @@ function WikiSection({
   icon,
   title,
   complete,
+  badgeLabel,
+  editHref,
   children,
 }: {
   icon: React.ReactNode;
   title: string;
   complete: boolean;
+  badgeLabel?: React.ReactNode;
+  editHref?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -857,7 +865,25 @@ function WikiSection({
           <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
           <h3 className="text-white font-medium text-base">{title}</h3>
         </div>
-        <WikiBadge complete={complete} />
+        <div className="flex items-center gap-2">
+          {editHref ? (
+            <Link
+              href={editHref}
+              aria-label={`Edit ${title}`}
+              className="flex items-center justify-center rounded-full can-hover"
+              style={{
+                width: 28,
+                height: 28,
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <PencilLine size={13} />
+            </Link>
+          ) : null}
+          <WikiBadge complete={complete} label={badgeLabel} />
+        </div>
       </div>
       {children}
     </div>
@@ -1189,10 +1215,15 @@ export default function KipemberWikiContent({
     detail?.analysis?.longitude ??
     null;
   const coordinateLine = formatCoordinates(latitude, longitude);
-  const totalStoryMessages = (detail?.chatBlocks || []).reduce(
-    (sum, block) => sum + block.messages.length,
+  // Story Circle completion is gated on contributor (non-owner) engagement —
+  // the owner's own sessions don't count. Auto-welcome assistant messages are
+  // also excluded since they don't reflect real engagement.
+  const contributorUserMessages = (detail?.chatBlocks || []).reduce(
+    (sum, block) =>
+      sum + (block.isOwner ? 0 : block.messages.filter((m) => m.role === 'user').length),
     0
   );
+  const totalStoryMessages = contributorUserMessages;
   const isAudioAttachment = (attachment: KipemberAttachment) =>
     attachment.mediaType === 'AUDIO' ||
     isAudioLikeFilename(attachment.filename) ||
@@ -1286,38 +1317,6 @@ export default function KipemberWikiContent({
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar py-5 flex flex-col gap-7 pb-10">
       <WikiSection
-        icon={<FileText size={17} />}
-        title="Title"
-        complete={Boolean(detail?.title || detail?.originalName)}
-      >
-        <WikiCard>
-          <p className="text-white font-medium text-base">
-            {detail?.title || detail?.originalName || 'Untitled Ember'}
-          </p>
-          <p className="text-white/30 text-xs">
-            Source: {detail?.title ? 'Manual entry' : 'Original upload'}
-          </p>
-        </WikiCard>
-      </WikiSection>
-
-      <WikiSection
-        icon={<ScanEye size={17} />}
-        title="Snapshot"
-        complete={Boolean(detail?.snapshot?.script)}
-      >
-        <WikiCard>
-          {detail?.snapshot?.script ? (
-            <>
-              <p className="text-white/90 text-sm leading-relaxed">{detail.snapshot.script}</p>
-              <p className="text-white/30 text-xs">Source: AI generated</p>
-            </>
-          ) : (
-            <p className="text-white/30 text-sm">No snapshot yet.</p>
-          )}
-        </WikiCard>
-      </WikiSection>
-
-      <WikiSection
         icon={<ShieldUser size={17} />}
         title="Owner"
         complete={Boolean(ownerName)}
@@ -1344,9 +1343,104 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
+        icon={<FileText size={17} />}
+        title="Title"
+        complete={Boolean(detail?.title || detail?.originalName)}
+        editHref={detail?.id ? `/tend/edit-title?id=${detail.id}` : undefined}
+      >
+        <WikiCard>
+          <p className="text-white font-medium text-base">
+            {detail?.title || detail?.originalName || 'Untitled Ember'}
+          </p>
+          <p className="text-white/30 text-xs">
+            Source: {detail?.title ? 'Manual entry' : 'Original upload'}
+          </p>
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
+        icon={<ScanEye size={17} />}
+        title="Snapshot"
+        complete={Boolean(detail?.snapshot?.script)}
+        editHref={detail?.id ? `/tend/edit-snapshot?id=${detail.id}` : undefined}
+      >
+        <WikiCard>
+          {detail?.snapshot?.script ? (
+            <>
+              <p className="text-white/90 text-sm leading-relaxed">{detail.snapshot.script}</p>
+              <p className="text-white/30 text-xs">Source: AI generated</p>
+            </>
+          ) : (
+            <p className="text-white/30 text-sm">No snapshot yet.</p>
+          )}
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
+        icon={<Clock size={17} />}
+        title="Time & Date"
+        complete={Boolean(detail?.analysis?.capturedAt || detail?.createdAt)}
+        editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
+      >
+        <WikiCard>
+          <p className="text-white/30 text-xs font-medium mb-1.5">Photo Timestamp</p>
+          <p className="text-white font-medium text-sm">
+            {formatLongDate(detail?.analysis?.capturedAt || detail?.createdAt)}
+          </p>
+          <p className="text-white/30 text-xs mt-3">
+            Source: {detail?.analysis?.capturedAt ? 'Photo EXIF metadata' : 'Upload timestamp'}
+          </p>
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
+        icon={<MapPin size={17} />}
+        title="Place"
+        complete={Boolean(primaryLocationLine || coordinateLine)}
+        editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
+      >
+        <WikiCard>
+          <p className="text-white/30 text-xs font-medium mb-1.5">Place</p>
+          <p className="text-white font-medium text-sm">
+            {primaryLocationLine || 'No location data available.'}
+          </p>
+          {detail?.analysis?.confirmedLocation?.confirmedAt ? (
+            <p className="text-white/30 text-xs mt-1">
+              (edited on {new Date(detail.analysis.confirmedLocation.confirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
+            </p>
+          ) : null}
+          {showExactAddress ? (
+            <>
+              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Exact Address</p>
+              <p className="text-white/70 text-sm">{exactAddressLine}</p>
+            </>
+          ) : null}
+          {coordinateLine ? (
+            <>
+              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Coordinates</p>
+              <p className="text-white/70 text-sm">{coordinateLine}</p>
+            </>
+          ) : null}
+          {locationLookupPending && !exactAddressLine ? (
+            <p className="text-white/30 text-xs mt-3">
+              Looking up an address from the photo GPS metadata...
+            </p>
+          ) : null}
+          <p className="text-white/30 text-xs mt-3">
+            Source: {detail?.analysis?.confirmedLocation?.confirmedAt
+              ? 'Manual entry'
+              : (latitude != null && longitude != null)
+                ? 'Photo GPS metadata'
+                : 'Not set'}
+          </p>
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
         icon={<Users size={17} />}
         title="Contributors"
         complete={activeContributors.length > 0 || pendingContributors.length > 0}
+        editHref={detail?.id ? `/tend/contributors?id=${detail.id}` : undefined}
       >
         <WikiCard>
           {activeContributors.length === 0 && pendingContributors.length === 0 ? (
@@ -1387,10 +1481,140 @@ export default function KipemberWikiContent({
         </WikiCard>
       </WikiSection>
 
+      {(() => {
+        const detected =
+          detail?.analysis?.sceneInsights?.peopleAndDemographics?.numberOfPeopleVisible ?? null;
+        const tagged = detail?.tags?.length ?? 0;
+        const peopleComplete = detected !== null && tagged >= detected;
+        const remaining = detected !== null ? detected - tagged : 0;
+        const peopleBadgeLabel: React.ReactNode =
+          detected === null
+            ? 'Not Complete'
+            : peopleComplete
+              ? 'Complete'
+              : (
+                  <>
+                    Need to tag <span className="text-white">{remaining}</span>{' '}
+                    {remaining === 1 ? 'Person' : 'People'}
+                  </>
+                );
+        return (
+          <WikiSection
+            icon={<Users size={17} />}
+            title="People"
+            complete={peopleComplete}
+            badgeLabel={peopleBadgeLabel}
+            editHref={detail?.id ? `/tend/tag-people?id=${detail.id}` : undefined}
+          >
+        <WikiCard>
+          {detail?.tags && detail.tags.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {detail.tags.map((tag, i) => (
+                <div key={tag.id} className="flex items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: TAG_COLORS[i % TAG_COLORS.length] }}
+                  />
+                  <p className="text-white text-sm">{tag.label}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/30 text-sm">No people tagged yet.</p>
+          )}
+        </WikiCard>
+          </WikiSection>
+        );
+      })()}
+
+      <WikiSection
+        icon={<ImageIcon size={17} />}
+        title="Photos"
+        complete={Boolean(detail?.originalName || visualAttachments.length)}
+      >
+        <WikiCard>
+          <p className="text-white/30 text-xs font-medium mb-2">Ember Cover Photo</p>
+          <div className="flex items-start gap-3">
+            <div
+              className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0"
+              style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+            >
+              {detail ? (
+                <MediaPreview
+                  mediaType={detail.mediaType}
+                  filename={detail.filename}
+                  posterFilename={detail.posterFilename}
+                  originalName={detail.originalName}
+                  usePosterForVideo
+                  className="h-full w-full object-cover"
+                />
+              ) : null}
+            </div>
+            <div className="flex flex-col gap-0.5 min-w-0">
+              <p className="text-white text-sm font-medium break-words">
+                {detail?.originalName || 'Main media'}
+              </p>
+              <p className="text-white/30 text-xs">
+                Added: {formatLongDate(detail?.createdAt)}
+              </p>
+            </div>
+          </div>
+        </WikiCard>
+
+        <WikiCard>
+          <p className="text-white/30 text-xs font-medium mb-2">Supporting Media</p>
+          {visualAttachments.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              {visualAttachments.map((attachment) => (
+                <div key={attachment.id} className="flex items-start gap-3">
+                  <div
+                    className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0"
+                    style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+                  >
+                    <MediaPreview
+                      mediaType={attachment.mediaType}
+                      filename={attachment.filename}
+                      posterFilename={attachment.posterFilename}
+                      originalName={attachment.originalName}
+                      usePosterForVideo
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <p className="text-white text-sm font-medium break-words">
+                      {attachment.originalName}
+                    </p>
+                    <p className="text-white/30 text-xs">
+                      Added: {formatLongDate(attachment.createdAt)}
+                    </p>
+                    {attachment.description ? (
+                      <p className="text-white/30 text-xs break-words">
+                        {attachment.description}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/30 text-sm">No supporting media added yet.</p>
+          )}
+        </WikiCard>
+      </WikiSection>
+
       <WikiSection
         icon={<History size={17} />}
         title="Story Circle"
         complete={totalStoryMessages > 0}
+        badgeLabel={
+          totalStoryMessages > 0 ? (
+            'Complete'
+          ) : (
+            <>
+              Need <span className="text-white">1</span> Contributor
+            </>
+          )
+        }
       >
         <div className="flex flex-col gap-4">
           {detail?.chatBlocks && detail.chatBlocks.length > 0 ? (
@@ -1504,83 +1728,6 @@ export default function KipemberWikiContent({
         </WikiSection>
       ) : null}
 
-      {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}
-
-      <WikiSection
-        icon={<ImageIcon size={17} />}
-        title="Photos"
-        complete={Boolean(detail?.originalName || visualAttachments.length)}
-      >
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Ember Cover Photo</p>
-          <div className="flex items-start gap-3">
-            <div
-              className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0"
-              style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-            >
-              {detail ? (
-                <MediaPreview
-                  mediaType={detail.mediaType}
-                  filename={detail.filename}
-                  posterFilename={detail.posterFilename}
-                  originalName={detail.originalName}
-                  usePosterForVideo
-                  className="h-full w-full object-cover"
-                />
-              ) : null}
-            </div>
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <p className="text-white text-sm font-medium break-words">
-                {detail?.originalName || 'Main media'}
-              </p>
-              <p className="text-white/30 text-xs">
-                Added: {formatLongDate(detail?.createdAt)}
-              </p>
-            </div>
-          </div>
-        </WikiCard>
-
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Supporting Media</p>
-          {visualAttachments.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {visualAttachments.map((attachment) => (
-                <div key={attachment.id} className="flex items-start gap-3">
-                  <div
-                    className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0"
-                    style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-                  >
-                    <MediaPreview
-                      mediaType={attachment.mediaType}
-                      filename={attachment.filename}
-                      posterFilename={attachment.posterFilename}
-                      originalName={attachment.originalName}
-                      usePosterForVideo
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-0.5 min-w-0">
-                    <p className="text-white text-sm font-medium break-words">
-                      {attachment.originalName}
-                    </p>
-                    <p className="text-white/30 text-xs">
-                      Added: {formatLongDate(attachment.createdAt)}
-                    </p>
-                    {attachment.description ? (
-                      <p className="text-white/30 text-xs break-words">
-                        {attachment.description}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-white/30 text-sm">No supporting media added yet.</p>
-          )}
-        </WikiCard>
-      </WikiSection>
-
       {audioAttachments.length > 0 ? (
         <WikiSection icon={<Mic size={17} />} title="Recorded Audio" complete>
           {audioAttachments.map((attachment) => (
@@ -1606,94 +1753,12 @@ export default function KipemberWikiContent({
         <PlaceholderWhyCard />
       </WikiSection>
 
-      <WikiSection
-        icon={<Users size={17} />}
-        title="Tagged People"
-        complete={Boolean(detail?.tags && detail.tags.length > 0)}
-      >
-        <WikiCard>
-          {detail?.tags && detail.tags.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {detail.tags.map((tag, i) => (
-                <div key={tag.id} className="flex items-center gap-2">
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{ background: TAG_COLORS[i % TAG_COLORS.length] }}
-                  />
-                  <p className="text-white text-sm">{tag.label}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-white/30 text-sm">No people tagged yet.</p>
-          )}
-        </WikiCard>
-      </WikiSection>
-
       <WikiSection icon={<Heart size={17} />} title="Emotional state" complete={false}>
         <PlaceholderEmotionalCard />
       </WikiSection>
 
       <WikiSection icon={<Sparkles size={17} />} title="Extra stories" complete={false}>
         <PlaceholderStoriesCard />
-      </WikiSection>
-
-      <WikiSection
-        icon={<MapPin size={17} />}
-        title="Place"
-        complete={Boolean(primaryLocationLine || coordinateLine)}
-      >
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-1.5">Place</p>
-          <p className="text-white font-medium text-sm">
-            {primaryLocationLine || 'No location data available.'}
-          </p>
-          {detail?.analysis?.confirmedLocation?.confirmedAt ? (
-            <p className="text-white/30 text-xs mt-1">
-              (edited on {new Date(detail.analysis.confirmedLocation.confirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
-            </p>
-          ) : null}
-          {showExactAddress ? (
-            <>
-              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Exact Address</p>
-              <p className="text-white/70 text-sm">{exactAddressLine}</p>
-            </>
-          ) : null}
-          {coordinateLine ? (
-            <>
-              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Coordinates</p>
-              <p className="text-white/70 text-sm">{coordinateLine}</p>
-            </>
-          ) : null}
-          {locationLookupPending && !exactAddressLine ? (
-            <p className="text-white/30 text-xs mt-3">
-              Looking up an address from the photo GPS metadata...
-            </p>
-          ) : null}
-          <p className="text-white/30 text-xs mt-3">
-            Source: {detail?.analysis?.confirmedLocation?.confirmedAt
-              ? 'Manual entry'
-              : (latitude != null && longitude != null)
-                ? 'Photo GPS metadata'
-                : 'Not set'}
-          </p>
-        </WikiCard>
-      </WikiSection>
-
-      <WikiSection
-        icon={<Clock size={17} />}
-        title="Time & Date"
-        complete={Boolean(detail?.analysis?.capturedAt || detail?.createdAt)}
-      >
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-1.5">Photo Timestamp</p>
-          <p className="text-white font-medium text-sm">
-            {formatLongDate(detail?.analysis?.capturedAt || detail?.createdAt)}
-          </p>
-          <p className="text-white/30 text-xs mt-3">
-            Source: {detail?.analysis?.capturedAt ? 'Photo EXIF metadata' : 'Upload timestamp'}
-          </p>
-        </WikiCard>
       </WikiSection>
 
       <WikiSection
@@ -1803,6 +1868,8 @@ export default function KipemberWikiContent({
             );
           })}
       </WikiSection>
+
+      {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}
 
     </div>
   );
