@@ -378,6 +378,46 @@ function buildPlaceholderPeople() {
   return { personA, personB, personC };
 }
 
+function PlaceholderEntryRow({ entry }: { entry: PlaceholderEntry }) {
+  return (
+    <div
+      className="rounded-lg px-3 py-2 flex items-center gap-2.5"
+      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+    >
+      {entry.source.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={entry.source.avatarUrl}
+          alt={entry.source.name}
+          className="rounded-full object-cover flex-shrink-0"
+          style={{ width: 26, height: 26 }}
+        />
+      ) : (
+        <div
+          className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+          style={{ width: 26, height: 26, background: entry.source.color, fontSize: 10, fontWeight: 600 }}
+        >
+          {initials(entry.source.name)}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-xs font-medium">
+          {entry.source.name.split(/\s+/)[0] || entry.source.name}
+        </p>
+        <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{entry.value}&rdquo;</p>
+      </div>
+      <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
+        {entry.channel === 'chat' ? (
+          <MessageCircle size={10} fill="currentColor" stroke="currentColor" />
+        ) : (
+          <Phone size={10} fill="currentColor" stroke="currentColor" />
+        )}
+        <span>{relativeAt(entry.at)}</span>
+      </div>
+    </div>
+  );
+}
+
 function PlaceholderWhyCard() {
   const { personC } = buildPlaceholderPeople();
   const at = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
@@ -392,14 +432,7 @@ function PlaceholderWhyCard() {
   return (
     <div className="flex flex-col gap-2">
       {entries.map((entry, i) => (
-        <div
-          key={i}
-          className="rounded-lg px-3 py-2"
-          style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-        >
-          <p className="text-white/85 text-xs leading-relaxed">{entry.value}</p>
-          <PlaceholderSourcePill entry={entry} />
-        </div>
+        <PlaceholderEntryRow key={i} entry={entry} />
       ))}
     </div>
   );
@@ -488,14 +521,7 @@ function PlaceholderStoriesCard() {
   return (
     <div className="flex flex-col gap-2">
       {stories.map((entry, i) => (
-        <div
-          key={i}
-          className="rounded-lg px-3 py-2"
-          style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-        >
-          <p className="text-white/85 text-xs leading-relaxed">{entry.value}</p>
-          <PlaceholderSourcePill entry={entry} />
-        </div>
+        <PlaceholderEntryRow key={i} entry={entry} />
       ))}
     </div>
   );
