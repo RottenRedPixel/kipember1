@@ -14,7 +14,7 @@ const EMBER_CHAT_UNIFIED_FALLBACK_PROMPT = `You are Ember.`;
 
 export async function generateEmberChatReply(trigger: EmberChatTrigger): Promise<string> {
   const systemPrompt = await renderPromptTemplate(
-    'ember_chat.unified',
+    'ember_chat.style',
     EMBER_CHAT_UNIFIED_FALLBACK_PROMPT,
     { trigger }
   );

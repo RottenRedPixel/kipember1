@@ -671,6 +671,7 @@ async function requestVisionAnalysisText({
   userDescription,
   metadataSummary,
   conciseMode,
+  promptKey,
 }: {
   buffer: Buffer;
   mimeType: string;
@@ -678,6 +679,7 @@ async function requestVisionAnalysisText({
   userDescription: string | null;
   metadataSummary: string | null;
   conciseMode: boolean;
+  promptKey: string;
 }) {
   const imageSource = await toBase64ImageSource(buffer, mimeType);
   if (!imageSource) {
@@ -690,7 +692,7 @@ async function requestVisionAnalysisText({
 Limit arrays to the strongest items.
 Prefer null over long speculative prose.`
     : '';
-  const analysisPrompt = await renderPromptTemplate('image_analysis.prompt', IMAGE_ANALYSIS_PROMPT, {
+  const analysisPrompt = await renderPromptTemplate(promptKey, IMAGE_ANALYSIS_PROMPT, {
     schemaJson: JSON.stringify(VISION_SCHEMA),
     originalName,
     userDescription: userDescription || 'None provided.',
@@ -741,12 +743,14 @@ async function analyzeImageVisually({
   originalName,
   userDescription,
   metadataSummary,
+  promptKey,
 }: {
   buffer: Buffer;
   mimeType: string;
   originalName: string;
   userDescription: string | null;
   metadataSummary: string | null;
+  promptKey: string;
 }): Promise<ParsedVisionAnalysis> {
   const attemptModes = [false, true];
   let lastError: Error | null = null;
@@ -761,6 +765,7 @@ async function analyzeImageVisually({
         userDescription,
         metadataSummary,
         conciseMode,
+        promptKey,
       });
     } catch (requestError) {
       lastError =
@@ -879,6 +884,7 @@ export async function ensureImageAnalysisForImage(imageId: string) {
           originalName: image.originalName,
           userDescription: image.description,
           metadataSummary,
+          promptKey: 'image_analysis.initial_photo',
         });
       } catch (error) {
         status = 'partial';
@@ -985,6 +991,7 @@ export async function analyzeAttachmentImage(
       originalName,
       userDescription: null,
       metadataSummary: null,
+      promptKey: 'image_analysis.uploaded_photo',
     });
 
     return JSON.stringify(vision);

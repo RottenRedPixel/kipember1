@@ -837,6 +837,7 @@ export async function generateSnapshotScript({
   contributorMemories = [],
   callSummaries = [],
   callHighlights = [],
+  promptKey = 'snapshot_generation.initial',
 }: {
   title: string;
   summary: string | null;
@@ -848,6 +849,7 @@ export async function generateSnapshotScript({
   contributorMemories?: Array<{ contributorName: string; answer: string }>;
   callSummaries?: Array<{ contributorName: string; summary: string }>;
   callHighlights?: Array<{ contributorName: string; title: string; quote: string }>;
+  promptKey?: string;
 }): Promise<string> {
   const targetWords = Math.round((durationSeconds / 60) * 150);
 
@@ -872,7 +874,7 @@ export async function generateSnapshotScript({
     .filter(Boolean)
     .join('\n\n');
 
-  const systemPrompt = await renderPromptTemplate('narration.snapshot_script', DEFAULT_SNAPSHOT_NARRATION_PROMPT, {
+  const systemPrompt = await renderPromptTemplate(promptKey, DEFAULT_SNAPSHOT_NARRATION_PROMPT, {
     targetWords,
     durationSeconds,
     peopleInstruction:

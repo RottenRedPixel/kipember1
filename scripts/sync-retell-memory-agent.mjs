@@ -147,18 +147,17 @@ async function loadRetellRuntimeConfig() {
         'Memory Wiki oral-history interview flow',
       prompts: {
         interview:
-          snapshot?.prompts?.['retell.memory_interview']?.body || MEMORY_INTERVIEW_PROMPT,
+          snapshot?.prompts?.['ember_call.style']?.body || MEMORY_INTERVIEW_PROMPT,
         global:
-          snapshot?.prompts?.['retell.global_prompt']?.body || MEMORY_GLOBAL_PROMPT,
+          snapshot?.prompts?.['ember_call.style']?.body || MEMORY_GLOBAL_PROMPT,
         summary:
-          snapshot?.prompts?.['retell.summary_prompt']?.body || MEMORY_SUMMARY_PROMPT,
+          MEMORY_SUMMARY_PROMPT,
         closing:
-          snapshot?.prompts?.['retell.memory_closing_message']?.body ||
           MEMORY_CLOSING_MESSAGE_PROMPT,
         success:
-          snapshot?.prompts?.['retell.success_prompt']?.body || MEMORY_SUCCESS_PROMPT,
+          MEMORY_SUCCESS_PROMPT,
         sentiment:
-          snapshot?.prompts?.['retell.sentiment_prompt']?.body || MEMORY_SENTIMENT_PROMPT,
+          MEMORY_SENTIMENT_PROMPT,
       },
     };
   } catch (error) {

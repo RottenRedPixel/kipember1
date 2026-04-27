@@ -210,7 +210,11 @@ type TitlePromptContext = {
   preferredPeople: string[];
 };
 
-async function renderTitlePrompt(mode: TitleSuggestionMode, context: TitlePromptContext) {
+async function renderTitlePrompt(
+  mode: TitleSuggestionMode,
+  context: TitlePromptContext,
+  promptKey: string
+) {
   const preferredPeopleHint =
     context.preferredPeople.length > 0
       ? `Use these names in the title if possible: ${context.preferredPeople.join(', ')}`
@@ -226,7 +230,7 @@ async function renderTitlePrompt(mode: TitleSuggestionMode, context: TitlePrompt
           .join('\n')
       : 'No quote entries provided.';
 
-  return renderPromptTemplate('title_suggestions.prompt', TITLE_SUGGESTIONS_PROMPT, {
+  return renderPromptTemplate(promptKey, TITLE_SUGGESTIONS_PROMPT, {
     mode,
     analysisContext: context.analysisContext || 'No visual analysis context provided.',
     humanContext: context.humanContext || 'No human memory context provided.',
@@ -238,7 +242,11 @@ async function renderTitlePrompt(mode: TitleSuggestionMode, context: TitlePrompt
 
 async function generateThreeTitles(mode: 'analysis' | 'context', context: TitlePromptContext) {
   const openai = getOpenAIClient();
-  const prompt = await renderTitlePrompt(mode, context);
+  const prompt = await renderTitlePrompt(
+    mode,
+    context,
+    'title_generation.regenerate'
+  );
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
@@ -275,10 +283,14 @@ async function generateQuotedTitleSuggestions(
 
   const limitedEntries = entries.slice(0, 12);
   const openai = getOpenAIClient();
-  const prompt = await renderTitlePrompt('quote', {
-    ...context,
-    quoteEntries: limitedEntries,
-  });
+  const prompt = await renderTitlePrompt(
+    'quote',
+    {
+      ...context,
+      quoteEntries: limitedEntries,
+    },
+    'title_generation.regenerate'
+  );
 
   try {
     const response = await openai.responses.create({
@@ -366,7 +378,11 @@ async function generateQuotedTitleSuggestions(
 
 async function generateSingleTitle(context: TitlePromptContext) {
   const openai = getOpenAIClient();
-  const prompt = await renderTitlePrompt('single', context);
+  const prompt = await renderTitlePrompt(
+    'single',
+    context,
+    'title_generation.initial'
+  );
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
     input: [
