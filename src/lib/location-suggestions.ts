@@ -246,6 +246,52 @@ function buildCoordinateSuggestion(latitude: number, longitude: number): Locatio
   };
 }
 
+function hasStrongPublicPlaceCandidate(nearby: GooglePlacesNearbyResponse) {
+  const publicTypes = new Set([
+    'amusement_park',
+    'aquarium',
+    'art_gallery',
+    'bakery',
+    'bar',
+    'bowling_alley',
+    'cafe',
+    'casino',
+    'church',
+    'city_hall',
+    'food',
+    'gym',
+    'landmark',
+    'library',
+    'lodging',
+    'meal_delivery',
+    'meal_takeaway',
+    'movie_theater',
+    'museum',
+    'night_club',
+    'park',
+    'restaurant',
+    'school',
+    'shopping_mall',
+    'stadium',
+    'tourist_attraction',
+    'university',
+    'zoo',
+  ]);
+
+  return (nearby.results || []).some((place) => {
+    if (!place.name?.trim() || place.business_status === 'CLOSED_PERMANENTLY') {
+      return false;
+    }
+
+    return (place.types || []).some((type) => publicTypes.has(type.toLowerCase()));
+  });
+}
+
+function hasPublicPlaceContext(context?: LocationResolutionContext) {
+  const text = safeJson(context || {}).toLowerCase();
+  return /\b(restaurant|dining|menu|table|server|stadium|arena|game|court|field|concert|stage|castle|theme park|park|venue|store|shop|hotel|museum|school|church|bar|cafe|coffee|bakery|signage|logo|uniform)\b/.test(text);
+}
+
 async function fetchGoogleReverseGeocode({
   latitude,
   longitude,
@@ -294,22 +340,29 @@ function buildGoogleSuggestions({
   longitude,
   geocode,
   nearby,
+  context,
 }: {
   latitude: number;
   longitude: number;
   geocode: GoogleGeocodeResponse;
   nearby: GooglePlacesNearbyResponse;
+  context?: LocationResolutionContext;
 }) {
   const suggestions: LocationSuggestion[] = [];
   const bestAddress = geocode.results?.[0];
 
-  if (bestAddress?.formatted_address && isResidentialAddressResult(bestAddress)) {
+  if (
+    bestAddress?.formatted_address &&
+    isResidentialAddressResult(bestAddress) &&
+    !hasStrongPublicPlaceCandidate(nearby) &&
+    !hasPublicPlaceContext(context)
+  ) {
     suggestions.push(
       buildAddressSuggestion({
         latitude,
         longitude,
         result: bestAddress,
-        reason: 'GPS resolved to a residential address, so nearby businesses were filtered out.',
+        reason: 'GPS resolved to a residential address with no strong public-place match, so nearby businesses were filtered out.',
       })
     );
     suggestions.push(buildCoordinateSuggestion(latitude, longitude));
@@ -550,7 +603,7 @@ export async function getLocationSuggestionsForCoordinates({
         fetchGoogleReverseGeocode({ latitude, longitude, apiKey: googleApiKey }),
         fetchGoogleNearbyPlaces({ latitude, longitude, apiKey: googleApiKey }),
       ]);
-      const suggestions = buildGoogleSuggestions({ latitude, longitude, geocode, nearby });
+      const suggestions = buildGoogleSuggestions({ latitude, longitude, geocode, nearby, context });
       try {
         return await rankLocationSuggestions({
           latitude,
