@@ -708,7 +708,7 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
     analysis,
   });
 
-  const systemPrompt = await renderPromptTemplate('snapshot_generation.regenerate');
+  const systemPrompt = await renderPromptTemplate('wiki.rewrite');
 
   const output = await chat(systemPrompt, [
     {
@@ -734,7 +734,7 @@ export async function generateFollowUpQuestion(
   collectedResponses: { questionType: string; answer: string }[]
 ): Promise<string | null> {
   const systemPrompt = await renderPromptTemplate(
-    'ember_chat.style'
+    'wiki.follow_up_questions'
   );
 
   const responseSummary = collectedResponses
@@ -772,7 +772,7 @@ export async function generateSnapshotScript({
   contributorMemories = [],
   callSummaries = [],
   callHighlights = [],
-  promptKey = 'snapshot_generation.initial',
+  promptKey = 'snapshot.script',
 }: {
   title: string;
   summary: string | null;

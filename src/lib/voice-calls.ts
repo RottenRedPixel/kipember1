@@ -404,7 +404,7 @@ function extractJsonObject(text: string): string {
 
 async function extractInterviewFromTranscript(transcript: string): Promise<ExtractedInterview> {
   const systemPrompt = await renderPromptTemplate(
-    'ember_voice.style',
+    'voice.extract_interview',
     '',
     {
       task: 'transcript_extract',

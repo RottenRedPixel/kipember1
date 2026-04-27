@@ -1,3 +1,9 @@
+import { prisma } from '@/lib/db';
+import {
+  APPROVED_PROMPT_KEYS,
+  getPromptAliasChain,
+} from '@/lib/prompt-registry';
+
 type ControlPlaneModelRoute = {
   capabilityKey: string;
   integrationKey: string;
@@ -54,29 +60,19 @@ type ControlPlaneSnapshot = {
 };
 
 const DEFAULT_CACHE_TTL_MS = 30_000;
+const PROMPT_OVERRIDE_CACHE_TTL_MS = 2_000;
 const DEFAULT_TIMEOUT_MS = 5_000;
 const RUNTIME_CONFIG_PATH = '/api/runtime/config';
 export const PROMPT_REMOVED_MESSAGE = 'prompt removed';
-export const RUNTIME_PROMPT_DEFINITIONS = [
-  { key: 'image_analysis.initial_photo', label: 'Image Analysis - Initial Photo' },
-  { key: 'image_analysis.uploaded_photo', label: 'Image Analysis - Uploaded Photo' },
-  { key: 'title_generation.initial', label: 'Title Generation - Initial' },
-  { key: 'title_generation.regenerate', label: 'Title Generation - Regenerate' },
-  { key: 'snapshot_generation.initial', label: 'Snapshot Generation - Initial' },
-  { key: 'snapshot_generation.regenerate', label: 'Snapshot Generation - Regenerate' },
-  { key: 'ember_chat.style', label: 'Ember Chat - Style & Technique' },
-  { key: 'ember_voice.style', label: 'Ember Voice - Style & Technique' },
-  { key: 'ember_call.style', label: 'Retell Call Main Prompt' },
-  { key: 'ember_call.closing', label: 'Retell Call Closing Prompt' },
-] as const;
-const APPROVED_RUNTIME_PROMPT_KEYS = new Set<string>(
-  RUNTIME_PROMPT_DEFINITIONS.map((prompt) => prompt.key)
-);
 
 let cachedSnapshot: ControlPlaneSnapshot | null = null;
 let cacheExpiresAt = 0;
 let inFlightSnapshot: Promise<ControlPlaneSnapshot | null> | null = null;
 let lastFetchErrorAt = 0;
+
+let overrideCache: Map<string, string> | null = null;
+let overrideCacheExpiresAt = 0;
+let inFlightOverrides: Promise<Map<string, string>> | null = null;
 
 export class PromptRemovedError extends Error {
   constructor() {
@@ -179,18 +175,106 @@ export async function getCapabilityModel(capabilityKey: string, fallbackModel: s
   return configuredModel || fallbackModel;
 }
 
+async function fetchPromptOverrides(): Promise<Map<string, string>> {
+  const rows = await prisma.promptOverride.findMany({
+    select: { key: true, body: true },
+  });
+  const map = new Map<string, string>();
+  for (const row of rows) {
+    const trimmed = row.body?.trim();
+    if (trimmed) {
+      map.set(row.key, trimmed);
+    }
+  }
+  return map;
+}
+
+export async function getPromptOverrides(): Promise<Map<string, string>> {
+  const now = Date.now();
+  if (overrideCache && now < overrideCacheExpiresAt) {
+    return overrideCache;
+  }
+
+  if (!inFlightOverrides) {
+    inFlightOverrides = fetchPromptOverrides()
+      .then((map) => {
+        overrideCache = map;
+        overrideCacheExpiresAt = Date.now() + PROMPT_OVERRIDE_CACHE_TTL_MS;
+        return map;
+      })
+      .catch((error) => {
+        console.error('Prompt override fetch failed:', error);
+        return overrideCache || new Map<string, string>();
+      })
+      .finally(() => {
+        inFlightOverrides = null;
+      });
+  }
+
+  return inFlightOverrides;
+}
+
+export function invalidatePromptOverrideCache() {
+  overrideCache = null;
+  overrideCacheExpiresAt = 0;
+}
+
+export type PromptResolution = {
+  body: string;
+  source: 'override' | 'control-plane' | 'override-alias' | 'control-plane-alias';
+  resolvedKey: string;
+};
+
+export async function resolvePrompt(promptKey: string): Promise<PromptResolution | null> {
+  if (!APPROVED_PROMPT_KEYS.has(promptKey)) {
+    throw new Error(`Prompt key "${promptKey}" is not registered. Add it to PROMPT_REGISTRY.`);
+  }
+
+  const [overrides, snapshot] = await Promise.all([
+    getPromptOverrides(),
+    getControlPlaneSnapshot(),
+  ]);
+
+  const chain = getPromptAliasChain(promptKey);
+
+  for (let index = 0; index < chain.length; index += 1) {
+    const candidate = chain[index];
+    const isAlias = index > 0;
+
+    const overrideBody = overrides.get(candidate)?.trim();
+    if (overrideBody) {
+      return {
+        body: overrideBody,
+        source: isAlias ? 'override-alias' : 'override',
+        resolvedKey: candidate,
+      };
+    }
+
+    const snapshotBody = snapshot?.prompts?.[candidate]?.body?.trim();
+    if (snapshotBody) {
+      return {
+        body: snapshotBody,
+        source: isAlias ? 'control-plane-alias' : 'control-plane',
+        resolvedKey: candidate,
+      };
+    }
+  }
+
+  return null;
+}
+
 export async function getPromptBody(promptKey: string, fallbackBody = '') {
-  if (!APPROVED_RUNTIME_PROMPT_KEYS.has(promptKey)) {
-    throw new Error(`Prompt key "${promptKey}" is not one of the nine runtime prompts.`);
+  const resolution = await resolvePrompt(promptKey);
+
+  if (!resolution) {
+    if (isControlPlaneConfigured() || (await getPromptOverrides()).size === 0) {
+      // No override and no CP body anywhere in the alias chain — preserve current behavior.
+      throw new PromptRemovedError();
+    }
+    return fallbackBody;
   }
 
-  const snapshot = await getControlPlaneSnapshot();
-  const configuredBody = snapshot?.prompts?.[promptKey]?.body?.trim();
-  if (!configuredBody && isControlPlaneConfigured()) {
-    throw new PromptRemovedError();
-  }
-
-  return configuredBody || fallbackBody;
+  return resolution.body;
 }
 
 function templateValueToString(value: unknown) {

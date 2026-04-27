@@ -1,82 +1,69 @@
 import { unstable_noStore as noStore } from 'next/cache';
+import { resolvePrompt } from '@/lib/control-plane';
 import {
-  RUNTIME_PROMPT_DEFINITIONS,
-  getControlPlaneSnapshot,
-} from '@/lib/control-plane';
+  PROMPT_GROUPS,
+  PROMPT_REGISTRY,
+  type PromptDefinition,
+  type PromptGroup,
+} from '@/lib/prompt-registry';
+import { PromptCard, type PromptCardData } from './PromptEditor';
 
 export const dynamic = 'force-dynamic';
 
-function formatDate(value: string | null | undefined) {
-  if (!value) {
-    return 'unpublished';
-  }
+async function buildCardData(definition: PromptDefinition): Promise<PromptCardData> {
+  const resolution = await resolvePrompt(definition.key).catch(() => null);
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date);
+  return {
+    key: definition.key,
+    label: definition.label,
+    group: definition.group,
+    description: definition.description,
+    variables: definition.variables,
+    body: resolution?.body || '',
+    isActive: resolution !== null,
+  };
 }
 
 export default async function PromptsPage() {
   noStore();
-  const snapshot = await getControlPlaneSnapshot();
-  const generatedAt = snapshot?.generatedAt ? formatDate(snapshot.generatedAt) : 'not connected';
+
+  const cards = await Promise.all(PROMPT_REGISTRY.map(buildCardData));
+  const cardsByGroup = new Map<PromptGroup, PromptCardData[]>();
+  for (const group of PROMPT_GROUPS) {
+    cardsByGroup.set(group, []);
+  }
+  for (const card of cards) {
+    cardsByGroup.get(card.group as PromptGroup)?.push(card);
+  }
 
   return (
     <main className="min-h-screen bg-[#101313] px-6 py-8 text-zinc-100">
-      <div className="mx-auto flex max-w-5xl flex-col gap-6">
+      <div className="mx-auto flex max-w-3xl flex-col gap-8">
         <header className="border-b border-white/10 pb-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-300">
-            Temporary prompt view
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">Active Prompts</h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Read-only runtime view. Last control-plane snapshot: {generatedAt}.
+          <h1 className="text-3xl font-semibold tracking-tight">Prompts</h1>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            Edit a prompt and click Save. The next request uses your version.
+            Green dot means the prompt is in use; red means nothing is set and
+            the feature would crash if called.
           </p>
         </header>
 
-        <section className="grid gap-4">
-          {RUNTIME_PROMPT_DEFINITIONS.map((definition) => {
-            const prompt = snapshot?.prompts?.[definition.key];
-            const body = prompt?.body?.trim();
-
+        <div className="flex flex-col gap-10">
+          {PROMPT_GROUPS.map((group) => {
+            const groupCards = cardsByGroup.get(group) ?? [];
+            if (groupCards.length === 0) return null;
             return (
-              <article
-                className="rounded-lg border border-white/10 bg-white/[0.03] p-5"
-                key={definition.key}
-              >
-                <div className="flex flex-col gap-2 border-b border-white/10 pb-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold">{definition.label}</h2>
-                    <p className="mt-1 font-mono text-xs text-zinc-400">{definition.key}</p>
-                  </div>
-                  <div className="text-left text-xs text-zinc-400 sm:text-right">
-                    <p>v{prompt?.versionNumber ?? '-'}</p>
-                    <p>{formatDate(prompt?.publishedAt)}</p>
-                  </div>
-                </div>
-
-                {body ? (
-                  <pre className="mt-4 max-h-[520px] overflow-auto whitespace-pre-wrap rounded-md bg-black/35 p-4 font-mono text-sm leading-6 text-zinc-100">
-                    {body}
-                  </pre>
-                ) : (
-                  <div className="mt-4 rounded-md border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100">
-                    prompt removed
-                  </div>
-                )}
-              </article>
+              <section key={group} className="flex flex-col gap-4">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                  {group}
+                </h2>
+                {groupCards.map((card) => (
+                  <PromptCard key={card.key} data={card} />
+                ))}
+              </section>
             );
           })}
-        </section>
+        </div>
       </div>
     </main>
   );

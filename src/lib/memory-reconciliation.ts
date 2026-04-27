@@ -443,7 +443,7 @@ export async function reconcileEmberMessage(messageId: string) {
   };
 
   const image = message.session.image;
-  const systemPrompt = await renderPromptTemplate('ember_chat.style');
+  const systemPrompt = await renderPromptTemplate('memory.extract_claims');
   const extractionContext = compactLines([
     `EMBER TITLE\n${getEmberTitle(image)}`,
     image.description ? `CAPTION\n${image.description}` : null,

@@ -43,7 +43,7 @@ export async function POST(
       return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
     }
 
-    const prompt = await renderPromptTemplate('snapshot_generation.regenerate', '', {
+    const prompt = await renderPromptTemplate('caption.suggest', '', {
       voiceStyle: requestedVoice || '',
       voiceInstruction: requestedVoice || '',
     });

@@ -498,3 +498,9 @@ model VoiceCallEvent {
 
   @@index([voiceCallId, createdAt])
 }
+
+model PromptOverride {
+  key       String   @id
+  body      String
+  updatedAt DateTime @updatedAt
+}

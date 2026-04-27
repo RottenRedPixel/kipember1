@@ -14,7 +14,7 @@ export async function generateEmberVoiceReply({
   transcript: string;
 }): Promise<string> {
   const systemPrompt = await renderPromptTemplate(
-    'ember_voice.style',
+    'ember_voice.reply',
     '',
     { trigger, transcript }
   );
