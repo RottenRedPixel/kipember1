@@ -1683,6 +1683,7 @@ export default function KipemberWikiContent({
             {formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)
               ? ` · Analyzed: ${formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)}`
               : ''}
+            {' · Prompt: image_analysis.initial_photo'}
           </p>
         </WikiCard>
 
@@ -1730,7 +1731,7 @@ export default function KipemberWikiContent({
                     );
                   })}
                 </div>
-                <p className="text-white/30 text-xs mt-4">Source: GPT-4o</p>
+                <p className="text-white/30 text-xs mt-4">Source: GPT-4o · Prompt: image_analysis.uploaded_photo</p>
               </WikiCard>
             );
           })}
