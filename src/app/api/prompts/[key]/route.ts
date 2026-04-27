@@ -3,6 +3,20 @@ import { getCurrentAuth } from '@/lib/auth-server';
 import { invalidatePromptOverrideCache } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { APPROVED_PROMPT_KEYS } from '@/lib/prompt-registry';
+import { RETELL_PROMPT_KEYS, syncRetellAgent } from '@/lib/retell-sync';
+
+function syncRetellInBackground(triggerKey: string) {
+  if (!RETELL_PROMPT_KEYS.has(triggerKey)) return;
+  syncRetellAgent()
+    .then((result) => {
+      console.log(
+        `Retell sync triggered by ${triggerKey} → agent v${result.agentVersion}, flow v${result.conversationFlowVersion}`
+      );
+    })
+    .catch((error) => {
+      console.error(`Retell sync after ${triggerKey} update failed:`, error);
+    });
+}
 
 type RouteContext = {
   params: Promise<{ key: string }>;
@@ -48,6 +62,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   });
 
   invalidatePromptOverrideCache();
+  syncRetellInBackground(key);
 
   return NextResponse.json({
     key: saved.key,
@@ -70,6 +85,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     .catch(() => undefined);
 
   invalidatePromptOverrideCache();
+  syncRetellInBackground(key);
 
   return NextResponse.json({ ok: true });
 }

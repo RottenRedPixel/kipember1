@@ -79,7 +79,7 @@ export function PromptCard({ data }: { data: PromptCardData }) {
       </header>
 
       <textarea
-        className="mt-4 block min-h-[200px] w-full rounded-md border border-white/10 bg-black/35 p-4 font-mono text-sm leading-6 text-zinc-100 outline-none focus:border-amber-300/40"
+        className="mt-4 block min-h-[600px] w-full rounded-md border border-white/10 bg-black/35 p-4 font-mono text-sm leading-6 text-zinc-100 outline-none focus:border-amber-300/40"
         spellCheck={false}
         value={draft}
         onChange={(event) => {
