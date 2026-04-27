@@ -68,7 +68,7 @@ export const RUNTIME_PROMPT_DEFINITIONS = [
   { key: 'ember_voice.style', label: 'Ember Voice - Style & Technique' },
   { key: 'ember_call.style', label: 'Ember Call - Style & Technique' },
 ] as const;
-const APPROVED_RUNTIME_PROMPT_KEYS = new Set(
+const APPROVED_RUNTIME_PROMPT_KEYS = new Set<string>(
   RUNTIME_PROMPT_DEFINITIONS.map((prompt) => prompt.key)
 );
 
