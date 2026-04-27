@@ -49,14 +49,14 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'snapshot_generation.initial',
     label: 'Snapshot Generation - Initial',
     group: 'Snapshot Generation',
-    description: 'Builds the structured outline that backs the wiki view (sections, headings, ordering). Runs once when the wiki is first generated.',
+    description: 'Generates the snapshot script the first time it is created for an ember.',
     variables: [],
   },
   {
     key: 'snapshot_generation.regenerate',
     label: 'Snapshot Generation - Regenerate',
     group: 'Snapshot Generation',
-    description: 'Drives every regeneration job: wiki rewrites, snapshot script, caption suggestions, and narration cleanup.',
+    description: 'Used when the user presses Regen Snapshot, plus other regeneration jobs (wiki structure + rewrites, caption suggestions, narration cleanup).',
     variables: [],
   },
 

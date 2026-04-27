@@ -38,6 +38,9 @@ export async function POST(
     const summary = imageRecord.analysis?.summary || null;
     const location = confirmedLocation?.label ?? parseConfirmedLocationContext(imageRecord.analysis?.metadataJson ?? null)?.label ?? null;
 
+    const existingSnapshot = await prisma.snapshot.findUnique({ where: { imageId: id } });
+    const promptKey = existingSnapshot ? 'snapshot_generation.regenerate' : 'snapshot_generation.initial';
+
     const script = manualScript ?? await generateSnapshotScript({
       title,
       summary,
@@ -49,7 +52,7 @@ export async function POST(
       contributorMemories: contributorMemories.map((m) => ({ contributorName: m.contributorName, answer: m.answer })),
       callSummaries: callSummaries.map((c) => ({ contributorName: c.contributorName, summary: c.summary })),
       callHighlights: callHighlights.map((h) => ({ contributorName: h.contributorName, title: h.title, quote: h.quote })),
-      promptKey: 'snapshot_generation.regenerate',
+      promptKey,
     });
 
     if (!script.trim()) {

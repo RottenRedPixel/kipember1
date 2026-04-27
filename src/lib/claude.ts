@@ -660,7 +660,7 @@ export async function generateWiki({
   };
 
   const openai = getOpenAIClient();
-  const structurePrompt = await renderPromptTemplate('snapshot_generation.initial');
+  const structurePrompt = await renderPromptTemplate('snapshot_generation.regenerate');
   const structuredResponse = await openai.responses.create({
     model: await getConfiguredOpenAIModel('wiki.structure', getWikiStructureModel()),
     input: [
