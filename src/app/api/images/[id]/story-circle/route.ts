@@ -16,6 +16,7 @@ import {
 import { prisma } from '@/lib/db';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 
 function getFollowupPrompt() {
   return 'followup';
@@ -300,6 +301,9 @@ export async function POST(
     });
   } catch (error) {
     console.error('Story Circle save error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json(
       { error: 'Failed to save the Story Circle response' },
       { status: 500 }

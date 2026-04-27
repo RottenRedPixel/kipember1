@@ -6,7 +6,11 @@ import { requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
-import { renderPromptTemplate } from '@/lib/control-plane';
+import {
+  PROMPT_REMOVED_MESSAGE,
+  isPromptRemovedError,
+  renderPromptTemplate,
+} from '@/lib/control-plane';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -89,6 +93,9 @@ export async function POST(
     return NextResponse.json({ faces });
   } catch (error) {
     console.error('Face detection error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json({ error: 'Failed to detect faces' }, { status: 500 });
   }
 }

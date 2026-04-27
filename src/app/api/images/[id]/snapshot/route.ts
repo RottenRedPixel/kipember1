@@ -3,6 +3,7 @@ import { requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { generateSnapshotScript } from '@/lib/claude';
+import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 
@@ -92,6 +93,9 @@ export async function POST(
     });
   } catch (error) {
     console.error('Snapshot generation error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json({ error: 'Failed to generate snapshot' }, { status: 500 });
   }
 }

@@ -6,6 +6,7 @@ import {
   suggestFaceMatchesForImage,
   type FaceBox,
 } from '@/lib/face-match-suggestions';
+import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 
 export async function POST(
   request: NextRequest,
@@ -43,6 +44,9 @@ export async function POST(
     return NextResponse.json({ suggestions });
   } catch (error) {
     console.error('Face suggestion error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json(
       { error: 'Failed to suggest tags' },
       { status: 500 }

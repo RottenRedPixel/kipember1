@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { renderPromptTemplate } from '@/lib/control-plane';
+import {
+  PROMPT_REMOVED_MESSAGE,
+  isPromptRemovedError,
+  renderPromptTemplate,
+} from '@/lib/control-plane';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { getConfiguredOpenAIModel, getOpenAIClient, getWikiModel } from '@/lib/openai';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
@@ -549,6 +553,9 @@ export async function GET(
     });
   } catch (error) {
     console.error('Title suggestion error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json(
       { error: 'Failed to generate title suggestions' },
       { status: 500 }
@@ -620,6 +627,9 @@ export async function POST(
     return NextResponse.json({ title });
   } catch (error) {
     console.error('Single title generation error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json(
       { error: 'Failed to generate a title suggestion' },
       { status: 500 }

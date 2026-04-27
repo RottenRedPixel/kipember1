@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { renderPromptTemplate } from '@/lib/control-plane';
+import {
+  PROMPT_REMOVED_MESSAGE,
+  isPromptRemovedError,
+  renderPromptTemplate,
+} from '@/lib/control-plane';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { getConfiguredOpenAIModel, getOpenAIClient, getWikiModel } from '@/lib/openai';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
@@ -86,6 +90,9 @@ export async function POST(
     return NextResponse.json({ caption });
   } catch (error) {
     console.error('Smart caption generation error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json(
       { error: 'Failed to generate a smart caption' },
       { status: 500 }

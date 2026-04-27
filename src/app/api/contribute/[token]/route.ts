@@ -5,6 +5,7 @@ import {
   ensureEmberSession,
 } from '@/lib/ember-sessions';
 import { generateEmberChatReply } from '@/lib/ember-chat-reply';
+import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
 // GET - Fetch contributor info and session
@@ -262,6 +263,9 @@ export async function POST(
     return NextResponse.json({ response: reply });
   } catch (error) {
     console.error('Chat error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json({ error: 'Failed to process message' }, { status: 500 });
   }
 }

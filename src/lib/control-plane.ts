@@ -56,6 +56,7 @@ type ControlPlaneSnapshot = {
 const DEFAULT_CACHE_TTL_MS = 30_000;
 const DEFAULT_TIMEOUT_MS = 5_000;
 const RUNTIME_CONFIG_PATH = '/api/runtime/config';
+export const PROMPT_REMOVED_MESSAGE = 'prompt removed';
 const APPROVED_RUNTIME_PROMPT_KEYS = new Set([
   'image_analysis.initial_photo',
   'image_analysis.uploaded_photo',
@@ -72,6 +73,18 @@ let cachedSnapshot: ControlPlaneSnapshot | null = null;
 let cacheExpiresAt = 0;
 let inFlightSnapshot: Promise<ControlPlaneSnapshot | null> | null = null;
 let lastFetchErrorAt = 0;
+
+export class PromptRemovedError extends Error {
+  constructor() {
+    super(PROMPT_REMOVED_MESSAGE);
+    this.name = 'PromptRemovedError';
+  }
+}
+
+export function isPromptRemovedError(error: unknown) {
+  return error instanceof PromptRemovedError ||
+    (error instanceof Error && error.message === PROMPT_REMOVED_MESSAGE);
+}
 
 function getControlPlaneBaseUrl() {
   return process.env.CONTROL_PLANE_BASE_URL?.trim().replace(/\/$/, '') || '';
@@ -170,7 +183,7 @@ export async function getPromptBody(promptKey: string, fallbackBody = '') {
   const snapshot = await getControlPlaneSnapshot();
   const configuredBody = snapshot?.prompts?.[promptKey]?.body?.trim();
   if (!configuredBody && isControlPlaneConfigured()) {
-    throw new Error(`Prompt key "${promptKey}" is missing from the control plane runtime config.`);
+    throw new PromptRemovedError();
   }
 
   return configuredBody || fallbackBody;

@@ -9,6 +9,7 @@ import {
   type ConfirmedLocationContext,
 } from '@/lib/location-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
+import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 
 export async function GET(
   request: NextRequest,
@@ -149,6 +150,9 @@ export async function POST(
     });
   } catch (error) {
     console.error('Location suggestion save error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json(
       { error: 'Failed to save the selected location' },
       { status: 500 }

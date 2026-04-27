@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { requireApiUser } from '@/lib/auth-server';
 import { prisma } from '@/lib/db';
 import { generateEmberChatReply } from '@/lib/ember-chat-reply';
+import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 import {
   ensureEmberSession,
   type EmberParticipantType,
@@ -109,6 +110,9 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error('Chat welcome error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json({ error: 'Failed to generate welcome' }, { status: 500 });
   }
 }

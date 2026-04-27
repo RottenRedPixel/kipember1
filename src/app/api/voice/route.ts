@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { isFeatureEnabled } from '@/lib/control-plane';
+import { PROMPT_REMOVED_MESSAGE, isFeatureEnabled, isPromptRemovedError } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import {
   emberSessionParticipantWhere,
@@ -192,6 +192,9 @@ export async function POST(request: NextRequest) {
     return nextResponse;
   } catch (error) {
     console.error('Voice mode error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
     return NextResponse.json({ error: 'Failed to process voice turn' }, { status: 500 });
   }
 }
