@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import {
-  Check,
   ChevronDown,
+  Mail,
   MessageSquarePlus,
   Phone,
+  Sparkles,
+  UserCheck,
   UserPlus,
-  UserRound,
 } from 'lucide-react';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 
@@ -292,20 +293,23 @@ export default function ContributorsListView({
                   >
                     <UserPlus size={16} color="white" strokeWidth={2.5} />
                   </button>
-                ) : context.kind === 'ember' && onThis ? (
-                  <div className="w-8 h-11 flex items-center justify-center flex-shrink-0 mr-2" style={{ opacity: 0.5 }}>
-                    <Check size={16} color="#4ade80" strokeWidth={2.4} />
-                  </div>
                 ) : (
                   <>
-                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
-                      <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                    <div className="w-7 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }} title="Invited">
+                      <Mail size={15} color="var(--text-primary)" strokeWidth={1.8} />
                     </div>
-                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }}>
+                    <div className="w-7 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }} title="Contributed">
+                      <Sparkles size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                    </div>
+                    <div className="w-7 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }} title="Account created">
+                      <UserCheck size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                    </div>
+                    <div className="h-5 w-px flex-shrink-0 mx-1" style={{ background: 'var(--border-subtle)' }} />
+                    <div className="w-7 h-11 flex items-center justify-center flex-shrink-0" style={{ opacity: 0.4 }} title="Send text">
                       <MessageSquarePlus size={15} color="var(--text-primary)" strokeWidth={1.8} />
                     </div>
-                    <div className="w-8 h-11 flex items-center justify-center flex-shrink-0 mr-2" style={{ opacity: 0.4 }}>
-                      <UserRound size={15} color="var(--text-primary)" strokeWidth={1.8} />
+                    <div className="w-7 h-11 flex items-center justify-center flex-shrink-0 mr-2" style={{ opacity: 0.4 }} title="Call">
+                      <Phone size={15} color="var(--text-primary)" strokeWidth={1.8} />
                     </div>
                   </>
                 )}
