@@ -55,7 +55,7 @@ export async function POST(
       return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
     }
 
-    const prompt = await renderPromptTemplate('caption.smart', SMART_CAPTION_PROMPT, {
+    const prompt = await renderPromptTemplate('snapshot_generation.regenerate', SMART_CAPTION_PROMPT, {
       voiceStyle: requestedVoice || '',
       voiceInstruction: requestedVoice
         ? `Write it so it sounds natural in the voice style of "${requestedVoice}".`

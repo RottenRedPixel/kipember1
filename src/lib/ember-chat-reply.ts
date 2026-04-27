@@ -9,7 +9,7 @@ export type EmberChatTrigger =
   | 'video_upload';
 
 // Minimal stub — the real prompt lives in the control plane under
-// `ember_chat.unified`. This only fires if that template is missing.
+// `ember_chat.style`. This only fires if that template is missing.
 const EMBER_CHAT_UNIFIED_FALLBACK_PROMPT = `You are Ember.`;
 
 export async function generateEmberChatReply(trigger: EmberChatTrigger): Promise<string> {
@@ -22,7 +22,7 @@ export async function generateEmberChatReply(trigger: EmberChatTrigger): Promise
   const response = await chat(
     systemPrompt,
     [{ role: 'user', content: `(trigger: ${trigger})` }],
-    { capabilityKey: 'ember_chat.unified', maxTokens: 120 }
+    { capabilityKey: 'ember_chat.style', maxTokens: 120 }
   );
 
   return response.trim();

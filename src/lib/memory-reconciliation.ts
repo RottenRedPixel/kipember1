@@ -488,7 +488,7 @@ export async function reconcileEmberMessage(messageId: string) {
 
   const image = message.session.image;
   const systemPrompt = await renderPromptTemplate(
-    'reconciliation.extract_claims',
+    'ember_chat.style',
     RECONCILIATION_CLAIM_EXTRACTION_PROMPT
   );
   const extractionContext = compactLines([
@@ -516,7 +516,7 @@ export async function reconcileEmberMessage(messageId: string) {
       },
     ],
     {
-      capabilityKey: 'reconciliation.extract_claims',
+      capabilityKey: 'ember_chat.style',
       maxTokens: 1600,
     }
   );

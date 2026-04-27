@@ -281,14 +281,6 @@ Focus:
   },
 };
 
-const STORY_CUT_PROMPT_KEYS: Record<SnapshotStyle, string> = {
-  documentary: 'snapshots.documentary',
-  publicRadio: 'snapshots.public_radio',
-  newsReport: 'snapshots.news_report',
-  podcastNarrative: 'snapshots.podcast_narrative',
-  movieTrailer: 'snapshots.movie_trailer',
-};
-
 const SNAPSHOT_GENERATE_CORE_PROMPT = `You generate Snapshot scripts for Ember.
 
 Snapshots are NOT generic wiki narration. They are short trailer-like memory playbacks.
@@ -551,7 +543,7 @@ export async function generateSnapshot(
   const wordCount = estimateWordCount(durationSeconds);
   const styleConfig = STORY_CUT_STYLE_PROMPTS[options.style] || STORY_CUT_STYLE_PROMPTS.documentary;
   const stylePrompt = await renderPromptTemplate(
-    STORY_CUT_PROMPT_KEYS[options.style] || STORY_CUT_PROMPT_KEYS.documentary,
+    'snapshot_generation.regenerate',
     styleConfig.prompt
   );
   const storyFocus = options.storyFocus.trim() || 'The emotional heart of the moment';
@@ -690,10 +682,10 @@ export async function generateSnapshot(
   ]);
 
   const openai = getOpenAIClient();
-  const corePrompt = await renderPromptTemplate('snapshots.generate.core', SNAPSHOT_GENERATE_CORE_PROMPT, {
+  const corePrompt = await renderPromptTemplate('snapshot_generation.regenerate', SNAPSHOT_GENERATE_CORE_PROMPT, {
     stylePrompt,
   });
-  const userPrompt = await renderPromptTemplate('snapshots.generate.user', SNAPSHOT_GENERATE_USER_PROMPT, {
+  const userPrompt = await renderPromptTemplate('snapshot_generation.regenerate', SNAPSHOT_GENERATE_USER_PROMPT, {
     storyContext,
     storyTitle,
     durationSeconds,

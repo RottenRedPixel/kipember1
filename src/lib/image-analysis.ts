@@ -621,10 +621,10 @@ Rules:
 - Count any clearly visible person, even if partially in frame.
 - Do not return any other fields.`;
 
-async function repairVisionJson(responseText: string): Promise<unknown> {
+async function repairVisionJson(responseText: string, promptKey: string): Promise<unknown> {
   const repairSource = extractBalancedJsonObject(responseText) || sanitizeJsonCandidate(responseText);
   const openai = getOpenAIClient();
-  const repairPrompt = await renderPromptTemplate('image_analysis.repair', IMAGE_ANALYSIS_REPAIR_PROMPT);
+  const repairPrompt = await renderPromptTemplate(promptKey, IMAGE_ANALYSIS_REPAIR_PROMPT);
   const repairMessage = await openai.responses.create({
     model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
     input: [
@@ -779,7 +779,7 @@ async function analyzeImageVisually({
       return normalizeVisionAnalysis(parseJsonFromText(responseText));
     } catch (parseError) {
       try {
-        return normalizeVisionAnalysis(await repairVisionJson(responseText));
+        return normalizeVisionAnalysis(await repairVisionJson(responseText, promptKey));
       } catch (repairError) {
         lastError =
           repairError instanceof Error

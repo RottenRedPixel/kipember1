@@ -56,6 +56,17 @@ type ControlPlaneSnapshot = {
 const DEFAULT_CACHE_TTL_MS = 30_000;
 const DEFAULT_TIMEOUT_MS = 5_000;
 const RUNTIME_CONFIG_PATH = '/api/runtime/config';
+const APPROVED_RUNTIME_PROMPT_KEYS = new Set([
+  'image_analysis.initial_photo',
+  'image_analysis.uploaded_photo',
+  'title_generation.initial',
+  'title_generation.regenerate',
+  'snapshot_generation.initial',
+  'snapshot_generation.regenerate',
+  'ember_chat.style',
+  'ember_voice.style',
+  'ember_call.style',
+]);
 
 let cachedSnapshot: ControlPlaneSnapshot | null = null;
 let cacheExpiresAt = 0;
@@ -152,8 +163,16 @@ export async function getCapabilityModel(capabilityKey: string, fallbackModel: s
 }
 
 export async function getPromptBody(promptKey: string, fallbackBody: string) {
+  if (!APPROVED_RUNTIME_PROMPT_KEYS.has(promptKey)) {
+    throw new Error(`Prompt key "${promptKey}" is not one of the nine runtime prompts.`);
+  }
+
   const snapshot = await getControlPlaneSnapshot();
   const configuredBody = snapshot?.prompts?.[promptKey]?.body?.trim();
+  if (!configuredBody && isControlPlaneConfigured()) {
+    throw new Error(`Prompt key "${promptKey}" is missing from the control plane runtime config.`);
+  }
+
   return configuredBody || fallbackBody;
 }
 

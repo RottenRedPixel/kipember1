@@ -194,10 +194,10 @@ export async function cleanNarrationScript(narrationText: string) {
 
   try {
     const openai = getOpenAIClient();
-    const cleanupPrompt = await renderPromptTemplate('narration.cleanup', NARRATION_CLEANUP_PROMPT);
+    const cleanupPrompt = await renderPromptTemplate('snapshot_generation.regenerate', NARRATION_CLEANUP_PROMPT);
     const response = await openai.responses.create({
       model: await getConfiguredOpenAIModel(
-        'narration.cleanup',
+        'snapshot_generation.regenerate',
         getNarrationCleanupModel()
       ),
       input: [

@@ -724,7 +724,7 @@ export async function generateWiki({
   };
 
   const openai = getOpenAIClient();
-  const structurePrompt = await renderPromptTemplate('wiki.structure.core', DEFAULT_WIKI_STRUCTURE_PROMPT);
+  const structurePrompt = await renderPromptTemplate('snapshot_generation.initial', DEFAULT_WIKI_STRUCTURE_PROMPT);
   const structuredResponse = await openai.responses.create({
     model: await getConfiguredOpenAIModel('wiki.structure', getWikiStructureModel()),
     input: [
@@ -772,7 +772,7 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
     analysis,
   });
 
-  const systemPrompt = await renderPromptTemplate('wiki.rewrite', DEFAULT_WIKI_REWRITE_PROMPT);
+  const systemPrompt = await renderPromptTemplate('snapshot_generation.regenerate', DEFAULT_WIKI_REWRITE_PROMPT);
 
   const output = await chat(systemPrompt, [
     {
@@ -781,7 +781,7 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
 ${JSON.stringify(structuredMemory, null, 2)}`,
     },
   ], {
-    capabilityKey: 'wiki.rewrite',
+    capabilityKey: 'snapshot_generation.regenerate',
     fallbackModel: DEFAULT_CLAUDE_MODEL,
   });
 
@@ -798,7 +798,7 @@ export async function generateFollowUpQuestion(
   collectedResponses: { questionType: string; answer: string }[]
 ): Promise<string | null> {
   const systemPrompt = await renderPromptTemplate(
-    'wiki.followup_question',
+    'ember_chat.style',
     DEFAULT_WIKI_FOLLOWUP_PROMPT
   );
 
@@ -815,7 +815,7 @@ Should we ask a follow-up question? If yes, what should it be?`;
     ...conversationHistory.slice(-4), // Last few messages for context
     { role: 'user', content: userMessage },
   ], {
-    capabilityKey: 'wiki.rewrite',
+    capabilityKey: 'ember_chat.style',
     fallbackModel: DEFAULT_CLAUDE_MODEL,
   });
 
