@@ -45,6 +45,8 @@ type GoogleGeocodeResponse = {
   }>;
 };
 
+type GoogleGeocodeResult = NonNullable<GoogleGeocodeResponse['results']>[number];
+
 type GooglePlacesNearbyResponse = {
   results?: Array<{
     name?: string;
@@ -204,6 +206,46 @@ function normalizePlaceType(types: string[] | undefined): LocationSuggestion['ki
   return 'place';
 }
 
+function isResidentialAddressResult(result: GoogleGeocodeResult | undefined) {
+  const types = new Set((result?.types || []).map((type) => type.toLowerCase()));
+  return types.has('street_address') || types.has('premise') || types.has('subpremise');
+}
+
+function buildAddressSuggestion({
+  latitude,
+  longitude,
+  result,
+  reason,
+}: {
+  latitude: number;
+  longitude: number;
+  result: GoogleGeocodeResult;
+  reason?: string;
+}): LocationSuggestion {
+  return {
+    id: '',
+    label: result.formatted_address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+    detail: 'Reverse-geocoded address from photo GPS',
+    kind: normalizePlaceType(result.types),
+    latitude: result.geometry?.location?.lat ?? latitude,
+    longitude: result.geometry?.location?.lng ?? longitude,
+    placeId: result.place_id || null,
+    confidence: 'high',
+    reason: reason || null,
+  };
+}
+
+function buildCoordinateSuggestion(latitude: number, longitude: number): LocationSuggestion {
+  return {
+    id: '',
+    label: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+    detail: 'Exact GPS coordinates from the photo metadata',
+    kind: 'coordinates',
+    latitude,
+    longitude,
+  };
+}
+
 async function fetchGoogleReverseGeocode({
   latitude,
   longitude,
@@ -259,6 +301,20 @@ function buildGoogleSuggestions({
   nearby: GooglePlacesNearbyResponse;
 }) {
   const suggestions: LocationSuggestion[] = [];
+  const bestAddress = geocode.results?.[0];
+
+  if (bestAddress?.formatted_address && isResidentialAddressResult(bestAddress)) {
+    suggestions.push(
+      buildAddressSuggestion({
+        latitude,
+        longitude,
+        result: bestAddress,
+        reason: 'GPS resolved to a residential address, so nearby businesses were filtered out.',
+      })
+    );
+    suggestions.push(buildCoordinateSuggestion(latitude, longitude));
+    return dedupeSuggestions(suggestions).slice(0, 3);
+  }
 
   for (const place of nearby.results || []) {
     if (!place.name?.trim() || place.business_status === 'CLOSED_PERMANENTLY') {
@@ -290,27 +346,11 @@ function buildGoogleSuggestions({
     });
   }
 
-  const bestAddress = geocode.results?.[0];
   if (bestAddress?.formatted_address) {
-    suggestions.push({
-      id: '',
-      label: bestAddress.formatted_address,
-      detail: 'Reverse-geocoded address from photo GPS',
-      kind: normalizePlaceType(bestAddress.types),
-      latitude: bestAddress.geometry?.location?.lat ?? latitude,
-      longitude: bestAddress.geometry?.location?.lng ?? longitude,
-      placeId: bestAddress.place_id || null,
-    });
+    suggestions.push(buildAddressSuggestion({ latitude, longitude, result: bestAddress }));
   }
 
-  suggestions.push({
-    id: '',
-    label: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
-    detail: 'Exact GPS coordinates from the photo metadata',
-    kind: 'coordinates',
-    latitude,
-    longitude,
-  });
+  suggestions.push(buildCoordinateSuggestion(latitude, longitude));
 
   return dedupeSuggestions(suggestions).slice(0, 12);
 }
