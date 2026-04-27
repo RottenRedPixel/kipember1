@@ -28,6 +28,13 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     description: 'Analysis of additional photos uploaded after the ember exists. Same shape as cover analysis but ran per attachment.',
     variables: ['schemaJson', 'originalName', 'userDescription', 'metadataSummary', 'conciseMode'],
   },
+  {
+    key: 'image_analysis.location_resolution',
+    label: 'Image Analysis - Location Resolution',
+    group: 'Image Analysis',
+    description: 'Ranks exact address and nearby-place candidates using GPS, reverse geocoding, place search results, and visual clues from the photo.',
+    variables: ['gpsCoordinates', 'reverseGeocodeAddress', 'placeCandidates', 'visualAnalysis', 'metadataSummary', 'userDescription'],
+  },
 
   {
     key: 'title_generation.initial',
