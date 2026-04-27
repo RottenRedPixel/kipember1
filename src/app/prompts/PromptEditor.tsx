@@ -57,20 +57,20 @@ export function PromptCard({ data }: { data: PromptCardData }) {
   return (
     <article
       id={`prompt-${data.key}`}
-      className="rounded-lg border border-white/10 bg-white/[0.03] p-5"
+      className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm"
     >
-      <header className="border-b border-white/10 pb-4">
+      <header className="border-b border-zinc-200 pb-4">
         <div className="flex items-center gap-2">
           <span
             aria-label={isActive ? 'in use' : 'not in use'}
             className={`h-2 w-2 rounded-full ${
-              isActive ? 'bg-emerald-400' : 'bg-rose-400'
+              isActive ? 'bg-emerald-500' : 'bg-rose-500'
             }`}
           />
-          <h2 className="text-lg font-semibold text-zinc-100">{data.label}</h2>
+          <h2 className="text-lg font-semibold text-zinc-900">{data.label}</h2>
         </div>
         <p className="mt-1 font-mono text-xs text-zinc-500">{data.key}</p>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">{data.description}</p>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-600">{data.description}</p>
         {data.variables.length > 0 ? (
           <p className="mt-2 font-mono text-[11px] leading-relaxed text-zinc-500">
             Variables: {data.variables.map((variable) => `{{${variable}}}`).join('  ')}
@@ -79,7 +79,7 @@ export function PromptCard({ data }: { data: PromptCardData }) {
       </header>
 
       <textarea
-        className="mt-4 block min-h-[600px] w-full rounded-md border border-white/10 bg-black/35 p-4 font-mono text-sm leading-6 text-zinc-100 outline-none focus:border-amber-300/40"
+        className="mt-4 block min-h-[600px] w-full rounded-md border border-zinc-200 bg-zinc-50 p-4 font-mono text-sm leading-6 text-zinc-900 outline-none focus:border-amber-500"
         spellCheck={false}
         value={draft}
         onChange={(event) => {
@@ -89,18 +89,18 @@ export function PromptCard({ data }: { data: PromptCardData }) {
       />
 
       <footer className="mt-3 flex items-center justify-between gap-3">
-        <div className="text-xs text-zinc-400">
+        <div className="text-xs text-zinc-500">
           {saveState === 'saving' ? 'saving…' : null}
-          {saveState === 'saved' ? <span className="text-emerald-300">saved</span> : null}
+          {saveState === 'saved' ? <span className="text-emerald-600">saved</span> : null}
           {saveState === 'error' && errorMessage ? (
-            <span className="text-rose-300">{errorMessage}</span>
+            <span className="text-rose-600">{errorMessage}</span>
           ) : null}
         </div>
         <button
           type="button"
           disabled={!isDirty || saveState === 'saving' || !draft.trim()}
           onClick={save}
-          className="rounded-md bg-amber-400 px-4 py-1.5 text-xs font-semibold text-amber-950 transition-colors can-hover hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-amber-400/30 disabled:text-amber-950/50"
+          className="rounded-md bg-amber-500 px-4 py-1.5 text-xs font-semibold text-white transition-colors can-hover hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
         >
           Save
         </button>
