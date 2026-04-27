@@ -2,9 +2,7 @@ export type PromptGroup =
   | 'Image Analysis'
   | 'Title Generation'
   | 'Snapshot Generation'
-  | 'Ember Chat'
-  | 'Ember Voice'
-  | 'Ember Call';
+  | 'Ember AI';
 
 export type PromptDefinition = {
   key: string;
@@ -63,7 +61,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_chat.style',
     label: 'Ember Chat - Style & Technique',
-    group: 'Ember Chat',
+    group: 'Ember AI',
     description: 'One prompt that handles all in-app chat flows: the live Ember Chat reply, memory-claim extraction from chat, and wiki follow-up questions.',
     variables: [],
   },
@@ -71,7 +69,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_voice.style',
     label: 'Ember Voice - Style & Technique',
-    group: 'Ember Voice',
+    group: 'Ember AI',
     description: 'One prompt that handles in-app voice chats: spoken Ember replies, transcript-to-interview extraction, and highlight-clip extraction.',
     variables: [],
   },
@@ -79,7 +77,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_call.style',
     label: 'Ember Call - Style & Technique',
-    group: 'Ember Call',
+    group: 'Ember AI',
     description: 'Synced to Retell. Tells the Retell voice agent how to behave during outbound voice calls. Saves here are pushed to Retell automatically.',
     variables: [],
   },
@@ -97,9 +95,7 @@ export const PROMPT_GROUPS: PromptGroup[] = [
   'Image Analysis',
   'Title Generation',
   'Snapshot Generation',
-  'Ember Chat',
-  'Ember Voice',
-  'Ember Call',
+  'Ember AI',
 ];
 
 export function getPromptDefinition(key: string): PromptDefinition | undefined {
