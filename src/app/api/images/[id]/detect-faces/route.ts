@@ -47,7 +47,7 @@ export async function POST(
       .jpeg({ quality: 78 })
       .toBuffer();
 
-    const systemPrompt = await renderPromptTemplate('face_match.detect');
+    const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo');
     const response = await anthropic.messages.create({
       model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
       max_tokens: 1000,

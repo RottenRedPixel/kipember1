@@ -182,7 +182,7 @@ export async function cleanNarrationScript(narrationText: string) {
 
   try {
     const openai = getOpenAIClient();
-    const cleanupPrompt = await renderPromptTemplate('narration.cleanup');
+    const cleanupPrompt = await renderPromptTemplate('snapshot_generation.regenerate');
     const response = await openai.responses.create({
       model: await getConfiguredOpenAIModel(
         'snapshot_generation.regenerate',

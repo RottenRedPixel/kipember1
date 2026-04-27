@@ -548,7 +548,7 @@ export async function generateSnapshot(
   ]);
 
   const openai = getOpenAIClient();
-  const corePrompt = await renderPromptTemplate('snapshot.script', '', {
+  const corePrompt = await renderPromptTemplate('snapshot_generation.regenerate', '', {
     stylePrompt: styleConfig.label,
     storyContext,
     storyTitle,

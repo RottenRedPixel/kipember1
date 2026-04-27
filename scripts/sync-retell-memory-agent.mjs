@@ -68,7 +68,6 @@ async function loadRetellRuntimeConfig() {
     const fallbackModel = readString(remoteAgent?.model);
 
     const callPrompt = requirePrompt(snapshot, 'ember_call.style');
-    const closingPrompt = requirePrompt(snapshot, 'ember_call.closing');
 
     return {
       agentId: readString(remoteAgent?.remoteIdentifier) || fallbackAgentId,
@@ -82,7 +81,7 @@ async function loadRetellRuntimeConfig() {
         interview: callPrompt,
         global: callPrompt,
         summary: callPrompt,
-        closing: closingPrompt,
+        closing: callPrompt,
         success: callPrompt,
         sentiment: callPrompt,
       },

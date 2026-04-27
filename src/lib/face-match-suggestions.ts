@@ -386,7 +386,7 @@ async function loadCandidatesWithReferences(referenceCandidates: CandidateGroup[
 }
 
 async function repairFaceMatchJson(responseText: string): Promise<unknown> {
-  const systemPrompt = await renderPromptTemplate('face_match.repair_json', '', {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
     task: 'face_match_repair',
     schemaJson: JSON.stringify(FACE_MATCH_SCHEMA),
   });
@@ -417,7 +417,7 @@ async function repairFaceMatchJson(responseText: string): Promise<unknown> {
 }
 
 async function repairFaceVerifyJson(responseText: string): Promise<unknown> {
-  const systemPrompt = await renderPromptTemplate('face_match.repair_json', '', {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
     task: 'face_verify_repair',
     schemaJson: JSON.stringify(FACE_VERIFY_SCHEMA),
   });
@@ -448,7 +448,7 @@ async function repairFaceVerifyJson(responseText: string): Promise<unknown> {
 }
 
 async function repairAutoTagJson(responseText: string): Promise<unknown> {
-  const systemPrompt = await renderPromptTemplate('face_match.repair_json', '', {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
     task: 'auto_tag_repair',
     schemaJson: JSON.stringify(AUTO_TAG_SCHEMA),
   });
@@ -535,7 +535,7 @@ async function compareFaceToCandidates(
     });
   });
 
-  const systemPrompt = await renderPromptTemplate('face_match.match', '', {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
     task: 'face_match',
     schemaJson: JSON.stringify(FACE_MATCH_SCHEMA),
   });
@@ -630,7 +630,7 @@ async function verifyFaceAgainstCandidate(
     });
   });
 
-  const systemPrompt = await renderPromptTemplate('face_match.match', '', {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
     task: 'face_verify',
     schemaJson: JSON.stringify(FACE_VERIFY_SCHEMA),
   });
@@ -833,7 +833,7 @@ async function locateCandidateMatchesInImage(
     });
   });
 
-  const systemPrompt = await renderPromptTemplate('face_match.detect', '', {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
     task: 'auto_tag',
     schemaJson: JSON.stringify(AUTO_TAG_SCHEMA),
   });
@@ -948,7 +948,7 @@ export async function detectFacesInImage({
     posterFilename: image.posterFilename,
   });
 
-  const systemPrompt = await renderPromptTemplate('face_match.detect', '', {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
     task: 'face_detect',
     schemaJson: JSON.stringify(FACE_DETECT_SCHEMA),
   });

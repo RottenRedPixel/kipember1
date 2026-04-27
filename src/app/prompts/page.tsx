@@ -38,7 +38,7 @@ export default async function PromptsPage() {
 
   return (
     <main className="min-h-screen bg-[#101313] px-6 py-8 text-zinc-100">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 lg:max-w-none">
         <header className="border-b border-white/10 pb-5">
           <h1 className="text-3xl font-semibold tracking-tight">Prompts</h1>
           <p className="mt-2 text-sm leading-relaxed text-zinc-400">

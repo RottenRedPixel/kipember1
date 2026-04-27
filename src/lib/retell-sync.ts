@@ -33,10 +33,9 @@ function readString(value: unknown) {
 async function loadRetellRuntimeConfig(): Promise<RetellRuntimeConfig> {
   const fallbackAgentId = readString(process.env.RETELL_AGENT_ID);
 
-  const [snapshot, callPrompt, closingPrompt] = await Promise.all([
+  const [snapshot, callPrompt] = await Promise.all([
     getControlPlaneSnapshot(),
     getPromptBody('ember_call.style'),
-    getPromptBody('ember_call.closing'),
   ]);
 
   const remoteAgent = snapshot?.remoteAgents?.['retell.memory_interviewer'];
@@ -46,9 +45,6 @@ async function loadRetellRuntimeConfig(): Promise<RetellRuntimeConfig> {
 
   if (!callPrompt) {
     throw new Error('ember_call.style has no body');
-  }
-  if (!closingPrompt) {
-    throw new Error('ember_call.closing has no body');
   }
 
   return {
@@ -63,7 +59,7 @@ async function loadRetellRuntimeConfig(): Promise<RetellRuntimeConfig> {
       interview: callPrompt,
       global: callPrompt,
       summary: callPrompt,
-      closing: closingPrompt,
+      closing: callPrompt,
       success: callPrompt,
       sentiment: callPrompt,
     },
@@ -192,4 +188,4 @@ export async function syncRetellAgent(): Promise<RetellSyncResult> {
   };
 }
 
-export const RETELL_PROMPT_KEYS = new Set<string>(['ember_call.style', 'ember_call.closing']);
+export const RETELL_PROMPT_KEYS = new Set<string>(['ember_call.style']);

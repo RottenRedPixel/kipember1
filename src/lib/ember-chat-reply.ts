@@ -10,7 +10,7 @@ export type EmberChatTrigger =
 
 export async function generateEmberChatReply(trigger: EmberChatTrigger): Promise<string> {
   const systemPrompt = await renderPromptTemplate(
-    'ember_chat.reply',
+    'ember_chat.style',
     '',
     { trigger }
   );

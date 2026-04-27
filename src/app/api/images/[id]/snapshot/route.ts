@@ -49,7 +49,7 @@ export async function POST(
       contributorMemories: contributorMemories.map((m) => ({ contributorName: m.contributorName, answer: m.answer })),
       callSummaries: callSummaries.map((c) => ({ contributorName: c.contributorName, summary: c.summary })),
       callHighlights: callHighlights.map((h) => ({ contributorName: h.contributorName, title: h.title, quote: h.quote })),
-      promptKey: 'snapshot.script',
+      promptKey: 'snapshot_generation.regenerate',
     });
 
     if (!script.trim()) {
