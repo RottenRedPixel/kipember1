@@ -66,7 +66,8 @@ export const RUNTIME_PROMPT_DEFINITIONS = [
   { key: 'snapshot_generation.regenerate', label: 'Snapshot Generation - Regenerate' },
   { key: 'ember_chat.style', label: 'Ember Chat - Style & Technique' },
   { key: 'ember_voice.style', label: 'Ember Voice - Style & Technique' },
-  { key: 'ember_call.style', label: 'Ember Call - Style & Technique' },
+  { key: 'ember_call.style', label: 'Retell Call Main Prompt' },
+  { key: 'ember_call.closing', label: 'Retell Call Closing Prompt' },
 ] as const;
 const APPROVED_RUNTIME_PROMPT_KEYS = new Set<string>(
   RUNTIME_PROMPT_DEFINITIONS.map((prompt) => prompt.key)
