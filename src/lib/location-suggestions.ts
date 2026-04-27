@@ -317,14 +317,21 @@ async function fetchGoogleNearbyPlaces({
   latitude,
   longitude,
   apiKey,
+  radius = 90,
+  type,
 }: {
   latitude: number;
   longitude: number;
   apiKey: string;
+  radius?: number;
+  type?: string;
 }) {
   const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
   url.searchParams.set('location', `${latitude},${longitude}`);
-  url.searchParams.set('radius', '90');
+  url.searchParams.set('radius', radius.toString());
+  if (type) {
+    url.searchParams.set('type', type);
+  }
   url.searchParams.set('key', apiKey);
 
   const response = await fetch(url.toString(), { cache: 'no-store' });
@@ -333,6 +340,27 @@ async function fetchGoogleNearbyPlaces({
   }
 
   return (await response.json()) as GooglePlacesNearbyResponse;
+}
+
+function mergeGoogleNearbyResponses(
+  ...responses: Array<GooglePlacesNearbyResponse | null | undefined>
+): GooglePlacesNearbyResponse {
+  const seen = new Set<string>();
+  const results: NonNullable<GooglePlacesNearbyResponse['results']> = [];
+
+  for (const response of responses) {
+    for (const place of response?.results || []) {
+      const key = place.place_id || `${place.name || ''}|${place.vicinity || ''}`;
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      results.push(place);
+    }
+  }
+
+  return { results };
 }
 
 function buildGoogleSuggestions({
@@ -599,11 +627,20 @@ export async function getLocationSuggestionsForCoordinates({
   const googleApiKey = getGoogleMapsApiKey();
   if (googleApiKey) {
     try {
-      const [geocode, nearby] = await Promise.all([
+      const [geocode, nearby, restaurants, cafes] = await Promise.all([
         fetchGoogleReverseGeocode({ latitude, longitude, apiKey: googleApiKey }),
         fetchGoogleNearbyPlaces({ latitude, longitude, apiKey: googleApiKey }),
+        fetchGoogleNearbyPlaces({ latitude, longitude, apiKey: googleApiKey, radius: 180, type: 'restaurant' }),
+        fetchGoogleNearbyPlaces({ latitude, longitude, apiKey: googleApiKey, radius: 180, type: 'cafe' }),
       ]);
-      const suggestions = buildGoogleSuggestions({ latitude, longitude, geocode, nearby, context });
+      const nearbyCandidates = mergeGoogleNearbyResponses(nearby, restaurants, cafes);
+      const suggestions = buildGoogleSuggestions({
+        latitude,
+        longitude,
+        geocode,
+        nearby: nearbyCandidates,
+        context,
+      });
       try {
         return await rankLocationSuggestions({
           latitude,
