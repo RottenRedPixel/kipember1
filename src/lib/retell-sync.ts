@@ -1,6 +1,10 @@
 import Retell from 'retell-sdk';
 import { getControlPlaneSnapshot, getPromptBody } from '@/lib/control-plane';
 
+type ConversationFlowUpdateParams = Parameters<
+  InstanceType<typeof Retell>['conversationFlow']['update']
+>[1];
+
 type RetellRuntimeConfig = {
   agentId: string;
   model: string;
@@ -66,8 +70,8 @@ async function loadRetellRuntimeConfig(): Promise<RetellRuntimeConfig> {
   };
 }
 
-function buildFlowPayload(config: RetellRuntimeConfig) {
-  return {
+function buildFlowPayload(config: RetellRuntimeConfig): ConversationFlowUpdateParams {
+  const payload = {
     model_choice: {
       type: 'cascading' as const,
       model: config.model,
@@ -128,6 +132,7 @@ function buildFlowPayload(config: RetellRuntimeConfig) {
       },
     ],
   };
+  return payload as ConversationFlowUpdateParams;
 }
 
 export type RetellSyncResult = {
