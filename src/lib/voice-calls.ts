@@ -404,15 +404,9 @@ function extractJsonObject(text: string): string {
 
 async function extractInterviewFromTranscript(transcript: string): Promise<ExtractedInterview> {
   const systemPrompt = await renderPromptTemplate(
-    'ember_voice.style',
+    'x_housekeeping.interview_extract',
     '',
-    {
-      task: 'transcript_extract',
-      imageTitle: '',
-      contributorName: 'Contributor',
-      transcript,
-      segmentList: '',
-    }
+    { transcript }
   );
 
   const responseText = await chat(systemPrompt, [

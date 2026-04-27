@@ -443,7 +443,7 @@ export async function reconcileEmberMessage(messageId: string) {
   };
 
   const image = message.session.image;
-  const systemPrompt = await renderPromptTemplate('ember_chat.style');
+  const systemPrompt = await renderPromptTemplate('x_housekeeping.memory_extract');
   const extractionContext = compactLines([
     `EMBER TITLE\n${getEmberTitle(image)}`,
     image.description ? `CAPTION\n${image.description}` : null,
@@ -469,7 +469,7 @@ export async function reconcileEmberMessage(messageId: string) {
       },
     ],
     {
-      capabilityKey: 'ember_chat.style',
+      capabilityKey: 'x_housekeeping.memory_extract',
       maxTokens: 1600,
     }
   );

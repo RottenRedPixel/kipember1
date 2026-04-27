@@ -270,11 +270,9 @@ export async function extractImportantVoiceCallClips({
       endMs: segment.endMs,
       text: segment.content,
     }));
-  const prompt = await renderPromptTemplate('ember_voice.style', '', {
-    task: 'clip_extract',
+  const prompt = await renderPromptTemplate('x_housekeeping.highlight_extract', '', {
     imageTitle,
     contributorName,
-    transcript: '',
     segmentList: JSON.stringify(segmentList, null, 2),
   });
 

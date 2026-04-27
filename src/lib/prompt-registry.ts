@@ -2,7 +2,8 @@ export type PromptGroup =
   | 'Image Analysis'
   | 'Title Generation'
   | 'Snapshot Generation'
-  | 'Ember AI';
+  | 'Ember AI'
+  | 'Housekeeping';
 
 export type PromptDefinition = {
   key: string;
@@ -62,7 +63,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'ember_chat.style',
     label: 'Ember Chat - Style & Technique',
     group: 'Ember AI',
-    description: 'One prompt that handles all in-app chat flows: the live Ember Chat reply, memory-claim extraction from chat, and wiki follow-up questions.',
+    description: 'Controls how the system replies in text-based chat (Ember Chat bubbles and SMS interview follow-ups). Style only — no extraction logic.',
     variables: [],
   },
 
@@ -70,7 +71,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'ember_voice.style',
     label: 'Ember Voice - Style & Technique',
     group: 'Ember AI',
-    description: 'One prompt that handles in-app voice chats: spoken Ember replies, transcript-to-interview extraction, and highlight-clip extraction.',
+    description: 'Controls how the system replies when the user is using the in-app mic for a voice conversation. Style only — no extraction logic.',
     variables: [],
   },
 
@@ -80,6 +81,28 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     group: 'Ember AI',
     description: 'Synced to Retell. Tells the Retell voice agent how to behave during outbound voice calls. Saves here are pushed to Retell automatically.',
     variables: [],
+  },
+
+  {
+    key: 'x_housekeeping.memory_extract',
+    label: 'Memory Extraction',
+    group: 'Housekeeping',
+    description: 'Background parser. After a contributor sends a chat answer, this prompt pulls structured claims (people, dates, places, facts) out of it for the wiki memory store. Not user-facing.',
+    variables: [],
+  },
+  {
+    key: 'x_housekeeping.interview_extract',
+    label: 'Interview Extraction',
+    group: 'Housekeeping',
+    description: 'Background parser. After a Retell call ends, this prompt turns the raw transcript into a structured Q&A interview record. Not user-facing.',
+    variables: ['transcript'],
+  },
+  {
+    key: 'x_housekeeping.highlight_extract',
+    label: 'Highlight Extraction',
+    group: 'Housekeeping',
+    description: 'Background parser. After a Retell call ends, this prompt picks the best quote-worthy moments out of the call segments. Not user-facing.',
+    variables: ['imageTitle', 'contributorName', 'segmentList'],
   },
 ];
 
@@ -96,6 +119,7 @@ export const PROMPT_GROUPS: PromptGroup[] = [
   'Title Generation',
   'Snapshot Generation',
   'Ember AI',
+  'Housekeeping',
 ];
 
 export function getPromptDefinition(key: string): PromptDefinition | undefined {
