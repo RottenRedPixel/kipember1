@@ -17,6 +17,7 @@ type VisualEntity = {
 
 type ParsedVisionAnalysis = {
   title: string;
+  summary: string;
   visualDescription: string;
   mood: string;
   peopleObserved: VisualEntity[];
@@ -89,16 +90,250 @@ type ParsedMetadata = {
 const MAX_VISION_BASE64_BYTES = 5 * 1024 * 1024;
 const TARGET_VISION_BASE64_BYTES = Math.floor(4.6 * 1024 * 1024);
 
-// Stripped image analysis: the only thing we ask the model for is the number of
-// people visible in the photo. Everything else in ParsedVisionAnalysis stays in
-// the type so downstream consumers compile, but they will receive empty/null.
 const VISION_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['numberOfPeopleVisible'],
+  required: [
+    'title',
+    'summary',
+    'visualDescription',
+    'mood',
+    'peopleObserved',
+    'placeSignals',
+    'notableThings',
+    'activities',
+    'visibleText',
+    'searchableKeywords',
+    'openQuestions',
+    'sceneInsights',
+  ],
   properties: {
-    numberOfPeopleVisible: {
-      anyOf: [{ type: 'number' }, { type: 'null' }],
+    title: { type: 'string' },
+    summary: { type: 'string' },
+    visualDescription: { type: 'string' },
+    mood: { type: 'string' },
+    peopleObserved: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['label', 'details', 'confidence'],
+        properties: {
+          label: { type: 'string' },
+          details: { type: 'string' },
+          confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+        },
+      },
+    },
+    placeSignals: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['label', 'details', 'confidence'],
+        properties: {
+          label: { type: 'string' },
+          details: { type: 'string' },
+          confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+        },
+      },
+    },
+    notableThings: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['label', 'details', 'confidence'],
+        properties: {
+          label: { type: 'string' },
+          details: { type: 'string' },
+          confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+        },
+      },
+    },
+    activities: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    visibleText: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    searchableKeywords: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    openQuestions: {
+      type: 'array',
+      items: { type: 'string' },
+    },
+    sceneInsights: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'peopleAndDemographics',
+        'settingAndEnvironment',
+        'activitiesAndContext',
+        'technicalDetails',
+        'emotionalContext',
+      ],
+      properties: {
+        peopleAndDemographics: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'numberOfPeopleVisible',
+            'estimatedAgeRanges',
+            'genderPresentation',
+            'clothingAndStyle',
+            'bodyLanguageAndExpressions',
+            'spatialRelationships',
+            'relationshipInference',
+          ],
+          properties: {
+            numberOfPeopleVisible: {
+              anyOf: [{ type: 'number' }, { type: 'null' }],
+            },
+            estimatedAgeRanges: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+            genderPresentation: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            clothingAndStyle: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            bodyLanguageAndExpressions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            spatialRelationships: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            relationshipInference: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+          },
+        },
+        settingAndEnvironment: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'environmentType',
+            'locationType',
+            'timeOfDayAndLighting',
+            'lightingDescription',
+            'weatherConditions',
+            'backgroundDetails',
+            'architectureOrLandscape',
+          ],
+          properties: {
+            environmentType: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            locationType: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            timeOfDayAndLighting: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            lightingDescription: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            weatherConditions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            backgroundDetails: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            architectureOrLandscape: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+          },
+        },
+        activitiesAndContext: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'whatAppearsToBeHappening',
+            'socialDynamics',
+            'interactionsBetweenPeople',
+            'eventType',
+            'visibleActivities',
+          ],
+          properties: {
+            whatAppearsToBeHappening: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            socialDynamics: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            interactionsBetweenPeople: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            eventType: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            visibleActivities: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+        technicalDetails: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'photoQualityAndComposition',
+            'lightingAnalysis',
+            'notablePhotographicElements',
+            'objectsOfInterest',
+          ],
+          properties: {
+            photoQualityAndComposition: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            lightingAnalysis: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            notablePhotographicElements: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            objectsOfInterest: {
+              type: 'array',
+              items: { type: 'string' },
+            },
+          },
+        },
+        emotionalContext: {
+          type: 'object',
+          additionalProperties: false,
+          required: [
+            'overallMoodAndAtmosphere',
+            'emotionalExpressions',
+            'individualEmotions',
+            'energyLevel',
+            'socialEnergy',
+          ],
+          properties: {
+            overallMoodAndAtmosphere: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            emotionalExpressions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            individualEmotions: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            energyLevel: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+            socialEnergy: {
+              anyOf: [{ type: 'string' }, { type: 'null' }],
+            },
+          },
+        },
+      },
     },
   },
 } as const;
@@ -269,28 +504,23 @@ function normalizeSceneInsights(value: unknown): ParsedVisionAnalysis['sceneInsi
 function normalizeVisionAnalysis(raw: unknown): ParsedVisionAnalysis {
   const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 
-  // Stripped analysis: only numberOfPeopleVisible is asked for. All other fields
-  // remain in the type for downstream compatibility but resolve to empty/null.
-  const sceneInsights: ParsedVisionAnalysis['sceneInsights'] = {
-    ...EMPTY_SCENE_INSIGHTS,
-    peopleAndDemographics: {
-      ...EMPTY_SCENE_INSIGHTS.peopleAndDemographics,
-      numberOfPeopleVisible: sanitizeNumber(record.numberOfPeopleVisible),
-    },
-  };
-
   return {
-    title: '',
-    visualDescription: '',
-    mood: '',
-    peopleObserved: [],
-    placeSignals: [],
-    notableThings: [],
-    activities: [],
-    visibleText: [],
-    searchableKeywords: [],
-    openQuestions: [],
-    sceneInsights,
+    title: sanitizeString(record.title) || '',
+    summary:
+      sanitizeString(record.summary) ||
+      'A concise visual summary of the uploaded photo.',
+    visualDescription:
+      sanitizeString(record.visualDescription) ||
+      'A visually grounded description of the uploaded image.',
+    mood: sanitizeString(record.mood) || 'reflective',
+    peopleObserved: sanitizeEntityList(record.peopleObserved),
+    placeSignals: sanitizeEntityList(record.placeSignals),
+    notableThings: sanitizeEntityList(record.notableThings),
+    activities: sanitizeStringList(record.activities),
+    visibleText: sanitizeStringList(record.visibleText),
+    searchableKeywords: sanitizeStringList(record.searchableKeywords),
+    openQuestions: sanitizeStringList(record.openQuestions),
+    sceneInsights: normalizeSceneInsights(record.sceneInsights),
   };
 }
 
@@ -893,7 +1123,7 @@ export async function ensureImageAnalysisForImage(imageId: string) {
         data: {
           status,
           errorMessage,
-          summary: null,
+          summary: vision?.summary || null,
           visualDescription: vision?.visualDescription || null,
           metadataSummary,
           mood: vision?.mood || null,
