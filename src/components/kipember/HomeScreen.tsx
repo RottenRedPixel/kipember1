@@ -1099,7 +1099,7 @@ export default function HomeScreen({
             transition: 'top 200ms ease',
           }}
         >
-          <div className="relative flex items-center gap-3 px-4 py-3 flex-shrink-0">
+          <div className="relative flex items-center gap-3 pl-2 pr-4 py-3 flex-shrink-0">
             <Link
               href={
                 flow
@@ -1108,7 +1108,7 @@ export default function HomeScreen({
               }
               className="flex-1 text-left"
             >
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1">
                 <EmberMark />
                 <span className="text-base font-medium text-white">
                   <span style={{ color: '#f97316' }}>Ember</span> Chat
@@ -1122,17 +1122,17 @@ export default function HomeScreen({
               >
                 <Link
                   href={buildHomeHref({ chat: null })}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   style={{
                     background: chatTab === 'chats' ? 'var(--bg-screen)' : 'transparent',
                     color: chatTab === 'chats' ? '#ffffff' : 'var(--text-secondary)',
                   }}
                 >
-                  Chats
+                  Chat
                 </Link>
                 <Link
                   href={buildHomeHref({ chat: 'voice' })}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   style={{
                     background: chatTab === 'voice' ? 'var(--bg-screen)' : 'transparent',
                     color: chatTab === 'voice' ? '#ffffff' : 'var(--text-secondary)',
@@ -1142,13 +1142,13 @@ export default function HomeScreen({
                 </Link>
                 <Link
                   href={buildHomeHref({ chat: 'calls' })}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   style={{
                     background: chatTab === 'calls' ? 'var(--bg-screen)' : 'transparent',
                     color: chatTab === 'calls' ? '#ffffff' : 'var(--text-secondary)',
                   }}
                 >
-                  Calls
+                  Call
                 </Link>
               </div>
             ) : null}
