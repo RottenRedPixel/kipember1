@@ -11,6 +11,18 @@ import {
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 
+function safeParseJson(value: string | null | undefined, fallback: unknown) {
+  if (!value) {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -34,6 +46,14 @@ export async function GET(
       where: { imageId: id },
       select: {
         metadataJson: true,
+        metadataSummary: true,
+        visualDescription: true,
+        summary: true,
+        mood: true,
+        placesJson: true,
+        thingsJson: true,
+        activitiesJson: true,
+        visibleTextJson: true,
         latitude: true,
         longitude: true,
       },
@@ -51,6 +71,18 @@ export async function GET(
     const suggestions = await getLocationSuggestionsForCoordinates({
       latitude: analysis.latitude,
       longitude: analysis.longitude,
+      context: {
+        metadataSummary: analysis.metadataSummary,
+        visualAnalysis: {
+          summary: analysis.summary,
+          visualDescription: analysis.visualDescription,
+          mood: analysis.mood,
+          placeSignals: safeParseJson(analysis.placesJson, []),
+          notableThings: safeParseJson(analysis.thingsJson, []),
+          activities: safeParseJson(analysis.activitiesJson, []),
+          visibleText: safeParseJson(analysis.visibleTextJson, []),
+        },
+      },
     });
 
     return NextResponse.json({
@@ -103,6 +135,14 @@ export async function POST(
       typeof body.kind === 'string' && body.kind.trim() ? body.kind.trim() : 'place';
     const bodyLat = typeof body.latitude === 'number' ? body.latitude : null;
     const bodyLng = typeof body.longitude === 'number' ? body.longitude : null;
+    const placeId =
+      typeof body.placeId === 'string' && body.placeId.trim() ? body.placeId.trim() : null;
+    const confidence =
+      typeof body.confidence === 'string' && body.confidence.trim()
+        ? body.confidence.trim()
+        : null;
+    const reason =
+      typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : null;
 
     if (!label) {
       return NextResponse.json({ error: 'A location label is required' }, { status: 400 });
@@ -117,6 +157,9 @@ export async function POST(
       kind,
       latitude: resolvedLat,
       longitude: resolvedLng,
+      placeId,
+      confidence,
+      reason,
       confirmedAt: new Date().toISOString(),
     };
 

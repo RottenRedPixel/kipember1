@@ -8,6 +8,11 @@ type LocationSuggestion = {
   label: string;
   detail: string | null;
   kind: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  placeId?: string | null;
+  confidence?: 'high' | 'medium' | 'low';
+  reason?: string | null;
 };
 
 export default function LocationSuggestionPrompt({
@@ -107,6 +112,11 @@ export default function LocationSuggestionPrompt({
           label: selectedSuggestion.label,
           detail: selectedSuggestion.detail,
           kind: selectedSuggestion.kind,
+          latitude: selectedSuggestion.latitude,
+          longitude: selectedSuggestion.longitude,
+          placeId: selectedSuggestion.placeId,
+          confidence: selectedSuggestion.confidence,
+          reason: selectedSuggestion.reason,
         }),
       });
 
@@ -179,6 +189,9 @@ export default function LocationSuggestionPrompt({
                   </div>
                   {suggestion.detail && (
                     <p className="mt-1 text-sm text-[var(--ember-muted)]">{suggestion.detail}</p>
+                  )}
+                  {suggestion.reason && (
+                    <p className="mt-2 text-xs text-[var(--ember-muted)]">{suggestion.reason}</p>
                   )}
                 </button>
               );

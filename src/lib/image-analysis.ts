@@ -524,12 +524,148 @@ function normalizeVisionAnalysis(raw: unknown): ParsedVisionAnalysis {
   };
 }
 
-function formatExifDate(value: unknown): Date | null {
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value;
+type ExifDateParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+function parseOffsetMinutes(value: unknown): number | null {
+  if (typeof value !== 'string') {
+    return null;
   }
 
-  return null;
+  const match = value.trim().match(/^([+-])(\d{2}):?(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = Number.parseInt(match[2], 10);
+  const minutes = Number.parseInt(match[3], 10);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  return sign * (hours * 60 + minutes);
+}
+
+function parseExifDateParts(value: unknown): ExifDateParts | null {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return {
+      year: value.getUTCFullYear(),
+      month: value.getUTCMonth() + 1,
+      day: value.getUTCDate(),
+      hour: value.getUTCHours(),
+      minute: value.getUTCMinutes(),
+      second: value.getUTCSeconds(),
+    };
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const match = value
+    .trim()
+    .match(/^(\d{4})[:/-](\d{2})[:/-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) {
+    return null;
+  }
+
+  const parts = {
+    year: Number.parseInt(match[1], 10),
+    month: Number.parseInt(match[2], 10),
+    day: Number.parseInt(match[3], 10),
+    hour: Number.parseInt(match[4], 10),
+    minute: Number.parseInt(match[5], 10),
+    second: Number.parseInt(match[6] || '0', 10),
+  };
+
+  return Object.values(parts).every((part) => Number.isFinite(part)) ? parts : null;
+}
+
+async function getGoogleTimeZoneOffsetMinutes({
+  latitude,
+  longitude,
+  timestampSeconds,
+}: {
+  latitude: number | null;
+  longitude: number | null;
+  timestampSeconds: number;
+}) {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY?.trim();
+  if (!apiKey || latitude == null || longitude == null) {
+    return null;
+  }
+
+  try {
+    const url = new URL('https://maps.googleapis.com/maps/api/timezone/json');
+    url.searchParams.set('location', `${latitude},${longitude}`);
+    url.searchParams.set('timestamp', String(timestampSeconds));
+    url.searchParams.set('key', apiKey);
+
+    const response = await fetch(url.toString(), { cache: 'no-store' });
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as {
+      status?: string;
+      rawOffset?: number;
+      dstOffset?: number;
+    };
+    if (payload.status !== 'OK') {
+      return null;
+    }
+
+    return Math.round(((payload.rawOffset || 0) + (payload.dstOffset || 0)) / 60);
+  } catch (error) {
+    console.error('Google timezone lookup failed:', error);
+    return null;
+  }
+}
+
+async function formatExifDate({
+  value,
+  offsetValue,
+  latitude,
+  longitude,
+}: {
+  value: unknown;
+  offsetValue?: unknown;
+  latitude: number | null;
+  longitude: number | null;
+}): Promise<Date | null> {
+  const parts = parseExifDateParts(value);
+  if (!parts) {
+    return null;
+  }
+
+  const naiveUtcMs = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second
+  );
+  const offsetMinutes =
+    parseOffsetMinutes(offsetValue) ??
+    (await getGoogleTimeZoneOffsetMinutes({
+      latitude,
+      longitude,
+      timestampSeconds: Math.floor(naiveUtcMs / 1000),
+    }));
+
+  if (offsetMinutes == null) {
+    return new Date(naiveUtcMs);
+  }
+
+  return new Date(naiveUtcMs - offsetMinutes * 60_000);
 }
 
 function formatExposureTime(value: unknown): string | null {
@@ -559,14 +695,32 @@ async function extractPhotoMetadata(buffer: Buffer): Promise<ParsedMetadata> {
     ...sanitizeStringList(raw?.Subject),
     ...sanitizeStringList(raw?.Keywords),
   ];
+  const latitude = sanitizeNumber(raw?.latitude);
+  const longitude = sanitizeNumber(raw?.longitude);
+  const capturedAt =
+    (await formatExifDate({
+      value: raw?.DateTimeOriginal,
+      offsetValue: raw?.OffsetTimeOriginal || raw?.OffsetTime,
+      latitude,
+      longitude,
+    })) ||
+    (await formatExifDate({
+      value: raw?.CreateDate,
+      offsetValue: raw?.OffsetTimeDigitized || raw?.OffsetTime,
+      latitude,
+      longitude,
+    })) ||
+    (await formatExifDate({
+      value: raw?.ModifyDate,
+      offsetValue: raw?.OffsetTime,
+      latitude,
+      longitude,
+    }));
 
   return {
-    capturedAt:
-      formatExifDate(raw?.DateTimeOriginal) ||
-      formatExifDate(raw?.CreateDate) ||
-      formatExifDate(raw?.ModifyDate),
-    latitude: sanitizeNumber(raw?.latitude),
-    longitude: sanitizeNumber(raw?.longitude),
+    capturedAt,
+    latitude,
+    longitude,
     cameraMake: sanitizeString(raw?.Make),
     cameraModel: sanitizeString(raw?.Model),
     lensModel: sanitizeString(raw?.LensModel),

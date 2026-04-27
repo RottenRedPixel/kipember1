@@ -1,9 +1,15 @@
+import { chat } from '@/lib/claude';
+import { renderPromptTemplate } from '@/lib/control-plane';
+
 export type ConfirmedLocationContext = {
   label: string;
   detail: string | null;
   kind: string;
   latitude: number | null;
   longitude: number | null;
+  placeId?: string | null;
+  confidence?: string | null;
+  reason?: string | null;
   confirmedAt: string;
 };
 
@@ -12,12 +18,73 @@ export type LocationSuggestion = {
   label: string;
   detail: string | null;
   kind: 'place' | 'address' | 'neighborhood' | 'city' | 'region' | 'coordinates';
+  latitude?: number | null;
+  longitude?: number | null;
+  placeId?: string | null;
+  confidence?: 'high' | 'medium' | 'low';
+  reason?: string | null;
 };
 
 type ReverseGeocodeResponse = {
   name?: string;
   display_name?: string;
   address?: Record<string, string | undefined>;
+};
+
+type GoogleGeocodeResponse = {
+  results?: Array<{
+    formatted_address?: string;
+    place_id?: string;
+    geometry?: {
+      location?: {
+        lat?: number;
+        lng?: number;
+      };
+    };
+    types?: string[];
+  }>;
+};
+
+type GooglePlacesNearbyResponse = {
+  results?: Array<{
+    name?: string;
+    place_id?: string;
+    vicinity?: string;
+    business_status?: string;
+    types?: string[];
+    geometry?: {
+      location?: {
+        lat?: number;
+        lng?: number;
+      };
+    };
+  }>;
+};
+
+type RankedLocationResult = {
+  bestLocation?: {
+    name?: string | null;
+    address?: string | null;
+    placeId?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    locationType?: string | null;
+    confidence?: 'high' | 'medium' | 'low';
+    reason?: string | null;
+  } | null;
+  alternates?: Array<{
+    name?: string | null;
+    address?: string | null;
+    placeId?: string | null;
+    confidence?: 'high' | 'medium' | 'low';
+    reason?: string | null;
+  }>;
+};
+
+type LocationResolutionContext = {
+  visualAnalysis?: unknown;
+  metadataSummary?: string | null;
+  userDescription?: string | null;
 };
 
 function compactDetail(parts: Array<string | null | undefined>) {
@@ -77,6 +144,266 @@ function dedupeSuggestions(items: LocationSuggestion[]) {
   return result;
 }
 
+function getGoogleMapsApiKey() {
+  return process.env.GOOGLE_MAPS_API_KEY?.trim() || '';
+}
+
+function safeJson(value: unknown) {
+  return JSON.stringify(value ?? null, null, 2);
+}
+
+function extractJsonObject(text: string): string {
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+    throw new Error('Expected a JSON object in location resolution response');
+  }
+
+  return text.slice(firstBrace, lastBrace + 1);
+}
+
+function distanceMeters(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number }
+) {
+  const earthRadiusMeters = 6_371_000;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRadians(b.latitude - a.latitude);
+  const dLng = toRadians(b.longitude - a.longitude);
+  const lat1 = toRadians(a.latitude);
+  const lat2 = toRadians(b.latitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+function normalizePlaceType(types: string[] | undefined): LocationSuggestion['kind'] {
+  const values = new Set((types || []).map((type) => type.toLowerCase()));
+  if (
+    values.has('restaurant') ||
+    values.has('cafe') ||
+    values.has('bar') ||
+    values.has('bakery') ||
+    values.has('meal_takeaway') ||
+    values.has('meal_delivery')
+  ) {
+    return 'place';
+  }
+  if (values.has('street_address') || values.has('premise')) {
+    return 'address';
+  }
+  if (values.has('neighborhood') || values.has('sublocality')) {
+    return 'neighborhood';
+  }
+  if (values.has('locality')) {
+    return 'city';
+  }
+  return 'place';
+}
+
+async function fetchGoogleReverseGeocode({
+  latitude,
+  longitude,
+  apiKey,
+}: {
+  latitude: number;
+  longitude: number;
+  apiKey: string;
+}) {
+  const url = new URL('https://maps.googleapis.com/maps/api/geocode/json');
+  url.searchParams.set('latlng', `${latitude},${longitude}`);
+  url.searchParams.set('key', apiKey);
+
+  const response = await fetch(url.toString(), { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('Google geocode lookup failed');
+  }
+
+  return (await response.json()) as GoogleGeocodeResponse;
+}
+
+async function fetchGoogleNearbyPlaces({
+  latitude,
+  longitude,
+  apiKey,
+}: {
+  latitude: number;
+  longitude: number;
+  apiKey: string;
+}) {
+  const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
+  url.searchParams.set('location', `${latitude},${longitude}`);
+  url.searchParams.set('radius', '90');
+  url.searchParams.set('key', apiKey);
+
+  const response = await fetch(url.toString(), { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('Google nearby place lookup failed');
+  }
+
+  return (await response.json()) as GooglePlacesNearbyResponse;
+}
+
+function buildGoogleSuggestions({
+  latitude,
+  longitude,
+  geocode,
+  nearby,
+}: {
+  latitude: number;
+  longitude: number;
+  geocode: GoogleGeocodeResponse;
+  nearby: GooglePlacesNearbyResponse;
+}) {
+  const suggestions: LocationSuggestion[] = [];
+
+  for (const place of nearby.results || []) {
+    if (!place.name?.trim() || place.business_status === 'CLOSED_PERMANENTLY') {
+      continue;
+    }
+
+    const placeLat = place.geometry?.location?.lat;
+    const placeLng = place.geometry?.location?.lng;
+    const distance =
+      typeof placeLat === 'number' && typeof placeLng === 'number'
+        ? Math.round(distanceMeters(
+            { latitude, longitude },
+            { latitude: placeLat, longitude: placeLng }
+          ))
+        : null;
+
+    suggestions.push({
+      id: '',
+      label: place.name.trim(),
+      detail: compactDetail([
+        place.vicinity,
+        place.types?.slice(0, 4).join(', '),
+        distance != null ? `${distance}m from photo GPS` : null,
+      ]),
+      kind: normalizePlaceType(place.types),
+      latitude: placeLat ?? null,
+      longitude: placeLng ?? null,
+      placeId: place.place_id || null,
+    });
+  }
+
+  const bestAddress = geocode.results?.[0];
+  if (bestAddress?.formatted_address) {
+    suggestions.push({
+      id: '',
+      label: bestAddress.formatted_address,
+      detail: 'Reverse-geocoded address from photo GPS',
+      kind: normalizePlaceType(bestAddress.types),
+      latitude: bestAddress.geometry?.location?.lat ?? latitude,
+      longitude: bestAddress.geometry?.location?.lng ?? longitude,
+      placeId: bestAddress.place_id || null,
+    });
+  }
+
+  suggestions.push({
+    id: '',
+    label: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`,
+    detail: 'Exact GPS coordinates from the photo metadata',
+    kind: 'coordinates',
+    latitude,
+    longitude,
+  });
+
+  return dedupeSuggestions(suggestions).slice(0, 12);
+}
+
+async function rankLocationSuggestions({
+  latitude,
+  longitude,
+  suggestions,
+  geocode,
+  context,
+}: {
+  latitude: number;
+  longitude: number;
+  suggestions: LocationSuggestion[];
+  geocode: GoogleGeocodeResponse | null;
+  context?: LocationResolutionContext;
+}) {
+  if (suggestions.length === 0) {
+    return suggestions;
+  }
+
+  const reverseGeocodeAddress = geocode?.results?.[0]?.formatted_address || null;
+  const prompt = await renderPromptTemplate('image_analysis.location_resolution', '', {
+    gpsCoordinates: `${latitude}, ${longitude}`,
+    reverseGeocodeAddress: reverseGeocodeAddress || '',
+    placeCandidates: safeJson(
+      suggestions.map((suggestion) => ({
+        name: suggestion.label,
+        address: suggestion.detail,
+        placeId: suggestion.placeId,
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude,
+        kind: suggestion.kind,
+      }))
+    ),
+    visualAnalysis: safeJson(context?.visualAnalysis || null),
+    metadataSummary: context?.metadataSummary || '',
+    userDescription: context?.userDescription || '',
+  });
+
+  const response = await chat(
+    prompt,
+    [
+      {
+        role: 'user',
+        content: 'Rank the provided candidates and return the requested JSON only.',
+      },
+    ],
+    {
+      capabilityKey: 'image_analysis.location_resolution',
+      fallbackModel: 'claude-sonnet-4-20250514',
+      maxTokens: 900,
+    }
+  );
+
+  const parsed = JSON.parse(extractJsonObject(response)) as RankedLocationResult;
+  const rankedKeys = [
+    parsed.bestLocation?.placeId,
+    parsed.bestLocation?.name,
+    ...(parsed.alternates || []).flatMap((alternate) => [alternate.placeId, alternate.name]),
+  ]
+    .map((value) => (typeof value === 'string' ? value.trim().toLowerCase() : ''))
+    .filter(Boolean);
+
+  const rankByIdOrName = new Map<string, number>();
+  rankedKeys.forEach((key, index) => {
+    if (!rankByIdOrName.has(key)) {
+      rankByIdOrName.set(key, index);
+    }
+  });
+
+  const best = parsed.bestLocation || null;
+  return [...suggestions]
+    .map((suggestion, originalIndex) => {
+      const rank =
+        rankByIdOrName.get((suggestion.placeId || '').toLowerCase()) ??
+        rankByIdOrName.get(suggestion.label.toLowerCase()) ??
+        100 + originalIndex;
+      const isBest =
+        (best?.placeId && suggestion.placeId === best.placeId) ||
+        (best?.name && suggestion.label.toLowerCase() === best.name.toLowerCase());
+
+      return {
+        ...suggestion,
+        confidence: isBest ? best?.confidence || suggestion.confidence : suggestion.confidence,
+        reason: isBest ? best?.reason || suggestion.reason : suggestion.reason,
+        _rank: rank,
+      };
+    })
+    .sort((a, b) => a._rank - b._rank)
+    .map(({ _rank, ...suggestion }) => suggestion);
+}
+
 export function parseConfirmedLocationContext(
   metadataJson: string | null | undefined
 ): ConfirmedLocationContext | null {
@@ -120,6 +447,18 @@ export function parseConfirmedLocationContext(
         typeof candidate.longitude === 'number' && Number.isFinite(candidate.longitude)
           ? candidate.longitude
           : null,
+      placeId:
+        typeof candidate.placeId === 'string' && candidate.placeId.trim()
+          ? candidate.placeId.trim()
+          : null,
+      confidence:
+        typeof candidate.confidence === 'string' && candidate.confidence.trim()
+          ? candidate.confidence.trim()
+          : null,
+      reason:
+        typeof candidate.reason === 'string' && candidate.reason.trim()
+          ? candidate.reason.trim()
+          : null,
       confirmedAt:
         typeof candidate.confirmedAt === 'string' && candidate.confirmedAt.trim()
           ? candidate.confirmedAt
@@ -158,10 +497,37 @@ export function mergeConfirmedLocationContext({
 export async function getLocationSuggestionsForCoordinates({
   latitude,
   longitude,
+  context,
 }: {
   latitude: number;
   longitude: number;
+  context?: LocationResolutionContext;
 }): Promise<LocationSuggestion[]> {
+  const googleApiKey = getGoogleMapsApiKey();
+  if (googleApiKey) {
+    try {
+      const [geocode, nearby] = await Promise.all([
+        fetchGoogleReverseGeocode({ latitude, longitude, apiKey: googleApiKey }),
+        fetchGoogleNearbyPlaces({ latitude, longitude, apiKey: googleApiKey }),
+      ]);
+      const suggestions = buildGoogleSuggestions({ latitude, longitude, geocode, nearby });
+      try {
+        return await rankLocationSuggestions({
+          latitude,
+          longitude,
+          suggestions,
+          geocode,
+          context,
+        });
+      } catch (rankingError) {
+        console.error('Location prompt ranking failed, using Google candidate order:', rankingError);
+        return suggestions;
+      }
+    } catch (error) {
+      console.error('Google location resolution failed, falling back to reverse geocode:', error);
+    }
+  }
+
   const url = new URL('https://nominatim.openstreetmap.org/reverse');
   url.searchParams.set('format', 'jsonv2');
   url.searchParams.set('lat', latitude.toString());
@@ -268,5 +634,21 @@ export async function getLocationSuggestionsForCoordinates({
     kind: 'coordinates',
   });
 
-  return dedupeSuggestions(suggestions).slice(0, 5);
+  const deduped = dedupeSuggestions(suggestions).slice(0, 5);
+
+  if (context) {
+    try {
+      return await rankLocationSuggestions({
+        latitude,
+        longitude,
+        suggestions: deduped,
+        geocode: null,
+        context,
+      });
+    } catch (error) {
+      console.error('Location prompt ranking failed:', error);
+    }
+  }
+
+  return deduped;
 }
