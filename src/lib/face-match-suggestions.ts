@@ -2,7 +2,7 @@ import { readFile } from 'fs/promises';
 import Anthropic from '@anthropic-ai/sdk';
 import sharp from 'sharp';
 import { normalizeEmail, normalizePhone } from '@/lib/auth-server';
-import { getCapabilityModel } from '@/lib/control-plane';
+import { getCapabilityModel, renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
 
@@ -386,21 +386,21 @@ async function loadCandidatesWithReferences(referenceCandidates: CandidateGroup[
 }
 
 async function repairFaceMatchJson(responseText: string): Promise<unknown> {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
+    task: 'face_match_repair',
+    schemaJson: JSON.stringify(FACE_MATCH_SCHEMA),
+  });
   const repairMessage = await anthropic.messages.create({
     model: await getFaceMatchModel(),
     max_tokens: 800,
-    system: `You repair malformed JSON responses for a face-match suggestion pipeline.
-
-Return valid JSON only. Do not add markdown, commentary, or code fences.
-The repaired JSON must match this schema exactly:
-${JSON.stringify(FACE_MATCH_SCHEMA)}`,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly:\n\n${responseText}`,
+            text: responseText,
           },
         ],
       },
@@ -417,21 +417,21 @@ ${JSON.stringify(FACE_MATCH_SCHEMA)}`,
 }
 
 async function repairFaceVerifyJson(responseText: string): Promise<unknown> {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
+    task: 'face_verify_repair',
+    schemaJson: JSON.stringify(FACE_VERIFY_SCHEMA),
+  });
   const repairMessage = await anthropic.messages.create({
     model: await getFaceMatchModel(),
     max_tokens: 800,
-    system: `You repair malformed JSON responses for a face-match verification pipeline.
-
-Return valid JSON only. Do not add markdown, commentary, or code fences.
-The repaired JSON must match this schema exactly:
-${JSON.stringify(FACE_VERIFY_SCHEMA)}`,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly:\n\n${responseText}`,
+            text: responseText,
           },
         ],
       },
@@ -448,21 +448,21 @@ ${JSON.stringify(FACE_VERIFY_SCHEMA)}`,
 }
 
 async function repairAutoTagJson(responseText: string): Promise<unknown> {
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
+    task: 'auto_tag_repair',
+    schemaJson: JSON.stringify(AUTO_TAG_SCHEMA),
+  });
   const repairMessage = await anthropic.messages.create({
     model: await getFaceMatchModel(),
     max_tokens: 1000,
-    system: `You repair malformed JSON responses for an auto-tag suggestion pipeline.
-
-Return valid JSON only. Do not add markdown, commentary, or code fences.
-The repaired JSON must match this schema exactly:
-${JSON.stringify(AUTO_TAG_SCHEMA)}`,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
         content: [
           {
             type: 'text',
-            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly:\n\n${responseText}`,
+            text: responseText,
           },
         ],
       },
@@ -494,7 +494,7 @@ async function compareFaceToCandidates(
   const content: Anthropic.Messages.ContentBlockParam[] = [
     {
       type: 'text',
-      text: 'Target face crops to identify from a private family archive. These target images are alternate crops of the same detected face.',
+      text: 'target',
     },
   ];
 
@@ -535,20 +535,14 @@ async function compareFaceToCandidates(
     });
   });
 
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
+    task: 'face_match',
+    schemaJson: JSON.stringify(FACE_MATCH_SCHEMA),
+  });
   const response = await anthropic.messages.create({
     model: await getFaceMatchModel(),
     max_tokens: 900,
-    system: `You compare one target face crop against a shortlist of confirmed face references from a private family archive.
-
-Rules:
-- Compare the same detected face across the provided target crops before deciding.
-- Prefer the single most plausible candidate when one person stands out, even if confidence is low.
-- Return null only when none of the candidates are plausible matches.
-- Use only facial features and stable appearance cues. Ignore clothing and background.
-- These may be children in family photos, so allow for age changes, hairstyle changes, and different lighting.
-- Return valid JSON only. Do not include markdown, commentary, or code fences.
-- The JSON must match this schema exactly:
-${JSON.stringify(FACE_MATCH_SCHEMA)}`,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
@@ -579,7 +573,7 @@ ${JSON.stringify(FACE_MATCH_SCHEMA)}`,
     record.confidence === 'low'
       ? record.confidence
       : 'low';
-  const reason = sanitizeString(record.reason) || 'No explanation provided.';
+  const reason = sanitizeString(record.reason) || '';
 
   return {
     bestMatchPersonKey:
@@ -602,7 +596,7 @@ async function verifyFaceAgainstCandidate(
   const content: Anthropic.Messages.ContentBlockParam[] = [
     {
       type: 'text',
-      text: `Decide whether the target face crops and the reference face crops are the same person.\nCandidate label: ${candidate.label}`,
+      text: `candidate: ${candidate.label}`,
     },
   ];
 
@@ -636,19 +630,14 @@ async function verifyFaceAgainstCandidate(
     });
   });
 
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
+    task: 'face_verify',
+    schemaJson: JSON.stringify(FACE_VERIFY_SCHEMA),
+  });
   const response = await anthropic.messages.create({
     model: await getFaceMatchModel(),
     max_tokens: 900,
-    system: `You verify whether target face crops and reference face crops are the same person in a private family archive.
-
-Rules:
-- Return samePerson true only when the facial features plausibly indicate the same individual.
-- Return samePerson false when the evidence is weak, the references are too partial, or another person could fit just as well.
-- Children may have age differences, hairstyle changes, or different expressions, but facial structure should still be directionally consistent.
-- Ignore clothing and background.
-- Return valid JSON only. Do not include markdown, commentary, or code fences.
-- The JSON must match this schema exactly:
-${JSON.stringify(FACE_VERIFY_SCHEMA)}`,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
@@ -679,7 +668,7 @@ ${JSON.stringify(FACE_VERIFY_SCHEMA)}`,
     record.confidence === 'low'
       ? record.confidence
       : 'low';
-  const reason = sanitizeString(record.reason) || 'No explanation provided.';
+  const reason = sanitizeString(record.reason) || '';
 
   return {
     samePerson,
@@ -810,7 +799,7 @@ async function locateCandidateMatchesInImage(
   const content: Anthropic.Messages.ContentBlockParam[] = [
     {
       type: 'text',
-      text: 'Target photo from a private family archive. Identify whether any of the known people appear in this image.',
+      text: 'target',
     },
     {
       type: 'image',
@@ -844,21 +833,14 @@ async function locateCandidateMatchesInImage(
     });
   });
 
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
+    task: 'auto_tag',
+    schemaJson: JSON.stringify(AUTO_TAG_SCHEMA),
+  });
   const response = await anthropic.messages.create({
     model: await getFaceMatchModel(),
     max_tokens: 1400,
-    system: `You are identifying known family members inside a target photo.
-
-Rules:
-- Only include candidates who are visibly present in the target image.
-- Return at most one match per candidate.
-- Use a fairly tight face box around the face only. Do not include a neighboring person.
-- Use percentages from 0 to 100 relative to the full target image.
-- Omit uncertain candidates instead of guessing.
-- Children may look older, have different hair, or be at different angles.
-- Return valid JSON only. Do not include markdown, commentary, or code fences.
-- The JSON must match this schema exactly:
-${JSON.stringify(AUTO_TAG_SCHEMA)}`,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
@@ -894,7 +876,7 @@ ${JSON.stringify(AUTO_TAG_SCHEMA)}`,
         item.confidence === 'low'
           ? item.confidence
           : 'low';
-      const reason = sanitizeString(item.reason) || 'No explanation provided.';
+      const reason = sanitizeString(item.reason) || '';
 
       if (
         !personKey ||
@@ -966,19 +948,14 @@ export async function detectFacesInImage({
     posterFilename: image.posterFilename,
   });
 
+  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
+    task: 'face_detect',
+    schemaJson: JSON.stringify(FACE_DETECT_SCHEMA),
+  });
   const response = await anthropic.messages.create({
     model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
     max_tokens: 1000,
-    system: `You detect human faces in photos and return their bounding boxes.
-
-Rules:
-- Return a tight bounding box for every visible human face in the image.
-- Use percentages from 0 to 100 relative to the full image dimensions.
-- leftPct and topPct are the top-left corner. widthPct and heightPct are the box size.
-- Include partial faces if they are clearly recognisable as faces.
-- Return valid JSON only. No markdown, no code fences.
-- The JSON must match this schema exactly:
-${JSON.stringify(FACE_DETECT_SCHEMA)}`,
+    system: systemPrompt,
     messages: [
       {
         role: 'user',
@@ -987,7 +964,6 @@ ${JSON.stringify(FACE_DETECT_SCHEMA)}`,
             type: 'image',
             source: { type: 'base64', media_type: 'image/jpeg', data: targetImage.toString('base64') },
           },
-          { type: 'text', text: 'Detect all human faces in this image and return their bounding boxes.' },
         ],
       },
     ],

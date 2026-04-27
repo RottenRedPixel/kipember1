@@ -162,7 +162,7 @@ export async function getCapabilityModel(capabilityKey: string, fallbackModel: s
   return configuredModel || fallbackModel;
 }
 
-export async function getPromptBody(promptKey: string, fallbackBody: string) {
+export async function getPromptBody(promptKey: string, fallbackBody = '') {
   if (!APPROVED_RUNTIME_PROMPT_KEYS.has(promptKey)) {
     throw new Error(`Prompt key "${promptKey}" is not one of the nine runtime prompts.`);
   }
@@ -203,7 +203,7 @@ export function renderTemplate(
 
 export async function renderPromptTemplate(
   promptKey: string,
-  fallbackTemplate: string,
+  fallbackTemplate = '',
   values: Record<string, unknown> = {}
 ) {
   const template = await getPromptBody(promptKey, fallbackTemplate);

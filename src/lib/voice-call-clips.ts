@@ -1,39 +1,6 @@
 import { getConfiguredOpenAIModel, getOpenAIClient, getWikiStructureModel } from '@/lib/openai';
 import { renderPromptTemplate } from '@/lib/control-plane';
 
-const VOICE_PROCESSING_PROMPT = `You control Ember voice-call processing.
-
-Task: {{task}}
-
-If task is "transcript_extract":
-- Convert the phone interview transcript into structured answers for a memory archive.
-- Only use questionType values from: context, who, when, where, what, why, how.
-- Extract only information the human contributor actually provided.
-- Ignore filler, greetings, and agent instructions.
-- Merge repeated details into one concise answer per questionType.
-- Omit question types with no meaningful answer.
-- Mark isComplete true only if the interview covers most of the story in a useful way.
-- Do not invent facts.
-
-If task is "clip_extract":
-- Identify the 0-3 strongest clip-worthy moments from an Ember voice interview.
-- Prefer the contributor's own words over the agent's prompts.
-- Every quote must be copied exactly from a single listed segment.
-- Choose only lines that feel emotionally specific, vivid, or meaningfully clarifying.
-- Avoid generic filler, greetings, logistics, and repetitive back-and-forth.
-- canUseForTitle should be true only if the quote contains a distinctive phrase or idea that could plausibly inspire a smart title later.
-- Keep titles short, 2-6 words.
-- significance should briefly explain why the moment matters for the memory wiki or story cut.
-
-Return JSON only.
-
-Image title: {{imageTitle}}
-Contributor: {{contributorName}}
-Transcript:
-{{transcript}}
-Transcript segments:
-{{segmentList}}`;
-
 type TranscriptRole = 'agent' | 'user' | 'transfer_target';
 
 type RawTranscriptWord = {
@@ -303,11 +270,11 @@ export async function extractImportantVoiceCallClips({
       endMs: segment.endMs,
       text: segment.content,
     }));
-  const prompt = await renderPromptTemplate('ember_voice.style', VOICE_PROCESSING_PROMPT, {
+  const prompt = await renderPromptTemplate('ember_voice.style', '', {
     task: 'clip_extract',
     imageTitle,
     contributorName,
-    transcript: 'Not used for clip extraction. Use transcript segments below.',
+    transcript: '',
     segmentList: JSON.stringify(segmentList, null, 2),
   });
 

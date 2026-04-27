@@ -608,23 +608,10 @@ function parseJsonFromText(text: string): unknown {
   }
 }
 
-const IMAGE_ANALYSIS_REPAIR_PROMPT = `You repair malformed JSON responses for an image-analysis pipeline. Return JSON only. Preserve grounded details, and use short neutral fallbacks, null, or [] when fields are missing.`;
-
-const IMAGE_ANALYSIS_PROMPT = `Count the number of people visible in this image.
-
-Return JSON only, matching this schema exactly:
-{{schemaJson}}
-
-Rules:
-- "numberOfPeopleVisible" is a non-negative integer.
-- If you cannot determine a count with reasonable confidence, return null.
-- Count any clearly visible person, even if partially in frame.
-- Do not return any other fields.`;
-
 async function repairVisionJson(responseText: string, promptKey: string): Promise<unknown> {
   const repairSource = extractBalancedJsonObject(responseText) || sanitizeJsonCandidate(responseText);
   const openai = getOpenAIClient();
-  const repairPrompt = await renderPromptTemplate(promptKey, IMAGE_ANALYSIS_REPAIR_PROMPT);
+  const repairPrompt = await renderPromptTemplate(promptKey);
   const repairMessage = await openai.responses.create({
     model: await getConfiguredOpenAIModel('image_analysis', getImageAnalysisModel()),
     input: [
@@ -644,7 +631,7 @@ async function repairVisionJson(responseText: string, promptKey: string): Promis
         content: [
           {
             type: 'input_text',
-            text: `Repair this malformed JSON so it becomes valid JSON and matches the required schema exactly.\n\nMalformed JSON:\n${repairSource}`,
+            text: repairSource,
           },
         ],
       },
@@ -687,20 +674,12 @@ async function requestVisionAnalysisText({
   }
 
   const openai = getOpenAIClient();
-  const conciseInstructions = conciseMode
-    ? `Keep each string concise.
-Limit arrays to the strongest items.
-Prefer null over long speculative prose.`
-    : '';
-  const analysisPrompt = await renderPromptTemplate(promptKey, IMAGE_ANALYSIS_PROMPT, {
+  const analysisPrompt = await renderPromptTemplate(promptKey, '', {
     schemaJson: JSON.stringify(VISION_SCHEMA),
     originalName,
-    userDescription: userDescription || 'None provided.',
-    metadataSummary: metadataSummary || 'No metadata available.',
-    modeInstruction: conciseMode
-      ? 'Be brief enough that the full response remains compact and valid JSON.'
-      : 'Write naturally, but keep the JSON compact and valid.',
-    conciseInstructions,
+    userDescription: userDescription || '',
+    metadataSummary: metadataSummary || '',
+    conciseMode,
   });
 
   const response = await openai.responses.create({

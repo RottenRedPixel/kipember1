@@ -6,6 +6,7 @@ import { requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
+import { renderPromptTemplate } from '@/lib/control-plane';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -42,10 +43,11 @@ export async function POST(
       .jpeg({ quality: 78 })
       .toBuffer();
 
+    const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo');
     const response = await anthropic.messages.create({
       model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
       max_tokens: 1000,
-      system: `Detect all human faces in the photo. Return a JSON object with a "faces" array. Each face has leftPct, topPct, widthPct, heightPct as numbers 0-100 representing the bounding box as percentages of the image. Return JSON only, no markdown.`,
+      system: systemPrompt,
       messages: [
         {
           role: 'user',
@@ -54,7 +56,6 @@ export async function POST(
               type: 'image',
               source: { type: 'base64', media_type: 'image/jpeg', data: imageBuffer.toString('base64') },
             },
-            { type: 'text', text: 'List all human faces with their bounding boxes.' },
           ],
         },
       ],

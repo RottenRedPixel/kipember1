@@ -21,45 +21,6 @@ type SmartTitleSuggestionCache = {
 
 type TitleSuggestionMode = 'analysis' | 'context' | 'quote' | 'single';
 
-const TITLE_SUGGESTIONS_PROMPT = `You generate Ember titles from categorized memory context.
-
-MODE: {{mode}}
-
-VISUAL ANALYSIS CONTEXT:
-{{analysisContext}}
-
-HUMAN MEMORY CONTEXT:
-{{humanContext}}
-
-QUOTE ENTRIES:
-{{quoteEntries}}
-
-FULL EMBER CONTEXT:
-{{fullContext}}
-
-PREFERRED PEOPLE:
-{{preferredPeopleHint}}
-
-Shared title rules:
-- Be 2-6 words long
-- Be 40 characters or fewer (hard limit, including spaces)
-- Capture the essence of the memory
-- Feel personal and meaningful
-- Avoid generic phrases
-- Use specific details when possible
-- Prefer distinctive phrases or emotional beats from voice-call highlights when they are present
-
-Mode rules:
-- analysis: Generate exactly 3 title ideas using only visual analysis context, metadata, confirmed people, confirmed location, and visible scene clues. Do not invent personal backstory or emotions from human memory.
-- context: Generate exactly 3 title ideas using human memory context, contributor memories, voice call summaries, voice call highlights, supporting media notes, and wiki context. Prefer this over visual-only scene labels when human context exists.
-- quote: Choose up to 3 of the strongest quote entries and turn each into a short title. Use the speaker's wording as much as possible. Return strict JSON only as an array like [{"index":1,"title":"\\"Best Coffee Ever\\""}].
-- single: Generate exactly 1 polished title from all available categorized context. Strongly prefer tagged people, relationships, contributor memories, voice call highlights, wiki details, and then visual context.
-
-Output:
-- For analysis and context modes, return a simple list, one title per line, without numbers or bullets.
-- For quote mode, return strict JSON only.
-- For single mode, return only the title, with no explanation.`;
-
 function normalizeTitleLine(value: string) {
   return value
     .replace(/^[-*\d.\s"]+/, '')
@@ -217,8 +178,8 @@ async function renderTitlePrompt(
 ) {
   const preferredPeopleHint =
     context.preferredPeople.length > 0
-      ? `Use these names in the title if possible: ${context.preferredPeople.join(', ')}`
-      : 'None provided.';
+      ? context.preferredPeople.join(', ')
+      : '';
   const quoteEntries =
     context.quoteEntries.length > 0
       ? context.quoteEntries
@@ -228,14 +189,14 @@ async function renderTitlePrompt(
               `${index + 1}. ${entry.contributorName} [${entry.source}] "${entry.quote}"`
           )
           .join('\n')
-      : 'No quote entries provided.';
+      : '';
 
-  return renderPromptTemplate(promptKey, TITLE_SUGGESTIONS_PROMPT, {
+  return renderPromptTemplate(promptKey, '', {
     mode,
-    analysisContext: context.analysisContext || 'No visual analysis context provided.',
-    humanContext: context.humanContext || 'No human memory context provided.',
+    analysisContext: context.analysisContext || '',
+    humanContext: context.humanContext || '',
     quoteEntries,
-    fullContext: context.fullContext || 'No full Ember context provided.',
+    fullContext: context.fullContext || '',
     preferredPeopleHint,
   });
 }

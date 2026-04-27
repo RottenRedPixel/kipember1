@@ -23,19 +23,16 @@ const INTERVIEW_STEPS = [
 type InterviewStep = (typeof INTERVIEW_STEPS)[number];
 
 const STEP_QUESTIONS: Record<InterviewStep, string> = {
-  greeting:
-    "Hi! You've been invited to share your memories about a special image. I'll ask you a few questions to capture your story. Reply YES to begin!",
-  context:
-    "Great! Let's start. Can you describe what you see or remember about this image? What memory does it capture for you?",
-  who: "Who are the people in this image? What's your relationship to them?",
-  when: 'When was this? Do you remember the date, year, or occasion?',
-  where: 'Where was this taken? What do you remember about the location?',
-  what: 'What was happening at this moment? Any specific events or activities?',
-  why: 'Why is this image or memory significant to you?',
-  how: 'How did this moment come about? Any backstory you can share?',
+  greeting: 'greeting',
+  context: 'context',
+  who: 'who',
+  when: 'when',
+  where: 'where',
+  what: 'what',
+  why: 'why',
+  how: 'how',
   followup: '',
-  closing:
-    "Thank you so much for sharing your memories! Your stories have been recorded and will help create a rich history of this moment. You can view the memory wiki when it's ready!",
+  closing: 'closing',
 };
 
 function getNextStep(currentStep: InterviewStep): InterviewStep | null {
@@ -64,9 +61,7 @@ export async function startConversation(contributorId: string): Promise<string> 
     currentStep: 'greeting',
   });
 
-  const greeting = contributor.name
-    ? `Hi ${contributor.name}! ${STEP_QUESTIONS.greeting}`
-    : STEP_QUESTIONS.greeting;
+  const greeting = STEP_QUESTIONS.greeting;
 
   await prisma.emberMessage.create({
     data: { sessionId: session.id, role: 'assistant', content: greeting, source: 'sms' },
@@ -136,11 +131,11 @@ export async function handleIncomingMessage(
         data: { status: 'active', currentStep: nextStep },
       });
     } else {
-      response = "No problem! When you're ready to share your memories, just reply YES to begin.";
+      response = 'greeting';
       nextStep = null;
     }
   } else if (currentStep === 'closing') {
-    response = "Thanks again for sharing! Your memories have been recorded. Feel free to reach out if you have more to add!";
+    response = STEP_QUESTIONS.closing;
     nextStep = null;
   } else if (currentStep === 'followup') {
     const lastAssistantMessage = [...session.messages].reverse().find((m) => m.role === 'assistant');
@@ -150,7 +145,7 @@ export async function handleIncomingMessage(
         role: 'user',
         content: message,
         source: 'sms',
-        question: lastAssistantMessage?.content || 'Follow-up question',
+        question: lastAssistantMessage?.content || 'followup',
         questionType: 'followup',
       },
     });

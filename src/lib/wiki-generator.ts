@@ -268,7 +268,7 @@ function buildFallbackStorySnapshot({
     return parts.join('\n\n');
   }
 
-  return `${imageTitle} is being assembled from the current Ember record. Regenerate again after more details are added to deepen the snapshot.`;
+  return imageTitle;
 }
 
 function formatAudioTimestamp(ms: number | null | undefined) {
@@ -709,7 +709,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       allResponses.push({
         contributorName: ownerStoryLabel,
         questionType: 'followup',
-        question: 'What else would you like Ember to remember about this moment?',
+        question: 'followup',
         answer: note.transcript,
         source: 'audio',
       });

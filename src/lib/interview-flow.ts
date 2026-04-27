@@ -1,17 +1,9 @@
 import { getEmberTitle } from '@/lib/ember-title';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 
-export const INTERVIEW_QUESTIONS = {
-  context: 'Can you describe what you see or what memory this image captures for you?',
-  who: "Who are the people in this image? What's your relationship to them?",
-  when: 'When was this taken? Do you remember the date, year, or occasion?',
-  where: 'Where was this? What do you remember about the location?',
-  what: 'What was happening at this moment? Any specific events or activities?',
-  why: 'Why is this image or memory significant to you?',
-  how: 'How did this moment come about? Any backstory?',
-} as const;
+export const INTERVIEW_QUESTION_TYPES = ['context', 'who', 'when', 'where', 'what', 'why', 'how'] as const;
 
-export type InterviewQuestionType = keyof typeof INTERVIEW_QUESTIONS;
+export type InterviewQuestionType = (typeof INTERVIEW_QUESTION_TYPES)[number];
 
 export const INTERVIEW_STEP_ORDER: readonly InterviewQuestionType[] = [
   'context',
@@ -58,7 +50,7 @@ type InterviewContextImage = {
 };
 
 export function isInterviewQuestionType(value: string): value is InterviewQuestionType {
-  return value in INTERVIEW_QUESTIONS;
+  return INTERVIEW_QUESTION_TYPES.includes(value as InterviewQuestionType);
 }
 
 export function formatCapturedAtForInterview(value: Date | null | undefined) {

@@ -6,10 +6,6 @@ export type EmberVoiceTrigger =
   | 'welcome_returning'
   | 'mic_message';
 
-// Minimal stub — the real prompt lives in the control plane under
-// `ember_voice.style`. This only fires if that template is missing.
-const EMBER_VOICE_UNIFIED_FALLBACK_PROMPT = `You are Ember.`;
-
 export async function generateEmberVoiceReply({
   trigger,
   transcript,
@@ -19,7 +15,7 @@ export async function generateEmberVoiceReply({
 }): Promise<string> {
   const systemPrompt = await renderPromptTemplate(
     'ember_voice.style',
-    EMBER_VOICE_UNIFIED_FALLBACK_PROMPT,
+    '',
     { trigger, transcript }
   );
 

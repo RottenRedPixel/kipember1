@@ -16,17 +16,13 @@ import { maybeNotifyFailedCall } from '@/lib/voice-call-notifications';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 
-const QUESTION_PROMPTS = {
-  context: 'Can you describe what you see or what memory this image captures for you?',
-  who: "Who are the people in this image? What's your relationship to them?",
-  when: 'When was this taken? Do you remember the date, year, or occasion?',
-  where: 'Where was this? What do you remember about the location?',
-  what: 'What was happening at this moment? Any specific events or activities?',
-  why: 'Why is this image or memory significant to you?',
-  how: 'How did this moment come about? Any backstory?',
-} as const;
+const QUESTION_TYPES = ['context', 'who', 'when', 'where', 'what', 'why', 'how'] as const;
 
-type QuestionType = keyof typeof QUESTION_PROMPTS;
+type QuestionType = (typeof QUESTION_TYPES)[number];
+
+function isQuestionType(value: string): value is QuestionType {
+  return QUESTION_TYPES.includes(value as QuestionType);
+}
 
 type ExtractedInterview = {
   isComplete: boolean;
@@ -36,39 +32,6 @@ type ExtractedInterview = {
     answer: string;
   }>;
 };
-
-const VOICE_PROCESSING_PROMPT = `You control Ember voice-call processing.
-
-Task: {{task}}
-
-If task is "transcript_extract":
-- Convert the phone interview transcript into structured answers for a memory archive.
-- Only use questionType values from: context, who, when, where, what, why, how
-- Extract only information the human contributor actually provided
-- Ignore filler, greetings, and agent instructions
-- Merge repeated details into one concise answer per questionType
-- Omit question types with no meaningful answer
-- Mark isComplete true only if the interview covers most of the story in a useful way
-- Do not invent facts
-
-If task is "clip_extract":
-- Identify the 0-3 strongest clip-worthy moments from an Ember voice interview.
-- Prefer the contributor's own words over the agent's prompts.
-- Every quote must be copied exactly from a single listed segment.
-- Choose only lines that feel emotionally specific, vivid, or meaningfully clarifying.
-- Avoid generic filler, greetings, logistics, and repetitive back-and-forth.
-- canUseForTitle should be true only if the quote contains a distinctive phrase or idea that could plausibly inspire a smart title later.
-- Keep titles short, 2-6 words.
-- significance should briefly explain why the moment matters for the memory wiki or story cut.
-
-Return JSON only.
-
-Image title: {{imageTitle}}
-Contributor: {{contributorName}}
-Transcript:
-{{transcript}}
-Transcript segments:
-{{segmentList}}`;
 
 type RetellWebhookPayload = {
   event?: unknown;
@@ -345,7 +308,7 @@ async function buildPriorMemoryContext({
 
   for (const session of sessions) {
     for (const message of session.messages) {
-      if (message.questionType && message.questionType in QUESTION_PROMPTS && message.content.trim()) {
+      if (message.questionType && isQuestionType(message.questionType) && message.content.trim()) {
         latestResponseByQuestion.set(
           message.questionType as QuestionType,
           message.content.trim()
@@ -442,13 +405,13 @@ function extractJsonObject(text: string): string {
 async function extractInterviewFromTranscript(transcript: string): Promise<ExtractedInterview> {
   const systemPrompt = await renderPromptTemplate(
     'ember_voice.style',
-    VOICE_PROCESSING_PROMPT,
+    '',
     {
       task: 'transcript_extract',
-      imageTitle: 'Not used for transcript extraction.',
+      imageTitle: '',
       contributorName: 'Contributor',
       transcript,
-      segmentList: 'Not used for transcript extraction.',
+      segmentList: '',
     }
   );
 
@@ -474,7 +437,7 @@ async function extractInterviewFromTranscript(transcript: string): Promise<Extra
           return [];
         }
 
-        if (!(item.questionType in QUESTION_PROMPTS) || !item.answer.trim()) {
+        if (!isQuestionType(item.questionType) || !item.answer.trim()) {
           return [];
         }
 
@@ -635,7 +598,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
             content: item.answer,
             source: 'voice',
             questionType: item.questionType,
-            question: QUESTION_PROMPTS[item.questionType],
+            question: item.questionType,
           },
         })
       )

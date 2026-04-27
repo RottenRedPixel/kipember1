@@ -180,153 +180,23 @@ const STORY_CUT_SCHEMA = {
   },
 } as const;
 
-const STORY_CUT_STYLE_PROMPTS: Record<SnapshotStyle, { label: string; prompt: string }> = {
+const STORY_CUT_STYLE_PROMPTS: Record<SnapshotStyle, { label: string }> = {
   documentary: {
     label: 'Documentary',
-    prompt: `Create a DOCUMENTARY style story cut.
-
-Pacing:
-- Thoughtful, measured pacing
-- Let moments breathe
-- Build understanding gradually
-
-Tone:
-- Reflective and introspective
-- Educational but warm
-- Respectful and grounded
-
-Focus:
-- Context and meaning
-- Human connections and relationships
-- Quiet contemplative moments
-- Depth over drama`,
   },
   publicRadio: {
     label: 'Public Radio',
-    prompt: `Create a PUBLIC RADIO style story cut.
-
-Pacing:
-- Gentle, unhurried pacing
-- Natural pauses and reflection
-- Conversational and intimate rhythm
-
-Tone:
-- Warm and intimate
-- Emotionally intelligent
-- Vulnerable and honest
-
-Focus:
-- Sensory detail and atmosphere
-- Human emotions and connection
-- Personal meaning and resonance
-- The beauty in everyday experiences`,
   },
   newsReport: {
     label: 'News Report',
-    prompt: `Create a NEWS REPORT style story cut.
-
-Pacing:
-- Clear, steady pacing
-- Logical point-to-point structure
-- Efficient use of time
-
-Tone:
-- Professional and credible
-- Balanced and respectful
-
-Focus:
-- Lead with the most important information
-- Follow the 5 Ws
-- Establish a clear timeline
-- Highlight significance without becoming dramatic`,
   },
   podcastNarrative: {
     label: 'Podcast Narrative',
-    prompt: `Create a PODCAST NARRATIVE style story cut.
-
-Pacing:
-- Engaging, conversational pacing
-- Build momentum and curiosity
-- Use pauses for emphasis
-
-Tone:
-- Authentic and relatable
-- Conversational but polished
-- Emotionally engaging
-
-Focus:
-- Strong hook
-- Clear beginning, middle, and end
-- Natural storytelling techniques
-- Broader meaning through a personal moment`,
   },
   movieTrailer: {
     label: 'Movie Trailer',
-    prompt: `Create a MOVIE TRAILER style story cut.
-
-Pacing:
-- Fast-paced and dynamic
-- Short, punchy phrases
-- Build momentum throughout
-
-Tone:
-- Dramatic and exciting
-- High-energy but still truthful to the memory
-
-Focus:
-- Emotional peaks
-- Tension and release
-- Strong hook and satisfying final beat
-- Never invent facts beyond the provided memory material`,
   },
 };
-
-const SNAPSHOT_GENERATE_CORE_PROMPT = `You generate Snapshot scripts for Ember.
-
-Snapshots are NOT generic wiki narration. They are short trailer-like memory playbacks.
-
-{{stylePrompt}}
-
-Rules:
-- Use only the provided Ember context, Story Circle conversations, contributor quotes, media, and call summaries.
-- Keep contributor quotes exact when you use them. Do not rewrite, paraphrase, summarize, or improve a contributor quote.
-- Use VOICE blocks only for Ember AI connective lines.
-- Use MEDIA blocks with mediaType AUDIO whenever you want a real recorded clip to be heard.
-- Treat this as a short memory trailer: concise, vivid, emotionally grounded.
-- Prefer real contributor quotes and voice clips whenever they add color or specificity.
-- If direct contributor material exists, weave it in instead of over-explaining with Ember.
-- If context is thin, stay emotionally grounded without inventing specifics.
-- Always include the cover photo as the first media block.
-- Use supporting media blocks only when they help the flow.
-- Selected audio clips are for inline story moments, not constant background ambience.
-- If selected audio clips exist and they add meaning, place them at the best emotional beat in the block order.
-- When multiple selected audio clips are relevant, weave them through the Snapshot instead of bunching them all at the end.
-- If a selected media item is a voice clip, preserve its clipStartMs and clipEndMs when you emit that media block.
-- Build a clear emotional arc that matches the selected style.
-- The script should read like a polished snapshot, not like a wiki section list.
-- Respect the requested voice casting. If Ember voice is disabled, do not create EMBER VOICE lines.
-- Do not create NARRATOR lines.
-- Keep narratorVoiceLines empty.
-- Do not create contributor VOICE blocks unless there is no recorded clip to use and the user explicitly has no audio for that beat.
-- Return JSON only matching the schema exactly.`;
-
-const SNAPSHOT_GENERATE_USER_PROMPT = `Create a Snapshot for this Ember.
-
-STORY MATERIAL
-{{storyContext}}
-
-STORY CONFIGURATION
-- Title: {{storyTitle}}
-- Duration: {{durationSeconds}} seconds
-- Target spoken length: approximately {{wordCount}} words
-- Focus: {{storyFocus}}
-- Owner First Name: {{ownerFirstName}}
-- Selected Contributors: {{selectedContributors}}
-- Ember Voice enabled: {{includeEmberVoice}}
-- Ember Voice label: {{emberVoiceLabel}}
-- Voice casting info: Use Ember only for AI-written lines. Use media AUDIO blocks for real recorded clips whenever possible. Contributor names should appear in exact quotes and clip references only.
-
-Build the JSON blocks in order so this snapshot could be rendered later as audio plus media.`;
 
 function clampDuration(value: number) {
   if (!Number.isFinite(value)) {
@@ -542,10 +412,6 @@ export async function generateSnapshot(
   const durationSeconds = clampDuration(options.durationSeconds);
   const wordCount = estimateWordCount(durationSeconds);
   const styleConfig = STORY_CUT_STYLE_PROMPTS[options.style] || STORY_CUT_STYLE_PROMPTS.documentary;
-  const stylePrompt = await renderPromptTemplate(
-    'snapshot_generation.regenerate',
-    styleConfig.prompt
-  );
   const storyFocus = options.storyFocus.trim() || 'The emotional heart of the moment';
   const storyTitle = options.storyTitle?.trim() || context.imageTitle;
   const selectedContributorIds = new Set(options.selectedContributorIds || []);
@@ -682,10 +548,8 @@ export async function generateSnapshot(
   ]);
 
   const openai = getOpenAIClient();
-  const corePrompt = await renderPromptTemplate('snapshot_generation.regenerate', SNAPSHOT_GENERATE_CORE_PROMPT, {
-    stylePrompt,
-  });
-  const userPrompt = await renderPromptTemplate('snapshot_generation.regenerate', SNAPSHOT_GENERATE_USER_PROMPT, {
+  const corePrompt = await renderPromptTemplate('snapshot_generation.regenerate', '', {
+    stylePrompt: styleConfig.label,
     storyContext,
     storyTitle,
     durationSeconds,
@@ -696,6 +560,22 @@ export async function generateSnapshot(
     includeEmberVoice: includeEmberVoice ? 'yes' : 'no',
     emberVoiceLabel,
   });
+  const userPrompt = JSON.stringify(
+    {
+      storyContext,
+      storyTitle,
+      durationSeconds,
+      wordCount,
+      storyFocus,
+      ownerFirstName,
+      selectedContributors: Array.from(contributorNameSet),
+      includeEmberVoice,
+      emberVoiceLabel,
+      selectedMedia,
+    },
+    null,
+    2
+  );
   const response = await openai.responses.create({
     model: await getConfiguredOpenAIModel('snapshots.generate', getSnapshotModel()),
     input: [

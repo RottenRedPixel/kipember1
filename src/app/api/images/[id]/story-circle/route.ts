@@ -5,7 +5,6 @@ import {
   buildInterviewKnownContextFromImage,
   getInterviewProgress,
   getKnownInterviewSteps,
-  INTERVIEW_QUESTIONS,
   isInterviewQuestionType,
 } from '@/lib/interview-flow';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
@@ -19,7 +18,7 @@ import { generateWikiForImage } from '@/lib/wiki-generator';
 import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 
 function getFollowupPrompt() {
-  return 'What else would you like Ember to remember about this moment?';
+  return 'followup';
 }
 
 async function loadOwnerStoryCircleContributor(imageId: string, userId: string) {
@@ -121,9 +120,7 @@ function buildStoryCircleState(
 
   return {
     questionType: progress.nextStep ?? 'followup',
-    prompt: progress.nextStep
-      ? INTERVIEW_QUESTIONS[progress.nextStep]
-      : getFollowupPrompt(),
+    prompt: progress.nextStep ?? getFollowupPrompt(),
     answeredCount: progress.answeredCount,
     totalCount: progress.totalCount,
     isComplete: progress.isComplete,
@@ -223,7 +220,7 @@ export async function POST(
       questionType === 'followup'
         ? getFollowupPrompt()
         : isInterviewQuestionType(questionType)
-          ? INTERVIEW_QUESTIONS[questionType]
+          ? questionType
           : getFollowupPrompt();
 
     let session = contributor.emberSession;

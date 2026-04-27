@@ -3,50 +3,6 @@ import { renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
 
-export const RECONCILIATION_CLAIM_EXTRACTION_PROMPT = `You extract factual memory claims from one contributor answer so Ember can detect conflicts across people.
-
-Return ONLY valid JSON with this exact shape:
-{
-  "claims": [
-    {
-      "claimType": "event_type",
-      "subject": "",
-      "value": "baptism",
-      "normalizedValue": "baptism",
-      "confidence": 0.82,
-      "evidenceKind": "human_memory",
-      "resolutionMode": "human_clarification",
-      "rawText": "This was Tommy's baptism."
-    }
-  ]
-}
-
-Allowed claimType values:
-- event_type
-- date_time
-- location
-- person_present
-- relationship
-- object_visible
-- clothing_color
-- object_count
-- activity
-- narrative_context
-- emotional_context
-- significance
-- other
-
-Rules:
-- Extract concrete facts only. Ignore filler, greetings, and uncertain speculation unless the person clearly says it as a possible memory.
-- Split one answer into multiple claims when it contains multiple facts.
-- Use subject for the object/person being described, for example "Tommy sweater", "Grandma", "cake", or "location". Use an empty string for broad event/date/location claims.
-- normalizedValue should be lowercase, concise, and comparable across contributors.
-- evidenceKind should be "human_memory" for contributor statements.
-- resolutionMode should be "visual_review" only when the photo can plausibly verify the fact, such as colors, object presence, person count, visible text, indoor/outdoor, or visible activity.
-- resolutionMode should be "human_clarification" for event type, date, relationship, meaning, backstory, motives, emotions, and anything the photo cannot settle safely.
-- Do not decide who is right. Only extract what this contributor claimed.
-- If there are no concrete claims, return {"claims":[]}.`;
-
 type ExtractedClaim = {
   claimType?: unknown;
   subject?: unknown;
@@ -487,10 +443,7 @@ export async function reconcileEmberMessage(messageId: string) {
   };
 
   const image = message.session.image;
-  const systemPrompt = await renderPromptTemplate(
-    'ember_chat.style',
-    RECONCILIATION_CLAIM_EXTRACTION_PROMPT
-  );
+  const systemPrompt = await renderPromptTemplate('ember_chat.style');
   const extractionContext = compactLines([
     `EMBER TITLE\n${getEmberTitle(image)}`,
     image.description ? `CAPTION\n${image.description}` : null,

@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
                 content: storedTranscript,
                 source: 'voice',
                 questionType: 'followup',
-                question: 'What else would you like Ember to remember about this moment?',
+                question: 'followup',
               },
             });
             await reconcileEmberMessageSafely(

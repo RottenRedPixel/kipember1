@@ -8,14 +8,10 @@ export type EmberChatTrigger =
   | 'photo_upload'
   | 'video_upload';
 
-// Minimal stub — the real prompt lives in the control plane under
-// `ember_chat.style`. This only fires if that template is missing.
-const EMBER_CHAT_UNIFIED_FALLBACK_PROMPT = `You are Ember.`;
-
 export async function generateEmberChatReply(trigger: EmberChatTrigger): Promise<string> {
   const systemPrompt = await renderPromptTemplate(
     'ember_chat.style',
-    EMBER_CHAT_UNIFIED_FALLBACK_PROMPT,
+    '',
     { trigger }
   );
 

@@ -557,70 +557,6 @@ function parseStructuredMemoryResponse(responseText: string): StructuredMemory {
 
 const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
-const DEFAULT_WIKI_REWRITE_PROMPT = `You are Ember's memory writer. Rewrite a structured memory object into a warm, readable story snapshot.
-
-Rules:
-- Use only the structured memory object below.
-- Do not add facts, identities, motives, or background not present in the object.
-- Make it feel like a memory someone would want to revisit, not a report.
-- Let the human memory details lead. If contributor details are present, they should shape the voice of the page more than metadata or visual-analysis leftovers.
-- Prefer short paragraphs and avoid repeating the same detail across sections.
-- If a tagged name is ambiguous, mention it naturally as tagged in the image instead of assigning it by sight.
-- Do not reintroduce weaker visual ambiguity if the structured memory already resolved it from tags or contributor memories.
-- Do not turn obvious corrections into standalone lines. If a clarification matters, weave it into the story naturally and positively.
-- Do not include low-value observations that do not deepen the memory, such as ordinary clothing notes, unless the structured memory makes them meaningful.
-- Keep the output to 2-4 short paragraphs.
-- Do not write headings, bullet lists, labels, or markdown sections.
-- Do not repeat the title as a heading.
-- Keep the output concise and high-signal.
-
-Write plain text only.`;
-
-const DEFAULT_WIKI_FOLLOWUP_PROMPT = `You are an interviewer gathering memories about an image. Based on the conversation so far, determine if there's an important follow-up question to ask.
-
-If the responses so far are comprehensive enough, return exactly "COMPLETE" (nothing else).
-If there's a valuable follow-up to ask, return just the follow-up question.
-
-Keep questions conversational and friendly. Focus on getting vivid details and personal perspectives.`;
-
-const DEFAULT_WIKI_STRUCTURE_PROMPT = `You turn Ember evidence into a clean structured memory object.
-
-Rules:
-- Use only supported evidence.
-- Contributor memories, confirmed tags, and confirmed location are strongest.
-- Voice-call highlights are direct evidence from the recorded memory conversation and should be treated as especially valuable when they contain vivid or emotionally specific wording.
-- If contributor memories exist, let them drive the overview and story instead of metadata or visual-analysis filler.
-- The memory should feel like the moment people described, not like a camera report.
-- Do not invent identities, relationships, motives, or backstory.
-- Treat confirmedTags as explicit human-confirmed labels attached to the image.
-- If confirmed tags cover the visible people in the photo, do not generate identity ambiguity or open questions about who is who.
-- Contributor memories override weaker image-analysis guesses. If a contributor says Santa was a statue, use that over any weaker visual interpretation.
-- If contributor memories say a tagged person is the contributor's child/son/daughter and the photo clearly shows a child plus an adult, resolve that naturally instead of keeping it ambiguous.
-- Prefer contributor-supplied facts such as why the moment mattered, how it happened, little reactions, and follow-up details over clothing or camera trivia.
-- Do not surface corrective phrasing as a memorable detail. Fold clarifications into the story naturally when needed, instead of lines like "X was a statue, not a person."
-- Do not keep mundane observations from the image alone unless a contributor made them meaningful.
-- Do not create open questions that are already answered by contributor memories, confirmed tags, or metadata.
-- Do not create nitpicky open questions about clothing, posture, or other ordinary details unless a contributor explicitly made them meaningful.
-- Open questions should be 0-3 high-value unresolved gaps only.
-- If a tagged name still cannot be visually mapped with confidence, keep that ambiguity in people.ambiguities.
-- Keep every string concise and useful.
-- detailsWorthKeeping should contain 2-5 vivid grounded details that a person would genuinely want to remember later.
-- story.main should be 2-4 sentences and should include the strongest human memory details when available.
-- story.significance should explain why the moment mattered in human terms when the evidence supports it.
-- quotes must only contain direct contributor wording worth preserving; otherwise [].
-- Prefer direct contributor wording from voice-call highlights when it is more vivid than the typed responses.
-- metadata should contain at most 4 high-value items and should stay secondary to the memory itself.
-- Return JSON only that matches the schema exactly.`;
-
-const DEFAULT_SNAPSHOT_NARRATION_PROMPT = `You write warm narration scripts for family memory snapshots.
-Write approximately {{targetWords}} words (targeting {{durationSeconds}} seconds of spoken audio at a natural pace).
-Use a natural, conversational tone - like a thoughtful friend describing a meaningful moment.
-{{peopleInstruction}}{{requiredPeopleInstruction}}Use all available context: the wiki, contributor memories, voice call highlights, and visual details - not just the image summary.
-Prioritize personal details and real moments over generic descriptions.
-Do not invent facts not present in the context.
-Do not use filler phrases like "In this heartwarming snapshot" or "A beautiful memory".
-Return only the narration text, nothing else.`;
-
 type ClaudeChatOptions = {
   capabilityKey?: string;
   fallbackModel?: string;
@@ -724,7 +660,7 @@ export async function generateWiki({
   };
 
   const openai = getOpenAIClient();
-  const structurePrompt = await renderPromptTemplate('snapshot_generation.initial', DEFAULT_WIKI_STRUCTURE_PROMPT);
+  const structurePrompt = await renderPromptTemplate('snapshot_generation.initial');
   const structuredResponse = await openai.responses.create({
     model: await getConfiguredOpenAIModel('wiki.structure', getWikiStructureModel()),
     input: [
@@ -772,7 +708,7 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
     analysis,
   });
 
-  const systemPrompt = await renderPromptTemplate('snapshot_generation.regenerate', DEFAULT_WIKI_REWRITE_PROMPT);
+  const systemPrompt = await renderPromptTemplate('snapshot_generation.regenerate');
 
   const output = await chat(systemPrompt, [
     {
@@ -798,8 +734,7 @@ export async function generateFollowUpQuestion(
   collectedResponses: { questionType: string; answer: string }[]
 ): Promise<string | null> {
   const systemPrompt = await renderPromptTemplate(
-    'ember_chat.style',
-    DEFAULT_WIKI_FOLLOWUP_PROMPT
+    'ember_chat.style'
   );
 
   const responseSummary = collectedResponses
@@ -856,7 +791,7 @@ export async function generateSnapshotScript({
   const context = [
     `MEMORY TITLE\n${title}`,
     taggedPeople.length > 0
-      ? `PEOPLE IN THIS PHOTO\n${taggedPeople.join(', ')}\n(Use these names when referring to the people in the photo.)`
+      ? `PEOPLE IN THIS PHOTO\n${taggedPeople.join(', ')}`
       : null,
     location ? `LOCATION\n${location}` : null,
     summary ? `WHAT THE IMAGE SHOWS\n${summary}` : null,
@@ -874,17 +809,11 @@ export async function generateSnapshotScript({
     .filter(Boolean)
     .join('\n\n');
 
-  const systemPrompt = await renderPromptTemplate(promptKey, DEFAULT_SNAPSHOT_NARRATION_PROMPT, {
+  const systemPrompt = await renderPromptTemplate(promptKey, '', {
     targetWords,
     durationSeconds,
-    peopleInstruction:
-      taggedPeople.length > 0
-        ? `The people in this photo are: ${taggedPeople.join(', ')}. Use their names naturally in the narration - this makes the memory feel personal and real.\n`
-        : '',
-    requiredPeopleInstruction:
-      requiredPeople.length > 0
-        ? `REQUIRED: You must mention each of the following people by name at least once in the narration: ${requiredPeople.join(', ')}.\n`
-        : '',
+    peopleInstruction: taggedPeople.join(', '),
+    requiredPeopleInstruction: requiredPeople.join(', '),
   });
 
   return chat(systemPrompt, [
