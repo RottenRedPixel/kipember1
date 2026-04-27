@@ -57,17 +57,20 @@ const DEFAULT_CACHE_TTL_MS = 30_000;
 const DEFAULT_TIMEOUT_MS = 5_000;
 const RUNTIME_CONFIG_PATH = '/api/runtime/config';
 export const PROMPT_REMOVED_MESSAGE = 'prompt removed';
-const APPROVED_RUNTIME_PROMPT_KEYS = new Set([
-  'image_analysis.initial_photo',
-  'image_analysis.uploaded_photo',
-  'title_generation.initial',
-  'title_generation.regenerate',
-  'snapshot_generation.initial',
-  'snapshot_generation.regenerate',
-  'ember_chat.style',
-  'ember_voice.style',
-  'ember_call.style',
-]);
+export const RUNTIME_PROMPT_DEFINITIONS = [
+  { key: 'image_analysis.initial_photo', label: 'Image Analysis - Initial Photo' },
+  { key: 'image_analysis.uploaded_photo', label: 'Image Analysis - Uploaded Photo' },
+  { key: 'title_generation.initial', label: 'Title Generation - Initial' },
+  { key: 'title_generation.regenerate', label: 'Title Generation - Regenerate' },
+  { key: 'snapshot_generation.initial', label: 'Snapshot Generation - Initial' },
+  { key: 'snapshot_generation.regenerate', label: 'Snapshot Generation - Regenerate' },
+  { key: 'ember_chat.style', label: 'Ember Chat - Style & Technique' },
+  { key: 'ember_voice.style', label: 'Ember Voice - Style & Technique' },
+  { key: 'ember_call.style', label: 'Ember Call - Style & Technique' },
+] as const;
+const APPROVED_RUNTIME_PROMPT_KEYS = new Set(
+  RUNTIME_PROMPT_DEFINITIONS.map((prompt) => prompt.key)
+);
 
 let cachedSnapshot: ControlPlaneSnapshot | null = null;
 let cacheExpiresAt = 0;
