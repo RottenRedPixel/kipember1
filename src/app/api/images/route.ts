@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth-server';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { generateWikiForImage } from '@/lib/wiki-generator';
+import { ensureImageAnalysisForImage } from '@/lib/image-analysis';
 import { persistUploadedMedia } from '@/lib/media-upload';
 import {
   getAccessibleImagesForUser,
@@ -59,7 +60,15 @@ export async function POST(request: NextRequest) {
     await ensureOwnerContributorForImage(image.id, auth.user.id);
     invalidateAccessibleImagesForUser(auth.user.id);
 
-    // Fire AI processing in the background — do not block the response
+    // Block until image analysis is ready so the ember view opens with content.
+    // Best-effort: if analysis fails we still let the user proceed.
+    try {
+      await ensureImageAnalysisForImage(image.id);
+    } catch (error) {
+      console.error('Image analysis at create time failed:', error);
+    }
+
+    // Fire wiki + snapshot generation in the background — analysis is already done.
     void (async () => {
       try {
         await generateWikiForImage(image.id);

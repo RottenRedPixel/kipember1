@@ -227,13 +227,25 @@ export async function POST(
         return NextResponse.json({ response: welcome });
       }
     } else if (isStart) {
-      const latest = await prisma.emberMessage.findFirst({
-        where: { sessionId: session.id, role: 'assistant' },
-        orderBy: { createdAt: 'desc' },
+      const userReplyCount = await prisma.emberMessage.count({
+        where: { sessionId: session.id, role: 'user' },
       });
-      if (latest) {
-        return NextResponse.json({ response: latest.content });
+
+      if (userReplyCount > 0) {
+        const latest = await prisma.emberMessage.findFirst({
+          where: { sessionId: session.id, role: 'assistant' },
+          orderBy: { createdAt: 'desc' },
+        });
+        if (latest) {
+          return NextResponse.json({ response: latest.content });
+        }
+      } else {
+        // Drop any prior unanswered welcomes so the next one reads the latest wiki.
+        await prisma.emberMessage.deleteMany({
+          where: { sessionId: session.id, role: 'assistant' },
+        });
       }
+
       const welcome = await generateEmberChatReply({
         imageId: contributor.imageId,
         sessionId: session.id,
