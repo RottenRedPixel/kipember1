@@ -302,6 +302,74 @@ function initials(value: string) {
     .toUpperCase();
 }
 
+const PERSON_AVATAR_COLORS = ['#2563eb', '#7c3aed', '#16a34a', '#b45309', '#db2777', '#0891b2'];
+
+function colorForName(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return PERSON_AVATAR_COLORS[h % PERSON_AVATAR_COLORS.length];
+}
+
+function relativeAt(value: string) {
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Date.now() - then;
+  const m = Math.round(diff / 60_000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.round(h / 24);
+  if (d < 7) return `${d}d`;
+  return `${Math.round(d / 7)}w`;
+}
+
+function ClaimRow({
+  name,
+  value,
+  source,
+  createdAt,
+}: {
+  name: string;
+  value: string;
+  source: string;
+  createdAt: string;
+}) {
+  const isVoice = source === 'voice';
+  const displayName = name.trim() || 'Someone';
+  return (
+    <div
+      className="rounded-lg px-3 py-2 flex items-center gap-2.5"
+      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+    >
+      <div
+        className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+        style={{
+          width: 29,
+          height: 29,
+          background: colorForName(displayName),
+          fontSize: 11,
+          fontWeight: 600,
+        }}
+      >
+        {initials(displayName)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-xs font-medium">{displayName}</p>
+        <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{value}&rdquo;</p>
+      </div>
+      <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
+        {isVoice ? (
+          <Phone size={10} fill="currentColor" stroke="currentColor" />
+        ) : (
+          <MessageCircle size={10} fill="currentColor" stroke="currentColor" />
+        )}
+        <span>{relativeAt(createdAt)}</span>
+      </div>
+    </div>
+  );
+}
+
 function useWikiClaims(
   imageId: string | null | undefined,
   claimType: 'why' | 'emotion' | 'extra_story'
@@ -356,17 +424,15 @@ function WhyCard({ imageId }: { imageId: string | null | undefined }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {claims.map((claim) => {
-        const sourceLabel = claimSourceLabelFromMetadata(claim.metadata);
-        return (
-          <WikiCard key={claim.id}>
-            <p className="text-white/80 text-sm leading-relaxed">&ldquo;{claim.value}&rdquo;</p>
-            <p className="text-white/30 text-xs mt-2">
-              From {sourceLabel} · {claim.source}
-            </p>
-          </WikiCard>
-        );
-      })}
+      {claims.map((claim) => (
+        <ClaimRow
+          key={claim.id}
+          name={claimSourceLabelFromMetadata(claim.metadata)}
+          value={claim.value}
+          source={claim.source}
+          createdAt={claim.createdAt}
+        />
+      ))}
     </div>
   );
 }
@@ -384,18 +450,15 @@ function EmotionalStateCard({ imageId }: { imageId: string | null | undefined })
 
   return (
     <div className="flex flex-col gap-2">
-      {claims.map((claim) => {
-        const sourceLabel = claimSourceLabelFromMetadata(claim.metadata);
-        return (
-          <WikiCard key={claim.id}>
-            <p className="text-white text-sm font-medium">{claim.subject || 'Someone'}</p>
-            <p className="text-white/70 text-sm leading-relaxed mt-1">&ldquo;{claim.value}&rdquo;</p>
-            <p className="text-white/30 text-xs mt-2">
-              From {sourceLabel} · {claim.source}
-            </p>
-          </WikiCard>
-        );
-      })}
+      {claims.map((claim) => (
+        <ClaimRow
+          key={claim.id}
+          name={claim.subject || claimSourceLabelFromMetadata(claim.metadata)}
+          value={claim.value}
+          source={claim.source}
+          createdAt={claim.createdAt}
+        />
+      ))}
     </div>
   );
 }
@@ -413,17 +476,15 @@ function ExtraStoriesCard({ imageId }: { imageId: string | null | undefined }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {claims.map((claim) => {
-        const sourceLabel = claimSourceLabelFromMetadata(claim.metadata);
-        return (
-          <WikiCard key={claim.id}>
-            <p className="text-white/80 text-sm leading-relaxed">{claim.value}</p>
-            <p className="text-white/30 text-xs mt-2">
-              From {sourceLabel} · {claim.source}
-            </p>
-          </WikiCard>
-        );
-      })}
+      {claims.map((claim) => (
+        <ClaimRow
+          key={claim.id}
+          name={claimSourceLabelFromMetadata(claim.metadata)}
+          value={claim.value}
+          source={claim.source}
+          createdAt={claim.createdAt}
+        />
+      ))}
     </div>
   );
 }
