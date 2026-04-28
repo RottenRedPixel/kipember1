@@ -416,10 +416,7 @@ function ClaimRow({
 
 type FindAvatar = (name: string) => string | null;
 
-function useWikiClaims(
-  imageId: string | null | undefined,
-  claimType: 'why' | 'emotion' | 'extra_story'
-) {
+function useReconciliationClaims(imageId: string | null | undefined) {
   const [claims, setClaims] = useState<ReconciliationClaim[] | null>(null);
 
   useEffect(() => {
@@ -433,11 +430,7 @@ function useWikiClaims(
       .then((response) => (response.ok ? response.json() : null))
       .then((data: ReconciliationResponse | null) => {
         if (cancelled) return;
-        if (!data?.claims) {
-          setClaims([]);
-          return;
-        }
-        setClaims(data.claims.filter((claim) => claim.claimType === claimType));
+        setClaims(data?.claims ?? []);
       })
       .catch(() => {
         if (!cancelled) setClaims([]);
@@ -446,7 +439,7 @@ function useWikiClaims(
     return () => {
       cancelled = true;
     };
-  }, [imageId, claimType]);
+  }, [imageId]);
 
   return claims;
 }
@@ -474,7 +467,7 @@ function VoiceBlockCard({
         <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 22, height: 22, background: '#f97316' }}
+          style={{ width: 22, height: 22, background: '#22c55e' }}
         >
           <Mic size={12} className="text-white" />
         </div>
@@ -482,20 +475,23 @@ function VoiceBlockCard({
           {block.personName}&apos;s Ember Voice
         </p>
       </div>
-      <VoiceMessageList messages={messages} isUploading={false} emptyHint="" />
+      <VoiceMessageList
+        messages={messages}
+        isUploading={false}
+        emptyHint=""
+        selfLabel={block.personName.split(' ')[0] || block.personName}
+      />
     </WikiCard>
   );
 }
 
 function WhyCard({
-  imageId,
+  claims,
   findAvatar,
 }: {
-  imageId: string | null | undefined;
+  claims: ReconciliationClaim[] | null;
   findAvatar: FindAvatar;
 }) {
-  const claims = useWikiClaims(imageId, 'why');
-
   if (claims === null || claims.length === 0) {
     return (
       <WikiCard>
@@ -524,14 +520,12 @@ function WhyCard({
 }
 
 function EmotionalStateCard({
-  imageId,
+  claims,
   findAvatar,
 }: {
-  imageId: string | null | undefined;
+  claims: ReconciliationClaim[] | null;
   findAvatar: FindAvatar;
 }) {
-  const claims = useWikiClaims(imageId, 'emotion');
-
   if (claims === null || claims.length === 0) {
     return (
       <WikiCard>
@@ -560,14 +554,12 @@ function EmotionalStateCard({
 }
 
 function ExtraStoriesCard({
-  imageId,
+  claims,
   findAvatar,
 }: {
-  imageId: string | null | undefined;
+  claims: ReconciliationClaim[] | null;
   findAvatar: FindAvatar;
 }) {
-  const claims = useWikiClaims(imageId, 'extra_story');
-
   if (claims === null || claims.length === 0) {
     return (
       <WikiCard>
@@ -1343,6 +1335,20 @@ export default function KipemberWikiContent({
     (name: string) => avatarLookup.get(name.trim().toLowerCase()) ?? null,
     [avatarLookup]
   );
+
+  const wikiClaims = useReconciliationClaims(imageId);
+  const whyClaims = useMemo(
+    () => (wikiClaims ? wikiClaims.filter((c) => c.claimType === 'why') : null),
+    [wikiClaims]
+  );
+  const emotionClaims = useMemo(
+    () => (wikiClaims ? wikiClaims.filter((c) => c.claimType === 'emotion') : null),
+    [wikiClaims]
+  );
+  const extraStoryClaims = useMemo(
+    () => (wikiClaims ? wikiClaims.filter((c) => c.claimType === 'extra_story') : null),
+    [wikiClaims]
+  );
   const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
   const pendingContributors = contributors.filter((contributor) => !contributor.userId && !contributor.user);
   const latitude =
@@ -1994,16 +2000,28 @@ export default function KipemberWikiContent({
         </WikiSection>
       ) : null}
 
-      <WikiSection icon={<Lightbulb size={17} />} title="Why" complete={false}>
-        <WhyCard imageId={imageId} findAvatar={findAvatar} />
+      <WikiSection
+        icon={<Lightbulb size={17} />}
+        title="Why"
+        complete={Boolean(whyClaims && whyClaims.length > 0)}
+      >
+        <WhyCard claims={whyClaims} findAvatar={findAvatar} />
       </WikiSection>
 
-      <WikiSection icon={<Heart size={17} />} title="Emotional States" complete={false}>
-        <EmotionalStateCard imageId={imageId} findAvatar={findAvatar} />
+      <WikiSection
+        icon={<Heart size={17} />}
+        title="Emotional States"
+        complete={Boolean(emotionClaims && emotionClaims.length > 0)}
+      >
+        <EmotionalStateCard claims={emotionClaims} findAvatar={findAvatar} />
       </WikiSection>
 
-      <WikiSection icon={<Sparkles size={17} />} title="Extra Stories" complete={false}>
-        <ExtraStoriesCard imageId={imageId} findAvatar={findAvatar} />
+      <WikiSection
+        icon={<Sparkles size={17} />}
+        title="Extra Stories"
+        complete={Boolean(extraStoryClaims && extraStoryClaims.length > 0)}
+      >
+        <ExtraStoriesCard claims={extraStoryClaims} findAvatar={findAvatar} />
       </WikiSection>
 
       {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}

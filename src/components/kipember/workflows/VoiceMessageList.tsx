@@ -38,7 +38,7 @@ function AudioPlayButton({ src }: { src: string }) {
         type="button"
         onClick={toggle}
         className="flex h-5 w-5 items-center justify-center rounded-full cursor-pointer flex-shrink-0"
-        style={{ background: 'rgba(249,115,22,0.85)' }}
+        style={{ background: 'rgba(34,197,94,0.85)' }}
         aria-label={playing ? 'Pause' : 'Play'}
       >
         <Play size={9} className="text-white" />
@@ -52,10 +52,14 @@ export default function VoiceMessageList({
   messages,
   isUploading,
   emptyHint = 'Tap the mic in the input bar to start a voice conversation.',
+  selfLabel = 'you',
+  emberLabel = 'ember',
 }: {
   messages: VoiceMessage[];
   isUploading: boolean;
   emptyHint?: string;
+  selfLabel?: string;
+  emberLabel?: string;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -91,14 +95,14 @@ export default function VoiceMessageList({
                 className={`flex items-center gap-1 text-xs font-bold ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}
               >
                 <Phone size={10} className={isUser ? 'text-white/30' : 'text-white/60'} />
-                {isUser ? 'you' : 'ember'}
+                {isUser ? selfLabel : emberLabel}
               </span>
               <div
                 className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
                 style={{
-                  background: isUser ? 'rgba(249,115,22,0.18)' : 'var(--bg-ember-bubble)',
+                  background: isUser ? 'rgba(34,197,94,0.18)' : 'var(--bg-ember-bubble)',
                   border: isUser
-                    ? '1px solid rgba(249,115,22,0.45)'
+                    ? '1px solid rgba(34,197,94,0.45)'
                     : '1px solid var(--border-ember)',
                 }}
               >
@@ -121,7 +125,7 @@ export default function VoiceMessageList({
 
       {isUploading ? (
         <div className="flex flex-col gap-1 items-start">
-          <span className="pl-1 text-xs font-bold text-white">ember</span>
+          <span className="pl-1 text-xs font-bold text-white">{emberLabel}</span>
           <div
             className="inline-flex max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3"
             style={{
