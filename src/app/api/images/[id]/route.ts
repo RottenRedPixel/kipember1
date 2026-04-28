@@ -616,6 +616,17 @@ export async function GET(
         createdAt: string;
       }>;
     }> = [];
+    let voiceBlocks: Array<{
+      personName: string;
+      avatarUrl: string | null;
+      isOwner: boolean;
+      messages: Array<{
+        role: string;
+        content: string;
+        audioUrl: string | null;
+        createdAt: string;
+      }>;
+    }> = [];
     try {
       const emberSessions = await prisma.emberSession.findMany({
         where: { imageId: id, sessionType: { in: ['chat', 'call', 'voice'] } },
@@ -634,7 +645,20 @@ export async function GET(
         audioUrl?: string | null;
         createdAt: string;
       };
-      const byPerson = new Map<string, { personName: string; avatarUrl: string | null; isOwner: boolean; messages: ChatMessage[] }>();
+      type VoiceTurn = {
+        role: string;
+        content: string;
+        audioUrl: string | null;
+        createdAt: string;
+      };
+      type PersonBucket = {
+        personName: string;
+        avatarUrl: string | null;
+        isOwner: boolean;
+        chatMessages: ChatMessage[];
+        voiceMessages: VoiceTurn[];
+      };
+      const byPerson = new Map<string, PersonBucket>();
       for (const session of emberSessions) {
         const personName =
           session.user?.name ||
@@ -649,26 +673,43 @@ export async function GET(
           personName;
         const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
         const isOwner = session.userId === image.ownerId;
-        const bucket = byPerson.get(personKey) || { personName, avatarUrl, isOwner, messages: [] };
+        const bucket =
+          byPerson.get(personKey) || {
+            personName,
+            avatarUrl,
+            isOwner,
+            chatMessages: [],
+            voiceMessages: [],
+          };
         for (const msg of session.messages) {
           if (msg.questionType) continue;
-          bucket.messages.push({
-            role: msg.role,
-            content: msg.content,
-            source: msg.source || 'web',
-            imageFilename: msg.imageFilename ?? null,
-            audioUrl: null as string | null,
-            createdAt: msg.createdAt.toISOString(),
-          });
+          if (msg.source === 'voice' || session.sessionType === 'voice') {
+            bucket.voiceMessages.push({
+              role: msg.role,
+              content: msg.content,
+              audioUrl: msg.audioFilename ? `/api/uploads/${msg.audioFilename}` : null,
+              createdAt: msg.createdAt.toISOString(),
+            });
+          } else {
+            bucket.chatMessages.push({
+              role: msg.role,
+              content: msg.content,
+              source: msg.source || 'web',
+              imageFilename: msg.imageFilename ?? null,
+              audioUrl: null as string | null,
+              createdAt: msg.createdAt.toISOString(),
+            });
+          }
         }
         byPerson.set(personKey, bucket);
       }
 
       // Dedup identical (role, content) within each person and sort by time.
-      chatBlocks = Array.from(byPerson.values())
-        .map((block) => {
+      const buckets = Array.from(byPerson.values());
+      chatBlocks = buckets
+        .map((bucket) => {
           const seen = new Set<string>();
-          const deduped = block.messages
+          const deduped = bucket.chatMessages
             .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
             .filter((m) => {
               const key = `${m.role}::${m.content.replace(/\s+/g, ' ').trim()}`;
@@ -676,12 +717,29 @@ export async function GET(
               seen.add(key);
               return true;
             });
-          return { ...block, messages: deduped };
+          return {
+            personName: bucket.personName,
+            avatarUrl: bucket.avatarUrl,
+            isOwner: bucket.isOwner,
+            messages: deduped,
+          };
         })
+        .filter((block) => block.messages.length > 0);
+
+      voiceBlocks = buckets
+        .map((bucket) => ({
+          personName: bucket.personName,
+          avatarUrl: bucket.avatarUrl,
+          isOwner: bucket.isOwner,
+          messages: bucket.voiceMessages.sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          ),
+        }))
         .filter((block) => block.messages.length > 0);
     } catch (chatBlocksError) {
       console.error('Failed to load chatBlocks:', chatBlocksError);
       chatBlocks = [];
+      voiceBlocks = [];
     }
 
     // Build callBlocks: one block per Retell voice call, with parsed per-turn segments.
@@ -834,6 +892,7 @@ export async function GET(
           }
         : null,
       chatBlocks,
+      voiceBlocks,
       callBlocks,
     });
   } catch (error) {

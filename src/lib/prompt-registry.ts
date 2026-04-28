@@ -97,8 +97,20 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'ember_voice.style',
     label: 'Ember Voice - Style & Technique',
     group: 'Ember AI',
-    description: 'Controls how the system replies when the user is using the in-app mic for a voice conversation. Style only — no extraction logic.',
-    variables: [],
+    description: 'Controls how the system replies when the user is using the in-app mic for a voice conversation. Receives the role, the live transcript, and the same wiki context as Ember Chat so spoken replies can use what the system already knows.',
+    variables: [
+      'role',
+      'trigger',
+      'transcript',
+      'title',
+      'snapshot',
+      'capturedAt',
+      'location',
+      'taggedPeople',
+      'visualScene',
+      'emotionalContext',
+      'wiki',
+    ],
   },
 
   {

@@ -29,6 +29,7 @@ import {
 import ClipAudioPlayer from '@/components/ClipAudioPlayer';
 import EmberCallCard from '@/components/kipember/EmberCallCard';
 import EmberChatMessages from '@/components/kipember/EmberChatMessages';
+import VoiceMessageList, { type VoiceMessage } from '@/components/kipember/workflows/VoiceMessageList';
 import MediaPreview from '@/components/MediaPreview';
 import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
 
@@ -220,6 +221,17 @@ export type KipemberWikiDetail = {
       source: string;
       imageFilename?: string | null;
       audioUrl?: string | null;
+      createdAt: string;
+    }>;
+  }>;
+  voiceBlocks?: Array<{
+    personName: string;
+    avatarUrl: string | null;
+    isOwner: boolean;
+    messages: Array<{
+      role: string;
+      content: string;
+      audioUrl: string | null;
       createdAt: string;
     }>;
   }>;
@@ -443,6 +455,36 @@ function claimSourceLabelFromMetadata(metadata: unknown): string {
   if (!metadata || typeof metadata !== 'object') return 'Someone';
   const label = (metadata as Record<string, unknown>).sourceLabel;
   return typeof label === 'string' && label.trim() ? label.trim() : 'Someone';
+}
+
+function VoiceBlockCard({
+  block,
+}: {
+  block: NonNullable<KipemberWikiDetail['voiceBlocks']>[number];
+}) {
+  const messages: VoiceMessage[] = block.messages.map((m) => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content,
+    audioUrl: m.audioUrl,
+    createdAt: m.createdAt,
+  }));
+  return (
+    <WikiCard>
+      <div className="flex items-center gap-2 mb-3">
+        <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
+        <div
+          className="rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ width: 22, height: 22, background: '#f97316' }}
+        >
+          <Mic size={12} className="text-white" />
+        </div>
+        <p className="text-white/30 text-xs font-medium">
+          {block.personName}&apos;s Ember Voice
+        </p>
+      </div>
+      <VoiceMessageList messages={messages} isUploading={false} emptyHint="" />
+    </WikiCard>
+  );
 }
 
 function WhyCard({
@@ -1831,9 +1873,13 @@ export default function KipemberWikiContent({
       >
         <div className="flex flex-col gap-4">
           {(detail?.chatBlocks && detail.chatBlocks.length > 0) ||
+          (detail?.voiceBlocks && detail.voiceBlocks.length > 0) ||
           (detail?.callBlocks && detail.callBlocks.length > 0) ? (
             <>
               {(detail?.chatBlocks ?? []).map((block) => {
+                const voiceForPerson = (detail?.voiceBlocks ?? []).find(
+                  (voice) => voice.personName === block.personName
+                );
                 const callsForPerson = (detail?.callBlocks ?? []).filter(
                   (call) => call.personName === block.personName
                 );
@@ -1862,17 +1908,33 @@ export default function KipemberWikiContent({
                     selfLabel={block.personName.split(' ')[0] || block.personName}
                   />
                 </WikiCard>
+                    {voiceForPerson ? (
+                      <VoiceBlockCard block={voiceForPerson} />
+                    ) : null}
                     {callsForPerson.map((call) => (
                       <EmberCallCard key={call.voiceCallId} block={call} />
                     ))}
                   </Fragment>
                 );
               })}
-              {(detail?.callBlocks ?? [])
-                .filter((call) =>
+              {(detail?.voiceBlocks ?? [])
+                .filter((voice) =>
                   !(detail?.chatBlocks ?? []).some(
-                    (block) => block.personName === call.personName
+                    (block) => block.personName === voice.personName
                   )
+                )
+                .map((voice) => (
+                  <VoiceBlockCard key={`voice-${voice.personName}`} block={voice} />
+                ))}
+              {(detail?.callBlocks ?? [])
+                .filter(
+                  (call) =>
+                    !(detail?.chatBlocks ?? []).some(
+                      (block) => block.personName === call.personName
+                    ) &&
+                    !(detail?.voiceBlocks ?? []).some(
+                      (voice) => voice.personName === call.personName
+                    )
                 )
                 .map((call) => (
                   <EmberCallCard key={call.voiceCallId} block={call} />

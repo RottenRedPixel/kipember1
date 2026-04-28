@@ -120,6 +120,7 @@ export async function POST(request: NextRequest) {
     const browserId = existingBrowserId || randomUUID();
     const userId = auth.user.id;
 
+    const participant = await resolveUserVoiceParticipant({ imageId, userId });
     const session = await ensureVoiceSession({ browserId, imageId, userId });
 
     let persistedAudio;
@@ -150,6 +151,8 @@ export async function POST(request: NextRequest) {
     });
 
     const replyText = await generateEmberVoiceReply({
+      imageId,
+      role: participant.participantType,
       trigger: 'mic_message',
       transcript,
     });

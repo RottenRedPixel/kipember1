@@ -62,7 +62,7 @@ function formatTaggedPeople(
   return Array.from(names).join(', ');
 }
 
-async function loadPromptVariables(imageId: string) {
+export async function loadPromptVariables(imageId: string) {
   const image = await prisma.image.findUnique({
     where: { id: imageId },
     select: {
