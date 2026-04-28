@@ -142,6 +142,14 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     description: 'Background parser. After any chat / SMS / voice / call message, pulls out anecdote-worthy excerpts (one or two sentences that read like a story). Stored as MemoryClaim rows with claimType="extra_story" and surfaced in the wiki Extra stories section. Not user-facing.',
     variables: ['title', 'wiki', 'taggedPeople', 'contributorName', 'question', 'answer'],
   },
+
+  {
+    key: 'housekeeping.place_extraction',
+    label: 'Place Extraction',
+    group: 'Housekeeping',
+    description: 'Background parser. After any chat / SMS / voice / call message, pulls out place mentions (named venues, neighborhoods, cities, landmarks, addresses) so they can be reconciled against the photo GPS / confirmed location later. Stored as MemoryClaim rows with claimType="place". Not currently user-facing — feeds future conflict resolution.',
+    variables: ['title', 'wiki', 'taggedPeople', 'contributorName', 'question', 'answer'],
+  },
 ];
 
 export const PROMPT_REGISTRY_MAP = new Map<string, PromptDefinition>(

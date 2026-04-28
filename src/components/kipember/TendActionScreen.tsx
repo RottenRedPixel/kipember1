@@ -22,6 +22,10 @@ import KipemberWikiContent, {
 } from '@/components/kipember/KipemberWikiContent';
 import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
+import {
+  usePlaceResolution,
+  clearPlaceResolutionCache,
+} from '@/components/kipember/usePlaceResolution';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 
 const fieldStyle = {
@@ -514,6 +518,50 @@ export default function TendActionScreen({ action }: { action: string }) {
       : `/api/images/${resolvedImageId}`
     : null;
 
+  const placeResolution = usePlaceResolution(detail);
+  const placePrefilledRef = useRef(false);
+
+  useEffect(() => {
+    placePrefilledRef.current = false;
+  }, [resolvedImageId, action]);
+
+  useEffect(() => {
+    if (action !== 'edit-time-place') return;
+    if (!detail) return;
+    if (detail.analysis?.confirmedLocation?.label) return;
+    if (placePrefilledRef.current) return;
+
+    const { nearbyPlaceSuggestion, exactAddressSuggestion } = placeResolution;
+    if (!nearbyPlaceSuggestion && !exactAddressSuggestion) return;
+
+    placePrefilledRef.current = true;
+
+    if (nearbyPlaceSuggestion) {
+      setLocationLabel(nearbyPlaceSuggestion.label);
+      setSavedLocationLabel(nearbyPlaceSuggestion.label);
+    }
+    if (exactAddressSuggestion) {
+      const fullAddress = [exactAddressSuggestion.label, exactAddressSuggestion.detail]
+        .filter(Boolean)
+        .join(', ');
+      const parsed = parseAddressParts(fullAddress);
+      const country =
+        exactAddressSuggestion.country?.trim() ||
+        nearbyPlaceSuggestion?.country?.trim() ||
+        parsed.country;
+      setLocationAddress(parsed.street);
+      setSavedLocationAddress(parsed.street);
+      setLocationCityStateZip(parsed.cityStateZip);
+      setSavedLocationCityStateZip(parsed.cityStateZip);
+      setLocationCountry(country);
+      setSavedLocationCountry(country);
+    } else if (nearbyPlaceSuggestion?.country?.trim()) {
+      const country = nearbyPlaceSuggestion.country.trim();
+      setLocationCountry(country);
+      setSavedLocationCountry(country);
+    }
+  }, [action, detail, placeResolution]);
+
   function applyDetail(payload: TendDetail) {
     setDetail(payload);
     const url = getPreviewMediaUrl({ mediaType: payload.mediaType, filename: payload.filename, posterFilename: payload.posterFilename });
@@ -574,51 +622,24 @@ export default function TendActionScreen({ action }: { action: string }) {
       return;
     }
 
-    void fetch(detailPath)
+    const controller = new AbortController();
+
+    void fetch(detailPath, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) {
           return;
         }
         const payload = (await response.json()) as TendDetail;
-        applyDetail(payload);
-
-        // After applyDetail: if on edit-time-place and confirmedLocation is absent,
-        // fall back to GPS-resolved suggestions (same source the wiki uses)
-        if (action === 'edit-time-place' && !payload.analysis?.confirmedLocation?.label) {
-          void fetch(`/api/images/${resolvedImageId}/location-suggestions`)
-            .then((res) => res.json())
-            .then((data: {
-              suggestions?: Array<{ id: string; label: string; detail: string | null; kind: string }>;
-            }) => {
-              const suggestions = data?.suggestions || [];
-              const placeSuggestion =
-                suggestions.find((s) => s.kind === 'place') ||
-                suggestions.find((s) => s.kind === 'neighborhood') ||
-                suggestions.find((s) => s.kind === 'city') ||
-                null;
-              const addressSuggestion = suggestions.find((s) => s.kind === 'address') || null;
-
-              if (placeSuggestion) {
-                setLocationLabel(placeSuggestion.label);
-                setSavedLocationLabel(placeSuggestion.label);
-              }
-              if (addressSuggestion) {
-                const fullAddress = [addressSuggestion.label, addressSuggestion.detail]
-                  .filter(Boolean)
-                  .join(', ');
-                const parsed = parseAddressParts(fullAddress);
-                setLocationAddress(parsed.street);
-                setSavedLocationAddress(parsed.street);
-                setLocationCityStateZip(parsed.cityStateZip);
-                setSavedLocationCityStateZip(parsed.cityStateZip);
-                setLocationCountry(parsed.country);
-                setSavedLocationCountry(parsed.country);
-              }
-            })
-            .catch(() => undefined);
+        if (controller.signal.aborted) {
+          return;
         }
+        applyDetail(payload);
       })
       .catch(() => undefined);
+
+    return () => {
+      controller.abort();
+    };
   }, [detailPath, resolvedImageId]);
 
   // Guard: prevent react-easy-crop's mount-time onCropChange from marking frame dirty
@@ -981,6 +1002,7 @@ export default function TendActionScreen({ action }: { action: string }) {
         setSavedLocationLat(locationLatitude);
         setSavedLocationLng(locationLongitude);
         setStatus('Location saved.');
+        clearPlaceResolutionCache(resolvedImageId);
         await refreshDetail();
       } else {
         setStatus('Failed to save location.');

@@ -571,11 +571,12 @@ async function runClassificationExtractor({
   promptKey,
 }: {
   messageId: string;
-  claimType: 'why' | 'emotion' | 'extra_story';
+  claimType: 'why' | 'emotion' | 'extra_story' | 'place';
   promptKey:
     | 'housekeeping.why_extraction'
     | 'housekeeping.emotion_extraction'
-    | 'housekeeping.extra_story_extraction';
+    | 'housekeeping.extra_story_extraction'
+    | 'housekeeping.place_extraction';
 }): Promise<{ claimsCreated: number }> {
   const message = await prisma.emberMessage.findUnique({
     where: { id: messageId },
@@ -709,6 +710,14 @@ export async function extractStoriesForMessage(messageId: string) {
   });
 }
 
+export async function extractPlacesForMessage(messageId: string) {
+  return runClassificationExtractor({
+    messageId,
+    claimType: 'place',
+    promptKey: 'housekeeping.place_extraction',
+  });
+}
+
 async function safeRun<T>(fn: () => Promise<T>, label: string): Promise<T | null> {
   try {
     return await fn();
@@ -722,6 +731,7 @@ export async function reconcileEmberMessageSafely(messageId: string, context = '
   await safeRun(() => extractWhyForMessage(messageId), `${context}: why`);
   await safeRun(() => extractEmotionsForMessage(messageId), `${context}: emotions`);
   await safeRun(() => extractStoriesForMessage(messageId), `${context}: extra stories`);
+  await safeRun(() => extractPlacesForMessage(messageId), `${context}: places`);
   return { claimsCreated: 0, conflictsCreated: 0 };
 }
 

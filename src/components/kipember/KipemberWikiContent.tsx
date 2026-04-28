@@ -13,6 +13,7 @@ import {
   History,
   Image as ImageIcon,
   Lightbulb,
+  Map as MapIcon,
   MapPin,
   MessageCircle,
   Mic,
@@ -31,6 +32,7 @@ import EmberCallCard from '@/components/kipember/EmberCallCard';
 import EmberChatMessages from '@/components/kipember/EmberChatMessages';
 import VoiceMessageList, { type VoiceMessage } from '@/components/kipember/workflows/VoiceMessageList';
 import MediaPreview from '@/components/MediaPreview';
+import { usePlaceResolution } from '@/components/kipember/usePlaceResolution';
 import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
 
 type ConversationMessage = {
@@ -60,13 +62,6 @@ type ContributorVoiceCall = {
     id: string;
     messages: ConversationMessage[];
   } | null;
-};
-
-type LocationSuggestion = {
-  id: string;
-  label: string;
-  detail: string | null;
-  kind: string;
 };
 
 type AnalysisSceneInsights = {
@@ -587,6 +582,40 @@ function ExtraStoriesCard({
   );
 }
 
+function PlacesMentionedCard({
+  claims,
+  findAvatar,
+}: {
+  claims: ReconciliationClaim[] | null;
+  findAvatar: FindAvatar;
+}) {
+  if (claims === null || claims.length === 0) {
+    return (
+      <WikiCard>
+        <p className="text-white/30 text-sm">Nothing captured yet.</p>
+      </WikiCard>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {claims.map((claim) => {
+        const name = claimSourceLabelFromMetadata(claim.metadata);
+        return (
+          <ClaimRow
+            key={claim.id}
+            name={name}
+            value={claim.value}
+            source={claim.source}
+            createdAt={claim.createdAt}
+            avatarUrl={findAvatar(name)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function AvatarCircle({
   name,
   avatarUrl,
@@ -615,17 +644,6 @@ function AvatarCircle({
   );
 }
 
-function formatCoordinates(
-  latitude: number | null | undefined,
-  longitude: number | null | undefined
-) {
-  if (latitude == null || longitude == null) {
-    return null;
-  }
-
-  return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-}
-
 function formatLocationLine(
   label: string | null | undefined,
   detail: string | null | undefined
@@ -635,66 +653,6 @@ function formatLocationLine(
     .filter(Boolean);
 
   return parts.length > 0 ? parts.join(', ') : null;
-}
-
-const US_STATES_FOR_DISPLAY = new Set<string>([
-  'alabama','alaska','arizona','arkansas','california','colorado','connecticut',
-  'delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa',
-  'kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan',
-  'minnesota','mississippi','missouri','montana','nebraska','nevada',
-  'new hampshire','new jersey','new mexico','new york','north carolina',
-  'north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island',
-  'south carolina','south dakota','tennessee','texas','utah','vermont',
-  'virginia','washington','west virginia','wisconsin','wyoming',
-  'district of columbia',
-  'al','ak','az','ar','ca','co','ct','de','fl','ga','hi','id','il','in','ia',
-  'ks','ky','la','me','md','ma','mi','mn','ms','mo','mt','ne','nv','nh','nj',
-  'nm','ny','nc','nd','oh','ok','or','pa','ri','sc','sd','tn','tx','ut','vt',
-  'va','wa','wv','wi','wy','dc',
-]);
-
-function formatUsPostalAddress(detail: string | null | undefined): string[] {
-  if (typeof detail !== 'string') return [];
-  const parts = detail
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length <= 1) return parts;
-
-  const last = parts[parts.length - 1];
-  const isCountry = /^(USA|United States|US|U\.S\.|U\.S\.A\.)$/i.test(last);
-  const country = isCountry ? parts.pop() ?? null : null;
-
-  // Pattern A: "STATE ZIP" segment (e.g., "NY 11201", "California 90210").
-  const stateZipIdx = parts.findIndex((part) =>
-    /\b[A-Z]{2}\s+\d{5}(-\d{4})?$/.test(part) ||
-    /\b[A-Z][A-Za-z]+\s+\d{5}(-\d{4})?$/.test(part)
-  );
-
-  const lines: string[] = [];
-  if (stateZipIdx > 0) {
-    const street = parts.slice(0, stateZipIdx - 1).join(', ');
-    const city = parts[stateZipIdx - 1];
-    const stateZip = parts[stateZipIdx];
-    if (street) lines.push(street);
-    lines.push(`${city}, ${stateZip}`);
-  } else {
-    // Pattern B: a US state name at the end without a ZIP.
-    const tail = parts[parts.length - 1];
-    if (parts.length >= 2 && tail && US_STATES_FOR_DISPLAY.has(tail.toLowerCase())) {
-      const stateIdx = parts.length - 1;
-      const street = parts.slice(0, stateIdx - 1).join(', ');
-      const city = parts[stateIdx - 1];
-      const state = parts[stateIdx];
-      if (street) lines.push(street);
-      lines.push(`${city}, ${state}`);
-    } else {
-      // Fallback: collapse to a single readable line.
-      lines.push(parts.join(', '));
-    }
-  }
-  if (country) lines.push(country);
-  return lines;
 }
 
 function joinDistinct(values: Array<string | null | undefined>) {
@@ -1294,8 +1252,7 @@ export default function KipemberWikiContent({
 }: {
   detail: KipemberWikiDetail | null;
 }) {
-  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
-  const [locationLookupPending, setLocationLookupPending] = useState(false);
+  const placeResolution = usePlaceResolution(detail);
   const contributors = detail?.contributors || [];
   const imageId = detail?.id || null;
   const ownerName = detail?.owner?.name || detail?.owner?.email || null;
@@ -1349,17 +1306,12 @@ export default function KipemberWikiContent({
     () => (wikiClaims ? wikiClaims.filter((c) => c.claimType === 'extra_story') : null),
     [wikiClaims]
   );
+  const placeClaims = useMemo(
+    () => (wikiClaims ? wikiClaims.filter((c) => c.claimType === 'place') : null),
+    [wikiClaims]
+  );
   const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
   const pendingContributors = contributors.filter((contributor) => !contributor.userId && !contributor.user);
-  const latitude =
-    detail?.analysis?.confirmedLocation?.latitude ??
-    detail?.analysis?.latitude ??
-    null;
-  const longitude =
-    detail?.analysis?.confirmedLocation?.longitude ??
-    detail?.analysis?.longitude ??
-    null;
-  const coordinateLine = formatCoordinates(latitude, longitude);
   // Story Circle completion is gated on contributor (non-owner) engagement —
   // the owner's own sessions don't count. Auto-welcome assistant messages are
   // also excluded since they don't reflect real engagement.
@@ -1380,85 +1332,16 @@ export default function KipemberWikiContent({
     isAudioAttachment(attachment)
   );
   const voiceCallClips = detail?.voiceCallClips || [];
-  const exactAddressSuggestion =
-    locationSuggestions.find((suggestion) => suggestion.kind === 'address') || null;
-  const nearbyPlaceSuggestion =
-    locationSuggestions.find((suggestion) => suggestion.kind === 'place') ||
-    locationSuggestions.find((suggestion) => suggestion.kind === 'neighborhood') ||
-    locationSuggestions.find((suggestion) => suggestion.kind === 'city') ||
-    null;
-
-  // Place name only (no address). Falls back to the closest suggestion when nothing is confirmed.
-  const placeName =
-    detail?.analysis?.confirmedLocation?.label?.trim() ||
-    nearbyPlaceSuggestion?.label?.trim() ||
-    exactAddressSuggestion?.label?.trim() ||
-    null;
-
-  // Postal-formatted exact address. Pulled from confirmedLocation.detail first, then suggestions.
-  const addressSourceRaw =
-    detail?.analysis?.confirmedLocation?.detail?.trim() ||
-    exactAddressSuggestion?.detail?.trim() ||
-    exactAddressSuggestion?.label?.trim() ||
-    null;
-  const addressLines = formatUsPostalAddress(addressSourceRaw);
-  const showExactAddress =
-    addressLines.length > 0 && (addressLines.length > 1 || addressLines[0] !== placeName);
-
-  useEffect(() => {
-    if (!imageId || latitude == null || longitude == null) {
-      setLocationSuggestions([]);
-      setLocationLookupPending(false);
-      return;
-    }
-
-    let cancelled = false;
-    const controller = new AbortController();
-
-    async function loadLocationSuggestions() {
-      setLocationLookupPending(true);
-
-      try {
-        const response = await fetch(`/api/images/${imageId}/location-suggestions`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to load location suggestions');
-        }
-
-        const payload = (await response.json()) as {
-          suggestions?: LocationSuggestion[];
-        };
-
-        if (cancelled) {
-          return;
-        }
-
-        setLocationSuggestions(
-          Array.isArray(payload.suggestions) ? payload.suggestions : []
-        );
-      } catch (error) {
-        if (cancelled || (error instanceof DOMException && error.name === 'AbortError')) {
-          return;
-        }
-
-        console.error('Failed to resolve wiki location details:', error);
-        setLocationSuggestions([]);
-      } finally {
-        if (!cancelled) {
-          setLocationLookupPending(false);
-        }
-      }
-    }
-
-    void loadLocationSuggestions();
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [imageId, latitude, longitude]);
+  const {
+    placeName,
+    addressLines,
+    showExactAddress,
+    coordinateLine,
+    country: placeCountry,
+    source: placeSource,
+    confirmedAt: placeConfirmedAt,
+    isLoading: locationLookupPending,
+  } = placeResolution;
 
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar py-5 flex flex-col gap-7 pb-10">
@@ -1550,9 +1433,9 @@ export default function KipemberWikiContent({
           <p className="text-white font-medium text-sm">
             {placeName || 'No location data available.'}
           </p>
-          {detail?.analysis?.confirmedLocation?.confirmedAt ? (
+          {placeConfirmedAt ? (
             <p className="text-white/30 text-xs mt-1">
-              (edited on {new Date(detail.analysis.confirmedLocation.confirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
+              (edited on {new Date(placeConfirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
             </p>
           ) : null}
           {showExactAddress ? (
@@ -1563,6 +1446,14 @@ export default function KipemberWikiContent({
                   {line}
                 </p>
               ))}
+              {placeCountry ? (
+                <p className="text-white/70 text-sm">{placeCountry}</p>
+              ) : null}
+            </>
+          ) : placeCountry ? (
+            <>
+              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Country</p>
+              <p className="text-white/70 text-sm">{placeCountry}</p>
             </>
           ) : null}
           {coordinateLine ? (
@@ -1577,9 +1468,9 @@ export default function KipemberWikiContent({
             </p>
           ) : null}
           <p className="text-white/30 text-xs mt-3">
-            Source: {detail?.analysis?.confirmedLocation?.confirmedAt
+            Source: {placeSource === 'manual'
               ? 'Manual entry'
-              : (latitude != null && longitude != null)
+              : placeSource === 'gps'
                 ? 'Photo GPS metadata'
                 : 'Not set'}
           </p>
@@ -2022,6 +1913,14 @@ export default function KipemberWikiContent({
         complete={Boolean(extraStoryClaims && extraStoryClaims.length > 0)}
       >
         <ExtraStoriesCard claims={extraStoryClaims} findAvatar={findAvatar} />
+      </WikiSection>
+
+      <WikiSection
+        icon={<MapIcon size={17} />}
+        title="Places Mentioned"
+        complete={Boolean(placeClaims && placeClaims.length > 0)}
+      >
+        <PlacesMentionedCard claims={placeClaims} findAvatar={findAvatar} />
       </WikiSection>
 
       {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}

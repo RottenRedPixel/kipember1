@@ -23,12 +23,19 @@ export type LocationSuggestion = {
   placeId?: string | null;
   confidence?: 'high' | 'medium' | 'low';
   reason?: string | null;
+  country?: string | null;
 };
 
 type ReverseGeocodeResponse = {
   name?: string;
   display_name?: string;
   address?: Record<string, string | undefined>;
+};
+
+type GoogleAddressComponent = {
+  long_name?: string;
+  short_name?: string;
+  types?: string[];
 };
 
 type GoogleGeocodeResponse = {
@@ -42,8 +49,17 @@ type GoogleGeocodeResponse = {
       };
     };
     types?: string[];
+    address_components?: GoogleAddressComponent[];
   }>;
 };
+
+function extractCountryFromGeocode(result: GoogleGeocodeResult | undefined) {
+  const component = result?.address_components?.find((part) =>
+    Array.isArray(part.types) && part.types.includes('country')
+  );
+  const value = component?.long_name?.trim();
+  return value ? value : null;
+}
 
 type GoogleGeocodeResult = NonNullable<GoogleGeocodeResponse['results']>[number];
 
@@ -232,6 +248,7 @@ function buildAddressSuggestion({
     placeId: result.place_id || null,
     confidence: 'high',
     reason: reason || null,
+    country: extractCountryFromGeocode(result),
   };
 }
 
@@ -378,6 +395,7 @@ function buildGoogleSuggestions({
 }) {
   const suggestions: LocationSuggestion[] = [];
   const bestAddress = geocode.results?.[0];
+  const geocodeCountry = extractCountryFromGeocode(bestAddress);
 
   if (
     bestAddress?.formatted_address &&
@@ -424,6 +442,7 @@ function buildGoogleSuggestions({
       latitude: placeLat ?? null,
       longitude: placeLng ?? null,
       placeId: place.place_id || null,
+      country: geocodeCountry,
     });
   }
 
@@ -714,6 +733,7 @@ export async function getLocationSuggestionsForCoordinates({
       label: placeName,
       detail: compactDetail([streetAddress, neighborhood, city, state]),
       kind: 'place',
+      country,
     });
   }
 
@@ -723,6 +743,7 @@ export async function getLocationSuggestionsForCoordinates({
       label: streetAddress,
       detail: compactDetail([neighborhood, city, state]),
       kind: 'address',
+      country,
     });
   }
 
@@ -732,6 +753,7 @@ export async function getLocationSuggestionsForCoordinates({
       label: neighborhood,
       detail: compactDetail([city, state, country]),
       kind: 'neighborhood',
+      country,
     });
   }
 
@@ -741,6 +763,7 @@ export async function getLocationSuggestionsForCoordinates({
       label: city,
       detail: compactDetail([state, country]),
       kind: 'city',
+      country,
     });
   }
 
@@ -754,6 +777,7 @@ export async function getLocationSuggestionsForCoordinates({
           ? compactDetail([state, country])
           : compactDetail([country]),
       kind: 'region',
+      country,
     });
   }
 
