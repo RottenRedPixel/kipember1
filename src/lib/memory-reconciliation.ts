@@ -565,18 +565,127 @@ function parseExtractedClassifications(text: string): ExtractedClassification[] 
   });
 }
 
+type ClassificationPromptKey =
+  | 'housekeeping.why_extraction'
+  | 'housekeeping.emotion_extraction'
+  | 'housekeeping.extra_story_extraction'
+  | 'housekeeping.place_extraction';
+
+type ClassificationClaimType = 'why' | 'emotion' | 'extra_story' | 'place';
+
+export type ClassificationContext = {
+  imageId: string;
+  sessionId: string;
+  contributorId: string | null;
+  userId: string | null;
+  emberMessageId: string | null;
+  source: string;
+  questionType: string | null;
+  question: string | null;
+  content: string;
+  sourceLabel: string;
+  messageCreatedAt?: Date | null;
+};
+
+async function runClassificationFromContext({
+  context,
+  claimType,
+  promptKey,
+}: {
+  context: ClassificationContext;
+  claimType: ClassificationClaimType;
+  promptKey: ClassificationPromptKey;
+}): Promise<{ claimsCreated: number }> {
+  if (!context.content.trim()) {
+    return { claimsCreated: 0 };
+  }
+
+  const image = await prisma.image.findUnique({
+    where: { id: context.imageId },
+    include: {
+      analysis: true,
+      wiki: { select: { content: true } },
+      tags: {
+        select: {
+          label: true,
+          user: { select: { name: true } },
+          contributor: { select: { name: true } },
+        },
+      },
+    },
+  });
+
+  if (!image) {
+    return { claimsCreated: 0 };
+  }
+
+  const taggedPeople = Array.from(
+    new Set(
+      image.tags
+        .map((t) => (t.user?.name || t.contributor?.name || t.label || '').trim())
+        .filter(Boolean)
+    )
+  ).join(', ');
+
+  const systemPrompt = await renderPromptTemplate(promptKey, '', {
+    title: getEmberTitle(image),
+    wiki: image.wiki?.content ?? '',
+    taggedPeople,
+    contributorName: context.sourceLabel,
+    question: context.question ?? '',
+    answer: context.content,
+  });
+
+  const response = await chat(
+    systemPrompt,
+    [{ role: 'user', content: context.content }],
+    { capabilityKey: promptKey, maxTokens: 800 }
+  );
+
+  const extracted = parseExtractedClassifications(response);
+  if (extracted.length === 0) {
+    return { claimsCreated: 0 };
+  }
+
+  const created = await Promise.all(
+    extracted.map((item) =>
+      prisma.memoryClaim.create({
+        data: {
+          imageId: context.imageId,
+          emberMessageId: context.emberMessageId,
+          contributorId: context.contributorId,
+          userId: context.userId,
+          sourceSessionId: context.sessionId,
+          source: context.source || 'human_memory',
+          questionType: context.questionType,
+          claimType,
+          subject: normalizeSubject(item.subject),
+          value: item.value,
+          normalizedValue: normalizeComparableValue(item.value).slice(0, 240),
+          rawText: null,
+          confidence: item.confidence,
+          evidenceKind: 'human_memory',
+          resolutionMode: 'human_clarification',
+          metadataJson: stringifyJson({
+            sourceLabel: context.sourceLabel,
+            messageCreatedAt: (context.messageCreatedAt ?? new Date()).toISOString(),
+          }),
+        },
+      })
+    )
+  );
+
+  return { claimsCreated: created.length };
+}
+
 async function runClassificationExtractor({
   messageId,
   claimType,
   promptKey,
 }: {
   messageId: string;
-  claimType: 'why' | 'emotion' | 'extra_story' | 'place';
-  promptKey:
-    | 'housekeeping.why_extraction'
-    | 'housekeeping.emotion_extraction'
-    | 'housekeeping.extra_story_extraction'
-    | 'housekeeping.place_extraction';
+  claimType: ClassificationClaimType;
+  promptKey: ClassificationPromptKey;
 }): Promise<{ claimsCreated: number }> {
   const message = await prisma.emberMessage.findUnique({
     where: { id: messageId },
@@ -591,19 +700,7 @@ async function runClassificationExtractor({
           contributor: {
             select: { id: true, name: true, email: true, phoneNumber: true },
           },
-          image: {
-            include: {
-              analysis: true,
-              wiki: { select: { content: true } },
-              tags: {
-                select: {
-                  label: true,
-                  user: { select: { name: true } },
-                  contributor: { select: { name: true } },
-                },
-              },
-            },
-          },
+          image: { select: { id: true } },
         },
       },
     },
@@ -618,7 +715,6 @@ async function runClassificationExtractor({
     return { claimsCreated: 0 };
   }
 
-  const image = message.session.image;
   const sourceLabel =
     message.session.user?.name ||
     message.session.contributor?.name ||
@@ -627,63 +723,23 @@ async function runClassificationExtractor({
     message.session.contributor?.phoneNumber ||
     'Contributor';
 
-  const taggedPeople = Array.from(
-    new Set(
-      image.tags
-        .map((t) => (t.user?.name || t.contributor?.name || t.label || '').trim())
-        .filter(Boolean)
-    )
-  ).join(', ');
-
-  const systemPrompt = await renderPromptTemplate(promptKey, '', {
-    title: getEmberTitle(image),
-    wiki: image.wiki?.content ?? '',
-    taggedPeople,
-    contributorName: sourceLabel,
-    question: message.question ?? '',
-    answer: message.content,
+  return runClassificationFromContext({
+    context: {
+      imageId: message.session.image.id,
+      sessionId: message.sessionId,
+      contributorId: message.session.contributorId,
+      userId: message.session.userId,
+      emberMessageId: message.id,
+      source: message.source || 'human_memory',
+      questionType: message.questionType,
+      question: message.question,
+      content: message.content,
+      sourceLabel,
+      messageCreatedAt: message.createdAt,
+    },
+    claimType,
+    promptKey,
   });
-
-  const response = await chat(
-    systemPrompt,
-    [{ role: 'user', content: message.content }],
-    { capabilityKey: promptKey, maxTokens: 800 }
-  );
-
-  const extracted = parseExtractedClassifications(response);
-  if (extracted.length === 0) {
-    return { claimsCreated: 0 };
-  }
-
-  const created = await Promise.all(
-    extracted.map((item) =>
-      prisma.memoryClaim.create({
-        data: {
-          imageId: image.id,
-          emberMessageId: message.id,
-          contributorId: message.session.contributorId,
-          userId: message.session.userId,
-          sourceSessionId: message.sessionId,
-          source: message.source || 'human_memory',
-          questionType: message.questionType,
-          claimType,
-          subject: normalizeSubject(item.subject),
-          value: item.value,
-          normalizedValue: normalizeComparableValue(item.value).slice(0, 240),
-          rawText: null,
-          confidence: item.confidence,
-          evidenceKind: 'human_memory',
-          resolutionMode: 'human_clarification',
-          metadataJson: stringifyJson({
-            sourceLabel,
-            messageCreatedAt: message.createdAt.toISOString(),
-          }),
-        },
-      })
-    )
-  );
-
-  return { claimsCreated: created.length };
 }
 
 export async function extractWhyForMessage(messageId: string) {
@@ -733,6 +789,48 @@ export async function reconcileEmberMessageSafely(messageId: string, context = '
   await safeRun(() => extractStoriesForMessage(messageId), `${context}: extra stories`);
   await safeRun(() => extractPlacesForMessage(messageId), `${context}: places`);
   return { claimsCreated: 0, conflictsCreated: 0 };
+}
+
+export async function extractAllClaimsFromContent(
+  context: ClassificationContext,
+  logContext = 'housekeeping'
+) {
+  await safeRun(
+    () =>
+      runClassificationFromContext({
+        context,
+        claimType: 'why',
+        promptKey: 'housekeeping.why_extraction',
+      }),
+    `${logContext}: why`
+  );
+  await safeRun(
+    () =>
+      runClassificationFromContext({
+        context,
+        claimType: 'emotion',
+        promptKey: 'housekeeping.emotion_extraction',
+      }),
+    `${logContext}: emotions`
+  );
+  await safeRun(
+    () =>
+      runClassificationFromContext({
+        context,
+        claimType: 'extra_story',
+        promptKey: 'housekeeping.extra_story_extraction',
+      }),
+    `${logContext}: extra stories`
+  );
+  await safeRun(
+    () =>
+      runClassificationFromContext({
+        context,
+        claimType: 'place',
+        promptKey: 'housekeeping.place_extraction',
+      }),
+    `${logContext}: places`
+  );
 }
 
 export async function refreshMemoryReconciliationForImage(imageId: string) {

@@ -14,7 +14,7 @@ import {
 } from '@/lib/voice-call-clips';
 import { maybeNotifyFailedCall } from '@/lib/voice-call-notifications';
 import { generateWikiForImage } from '@/lib/wiki-generator';
-import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { extractAllClaimsFromContent } from '@/lib/memory-reconciliation';
 
 const QUESTION_TYPES = ['context', 'who', 'when', 'where', 'what', 'why', 'how'] as const;
 
@@ -540,7 +540,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     extracted.isComplete || hasInterviewResponses || hasInterviewSummary;
 
   if (hasInterviewResponses) {
-    const createdMessages = await Promise.all(
+    await Promise.all(
       extracted.responses.map((item) =>
         prisma.emberMessage.create({
           data: {
@@ -554,13 +554,34 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
         })
       )
     );
+  }
 
-    for (const message of createdMessages) {
-      await reconcileEmberMessageSafely(
-        message.id,
-        'Voice interview memory reconciliation'
-      );
-    }
+  // Run housekeeping extractors (why / emotion / extra_story / place) on the
+  // full contributor transcript, not on the per-Q&A messages. The interview
+  // extractor is lossy — anything said outside the structured Q&A would
+  // otherwise never reach the housekeeping pipeline.
+  const userTurnsText = transcriptSegments
+    .filter((segment) => segment.role === 'user')
+    .map((segment) => segment.content.trim())
+    .filter(Boolean)
+    .join('\n\n');
+
+  if (userTurnsText) {
+    await extractAllClaimsFromContent(
+      {
+        imageId: voiceCall.contributor.imageId,
+        sessionId: session.id,
+        contributorId: voiceCall.contributorId,
+        userId: voiceCall.contributor.userId,
+        emberMessageId: null,
+        source: 'voice_call',
+        questionType: 'context',
+        question: 'Voice call transcript',
+        content: userTurnsText,
+        sourceLabel: contributorLabel,
+      },
+      'Voice call transcript reconciliation'
+    );
   }
 
   await prisma.emberSession.update({

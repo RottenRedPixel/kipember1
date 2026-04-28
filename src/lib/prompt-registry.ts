@@ -70,7 +70,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'ember_chat.style',
     label: 'Ember Chat - Style & Technique',
     group: 'Ember AI',
-    description: 'Controls how the system replies in the in-app Ember Chat bubble. Receives the role of the person chatting, the chat trigger, atomic facts about the ember (title, snapshot, captured date, location, tagged people, visual scene, emotional context), and the wiki markdown — so it can decide what to ask next.',
+    description: 'Controls how the system replies in the in-app Ember Chat bubble. Receives the role, trigger, atomic facts (title, snapshot, captured date, location, tagged people, visual scene, emotional context), the full wiki markdown, and a heuristic interview coverage signal (answered/unanswered topics across who/when/where/what/why/how + next topic to probe). The reply should always read the wiki first, reference what is already known when probing, and naturally pursue the next unanswered topic so housekeeping has something fresh to extract.',
     variables: [
       'role',
       'trigger',
@@ -82,6 +82,10 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
       'visualScene',
       'emotionalContext',
       'wiki',
+      'answeredTopics',
+      'unansweredTopics',
+      'nextTopic',
+      'interviewProgress',
     ],
   },
 
@@ -97,7 +101,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'ember_voice.style',
     label: 'Ember Voice - Style & Technique',
     group: 'Ember AI',
-    description: 'Controls how the system replies when the user is using the in-app mic for a voice conversation. Receives the role, the live transcript, and the same wiki context as Ember Chat so spoken replies can use what the system already knows.',
+    description: 'Controls how the system replies when the user is using the in-app mic for a voice conversation. Receives the role, the live transcript, the same atomic facts and wiki markdown as Ember Chat, plus the same interview coverage signal (answered/unanswered topics + next topic). Spoken replies should reference what the wiki already establishes and pursue gaps naturally rather than repeating known facts.',
     variables: [
       'role',
       'trigger',
@@ -110,6 +114,10 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
       'visualScene',
       'emotionalContext',
       'wiki',
+      'answeredTopics',
+      'unansweredTopics',
+      'nextTopic',
+      'interviewProgress',
     ],
   },
 
@@ -117,7 +125,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'ember_call.style',
     label: 'Ember Call - Style & Technique',
     group: 'Ember AI',
-    description: 'Synced to Retell. Tells the Retell voice agent how to behave during outbound voice calls. Saves here are pushed to Retell automatically.',
+    description: 'Synced to Retell. Tells the Retell voice agent how to behave during outbound voice calls. The agent runs with a static system prompt (no per-call variable injection here yet), so this prompt should instruct it to open by saying what the wiki already knows about the moment, then naturally pursue who / when / where / what / why / how gaps. Live wiki context is delivered to Retell at call setup time. Saves here are pushed to Retell automatically.',
     variables: [],
   },
 
