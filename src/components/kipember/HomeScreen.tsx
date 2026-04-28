@@ -721,7 +721,8 @@ export default function HomeScreen({
   }, [createdImageId, router, step]);
 
   return (
-    <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
+    <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
+      <div className="relative w-full max-w-xl h-full">
       <input
         ref={fileInputRef}
         type="file"
@@ -1200,6 +1201,7 @@ export default function HomeScreen({
           ) : null}
         </div>
       ) : null}
+      </div>
     </div>
   );
 }
