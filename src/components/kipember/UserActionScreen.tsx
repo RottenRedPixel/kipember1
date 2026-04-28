@@ -202,7 +202,8 @@ export default function UserActionScreen({
   }
 
   return (
-    <div className={`fixed inset-0 flex ${rootView ? 'flex-col' : ''}`}>
+    <div className="absolute inset-0 flex justify-center">
+      <div className={`relative w-full max-w-xl h-full flex ${rootView ? 'flex-col' : ''}`}>
       {!rootView ? <Link href="/home" className="w-[7%] h-full" /> : null}
       <div
         className={`${rootView ? 'w-full' : 'w-[93%]'} h-full flex flex-col ${rootView ? '' : 'slide-in-right'}`}
@@ -452,6 +453,7 @@ export default function UserActionScreen({
           onChooseNew={() => { if (cropSrc.startsWith('blob:')) URL.revokeObjectURL(cropSrc); setCropSrc(null); fileInputRef.current?.click(); }}
         />
       ) : null}
+      </div>
     </div>
   );
 }

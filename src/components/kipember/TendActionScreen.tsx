@@ -1391,13 +1391,17 @@ export default function TendActionScreen({ action }: { action: string }) {
 
   return (
     <div
-      className="fixed inset-0 flex"
-      style={peekBackgroundUrl ? {
-        backgroundImage: `url(${peekBackgroundUrl})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      } : undefined}
+      className="fixed inset-0 flex justify-center"
+      style={{ background: 'var(--bg-screen)' }}
     >
+      <div
+        className="relative w-full max-w-xl h-full flex"
+        style={peekBackgroundUrl ? {
+          backgroundImage: `url(${peekBackgroundUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        } : undefined}
+      >
       <button type="button" onClick={handleBack} className="w-[7%] h-full" style={{ cursor: 'pointer' }} aria-label="Back" />
       <div
         className="w-[93%] h-full flex flex-col slide-in-right"
@@ -2407,6 +2411,7 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {status ? <p className="text-sm text-white/60">{status}</p> : null}
         </div>
+      </div>
       </div>
     </div>
   );
