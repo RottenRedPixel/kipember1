@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -302,311 +302,129 @@ function initials(value: string) {
     .toUpperCase();
 }
 
-// ─── Placeholder Why / Emotional / Stories sections ──────────────────────────
-// These mirror the styling from the (now-removed) Checklist screen with dummy
-// data, ready to wire to real sources later.
+function useWikiClaims(
+  imageId: string | null | undefined,
+  claimType: 'why' | 'emotion' | 'extra_story'
+) {
+  const [claims, setClaims] = useState<ReconciliationClaim[] | null>(null);
 
-const PLACEHOLDER_PERSON_COLORS = ['#2563eb', '#7c3aed', '#16a34a', '#b45309', '#db2777', '#0891b2'];
+  useEffect(() => {
+    if (!imageId) {
+      setClaims(null);
+      return;
+    }
 
-function colorForName(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return PLACEHOLDER_PERSON_COLORS[h % PLACEHOLDER_PERSON_COLORS.length];
+    let cancelled = false;
+    fetch(`/api/images/${imageId}/reconciliation`, { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: ReconciliationResponse | null) => {
+        if (cancelled) return;
+        if (!data?.claims) {
+          setClaims([]);
+          return;
+        }
+        setClaims(data.claims.filter((claim) => claim.claimType === claimType));
+      })
+      .catch(() => {
+        if (!cancelled) setClaims([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [imageId, claimType]);
+
+  return claims;
 }
 
-function relativeAt(value: string) {
-  const then = new Date(value).getTime();
-  if (Number.isNaN(then)) return '';
-  const diff = Date.now() - then;
-  const m = Math.round(diff / 60_000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.round(h / 24);
-  if (d < 7) return `${d}d`;
-  return `${Math.round(d / 7)}w`;
+function claimSourceLabelFromMetadata(metadata: unknown): string {
+  if (!metadata || typeof metadata !== 'object') return 'Someone';
+  const label = (metadata as Record<string, unknown>).sourceLabel;
+  return typeof label === 'string' && label.trim() ? label.trim() : 'Someone';
 }
 
-type PlaceholderPerson = {
-  name: string;
-  avatarUrl?: string | null;
-  color: string;
-};
+function WhyCard({ imageId }: { imageId: string | null | undefined }) {
+  const claims = useWikiClaims(imageId, 'why');
 
-type PlaceholderEntry = {
-  value: string;
-  source: PlaceholderPerson;
-  channel: 'chat' | 'call';
-  at: string;
-};
+  if (claims === null || claims.length === 0) {
+    return (
+      <WikiCard>
+        <p className="text-white/30 text-sm">Nothing captured yet.</p>
+      </WikiCard>
+    );
+  }
 
-function PlaceholderSourcePill({ entry }: { entry: PlaceholderEntry }) {
-  return (
-    <div className="flex items-center gap-1.5 mt-1.5">
-      {entry.source.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={entry.source.avatarUrl}
-          alt={entry.source.name}
-          className="rounded-full object-cover flex-shrink-0"
-          style={{ width: 18, height: 18 }}
-        />
-      ) : (
-        <div
-          className="rounded-full flex items-center justify-center text-white flex-shrink-0"
-          style={{ width: 18, height: 18, background: entry.source.color, fontSize: 9, fontWeight: 600 }}
-        >
-          {initials(entry.source.name)}
-        </div>
-      )}
-      <span className="text-white/60 text-[11px]">{entry.source.name.split(/\s+/)[0] || entry.source.name}</span>
-      {entry.channel === 'chat' ? (
-        <MessageCircle size={10} className="text-white/40" fill="currentColor" stroke="currentColor" />
-      ) : (
-        <Phone size={10} className="text-white/40" fill="currentColor" stroke="currentColor" />
-      )}
-      <span className="text-white/30 text-[10px]">· {relativeAt(entry.at)}</span>
-    </div>
-  );
-}
-
-function buildPlaceholderPeople() {
-  const personA: PlaceholderPerson = { name: 'Owner', avatarUrl: null, color: PLACEHOLDER_PERSON_COLORS[0] };
-  const personB: PlaceholderPerson = { name: 'Sarah', avatarUrl: null, color: colorForName('Sarah') };
-  const personC: PlaceholderPerson = { name: 'Mom', avatarUrl: null, color: colorForName('Mom') };
-  return { personA, personB, personC };
-}
-
-function PlaceholderEntryRow({ entry }: { entry: PlaceholderEntry }) {
-  return (
-    <div
-      className="rounded-lg px-3 py-2 flex items-center gap-2.5"
-      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-    >
-      {entry.source.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={entry.source.avatarUrl}
-          alt={entry.source.name}
-          className="rounded-full object-cover flex-shrink-0"
-          style={{ width: 29, height: 29 }}
-        />
-      ) : (
-        <div
-          className="rounded-full flex items-center justify-center text-white flex-shrink-0"
-          style={{ width: 29, height: 29, background: entry.source.color, fontSize: 11, fontWeight: 600 }}
-        >
-          {initials(entry.source.name)}
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="text-white text-xs font-medium">
-          {entry.source.name.split(/\s+/)[0] || entry.source.name}
-        </p>
-        <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{entry.value}&rdquo;</p>
-      </div>
-      <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
-        {entry.channel === 'chat' ? (
-          <MessageCircle size={10} fill="currentColor" stroke="currentColor" />
-        ) : (
-          <Phone size={10} fill="currentColor" stroke="currentColor" />
-        )}
-        <span>{relativeAt(entry.at)}</span>
-      </div>
-    </div>
-  );
-}
-
-function PlaceholderWhyCard() {
-  const { personC } = buildPlaceholderPeople();
-  const at = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
-  const entries: PlaceholderEntry[] = [
-    {
-      value: "We hadn't all been together since Christmas — the holidays were a blur",
-      source: personC,
-      channel: 'call',
-      at,
-    },
-  ];
   return (
     <div className="flex flex-col gap-2">
-      {entries.map((entry, i) => (
-        <PlaceholderEntryRow key={i} entry={entry} />
-      ))}
+      {claims.map((claim) => {
+        const sourceLabel = claimSourceLabelFromMetadata(claim.metadata);
+        return (
+          <WikiCard key={claim.id}>
+            <p className="text-white/80 text-sm leading-relaxed">&ldquo;{claim.value}&rdquo;</p>
+            <p className="text-white/30 text-xs mt-2">
+              From {sourceLabel} · {claim.source}
+            </p>
+          </WikiCard>
+        );
+      })}
     </div>
   );
 }
 
-function PlaceholderEmotionalCard() {
-  const { personA, personB, personC } = buildPlaceholderPeople();
-  const t = (mins: number) => new Date(Date.now() - mins * 60_000).toISOString();
-  const rows: Array<{
-    person: PlaceholderPerson;
-    value: string | null;
-    channel: 'chat' | 'call' | null;
-    at: string | null;
-  }> = [
-    { person: personA, value: 'happy, relaxed, proud', channel: 'chat', at: t(120) },
-    { person: personB, value: 'tired but joyful', channel: 'call', at: t(30) },
-    { person: personC, value: null, channel: null, at: null },
-  ];
+function EmotionalStateCard({ imageId }: { imageId: string | null | undefined }) {
+  const claims = useWikiClaims(imageId, 'emotion');
+
+  if (claims === null || claims.length === 0) {
+    return (
+      <WikiCard>
+        <p className="text-white/30 text-sm">Nothing captured yet.</p>
+      </WikiCard>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      {rows.map((row, i) => (
-          <div
-            key={i}
-            className="rounded-lg px-3 py-2 flex items-center gap-2.5"
-            style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-          >
-            {row.person.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={row.person.avatarUrl}
-                alt={row.person.name}
-                className="rounded-full object-cover flex-shrink-0"
-                style={{ width: 29, height: 29 }}
-              />
-            ) : (
-              <div
-                className="rounded-full flex items-center justify-center text-white flex-shrink-0"
-                style={{ width: 29, height: 29, background: row.person.color, fontSize: 11, fontWeight: 600 }}
-              >
-                {initials(row.person.name)}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-medium">
-                {row.person.name.split(/\s+/)[0] || row.person.name}
-              </p>
-              {row.value ? (
-                <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{row.value}&rdquo;</p>
-              ) : (
-                <p className="text-white/25 text-[11px] mt-0.5 italic">no answer yet</p>
-              )}
-            </div>
-            {row.value && row.channel ? (
-              <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
-                {row.channel === 'chat' ? (
-                  <MessageCircle size={10} fill="currentColor" stroke="currentColor" />
-                ) : (
-                  <Phone size={10} fill="currentColor" stroke="currentColor" />
-                )}
-                <span>{row.at ? relativeAt(row.at) : ''}</span>
-              </div>
-            ) : null}
-          </div>
-        ))}
+      {claims.map((claim) => {
+        const sourceLabel = claimSourceLabelFromMetadata(claim.metadata);
+        return (
+          <WikiCard key={claim.id}>
+            <p className="text-white text-sm font-medium">{claim.subject || 'Someone'}</p>
+            <p className="text-white/70 text-sm leading-relaxed mt-1">&ldquo;{claim.value}&rdquo;</p>
+            <p className="text-white/30 text-xs mt-2">
+              From {sourceLabel} · {claim.source}
+            </p>
+          </WikiCard>
+        );
+      })}
     </div>
   );
 }
 
-function PlaceholderStoriesCard() {
-  const { personA, personC } = buildPlaceholderPeople();
-  const t = (mins: number) => new Date(Date.now() - mins * 60_000).toISOString();
-  const stories: PlaceholderEntry[] = [
-    {
-      value: 'Liam laughed for the first time when his uncle made a face at him across the table.',
-      source: personC,
-      channel: 'call',
-      at: t(1440),
-    },
-    {
-      value: "Sarah brought her dog and the dog ate half the cake before anyone noticed.",
-      source: personA,
-      channel: 'chat',
-      at: t(120),
-    },
-  ];
+function ExtraStoriesCard({ imageId }: { imageId: string | null | undefined }) {
+  const claims = useWikiClaims(imageId, 'extra_story');
+
+  if (claims === null || claims.length === 0) {
+    return (
+      <WikiCard>
+        <p className="text-white/30 text-sm">Nothing captured yet.</p>
+      </WikiCard>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      {stories.map((entry, i) => (
-        <PlaceholderEntryRow key={i} entry={entry} />
-      ))}
+      {claims.map((claim) => {
+        const sourceLabel = claimSourceLabelFromMetadata(claim.metadata);
+        return (
+          <WikiCard key={claim.id}>
+            <p className="text-white/80 text-sm leading-relaxed">{claim.value}</p>
+            <p className="text-white/30 text-xs mt-2">
+              From {sourceLabel} · {claim.source}
+            </p>
+          </WikiCard>
+        );
+      })}
     </div>
-  );
-}
-
-function DummyEmberCallCard({ personName, avatarUrl }: { personName: string; avatarUrl?: string | null }) {
-  const first = personName.split(' ')[0] || personName;
-  const baseTime = new Date();
-  baseTime.setHours(14, 12, 0, 0);
-  const t = (offsetMinutes: number) => new Date(baseTime.getTime() + offsetMinutes * 60_000).toISOString();
-  const messages: Array<{
-    role: 'assistant' | 'user';
-    content: string;
-    audioUrl: string | null;
-    createdAt: string;
-  }> = [
-    { role: 'assistant', content: `Hey ${first}, can you walk me through what was happening in this moment?`, audioUrl: null, createdAt: t(0) },
-    { role: 'user', content: `It was such a warm afternoon. Everyone had just sat down and we were finally all together in one place.`, audioUrl: '#', createdAt: t(1) },
-    { role: 'assistant', content: 'Who else was there with you that day?', audioUrl: null, createdAt: t(2) },
-    { role: 'user', content: `My sister, her two kids, and a couple of neighbors who stopped by. We didn't plan it — it just happened.`, audioUrl: '#', createdAt: t(3) },
-  ];
-
-  return (
-    <WikiCard>
-      <div className="flex items-center gap-2 mb-3">
-        <AvatarCircle name={personName} avatarUrl={avatarUrl} size={29} />
-        <div
-          className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 22, height: 22, background: '#f97316' }}
-        >
-          <Phone size={12} className="text-white" fill="currentColor" stroke="currentColor" />
-        </div>
-        <p className="text-white/30 text-xs font-medium">{personName}&apos;s Ember Call</p>
-      </div>
-      <div className="flex flex-col gap-3">
-        {messages.map((msg, i) => {
-          const isUser = msg.role === 'user';
-          const msgDate = new Date(msg.createdAt);
-          const prevMsg = messages[i - 1];
-          const prevDate = prevMsg ? new Date(prevMsg.createdAt) : null;
-          const showDateDivider = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
-          const timeLabel = msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-          const dateDividerLabel = msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-          return (
-            <div key={i}>
-              {showDateDivider ? (
-                <div className="flex justify-center my-2">
-                  <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
-                </div>
-              ) : null}
-              <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
-                <span className="flex items-center gap-1 text-white text-xs font-bold">
-                  <Phone size={9} />
-                  {isUser ? first : 'ember'}
-                </span>
-                <div
-                  className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
-                  style={{
-                    background: isUser ? 'rgba(249,115,22,0.18)' : 'var(--bg-ember-bubble)',
-                    border: isUser ? '1px solid rgba(249,115,22,0.45)' : '1px solid var(--border-ember)',
-                  }}
-                >
-                  {msg.content}
-                  {msg.audioUrl ? (
-                    <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
-                      <a
-                        href={msg.audioUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
-                        style={{ background: 'rgba(249,115,22,0.85)' }}
-                      >
-                        <Play size={9} className="text-white" />
-                      </a>
-                      <span className="text-white/30 text-xs">Voice recording</span>
-                    </div>
-                  ) : null}
-                </div>
-                <span className="text-white/25 text-[10px] mt-0.5">{timeLabel}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </WikiCard>
   );
 }
 
@@ -1754,8 +1572,7 @@ export default function KipemberWikiContent({
         <div className="flex flex-col gap-4">
           {detail?.chatBlocks && detail.chatBlocks.length > 0 ? (
             detail.chatBlocks.map((block) => (
-              <Fragment key={block.personName}>
-                <WikiCard>
+              <WikiCard key={block.personName}>
                   <div className="flex items-center gap-2 mb-3">
                     <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
                     <div
@@ -1827,8 +1644,6 @@ export default function KipemberWikiContent({
                     })}
                   </div>
                 </WikiCard>
-                <DummyEmberCallCard personName={block.personName} avatarUrl={block.avatarUrl} />
-              </Fragment>
             ))
           ) : (
             <WikiCard>
@@ -1885,15 +1700,15 @@ export default function KipemberWikiContent({
       ) : null}
 
       <WikiSection icon={<Lightbulb size={17} />} title="Why" complete={false}>
-        <PlaceholderWhyCard />
+        <WhyCard imageId={imageId} />
       </WikiSection>
 
       <WikiSection icon={<Heart size={17} />} title="Emotional state" complete={false}>
-        <PlaceholderEmotionalCard />
+        <EmotionalStateCard imageId={imageId} />
       </WikiSection>
 
       <WikiSection icon={<Sparkles size={17} />} title="Extra stories" complete={false}>
-        <PlaceholderStoriesCard />
+        <ExtraStoriesCard imageId={imageId} />
       </WikiSection>
 
       {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}

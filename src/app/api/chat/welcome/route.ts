@@ -84,9 +84,12 @@ export async function POST(request: NextRequest) {
       return response;
     }
 
-    const welcome = await generateEmberChatReply(
-      situation === 'returning' ? 'welcome_returning' : 'welcome_first_open'
-    );
+    const welcome = await generateEmberChatReply({
+      imageId,
+      sessionId: session.id,
+      role: participant.participantType,
+      trigger: situation === 'returning' ? 'welcome_returning' : 'welcome_first_open',
+    });
 
     await prisma.emberMessage.create({
       data: {

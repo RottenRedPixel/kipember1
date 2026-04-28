@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { renderPromptTemplate, getCapabilityModel } from '@/lib/control-plane';
+import { prisma } from '@/lib/db';
 import { getConfiguredOpenAIModel, getOpenAIClient, getWikiStructureModel } from './openai';
 
 const anthropic = new Anthropic({
@@ -731,11 +732,23 @@ ${JSON.stringify(structuredMemory, null, 2)}`,
 
 export async function generateFollowUpQuestion(
   conversationHistory: { role: 'user' | 'assistant'; content: string }[],
-  collectedResponses: { questionType: string; answer: string }[]
+  collectedResponses: { questionType: string; answer: string }[],
+  { imageId }: { imageId: string }
 ): Promise<string | null> {
-  const systemPrompt = await renderPromptTemplate(
-    'ember_chat.style'
-  );
+  const image = await prisma.image.findUnique({
+    where: { id: imageId },
+    select: {
+      title: true,
+      snapshot: { select: { script: true } },
+    },
+  });
+
+  const systemPrompt = await renderPromptTemplate('ember_sms.style', '', {
+    role: 'contributor',
+    trigger: 'followup',
+    title: image?.title ?? '',
+    snapshot: image?.snapshot?.script ?? '',
+  });
 
   const responseSummary = collectedResponses
     .map((r) => `${r.questionType}: ${r.answer}`)
@@ -750,7 +763,7 @@ Should we ask a follow-up question? If yes, what should it be?`;
     ...conversationHistory.slice(-4), // Last few messages for context
     { role: 'user', content: userMessage },
   ], {
-    capabilityKey: 'ember_chat.style',
+    capabilityKey: 'ember_sms.style',
     fallbackModel: DEFAULT_CLAUDE_MODEL,
   });
 

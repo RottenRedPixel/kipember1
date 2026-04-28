@@ -536,16 +536,193 @@ export async function reconcileEmberMessage(messageId: string) {
   };
 }
 
-export async function reconcileEmberMessageSafely(messageId: string, context = 'memory reconciliation') {
+type ExtractedClassification = {
+  subject: string;
+  value: string;
+  confidence: number | null;
+};
+
+function parseExtractedClassifications(text: string): ExtractedClassification[] {
+  let parsed: { claims?: Array<Record<string, unknown>> };
   try {
-    return await reconcileEmberMessage(messageId);
-  } catch (error) {
-    console.error(`${context} failed:`, error);
-    return {
-      claimsCreated: 0,
-      conflictsCreated: 0,
-    };
+    parsed = parseJsonObject(text);
+  } catch {
+    return [];
   }
+  if (!Array.isArray(parsed.claims)) {
+    return [];
+  }
+  return parsed.claims.flatMap((claim) => {
+    const value = stringValue(claim.value);
+    if (!value) return [];
+    return [
+      {
+        subject: stringValue(claim.subject),
+        value: value.slice(0, 1000),
+        confidence: clampConfidence(claim.confidence),
+      },
+    ];
+  });
+}
+
+async function runClassificationExtractor({
+  messageId,
+  claimType,
+  promptKey,
+}: {
+  messageId: string;
+  claimType: 'why' | 'emotion' | 'extra_story';
+  promptKey:
+    | 'housekeeping.why_extraction'
+    | 'housekeeping.emotion_extraction'
+    | 'housekeeping.extra_story_extraction';
+}): Promise<{ claimsCreated: number }> {
+  const message = await prisma.emberMessage.findUnique({
+    where: { id: messageId },
+    include: {
+      memoryClaims: {
+        where: { claimType },
+        select: { id: true },
+      },
+      session: {
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          contributor: {
+            select: { id: true, name: true, email: true, phoneNumber: true },
+          },
+          image: {
+            include: {
+              analysis: true,
+              wiki: { select: { content: true } },
+              tags: {
+                select: {
+                  label: true,
+                  user: { select: { name: true } },
+                  contributor: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (
+    !message ||
+    message.role !== 'user' ||
+    !message.content.trim() ||
+    message.memoryClaims.length > 0
+  ) {
+    return { claimsCreated: 0 };
+  }
+
+  const image = message.session.image;
+  const sourceLabel =
+    message.session.user?.name ||
+    message.session.contributor?.name ||
+    message.session.user?.email ||
+    message.session.contributor?.email ||
+    message.session.contributor?.phoneNumber ||
+    'Contributor';
+
+  const taggedPeople = Array.from(
+    new Set(
+      image.tags
+        .map((t) => (t.user?.name || t.contributor?.name || t.label || '').trim())
+        .filter(Boolean)
+    )
+  ).join(', ');
+
+  const systemPrompt = await renderPromptTemplate(promptKey, '', {
+    title: getEmberTitle(image),
+    wiki: image.wiki?.content ?? '',
+    taggedPeople,
+    contributorName: sourceLabel,
+    question: message.question ?? '',
+    answer: message.content,
+  });
+
+  const response = await chat(
+    systemPrompt,
+    [{ role: 'user', content: message.content }],
+    { capabilityKey: promptKey, maxTokens: 800 }
+  );
+
+  const extracted = parseExtractedClassifications(response);
+  if (extracted.length === 0) {
+    return { claimsCreated: 0 };
+  }
+
+  const created = await Promise.all(
+    extracted.map((item) =>
+      prisma.memoryClaim.create({
+        data: {
+          imageId: image.id,
+          emberMessageId: message.id,
+          contributorId: message.session.contributorId,
+          userId: message.session.userId,
+          sourceSessionId: message.sessionId,
+          source: message.source || 'human_memory',
+          questionType: message.questionType,
+          claimType,
+          subject: normalizeSubject(item.subject),
+          value: item.value,
+          normalizedValue: normalizeComparableValue(item.value).slice(0, 240),
+          rawText: null,
+          confidence: item.confidence,
+          evidenceKind: 'human_memory',
+          resolutionMode: 'human_clarification',
+          metadataJson: stringifyJson({
+            sourceLabel,
+            messageCreatedAt: message.createdAt.toISOString(),
+          }),
+        },
+      })
+    )
+  );
+
+  return { claimsCreated: created.length };
+}
+
+export async function extractWhyForMessage(messageId: string) {
+  return runClassificationExtractor({
+    messageId,
+    claimType: 'why',
+    promptKey: 'housekeeping.why_extraction',
+  });
+}
+
+export async function extractEmotionsForMessage(messageId: string) {
+  return runClassificationExtractor({
+    messageId,
+    claimType: 'emotion',
+    promptKey: 'housekeeping.emotion_extraction',
+  });
+}
+
+export async function extractStoriesForMessage(messageId: string) {
+  return runClassificationExtractor({
+    messageId,
+    claimType: 'extra_story',
+    promptKey: 'housekeeping.extra_story_extraction',
+  });
+}
+
+async function safeRun<T>(fn: () => Promise<T>, label: string): Promise<T | null> {
+  try {
+    return await fn();
+  } catch (error) {
+    console.error(`${label} failed:`, error);
+    return null;
+  }
+}
+
+export async function reconcileEmberMessageSafely(messageId: string, context = 'housekeeping') {
+  await safeRun(() => extractWhyForMessage(messageId), `${context}: why`);
+  await safeRun(() => extractEmotionsForMessage(messageId), `${context}: emotions`);
+  await safeRun(() => extractStoriesForMessage(messageId), `${context}: extra stories`);
+  return { claimsCreated: 0, conflictsCreated: 0 };
 }
 
 export async function refreshMemoryReconciliationForImage(imageId: string) {

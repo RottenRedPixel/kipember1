@@ -5,6 +5,7 @@ import {
   ensureEmberSession,
 } from '@/lib/ember-sessions';
 import { generateEmberChatReply } from '@/lib/ember-chat-reply';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 
@@ -207,7 +208,12 @@ export async function POST(
         status: 'active',
       });
 
-      const welcome = await generateEmberChatReply('welcome_first_open');
+      const welcome = await generateEmberChatReply({
+        imageId: contributor.imageId,
+        sessionId: session.id,
+        role: 'contributor',
+        trigger: 'welcome_first_open',
+      });
       await prisma.emberMessage.create({
         data: {
           sessionId: session.id,
@@ -228,7 +234,12 @@ export async function POST(
       if (latest) {
         return NextResponse.json({ response: latest.content });
       }
-      const welcome = await generateEmberChatReply('welcome_returning');
+      const welcome = await generateEmberChatReply({
+        imageId: contributor.imageId,
+        sessionId: session.id,
+        role: 'contributor',
+        trigger: 'welcome_returning',
+      });
       await prisma.emberMessage.create({
         data: {
           sessionId: session.id,
@@ -240,7 +251,7 @@ export async function POST(
       return NextResponse.json({ response: welcome });
     }
 
-    await prisma.emberMessage.create({
+    const userMessage = await prisma.emberMessage.create({
       data: {
         sessionId: session.id,
         role: 'user',
@@ -249,7 +260,15 @@ export async function POST(
       },
     });
 
-    const reply = await generateEmberChatReply('message');
+    const [reply] = await Promise.all([
+      generateEmberChatReply({
+        imageId: contributor.imageId,
+        sessionId: session.id,
+        role: 'contributor',
+        trigger: 'message',
+      }),
+      reconcileEmberMessageSafely(userMessage.id, 'contribute housekeeping'),
+    ]);
 
     await prisma.emberMessage.create({
       data: {

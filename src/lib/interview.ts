@@ -159,7 +159,9 @@ export async function handleIncomingMessage(
       content: m.content,
     }));
 
-    const followUp = await generateFollowUpQuestion(conversationHistory, structuredResponses);
+    const followUp = await generateFollowUpQuestion(conversationHistory, structuredResponses, {
+      imageId: contributor.imageId,
+    });
 
     if (followUp) {
       response = followUp;
@@ -196,7 +198,9 @@ export async function handleIncomingMessage(
         content: m.content,
       }));
 
-      const followUp = await generateFollowUpQuestion(conversationHistory, structuredResponses);
+      const followUp = await generateFollowUpQuestion(conversationHistory, structuredResponses, {
+        imageId: contributor.imageId,
+      });
 
       if (followUp) {
         response = followUp;

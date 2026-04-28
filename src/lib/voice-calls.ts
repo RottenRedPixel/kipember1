@@ -402,53 +402,10 @@ function extractJsonObject(text: string): string {
   return text.slice(firstBrace, lastBrace + 1);
 }
 
-async function extractInterviewFromTranscript(transcript: string): Promise<ExtractedInterview> {
-  const systemPrompt = await renderPromptTemplate(
-    'x_housekeeping.interview_extract',
-    '',
-    { transcript }
-  );
-
-  const responseText = await chat(systemPrompt, [
-    {
-      role: 'user',
-      content: `Transcript:\n${transcript}`,
-    },
-  ], {
-    capabilityKey: 'voice.transcript_extract',
-  });
-
-  const parsed = JSON.parse(extractJsonObject(responseText)) as Partial<ExtractedInterview>;
-
-  const responses = Array.isArray(parsed.responses)
-    ? parsed.responses.flatMap((item) => {
-        if (
-          !item ||
-          typeof item !== 'object' ||
-          typeof item.questionType !== 'string' ||
-          typeof item.answer !== 'string'
-        ) {
-          return [];
-        }
-
-        if (!isQuestionType(item.questionType) || !item.answer.trim()) {
-          return [];
-        }
-
-        return [
-          {
-            questionType: item.questionType as QuestionType,
-            answer: item.answer.trim(),
-          },
-        ];
-      })
-    : [];
-
-  return {
-    isComplete: parsed.isComplete === true,
-    summary: typeof parsed.summary === 'string' ? parsed.summary.trim() : '',
-    responses,
-  };
+async function extractInterviewFromTranscript(_transcript: string): Promise<ExtractedInterview> {
+  // Interview extraction prompt was retired. Returning an empty result so the
+  // call pipeline keeps working without producing structured Q&A.
+  return { isComplete: false, summary: '', responses: [] };
 }
 
 async function upsertVoiceCallRecord(

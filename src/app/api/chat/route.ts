@@ -10,6 +10,7 @@ import {
 } from '@/lib/ember-sessions';
 import { getImageAccessType } from '@/lib/ember-access';
 import { generateEmberChatReply } from '@/lib/ember-chat-reply';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 
 const COOKIE_NAME = 'mw_photo_chat_v2';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -49,9 +50,17 @@ async function resolveUserChatParticipant({
   };
 }
 
-async function ensureChatSession({ browserId, imageId, userId }: { browserId: string; imageId: string; userId: string }) {
-  const participant = await resolveUserChatParticipant({ imageId, userId });
+type ResolvedParticipant = Awaited<ReturnType<typeof resolveUserChatParticipant>>;
 
+async function ensureChatSessionForParticipant({
+  participant,
+  browserId,
+  userId,
+}: {
+  participant: ResolvedParticipant;
+  browserId: string;
+  userId: string;
+}) {
   return ensureEmberSession({
     ...participant,
     browserId,
@@ -81,9 +90,10 @@ export async function POST(request: NextRequest) {
     const browserId = existingBrowserId || randomUUID();
     const userId = auth.user.id;
 
-    const session = await ensureChatSession({ browserId, imageId, userId });
+    const participant = await resolveUserChatParticipant({ imageId, userId });
+    const session = await ensureChatSessionForParticipant({ participant, browserId, userId });
 
-    await prisma.emberMessage.create({
+    const userMessage = await prisma.emberMessage.create({
       data: {
         sessionId: session.id,
         role: 'user',
@@ -92,7 +102,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const response = await generateEmberChatReply('message');
+    const [response] = await Promise.all([
+      generateEmberChatReply({
+        imageId,
+        sessionId: session.id,
+        role: participant.participantType,
+        trigger: 'message',
+      }),
+      reconcileEmberMessageSafely(userMessage.id, 'chat housekeeping'),
+    ]);
 
     await prisma.emberMessage.create({
       data: { sessionId: session.id, role: 'assistant', content: response },
@@ -181,13 +199,19 @@ export async function PATCH(request: NextRequest) {
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
 
-    const session = await ensureChatSession({ browserId, imageId, userId });
+    const participant = await resolveUserChatParticipant({ imageId, userId });
+    const session = await ensureChatSessionForParticipant({ participant, browserId, userId });
 
     await prisma.emberMessage.create({
       data: { sessionId: session.id, role: 'user', content: '', imageFilename },
     });
 
-    const reply = await generateEmberChatReply('photo_upload');
+    const reply = await generateEmberChatReply({
+      imageId,
+      sessionId: session.id,
+      role: participant.participantType,
+      trigger: 'photo_upload',
+    });
 
     await prisma.emberMessage.create({
       data: { sessionId: session.id, role: 'assistant', content: reply },

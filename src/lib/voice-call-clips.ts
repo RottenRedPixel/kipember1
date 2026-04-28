@@ -244,104 +244,13 @@ export function parseVoiceCallTranscriptSegments({
     });
 }
 
-export async function extractImportantVoiceCallClips({
-  imageTitle,
-  contributorName,
-  transcript,
-  segments,
-}: {
+export async function extractImportantVoiceCallClips(_args: {
   imageTitle: string;
   contributorName: string;
   transcript: string;
   segments: VoiceCallTranscriptSegment[];
-}) {
-  const normalizedTranscript = normalizeText(transcript);
-  if (!normalizedTranscript || segments.length === 0) {
-    return [] as ExtractedVoiceCallClip[];
-  }
-
-  const openai = getOpenAIClient();
-  const segmentList = segments
-    .slice(0, 80)
-    .map((segment) => ({
-      index: segment.index,
-      speaker: segment.speaker,
-      startMs: segment.startMs,
-      endMs: segment.endMs,
-      text: segment.content,
-    }));
-  const prompt = await renderPromptTemplate('x_housekeeping.highlight_extract', '', {
-    imageTitle,
-    contributorName,
-    segmentList: JSON.stringify(segmentList, null, 2),
-  });
-
-  const response = await openai.responses.create({
-    model: await getConfiguredOpenAIModel('voice.clip_extract', getWikiStructureModel()),
-    input: [
-      {
-        role: 'developer',
-        type: 'message',
-        content: [
-          {
-            type: 'input_text',
-            text: prompt,
-          },
-        ],
-      },
-    ],
-    text: {
-      verbosity: 'low',
-      format: {
-        type: 'json_schema',
-        name: 'voice_call_clips',
-        description: 'Clip-worthy highlights extracted from a voice interview.',
-        schema: VOICE_CALL_HIGHLIGHT_SCHEMA,
-        strict: false,
-      },
-    },
-  });
-
-  const parsed = JSON.parse(response.output_text || '{}') as VoiceCallHighlightResponse;
-  const seenQuotes = new Set<string>();
-
-  return asArray<NonNullable<VoiceCallHighlightResponse['clips']>[number]>(parsed.clips)
-    .flatMap((clip, sortOrder) => {
-      const title = typeof clip?.title === 'string' ? normalizeText(clip.title) : '';
-      const rawQuote = typeof clip?.quote === 'string' ? normalizeText(clip.quote) : '';
-      const significance =
-        typeof clip?.significance === 'string' ? normalizeText(clip.significance) : null;
-      const segmentIndex =
-        typeof clip?.segmentIndex === 'number' && Number.isFinite(clip.segmentIndex)
-          ? clip.segmentIndex
-          : -1;
-      const segment = segments.find((item) => item.index === segmentIndex);
-
-      if (!title || !rawQuote || !segment) {
-        return [];
-      }
-
-      const quote = findSegmentTextMatch(segment, rawQuote) ? rawQuote : segment.content;
-      const quoteKey = quote.toLowerCase();
-      if (seenQuotes.has(quoteKey)) {
-        return [];
-      }
-
-      seenQuotes.add(quoteKey);
-      const timing = findQuoteTimingInSegment(segment, quote);
-
-      return [
-        {
-          sortOrder,
-          title,
-          quote,
-          significance,
-          speaker: segment.speaker,
-          startMs: timing.startMs,
-          endMs: timing.endMs,
-          canUseForTitle: clip?.canUseForTitle === true,
-        } satisfies ExtractedVoiceCallClip,
-      ];
-    })
-    .slice(0, 3);
+}): Promise<ExtractedVoiceCallClip[]> {
+  // Highlight extraction prompt was retired. Returning an empty list so the
+  // call pipeline keeps working without producing voice-call clips.
+  return [];
 }

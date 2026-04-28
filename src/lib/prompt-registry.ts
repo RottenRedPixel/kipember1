@@ -70,8 +70,27 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'ember_chat.style',
     label: 'Ember Chat - Style & Technique',
     group: 'Ember AI',
-    description: 'Controls how the system replies in text-based chat (Ember Chat bubbles and SMS interview follow-ups). Style only — no extraction logic.',
-    variables: [],
+    description: 'Controls how the system replies in the in-app Ember Chat bubble. Receives the role of the person chatting, the chat trigger, atomic facts about the ember (title, snapshot, captured date, location, tagged people, visual scene, emotional context), and the wiki markdown — so it can decide what to ask next.',
+    variables: [
+      'role',
+      'trigger',
+      'title',
+      'snapshot',
+      'capturedAt',
+      'location',
+      'taggedPeople',
+      'visualScene',
+      'emotionalContext',
+      'wiki',
+    ],
+  },
+
+  {
+    key: 'ember_sms.style',
+    label: 'Ember SMS - Style & Technique',
+    group: 'Ember AI',
+    description: 'Controls how the system replies in SMS interview follow-ups (Twilio). Same context shape as Ember Chat but tuned for the constraints of text messages.',
+    variables: ['role', 'trigger', 'title', 'snapshot'],
   },
 
   {
@@ -91,25 +110,25 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   },
 
   {
-    key: 'x_housekeeping.memory_extract',
-    label: 'Memory Extraction',
+    key: 'housekeeping.why_extraction',
+    label: 'Why Extraction',
     group: 'Housekeeping',
-    description: 'Background parser. After a contributor sends a chat answer, this prompt pulls structured claims (people, dates, places, facts) out of it for the wiki memory store. Not user-facing.',
-    variables: [],
+    description: 'Background parser. After any chat / SMS / voice / call message, pulls out claims about why this moment mattered (motivation, occasion, significance). Stored as MemoryClaim rows with claimType="why" and surfaced in the wiki Why section. Not user-facing.',
+    variables: ['title', 'wiki', 'taggedPeople', 'contributorName', 'question', 'answer'],
   },
   {
-    key: 'x_housekeeping.interview_extract',
-    label: 'Interview Extraction',
+    key: 'housekeeping.emotion_extraction',
+    label: 'Emotion Extraction',
     group: 'Housekeeping',
-    description: 'Background parser. After a Retell call ends, this prompt turns the raw transcript into a structured Q&A interview record. Not user-facing.',
-    variables: ['transcript'],
+    description: 'Background parser. After any chat / SMS / voice / call message, pulls out claims about how a tagged person felt (e.g. {subject: "Mom", value: "tired but joyful"}). Stored as MemoryClaim rows with claimType="emotion" and surfaced in the wiki Emotional state section. Not user-facing.',
+    variables: ['title', 'wiki', 'taggedPeople', 'contributorName', 'question', 'answer'],
   },
   {
-    key: 'x_housekeeping.highlight_extract',
-    label: 'Highlight Extraction',
+    key: 'housekeeping.extra_story_extraction',
+    label: 'Extra Story Extraction',
     group: 'Housekeeping',
-    description: 'Background parser. After a Retell call ends, this prompt picks the best quote-worthy moments out of the call segments. Not user-facing.',
-    variables: ['imageTitle', 'contributorName', 'segmentList'],
+    description: 'Background parser. After any chat / SMS / voice / call message, pulls out anecdote-worthy excerpts (one or two sentences that read like a story). Stored as MemoryClaim rows with claimType="extra_story" and surfaced in the wiki Extra stories section. Not user-facing.',
+    variables: ['title', 'wiki', 'taggedPeople', 'contributorName', 'question', 'answer'],
   },
 ];
 
