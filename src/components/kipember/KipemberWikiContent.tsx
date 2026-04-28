@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Clock,
   FileText,
   GitCompareArrows,
@@ -26,6 +27,8 @@ import {
   Users,
 } from 'lucide-react';
 import ClipAudioPlayer from '@/components/ClipAudioPlayer';
+import EmberCallCard from '@/components/kipember/EmberCallCard';
+import EmberChatMessages from '@/components/kipember/EmberChatMessages';
 import MediaPreview from '@/components/MediaPreview';
 import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
 
@@ -220,6 +223,23 @@ export type KipemberWikiDetail = {
       createdAt: string;
     }>;
   }>;
+  callBlocks?: Array<{
+    personName: string;
+    avatarUrl: string | null;
+    voiceCallId: string;
+    recordingUrl: string | null;
+    startedAt: string | null;
+    endedAt: string | null;
+    status: string;
+    segments: Array<{
+      index: number;
+      role: string;
+      speaker: string;
+      content: string;
+      startMs: number | null;
+      endMs: number | null;
+    }>;
+  }>;
 };
 
 type ReconciliationClaim = {
@@ -329,11 +349,13 @@ function ClaimRow({
   value,
   source,
   createdAt,
+  avatarUrl,
 }: {
   name: string;
   value: string;
   source: string;
   createdAt: string;
+  avatarUrl?: string | null;
 }) {
   const isVoice = source === 'voice';
   const displayName = name.trim() || 'Someone';
@@ -342,18 +364,28 @@ function ClaimRow({
       className="rounded-lg px-3 py-2 flex items-center gap-2.5"
       style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
     >
-      <div
-        className="rounded-full flex items-center justify-center text-white flex-shrink-0"
-        style={{
-          width: 29,
-          height: 29,
-          background: colorForName(displayName),
-          fontSize: 11,
-          fontWeight: 600,
-        }}
-      >
-        {initials(displayName)}
-      </div>
+      {avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={avatarUrl}
+          alt={displayName}
+          className="rounded-full object-cover flex-shrink-0"
+          style={{ width: 29, height: 29 }}
+        />
+      ) : (
+        <div
+          className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+          style={{
+            width: 29,
+            height: 29,
+            background: colorForName(displayName),
+            fontSize: 11,
+            fontWeight: 600,
+          }}
+        >
+          {initials(displayName)}
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-white text-xs font-medium">{displayName}</p>
         <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{value}&rdquo;</p>
@@ -369,6 +401,8 @@ function ClaimRow({
     </div>
   );
 }
+
+type FindAvatar = (name: string) => string | null;
 
 function useWikiClaims(
   imageId: string | null | undefined,
@@ -411,7 +445,13 @@ function claimSourceLabelFromMetadata(metadata: unknown): string {
   return typeof label === 'string' && label.trim() ? label.trim() : 'Someone';
 }
 
-function WhyCard({ imageId }: { imageId: string | null | undefined }) {
+function WhyCard({
+  imageId,
+  findAvatar,
+}: {
+  imageId: string | null | undefined;
+  findAvatar: FindAvatar;
+}) {
   const claims = useWikiClaims(imageId, 'why');
 
   if (claims === null || claims.length === 0) {
@@ -424,20 +464,30 @@ function WhyCard({ imageId }: { imageId: string | null | undefined }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {claims.map((claim) => (
-        <ClaimRow
-          key={claim.id}
-          name={claimSourceLabelFromMetadata(claim.metadata)}
-          value={claim.value}
-          source={claim.source}
-          createdAt={claim.createdAt}
-        />
-      ))}
+      {claims.map((claim) => {
+        const name = claimSourceLabelFromMetadata(claim.metadata);
+        return (
+          <ClaimRow
+            key={claim.id}
+            name={name}
+            value={claim.value}
+            source={claim.source}
+            createdAt={claim.createdAt}
+            avatarUrl={findAvatar(name)}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function EmotionalStateCard({ imageId }: { imageId: string | null | undefined }) {
+function EmotionalStateCard({
+  imageId,
+  findAvatar,
+}: {
+  imageId: string | null | undefined;
+  findAvatar: FindAvatar;
+}) {
   const claims = useWikiClaims(imageId, 'emotion');
 
   if (claims === null || claims.length === 0) {
@@ -450,20 +500,30 @@ function EmotionalStateCard({ imageId }: { imageId: string | null | undefined })
 
   return (
     <div className="flex flex-col gap-2">
-      {claims.map((claim) => (
-        <ClaimRow
-          key={claim.id}
-          name={claim.subject || claimSourceLabelFromMetadata(claim.metadata)}
-          value={claim.value}
-          source={claim.source}
-          createdAt={claim.createdAt}
-        />
-      ))}
+      {claims.map((claim) => {
+        const name = claim.subject || claimSourceLabelFromMetadata(claim.metadata);
+        return (
+          <ClaimRow
+            key={claim.id}
+            name={name}
+            value={claim.value}
+            source={claim.source}
+            createdAt={claim.createdAt}
+            avatarUrl={findAvatar(name)}
+          />
+        );
+      })}
     </div>
   );
 }
 
-function ExtraStoriesCard({ imageId }: { imageId: string | null | undefined }) {
+function ExtraStoriesCard({
+  imageId,
+  findAvatar,
+}: {
+  imageId: string | null | undefined;
+  findAvatar: FindAvatar;
+}) {
   const claims = useWikiClaims(imageId, 'extra_story');
 
   if (claims === null || claims.length === 0) {
@@ -476,15 +536,19 @@ function ExtraStoriesCard({ imageId }: { imageId: string | null | undefined }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {claims.map((claim) => (
-        <ClaimRow
-          key={claim.id}
-          name={claimSourceLabelFromMetadata(claim.metadata)}
-          value={claim.value}
-          source={claim.source}
-          createdAt={claim.createdAt}
-        />
-      ))}
+      {claims.map((claim) => {
+        const name = claimSourceLabelFromMetadata(claim.metadata);
+        return (
+          <ClaimRow
+            key={claim.id}
+            name={name}
+            value={claim.value}
+            source={claim.source}
+            createdAt={claim.createdAt}
+            avatarUrl={findAvatar(name)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -537,6 +601,66 @@ function formatLocationLine(
     .filter(Boolean);
 
   return parts.length > 0 ? parts.join(', ') : null;
+}
+
+const US_STATES_FOR_DISPLAY = new Set<string>([
+  'alabama','alaska','arizona','arkansas','california','colorado','connecticut',
+  'delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa',
+  'kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan',
+  'minnesota','mississippi','missouri','montana','nebraska','nevada',
+  'new hampshire','new jersey','new mexico','new york','north carolina',
+  'north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island',
+  'south carolina','south dakota','tennessee','texas','utah','vermont',
+  'virginia','washington','west virginia','wisconsin','wyoming',
+  'district of columbia',
+  'al','ak','az','ar','ca','co','ct','de','fl','ga','hi','id','il','in','ia',
+  'ks','ky','la','me','md','ma','mi','mn','ms','mo','mt','ne','nv','nh','nj',
+  'nm','ny','nc','nd','oh','ok','or','pa','ri','sc','sd','tn','tx','ut','vt',
+  'va','wa','wv','wi','wy','dc',
+]);
+
+function formatUsPostalAddress(detail: string | null | undefined): string[] {
+  if (typeof detail !== 'string') return [];
+  const parts = detail
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return parts;
+
+  const last = parts[parts.length - 1];
+  const isCountry = /^(USA|United States|US|U\.S\.|U\.S\.A\.)$/i.test(last);
+  const country = isCountry ? parts.pop() ?? null : null;
+
+  // Pattern A: "STATE ZIP" segment (e.g., "NY 11201", "California 90210").
+  const stateZipIdx = parts.findIndex((part) =>
+    /\b[A-Z]{2}\s+\d{5}(-\d{4})?$/.test(part) ||
+    /\b[A-Z][A-Za-z]+\s+\d{5}(-\d{4})?$/.test(part)
+  );
+
+  const lines: string[] = [];
+  if (stateZipIdx > 0) {
+    const street = parts.slice(0, stateZipIdx - 1).join(', ');
+    const city = parts[stateZipIdx - 1];
+    const stateZip = parts[stateZipIdx];
+    if (street) lines.push(street);
+    lines.push(`${city}, ${stateZip}`);
+  } else {
+    // Pattern B: a US state name at the end without a ZIP.
+    const tail = parts[parts.length - 1];
+    if (parts.length >= 2 && tail && US_STATES_FOR_DISPLAY.has(tail.toLowerCase())) {
+      const stateIdx = parts.length - 1;
+      const street = parts.slice(0, stateIdx - 1).join(', ');
+      const city = parts[stateIdx - 1];
+      const state = parts[stateIdx];
+      if (street) lines.push(street);
+      lines.push(`${city}, ${state}`);
+    } else {
+      // Fallback: collapse to a single readable line.
+      lines.push(parts.join(', '));
+    }
+  }
+  if (country) lines.push(country);
+  return lines;
 }
 
 function joinDistinct(values: Array<string | null | undefined>) {
@@ -754,6 +878,8 @@ function WikiSection({
   complete,
   badgeLabel,
   editHref,
+  collapsible = false,
+  defaultCollapsed = false,
   children,
 }: {
   icon: React.ReactNode;
@@ -761,15 +887,46 @@ function WikiSection({
   complete: boolean;
   badgeLabel?: React.ReactNode;
   editHref?: string;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
   children: React.ReactNode;
 }) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const isHidden = collapsible && collapsed;
+
+  const headerInner = (
+    <>
+      <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
+      <h3 className="text-white font-medium text-base">{title}</h3>
+      {collapsible ? (
+        <ChevronDown
+          size={14}
+          color="rgba(255,255,255,0.5)"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        />
+      ) : null}
+    </>
+  );
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
-          <h3 className="text-white font-medium text-base">{title}</h3>
-        </div>
+        {collapsible ? (
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            aria-expanded={!collapsed}
+            className="flex items-center gap-2 cursor-pointer"
+            style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
+          >
+            {headerInner}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">{headerInner}</div>
+        )}
         <div className="flex items-center gap-2">
           {editHref ? (
             <Link
@@ -790,7 +947,7 @@ function WikiSection({
           <WikiBadge complete={complete} label={badgeLabel} />
         </div>
       </div>
-      {children}
+      {isHidden ? null : children}
     </div>
   );
 }
@@ -1109,6 +1266,41 @@ export default function KipemberWikiContent({
   const imageId = detail?.id || null;
   const ownerName = detail?.owner?.name || detail?.owner?.email || null;
   const ownerUserId = detail?.owner?.id;
+
+  const avatarLookup = useMemo(() => {
+    const map = new Map<string, string>();
+    const add = (name: string | null | undefined, url: string | null | undefined) => {
+      const key = name?.trim().toLowerCase();
+      if (!key || !url) return;
+      if (!map.has(key)) map.set(key, url);
+    };
+
+    if (detail?.owner) {
+      const name = detail.owner.name || detail.owner.email;
+      if (detail.owner.avatarFilename) {
+        add(name, `/api/uploads/${detail.owner.avatarFilename}`);
+        // Also map the literal "Owner" since claims sometimes attribute to "Owner"
+        add('Owner', `/api/uploads/${detail.owner.avatarFilename}`);
+      }
+    }
+    for (const contributor of detail?.contributors ?? []) {
+      const name = contributor.user?.name || contributor.name;
+      const filename = contributor.user?.avatarFilename;
+      if (name && filename) {
+        add(name, `/api/uploads/${filename}`);
+      }
+    }
+    for (const tag of detail?.tags ?? []) {
+      add(tag.createdBy?.name, tag.createdBy?.avatarUrl);
+      add(tag.label, tag.createdBy?.avatarUrl);
+    }
+    return map;
+  }, [detail]);
+
+  const findAvatar = useCallback<FindAvatar>(
+    (name: string) => avatarLookup.get(name.trim().toLowerCase()) ?? null,
+    [avatarLookup]
+  );
   const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
   const pendingContributors = contributors.filter((contributor) => !contributor.userId && !contributor.user);
   const latitude =
@@ -1140,10 +1332,6 @@ export default function KipemberWikiContent({
     isAudioAttachment(attachment)
   );
   const voiceCallClips = detail?.voiceCallClips || [];
-  const confirmedLocationLine = formatLocationLine(
-    detail?.analysis?.confirmedLocation?.label,
-    detail?.analysis?.confirmedLocation?.detail
-  );
   const exactAddressSuggestion =
     locationSuggestions.find((suggestion) => suggestion.kind === 'address') || null;
   const nearbyPlaceSuggestion =
@@ -1151,18 +1339,23 @@ export default function KipemberWikiContent({
     locationSuggestions.find((suggestion) => suggestion.kind === 'neighborhood') ||
     locationSuggestions.find((suggestion) => suggestion.kind === 'city') ||
     null;
-  const exactAddressLine = formatLocationLine(
-    exactAddressSuggestion?.label,
-    exactAddressSuggestion?.detail
-  );
-  const fallbackResolvedLocationLine = formatLocationLine(
-    nearbyPlaceSuggestion?.label,
-    nearbyPlaceSuggestion?.detail
-  );
-  const primaryLocationLine =
-    confirmedLocationLine || fallbackResolvedLocationLine || exactAddressLine;
+
+  // Place name only (no address). Falls back to the closest suggestion when nothing is confirmed.
+  const placeName =
+    detail?.analysis?.confirmedLocation?.label?.trim() ||
+    nearbyPlaceSuggestion?.label?.trim() ||
+    exactAddressSuggestion?.label?.trim() ||
+    null;
+
+  // Postal-formatted exact address. Pulled from confirmedLocation.detail first, then suggestions.
+  const addressSourceRaw =
+    detail?.analysis?.confirmedLocation?.detail?.trim() ||
+    exactAddressSuggestion?.detail?.trim() ||
+    exactAddressSuggestion?.label?.trim() ||
+    null;
+  const addressLines = formatUsPostalAddress(addressSourceRaw);
   const showExactAddress =
-    Boolean(exactAddressLine) && exactAddressLine !== primaryLocationLine;
+    addressLines.length > 0 && (addressLines.length > 1 || addressLines[0] !== placeName);
 
   useEffect(() => {
     if (!imageId || latitude == null || longitude == null) {
@@ -1301,13 +1494,13 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<MapPin size={17} />}
         title="Place"
-        complete={Boolean(primaryLocationLine || coordinateLine)}
+        complete={Boolean(placeName || addressLines.length > 0 || coordinateLine)}
         editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
       >
         <WikiCard>
           <p className="text-white/30 text-xs font-medium mb-1.5">Place</p>
           <p className="text-white font-medium text-sm">
-            {primaryLocationLine || 'No location data available.'}
+            {placeName || 'No location data available.'}
           </p>
           {detail?.analysis?.confirmedLocation?.confirmedAt ? (
             <p className="text-white/30 text-xs mt-1">
@@ -1317,7 +1510,11 @@ export default function KipemberWikiContent({
           {showExactAddress ? (
             <>
               <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Exact Address</p>
-              <p className="text-white/70 text-sm">{exactAddressLine}</p>
+              {addressLines.map((line, index) => (
+                <p key={index} className="text-white/70 text-sm">
+                  {line}
+                </p>
+              ))}
             </>
           ) : null}
           {coordinateLine ? (
@@ -1326,7 +1523,7 @@ export default function KipemberWikiContent({
               <p className="text-white/70 text-sm">{coordinateLine}</p>
             </>
           ) : null}
-          {locationLookupPending && !exactAddressLine ? (
+          {locationLookupPending && addressLines.length === 0 ? (
             <p className="text-white/30 text-xs mt-3">
               Looking up an address from the photo GPS metadata...
             </p>
@@ -1516,6 +1713,7 @@ export default function KipemberWikiContent({
             detail?.analysis?.visualDescription ||
             detail?.analysis?.metadataSummary
         )}
+        collapsible
       >
         <WikiCard>
           {detail ? (
@@ -1629,11 +1827,19 @@ export default function KipemberWikiContent({
             </>
           )
         }
+        collapsible
       >
         <div className="flex flex-col gap-4">
-          {detail?.chatBlocks && detail.chatBlocks.length > 0 ? (
-            detail.chatBlocks.map((block) => (
-              <WikiCard key={block.personName}>
+          {(detail?.chatBlocks && detail.chatBlocks.length > 0) ||
+          (detail?.callBlocks && detail.callBlocks.length > 0) ? (
+            <>
+              {(detail?.chatBlocks ?? []).map((block) => {
+                const callsForPerson = (detail?.callBlocks ?? []).filter(
+                  (call) => call.personName === block.personName
+                );
+                return (
+                  <Fragment key={`person-${block.personName}`}>
+                    <WikiCard>
                   <div className="flex items-center gap-2 mb-3">
                     <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
                     <div
@@ -1644,68 +1850,34 @@ export default function KipemberWikiContent({
                     </div>
                     <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
                   </div>
-                  <div className="flex flex-col gap-3">
-                    {block.messages.map((msg, i) => {
-                      const isUser = msg.role === 'user';
-                      const isVoice = msg.source === 'voice';
-                      const msgDate = new Date(msg.createdAt);
-                      const prevMsg = block.messages[i - 1];
-                      const prevDate = prevMsg ? new Date(prevMsg.createdAt) : null;
-                      const showDateDivider = !prevDate || msgDate.toDateString() !== prevDate.toDateString();
-                      const timeLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                      const dateDividerLabel = Number.isNaN(msgDate.getTime()) ? null : msgDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                      return (
-                        <div key={i}>
-                          {showDateDivider && dateDividerLabel ? (
-                            <div className="flex justify-center my-2">
-                              <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
-                            </div>
-                          ) : null}
-                          <div className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}>
-                            <span className="flex items-center gap-1 text-white text-xs font-bold">
-                              {isVoice ? <Phone size={9} /> : null}
-                              {isUser ? block.personName.split(' ')[0] : 'ember'}
-                            </span>
-                            {msg.imageFilename ? (
-                              <div className="max-w-[15%] rounded-xl overflow-hidden">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={`/api/uploads/${msg.imageFilename}`} alt="Uploaded" className="w-full h-auto object-cover" />
-                              </div>
-                            ) : (
-                              <div
-                                className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
-                                style={{
-                                  background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
-                                  border: isUser ? 'none' : '1px solid var(--border-ember)',
-                                }}
-                              >
-                                {msg.content}
-                                {msg.audioUrl ? (
-                                  <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
-                                    <a
-                                      href={msg.audioUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
-                                      style={{ background: 'rgba(249,115,22,0.85)' }}
-                                    >
-                                      <Play size={9} className="text-white" />
-                                    </a>
-                                    <span className="text-white/30 text-xs">Voice recording</span>
-                                  </div>
-                                ) : null}
-                              </div>
-                            )}
-                            {timeLabel ? (
-                              <span className="text-white/25 text-[10px] mt-0.5">{timeLabel}</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <EmberChatMessages
+                    messages={block.messages.map((msg) => ({
+                      role: msg.role === 'user' ? 'user' : 'assistant',
+                      content: msg.content,
+                      source: (msg.source as 'web' | 'voice' | 'sms') ?? 'web',
+                      imageFilename: msg.imageFilename ?? null,
+                      audioUrl: msg.audioUrl ?? null,
+                      createdAt: msg.createdAt,
+                    }))}
+                    selfLabel={block.personName.split(' ')[0] || block.personName}
+                  />
                 </WikiCard>
-            ))
+                    {callsForPerson.map((call) => (
+                      <EmberCallCard key={call.voiceCallId} block={call} />
+                    ))}
+                  </Fragment>
+                );
+              })}
+              {(detail?.callBlocks ?? [])
+                .filter((call) =>
+                  !(detail?.chatBlocks ?? []).some(
+                    (block) => block.personName === call.personName
+                  )
+                )
+                .map((call) => (
+                  <EmberCallCard key={call.voiceCallId} block={call} />
+                ))}
+            </>
           ) : (
             <WikiCard>
               <p className="text-white/30 text-sm">No conversations yet.</p>
@@ -1761,15 +1933,15 @@ export default function KipemberWikiContent({
       ) : null}
 
       <WikiSection icon={<Lightbulb size={17} />} title="Why" complete={false}>
-        <WhyCard imageId={imageId} />
+        <WhyCard imageId={imageId} findAvatar={findAvatar} />
       </WikiSection>
 
-      <WikiSection icon={<Heart size={17} />} title="Emotional state" complete={false}>
-        <EmotionalStateCard imageId={imageId} />
+      <WikiSection icon={<Heart size={17} />} title="Emotional States" complete={false}>
+        <EmotionalStateCard imageId={imageId} findAvatar={findAvatar} />
       </WikiSection>
 
-      <WikiSection icon={<Sparkles size={17} />} title="Extra stories" complete={false}>
-        <ExtraStoriesCard imageId={imageId} />
+      <WikiSection icon={<Sparkles size={17} />} title="Extra Stories" complete={false}>
+        <ExtraStoriesCard imageId={imageId} findAvatar={findAvatar} />
       </WikiSection>
 
       {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}

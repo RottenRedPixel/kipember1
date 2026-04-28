@@ -29,6 +29,65 @@ const fieldStyle = {
   border: '1px solid var(--border-input)',
 };
 
+const US_STATES = new Set<string>([
+  'alabama','alaska','arizona','arkansas','california','colorado','connecticut',
+  'delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa',
+  'kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan',
+  'minnesota','mississippi','missouri','montana','nebraska','nevada',
+  'new hampshire','new jersey','new mexico','new york','north carolina',
+  'north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island',
+  'south carolina','south dakota','tennessee','texas','utah','vermont',
+  'virginia','washington','west virginia','wisconsin','wyoming',
+  'district of columbia',
+  'al','ak','az','ar','ca','co','ct','de','fl','ga','hi','id','il','in','ia',
+  'ks','ky','la','me','md','ma','mi','mn','ms','mo','mt','ne','nv','nh','nj',
+  'nm','ny','nc','nd','oh','ok','or','pa','ri','sc','sd','tn','tx','ut','vt',
+  'va','wa','wv','wi','wy','dc',
+]);
+
+function parseAddressParts(detail: string | null | undefined): {
+  street: string;
+  cityStateZip: string;
+  country: string;
+} {
+  const empty = { street: '', cityStateZip: '', country: '' };
+  if (typeof detail !== 'string') return empty;
+  const parts = detail
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return empty;
+
+  const last = parts[parts.length - 1];
+  const isCountry = /^(USA|United States|US|U\.S\.|U\.S\.A\.)$/i.test(last);
+  const country = isCountry ? parts.pop() ?? '' : '';
+
+  // Pattern A: a "STATE ZIP" or "Statename ZIP" segment (e.g., "NY 11201").
+  const stateZipIdx = parts.findIndex(
+    (part) =>
+      /\b[A-Z]{2}\s+\d{5}(-\d{4})?$/.test(part) ||
+      /\b[A-Z][A-Za-z]+\s+\d{5}(-\d{4})?$/.test(part)
+  );
+  if (stateZipIdx > 0) {
+    const street = parts.slice(0, stateZipIdx - 1).join(', ');
+    const city = parts[stateZipIdx - 1];
+    const stateZip = parts[stateZipIdx];
+    return { street, cityStateZip: `${city}, ${stateZip}`, country };
+  }
+
+  // Pattern B: a US state name at the end without a ZIP.
+  const tail = parts[parts.length - 1];
+  if (parts.length >= 2 && tail && US_STATES.has(tail.toLowerCase())) {
+    const stateIdx = parts.length - 1;
+    const street = parts.slice(0, stateIdx - 1).join(', ');
+    const city = parts[stateIdx - 1];
+    const state = parts[stateIdx];
+    return { street, cityStateZip: `${city}, ${state}`, country };
+  }
+
+  return { street: parts.join(', '), cityStateZip: '', country };
+}
+
 function formatDate(value: string | null | undefined) {
   if (!value) {
     return 'Unknown';
@@ -402,6 +461,8 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [locationLongitude, setLocationLongitude] = useState('');
   const [savedLocationLabel, setSavedLocationLabel] = useState('');
   const [savedLocationAddress, setSavedLocationAddress] = useState('');
+  const [savedLocationCityStateZip, setSavedLocationCityStateZip] = useState('');
+  const [savedLocationCountry, setSavedLocationCountry] = useState('');
   const [savedLocationLat, setSavedLocationLat] = useState('');
   const [savedLocationLng, setSavedLocationLng] = useState('');
   const [locationSaving, setLocationSaving] = useState(false);
@@ -478,19 +539,22 @@ export default function TendActionScreen({ action }: { action: string }) {
     // Populate location
     const loc = payload.analysis?.confirmedLocation;
     const label = loc?.label || '';
-    const address = loc?.detail || '';
+    const fullAddress = loc?.detail || '';
+    const parsedAddress = parseAddressParts(fullAddress);
     const lat = payload.analysis?.latitude ?? loc?.latitude ?? null;
     const lng = payload.analysis?.longitude ?? loc?.longitude ?? null;
     const latStr = lat != null ? parseFloat(lat.toFixed(5)).toString() : '';
     const lngStr = lng != null ? parseFloat(lng.toFixed(5)).toString() : '';
     setLocationLabel(label);
-    setLocationAddress(address);
-    setLocationCityStateZip('');
-    setLocationCountry('');
+    setLocationAddress(parsedAddress.street);
+    setLocationCityStateZip(parsedAddress.cityStateZip);
+    setLocationCountry(parsedAddress.country);
     setLocationLatitude(latStr);
     setLocationLongitude(lngStr);
     setSavedLocationLabel(label);
-    setSavedLocationAddress(address);
+    setSavedLocationAddress(parsedAddress.street);
+    setSavedLocationCityStateZip(parsedAddress.cityStateZip);
+    setSavedLocationCountry(parsedAddress.country);
     setSavedLocationLat(latStr);
     setSavedLocationLng(lngStr);
     // Populate frame crop
@@ -518,9 +582,9 @@ export default function TendActionScreen({ action }: { action: string }) {
         const payload = (await response.json()) as TendDetail;
         applyDetail(payload);
 
-        // After applyDetail: if on edit-location and confirmedLocation is absent,
+        // After applyDetail: if on edit-time-place and confirmedLocation is absent,
         // fall back to GPS-resolved suggestions (same source the wiki uses)
-        if (action === 'edit-location' && !payload.analysis?.confirmedLocation?.label) {
+        if (action === 'edit-time-place' && !payload.analysis?.confirmedLocation?.label) {
           void fetch(`/api/images/${resolvedImageId}/location-suggestions`)
             .then((res) => res.json())
             .then((data: {
@@ -534,8 +598,22 @@ export default function TendActionScreen({ action }: { action: string }) {
                 null;
               const addressSuggestion = suggestions.find((s) => s.kind === 'address') || null;
 
-              if (placeSuggestion) { setLocationLabel(placeSuggestion.label); setSavedLocationLabel(placeSuggestion.label); }
-              if (addressSuggestion) { setLocationAddress(addressSuggestion.label); setSavedLocationAddress(addressSuggestion.label); }
+              if (placeSuggestion) {
+                setLocationLabel(placeSuggestion.label);
+                setSavedLocationLabel(placeSuggestion.label);
+              }
+              if (addressSuggestion) {
+                const fullAddress = [addressSuggestion.label, addressSuggestion.detail]
+                  .filter(Boolean)
+                  .join(', ');
+                const parsed = parseAddressParts(fullAddress);
+                setLocationAddress(parsed.street);
+                setSavedLocationAddress(parsed.street);
+                setLocationCityStateZip(parsed.cityStateZip);
+                setSavedLocationCityStateZip(parsed.cityStateZip);
+                setLocationCountry(parsed.country);
+                setSavedLocationCountry(parsed.country);
+              }
             })
             .catch(() => undefined);
         }
@@ -898,10 +976,10 @@ export default function TendActionScreen({ action }: { action: string }) {
       if (response.ok) {
         setSavedLocationLabel(locationLabel.trim());
         setSavedLocationAddress(locationAddress.trim());
+        setSavedLocationCityStateZip(locationCityStateZip.trim());
+        setSavedLocationCountry(locationCountry.trim());
         setSavedLocationLat(locationLatitude);
         setSavedLocationLng(locationLongitude);
-        setLocationCityStateZip('');
-        setLocationCountry('');
         setStatus('Location saved.');
         await refreshDetail();
       } else {
@@ -2045,8 +2123,8 @@ export default function TendActionScreen({ action }: { action: string }) {
                   const isLocationDirty =
                     locationLabel !== savedLocationLabel ||
                     locationAddress !== savedLocationAddress ||
-                    locationCityStateZip !== '' ||
-                    locationCountry !== '' ||
+                    locationCityStateZip !== savedLocationCityStateZip ||
+                    locationCountry !== savedLocationCountry ||
                     locationLatitude !== savedLocationLat ||
                     locationLongitude !== savedLocationLng;
                   const isDirty = isTimeDateDirty || (Boolean(locationLabel.trim()) && isLocationDirty);

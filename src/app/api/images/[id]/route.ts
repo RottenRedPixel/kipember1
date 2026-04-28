@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
+import { parseVoiceCallTranscriptSegments } from '@/lib/voice-call-clips';
 import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
 import { toTitleCase } from '@/lib/ember-title';
 
@@ -303,6 +304,9 @@ export async function GET(
                   callSummary: true,
                   initiatedBy: true,
                   memorySyncedAt: true,
+                  recordingUrl: true,
+                  transcriptObjectJson: true,
+                  transcript: true,
                   emberSession: {
                     select: {
                       id: true,
@@ -680,6 +684,67 @@ export async function GET(
       chatBlocks = [];
     }
 
+    // Build callBlocks: one block per Retell voice call, with parsed per-turn segments.
+    // Audio play buttons activate post-call once recordingUrl + transcriptObjectJson land.
+    let callBlocks: Array<{
+      personName: string;
+      avatarUrl: string | null;
+      voiceCallId: string;
+      recordingUrl: string | null;
+      startedAt: string | null;
+      endedAt: string | null;
+      status: string;
+      segments: Array<{
+        index: number;
+        role: string;
+        speaker: string;
+        content: string;
+        startMs: number | null;
+        endMs: number | null;
+      }>;
+    }> = [];
+    try {
+      for (const contributor of image.contributors) {
+        const personName =
+          contributor.name ||
+          contributor.user?.name ||
+          contributor.email ||
+          contributor.phoneNumber ||
+          'Contributor';
+        const avatarUrl = contributor.user?.avatarFilename
+          ? `/api/uploads/${contributor.user.avatarFilename}`
+          : null;
+        for (const voiceCall of contributor.voiceCalls) {
+          const segments = parseVoiceCallTranscriptSegments({
+            transcript: voiceCall.transcript ?? null,
+            transcriptObjectJson: voiceCall.transcriptObjectJson ?? null,
+            contributorName: personName,
+          });
+          if (segments.length === 0) continue;
+          callBlocks.push({
+            personName,
+            avatarUrl,
+            voiceCallId: voiceCall.id,
+            recordingUrl: voiceCall.recordingUrl ?? null,
+            startedAt: voiceCall.startedAt ? voiceCall.startedAt.toISOString() : null,
+            endedAt: voiceCall.endedAt ? voiceCall.endedAt.toISOString() : null,
+            status: voiceCall.status,
+            segments: segments.map((segment) => ({
+              index: segment.index,
+              role: segment.role,
+              speaker: segment.speaker,
+              content: segment.content,
+              startMs: segment.startMs,
+              endMs: segment.endMs,
+            })),
+          });
+        }
+      }
+    } catch (callBlocksError) {
+      console.error('Failed to load callBlocks:', callBlocksError);
+      callBlocks = [];
+    }
+
     return NextResponse.json({
       id: image.id,
       filename: image.filename,
@@ -769,6 +834,7 @@ export async function GET(
           }
         : null,
       chatBlocks,
+      callBlocks,
     });
   } catch (error) {
     console.error('Error fetching image:', error);
