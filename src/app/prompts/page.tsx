@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from 'next/cache';
 import { resolvePrompt } from '@/lib/control-plane';
+import { prisma } from '@/lib/db';
 import {
   PROMPT_GROUPS,
   PROMPT_REGISTRY,
@@ -10,7 +11,10 @@ import { PromptCard, type PromptCardData } from './PromptEditor';
 
 export const dynamic = 'force-dynamic';
 
-async function buildCardData(definition: PromptDefinition): Promise<PromptCardData> {
+async function buildCardData(
+  definition: PromptDefinition,
+  updatedAtByKey: Map<string, string>
+): Promise<PromptCardData> {
   const resolution = await resolvePrompt(definition.key).catch(() => null);
 
   return {
@@ -21,13 +25,23 @@ async function buildCardData(definition: PromptDefinition): Promise<PromptCardDa
     variables: definition.variables,
     body: resolution?.body || '',
     isActive: resolution !== null,
+    updatedAt: updatedAtByKey.get(definition.key) ?? null,
   };
 }
 
 export default async function PromptsPage() {
   noStore();
 
-  const cards = await Promise.all(PROMPT_REGISTRY.map(buildCardData));
+  const overrideRows = await prisma.promptOverride.findMany({
+    select: { key: true, updatedAt: true },
+  });
+  const updatedAtByKey = new Map(
+    overrideRows.map((row) => [row.key, row.updatedAt.toISOString()])
+  );
+
+  const cards = await Promise.all(
+    PROMPT_REGISTRY.map((definition) => buildCardData(definition, updatedAtByKey))
+  );
   const cardsByGroup = new Map<PromptGroup, PromptCardData[]>();
   for (const group of PROMPT_GROUPS) {
     cardsByGroup.set(group, []);

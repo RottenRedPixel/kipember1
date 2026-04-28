@@ -10,9 +10,23 @@ export type PromptCardData = {
   variables: string[];
   body: string;
   isActive: boolean;
+  updatedAt: string | null;
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+function formatLastSaved(value: string | null) {
+  if (!value) return 'Never saved';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Never saved';
+  return `Last saved ${date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })}`;
+}
 
 export function PromptCard({ data }: { data: PromptCardData }) {
   const [draft, setDraft] = useState(data.body);
@@ -21,6 +35,7 @@ export function PromptCard({ data }: { data: PromptCardData }) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(data.updatedAt);
 
   const isDirty = draft !== savedBody;
 
@@ -46,9 +61,17 @@ export function PromptCard({ data }: { data: PromptCardData }) {
         const payload = await response.json().catch(() => ({}));
         throw new Error(payload?.error || `save failed (${response.status})`);
       }
+      const payload = (await response.json().catch(() => null)) as
+        | { updatedAt?: string }
+        | null;
       setSavedBody(draft);
       setIsActive(true);
       setSaveState('saved');
+      if (payload?.updatedAt) {
+        setUpdatedAt(payload.updatedAt);
+      } else {
+        setUpdatedAt(new Date().toISOString());
+      }
     } catch (error) {
       setSaveState('error');
       setErrorMessage(error instanceof Error ? error.message : 'save failed');
@@ -74,6 +97,7 @@ export function PromptCard({ data }: { data: PromptCardData }) {
         <div className="flex-1">
           <h2 className="text-lg font-semibold text-zinc-900">{data.label}</h2>
           <p className="mt-1 font-mono text-xs text-zinc-500">{data.key}</p>
+          <p className="mt-1 text-xs text-zinc-400">{formatLastSaved(updatedAt)}</p>
         </div>
         <span className="shrink-0 text-xs text-zinc-400">{isOpen ? '▾' : '▸'}</span>
       </button>
