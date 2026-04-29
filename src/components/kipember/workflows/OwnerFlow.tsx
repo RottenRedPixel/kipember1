@@ -2,6 +2,7 @@
 
 import { ImagePlus, Mic, Pause, Phone, Play, SendHorizontal, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
 import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
 import EmberCallCard, { type EmberCallBlock } from '@/components/kipember/EmberCallCard';
@@ -269,7 +270,7 @@ export default function OwnerFlow({
       ) : chatTab === 'calls' ? (
         callBlocks.length === 0 ? (
           <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar flex items-center justify-center">
-            <p className="text-white/30 text-sm">No calls yet.</p>
+            <p className="text-white/30 text-sm text-center px-6">Tap the phone icon on the bottom left to have ember call you.</p>
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
@@ -300,7 +301,13 @@ export default function OwnerFlow({
           <ImagePlus size={18} />
         </button>
         <div className="relative min-w-0 flex-1">
-          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Chat with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
+          {voice.isRecording ? (
+            <div className="flex h-11 w-full items-center rounded-full border border-transparent bg-white/8 px-4 pr-11">
+              <MicLevelMeter stream={voice.stream} className="h-5 w-full" />
+            </div>
+          ) : (
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Chat with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
+          )}
           <button
             type="button"
             onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}

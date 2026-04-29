@@ -14,6 +14,7 @@ export function useVoiceRecording(imageId: string) {
   const [isRecording, setIsRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
   const lastPlayedAssistantRef = useRef<string | null>(null);
 
@@ -98,6 +99,7 @@ export function useVoiceRecording(imageId: string) {
         const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
         recorderRef.current = null;
         stream.getTracks().forEach((track) => track.stop());
+        setStream(null);
         setIsRecording(false);
         if (blob.size > 0) {
           void uploadRecording(blob);
@@ -105,9 +107,9 @@ export function useVoiceRecording(imageId: string) {
       };
       recorder.start();
       recorderRef.current = { recorder, stream };
+      setStream(stream);
       setIsRecording(true);
     } catch (recordError) {
-      console.error('Voice recording error:', recordError);
       setError(
         recordError instanceof Error
           ? recordError.message
@@ -193,6 +195,7 @@ export function useVoiceRecording(imageId: string) {
     isRecording,
     isUploading,
     error,
+    stream,
     startRecording,
     stopRecording,
   };
