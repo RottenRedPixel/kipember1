@@ -4,71 +4,8 @@ import {
   getPromptAliasChain,
 } from '@/lib/prompt-registry';
 
-type ControlPlaneModelRoute = {
-  capabilityKey: string;
-  integrationKey: string;
-  model: string;
-  fallbackModel: string | null;
-  status: string;
-  configJson: unknown;
-  updatedAt: string;
-};
-
-type ControlPlanePrompt = {
-  promptKey: string;
-  title: string;
-  body: string;
-  versionNumber: number;
-  publishedAt: string | null;
-  updatedAt: string;
-  configJson: unknown;
-};
-
-type ControlPlaneSetting = {
-  key: string;
-  namespace: string;
-  valueType: 'STRING' | 'NUMBER' | 'BOOLEAN' | 'JSON';
-  value: unknown;
-  updatedAt: string;
-};
-
-type ControlPlaneFeatureFlag = {
-  key: string;
-  enabled: boolean;
-  rolloutJson: unknown;
-  updatedAt: string;
-};
-
-type ControlPlaneRemoteAgent = {
-  key: string;
-  displayName: string;
-  integrationKey: string;
-  remoteIdentifier: string | null;
-  model: string | null;
-  promptBindings: unknown;
-  configJson: unknown;
-  updatedAt: string;
-};
-
-type ControlPlaneSnapshot = {
-  generatedAt: string;
-  modelRoutes: Record<string, ControlPlaneModelRoute>;
-  prompts: Record<string, ControlPlanePrompt>;
-  settings: Record<string, ControlPlaneSetting>;
-  featureFlags: Record<string, ControlPlaneFeatureFlag>;
-  remoteAgents: Record<string, ControlPlaneRemoteAgent>;
-};
-
-const DEFAULT_CACHE_TTL_MS = 30_000;
 const PROMPT_OVERRIDE_CACHE_TTL_MS = 2_000;
-const DEFAULT_TIMEOUT_MS = 5_000;
-const RUNTIME_CONFIG_PATH = '/api/runtime/config';
 export const PROMPT_REMOVED_MESSAGE = 'prompt removed';
-
-let cachedSnapshot: ControlPlaneSnapshot | null = null;
-let cacheExpiresAt = 0;
-let inFlightSnapshot: Promise<ControlPlaneSnapshot | null> | null = null;
-let lastFetchErrorAt = 0;
 
 let overrideCache: Map<string, string> | null = null;
 let overrideCacheExpiresAt = 0;
@@ -82,97 +19,10 @@ export class PromptRemovedError extends Error {
 }
 
 export function isPromptRemovedError(error: unknown) {
-  return error instanceof PromptRemovedError ||
-    (error instanceof Error && error.message === PROMPT_REMOVED_MESSAGE);
-}
-
-function getControlPlaneBaseUrl() {
-  return process.env.CONTROL_PLANE_BASE_URL?.trim().replace(/\/$/, '') || '';
-}
-
-function getControlPlaneApiKey() {
-  return process.env.CONTROL_PLANE_API_KEY?.trim() || '';
-}
-
-function getCacheTtlMs() {
-  const parsed = Number.parseInt(process.env.CONTROL_PLANE_CACHE_TTL_MS || '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_CACHE_TTL_MS;
-}
-
-function getTimeoutMs() {
-  const parsed = Number.parseInt(process.env.CONTROL_PLANE_TIMEOUT_MS || '', 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TIMEOUT_MS;
-}
-
-function logFetchError(error: unknown) {
-  const now = Date.now();
-  if (now - lastFetchErrorAt < 30_000) {
-    return;
-  }
-
-  lastFetchErrorAt = now;
-  console.error('Control plane fetch failed:', error);
-}
-
-function isControlPlaneConfigured() {
-  return Boolean(getControlPlaneBaseUrl() && getControlPlaneApiKey());
-}
-
-async function fetchControlPlaneSnapshot(): Promise<ControlPlaneSnapshot | null> {
-  if (!isControlPlaneConfigured()) {
-    return null;
-  }
-
-  const response = await fetch(`${getControlPlaneBaseUrl()}${RUNTIME_CONFIG_PATH}`, {
-    method: 'GET',
-    headers: {
-      'x-runtime-api-key': getControlPlaneApiKey(),
-    },
-    cache: 'no-store',
-    signal: AbortSignal.timeout(getTimeoutMs()),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Control plane responded with ${response.status}`);
-  }
-
-  const payload = (await response.json()) as ControlPlaneSnapshot;
-  if (!payload || typeof payload !== 'object') {
-    throw new Error('Control plane returned an invalid payload');
-  }
-
-  return payload;
-}
-
-export async function getControlPlaneSnapshot() {
-  const now = Date.now();
-  if (cachedSnapshot && now < cacheExpiresAt) {
-    return cachedSnapshot;
-  }
-
-  if (!inFlightSnapshot) {
-    inFlightSnapshot = fetchControlPlaneSnapshot()
-      .then((snapshot) => {
-        cachedSnapshot = snapshot;
-        cacheExpiresAt = Date.now() + getCacheTtlMs();
-        return snapshot;
-      })
-      .catch((error) => {
-        logFetchError(error);
-        return cachedSnapshot;
-      })
-      .finally(() => {
-        inFlightSnapshot = null;
-      });
-  }
-
-  return inFlightSnapshot;
-}
-
-export async function getCapabilityModel(capabilityKey: string, fallbackModel: string) {
-  const snapshot = await getControlPlaneSnapshot();
-  const configuredModel = snapshot?.modelRoutes?.[capabilityKey]?.model?.trim();
-  return configuredModel || fallbackModel;
+  return (
+    error instanceof PromptRemovedError ||
+    (error instanceof Error && error.message === PROMPT_REMOVED_MESSAGE)
+  );
 }
 
 async function fetchPromptOverrides(): Promise<Map<string, string>> {
@@ -250,16 +100,9 @@ export async function resolvePrompt(promptKey: string): Promise<PromptResolution
 
 export async function getPromptBody(promptKey: string, fallbackBody = '') {
   const resolution = await resolvePrompt(promptKey);
-
-  if (!resolution) {
-    if (isControlPlaneConfigured() || (await getPromptOverrides()).size === 0) {
-      // No override and no CP body anywhere in the alias chain — preserve current behavior.
-      throw new PromptRemovedError();
-    }
-    return fallbackBody;
-  }
-
-  return resolution.body;
+  if (resolution) return resolution.body;
+  if (fallbackBody) return fallbackBody;
+  throw new PromptRemovedError();
 }
 
 function templateValueToString(value: unknown) {
@@ -296,19 +139,48 @@ export async function renderPromptTemplate(
   return renderTemplate(template, values);
 }
 
-export async function isFeatureEnabled(flagKey: string, fallback = false) {
-  const snapshot = await getControlPlaneSnapshot();
-  const configured = snapshot?.featureFlags?.[flagKey];
-  return typeof configured?.enabled === 'boolean' ? configured.enabled : fallback;
+// The following helpers used to read from a remote control-plane snapshot.
+// That source is gone — they now always return their fallback so that callers
+// can keep their existing signatures while we phase the calls out.
+
+type ControlPlaneRemoteAgent = {
+  key: string;
+  displayName: string;
+  integrationKey: string;
+  remoteIdentifier: string | null;
+  model: string | null;
+  promptBindings: unknown;
+  configJson: unknown;
+  updatedAt: string;
+};
+
+type ControlPlaneSnapshot = {
+  generatedAt: string;
+  modelRoutes: Record<string, { model?: string }>;
+  prompts: Record<string, { body: string }>;
+  settings: Record<string, { value: unknown }>;
+  featureFlags: Record<string, { enabled: boolean }>;
+  remoteAgents: Record<string, ControlPlaneRemoteAgent>;
+};
+
+export async function getCapabilityModel(_capabilityKey: string, fallbackModel: string) {
+  return fallbackModel;
 }
 
-export async function getSettingValue<T>(settingKey: string, fallback: T) {
-  const snapshot = await getControlPlaneSnapshot();
-  const configuredValue = snapshot?.settings?.[settingKey]?.value;
-  return (configuredValue === undefined ? fallback : (configuredValue as T));
+export async function isFeatureEnabled(_flagKey: string, fallback = false) {
+  return fallback;
 }
 
-export async function getRemoteAgentConfig(remoteAgentKey: string) {
-  const snapshot = await getControlPlaneSnapshot();
-  return snapshot?.remoteAgents?.[remoteAgentKey] || null;
+export async function getSettingValue<T>(_settingKey: string, fallback: T) {
+  return fallback;
+}
+
+export async function getRemoteAgentConfig(
+  _remoteAgentKey: string
+): Promise<ControlPlaneRemoteAgent | null> {
+  return null;
+}
+
+export async function getControlPlaneSnapshot(): Promise<ControlPlaneSnapshot | null> {
+  return null;
 }
