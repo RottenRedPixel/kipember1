@@ -45,6 +45,7 @@ export default function OwnerFlow({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isLoadingWelcome, setIsLoadingWelcome] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -74,6 +75,12 @@ export default function OwnerFlow({
         if (cancelled) return;
 
         if (nextMessages.length === 0) {
+          // Drop out of "loading history" so the chat reveals — and flip the
+          // welcome flag on so the typing indicator renders while we wait.
+          if (!cancelled) {
+            setIsLoadingHistory(false);
+            setIsLoadingWelcome(true);
+          }
           try {
             const welcomeRes = await fetch('/api/chat/welcome', {
               method: 'POST',
@@ -90,6 +97,8 @@ export default function OwnerFlow({
             }
           } catch {
             /* fall through to empty state */
+          } finally {
+            if (!cancelled) setIsLoadingWelcome(false);
           }
           setMessages([]);
           onConversationStateChange?.(false);
@@ -287,7 +296,7 @@ export default function OwnerFlow({
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <EmberChatMessages
             messages={messages}
-            isSending={isSending}
+            isSending={isSending || isLoadingWelcome}
             endRef={messagesEndRef}
           />
         </div>

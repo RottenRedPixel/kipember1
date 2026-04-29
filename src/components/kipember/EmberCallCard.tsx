@@ -107,9 +107,9 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
         <CallHeaderAvatar name={block.personName} avatarUrl={block.avatarUrl} />
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 22, height: 22, background: '#f97316' }}
+          style={{ width: 29, height: 29, background: '#f97316' }}
         >
-          <Phone size={12} className="text-white" fill="currentColor" stroke="currentColor" />
+          <Phone size={16} className="text-white" fill="currentColor" stroke="currentColor" />
         </div>
         <p className="text-white/30 text-xs font-medium">
           {block.personName}&apos;s Ember Call

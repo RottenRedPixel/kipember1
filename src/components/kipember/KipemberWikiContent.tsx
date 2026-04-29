@@ -462,9 +462,9 @@ function VoiceBlockCard({
         <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 22, height: 22, background: '#22c55e' }}
+          style={{ width: 29, height: 29, background: '#22c55e' }}
         >
-          <Mic size={12} className="text-white" />
+          <Mic size={16} className="text-white" />
         </div>
         <p className="text-white/30 text-xs font-medium">
           {block.personName}&apos;s Ember Voice
@@ -1787,9 +1787,9 @@ export default function KipemberWikiContent({
                     <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
                     <div
                       className="rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ width: 22, height: 22, background: '#2563eb' }}
+                      style={{ width: 29, height: 29, background: '#2563eb' }}
                     >
-                      <MessageCircle size={12} className="text-white" fill="currentColor" stroke="currentColor" />
+                      <MessageCircle size={16} className="text-white" fill="currentColor" stroke="currentColor" />
                     </div>
                     <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
                   </div>
