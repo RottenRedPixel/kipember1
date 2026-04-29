@@ -10,6 +10,7 @@ import {
 } from '@/lib/ember-sessions';
 import { getImageAccessType } from '@/lib/ember-access';
 import { generateEmberVoiceReply } from '@/lib/ember-voice-reply';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 import {
   getAudioTranscriptionModel,
   getConfiguredOpenAIModel,
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
 
     const transcript = (await transcribeUploadedAudio(audio)) || '';
 
-    await prisma.emberMessage.create({
+    const userMessage = await prisma.emberMessage.create({
       data: {
         sessionId: session.id,
         role: 'user',
@@ -150,12 +151,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const replyText = await generateEmberVoiceReply({
-      imageId,
-      role: participant.participantType,
-      trigger: 'mic_message',
-      transcript,
-    });
+    // Run housekeeping extractors on the user's spoken message in parallel
+    // with reply generation, matching what /api/chat/route.ts does for text.
+    const [replyText] = await Promise.all([
+      generateEmberVoiceReply({
+        imageId,
+        role: participant.participantType,
+        trigger: 'mic_message',
+        transcript,
+      }),
+      reconcileEmberMessageSafely(userMessage.id, 'voice housekeeping'),
+    ]);
 
     let replyAudioFilename: string | null = null;
     try {
