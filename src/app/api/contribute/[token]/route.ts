@@ -181,12 +181,26 @@ export async function POST(
 
     const contributor = await prisma.contributor.findUnique({
       where: { token },
-      select: { id: true, imageId: true },
+      select: {
+        id: true,
+        imageId: true,
+        name: true,
+        phoneNumber: true,
+        email: true,
+        userId: true,
+      },
     });
 
     if (!contributor) {
       return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
+
+    const isGuestShareLink =
+      !contributor.name &&
+      !contributor.phoneNumber &&
+      !contributor.email &&
+      !contributor.userId;
+    const chatRole = isGuestShareLink ? ('guest' as const) : ('contributor' as const);
 
     const sessionIdentity = {
       imageId: contributor.imageId,
@@ -211,7 +225,7 @@ export async function POST(
       const welcome = await generateEmberChatReply({
         imageId: contributor.imageId,
         sessionId: session.id,
-        role: 'contributor',
+        role: chatRole,
         trigger: 'welcome_first_open',
       });
       await prisma.emberMessage.create({
@@ -249,7 +263,7 @@ export async function POST(
       const welcome = await generateEmberChatReply({
         imageId: contributor.imageId,
         sessionId: session.id,
-        role: 'contributor',
+        role: chatRole,
         trigger: 'welcome_returning',
       });
       await prisma.emberMessage.create({
@@ -276,7 +290,7 @@ export async function POST(
       generateEmberChatReply({
         imageId: contributor.imageId,
         sessionId: session.id,
-        role: 'contributor',
+        role: chatRole,
         trigger: 'message',
       }),
       reconcileEmberMessageSafely(userMessage.id, 'contribute housekeeping'),

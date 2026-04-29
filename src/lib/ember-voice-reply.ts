@@ -19,8 +19,9 @@ export async function generateEmberVoiceReply({
   transcript: string;
 }): Promise<string> {
   const vars = await loadPromptVariables(imageId);
+  const promptKey = role === 'guest' ? 'ember_voice.guest_style' : 'ember_voice.style';
 
-  const systemPrompt = await renderPromptTemplate('ember_voice.style', '', {
+  const systemPrompt = await renderPromptTemplate(promptKey, '', {
     role,
     trigger,
     transcript,
@@ -30,7 +31,7 @@ export async function generateEmberVoiceReply({
   const response = await chat(
     systemPrompt,
     [{ role: 'user', content: transcript || `(trigger: ${trigger})` }],
-    { capabilityKey: 'ember_voice.style', maxTokens: 160 }
+    { capabilityKey: promptKey, maxTokens: 160 }
   );
 
   return response.trim();

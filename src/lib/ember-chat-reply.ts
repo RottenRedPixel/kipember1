@@ -15,7 +15,10 @@ export type EmberChatTrigger =
 
 export type EmberChatRole = 'owner' | 'contributor' | 'guest';
 
-export type EmberChatPromptKey = 'ember_chat.style' | 'ember_sms.style';
+export type EmberChatPromptKey =
+  | 'ember_chat.style'
+  | 'ember_chat.guest_style'
+  | 'ember_sms.style';
 
 export type EmberChatContext = {
   imageId: string;
@@ -173,8 +176,12 @@ async function loadHistory(sessionId: string | undefined) {
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 }
 
+function defaultChatPromptKey(role: EmberChatRole): EmberChatPromptKey {
+  return role === 'guest' ? 'ember_chat.guest_style' : 'ember_chat.style';
+}
+
 export async function generateEmberChatReply(ctx: EmberChatContext): Promise<string> {
-  const promptKey = ctx.promptKey ?? 'ember_chat.style';
+  const promptKey = ctx.promptKey ?? defaultChatPromptKey(ctx.role);
   const [vars, history] = await Promise.all([
     loadPromptVariables(ctx.imageId),
     loadHistory(ctx.sessionId),
