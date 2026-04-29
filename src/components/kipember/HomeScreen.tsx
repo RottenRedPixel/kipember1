@@ -898,7 +898,9 @@ export default function HomeScreen({
           <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
             {selectedImageHasTitle ? title : ' '}
           </p>
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{subtitle}</p>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+            {selectedImageHasTitle ? subtitle : ' '}
+          </p>
         </div>
       ) : null}
 

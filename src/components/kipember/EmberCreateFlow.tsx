@@ -24,14 +24,14 @@ function EmberMark({ size = 18 }: { size?: number }) {
 // Minimum time the user spends watching the loader after the upload POST
 // completes. Image analysis is already running in the background — this hold
 // gives it a head start so the ember view + wiki feel ready when we land.
-const POST_UPLOAD_HOLD_MS = 10_000;
+const POST_UPLOAD_HOLD_MS = 7_000;
 
 const PROCESSING_PHASES: Array<{ title: string; subtitle: string; startMs: number }> = [
   { title: 'Uploading your photo', subtitle: 'Sending the image up...', startMs: -1 },
   { title: 'Photo uploaded', subtitle: 'Reading the image...', startMs: 0 },
-  { title: 'Analyzing the moment', subtitle: 'Looking for people, places, and details...', startMs: 2_500 },
-  { title: 'Building the memory wiki', subtitle: 'Drafting your ember’s story...', startMs: 5_000 },
-  { title: 'Almost ready', subtitle: 'Wrapping up the snapshot...', startMs: 7_500 },
+  { title: 'Analyzing the moment', subtitle: 'Looking for people, places, and details...', startMs: 1_750 },
+  { title: 'Building the memory wiki', subtitle: 'Drafting your ember’s story...', startMs: 3_500 },
+  { title: 'Almost ready', subtitle: 'Wrapping up the snapshot...', startMs: 5_250 },
 ];
 
 export default function EmberCreateFlow({
@@ -81,7 +81,7 @@ export default function EmberCreateFlow({
     const elapsed = Date.now() - postCompletedAt;
     const remaining = Math.max(0, POST_UPLOAD_HOLD_MS - elapsed);
     const timer = setTimeout(() => {
-      router.replace(`/ember/${createdImageId}?ember=owner&view=full`);
+      router.replace(`/ember/${createdImageId}?ember=owner`);
     }, remaining);
     return () => clearTimeout(timer);
   }, [createdImageId, postCompletedAt, step, router]);
