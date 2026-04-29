@@ -86,12 +86,13 @@ export async function POST(request: NextRequest) {
             title,
             summary,
             location,
-            durationSeconds: 10,
+            durationSeconds: 5,
             taggedPeople: confirmedPeople,
             wikiContent: imageRecord.wiki?.content ?? null,
             contributorMemories: contributorMemories.map((m) => ({ contributorName: m.contributorName, answer: m.answer })),
             callSummaries: callSummaries.map((c) => ({ contributorName: c.contributorName, summary: c.summary })),
             callHighlights: callHighlights.map((h) => ({ contributorName: h.contributorName, title: h.title, quote: h.quote })),
+            promptKey: 'snapshot_generation.initial',
           });
           if (script.trim()) {
             await prisma.snapshot.create({
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
                 title,
                 style: 'documentary',
                 focus: '',
-                durationSeconds: 10,
+                durationSeconds: 5,
                 wordCount: script.split(/\s+/).filter(Boolean).length,
                 script,
                 blocksJson: '[]',

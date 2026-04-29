@@ -19,11 +19,8 @@ type PlayPageData = {
   description: string | null;
   createdAt: string;
   canManage: boolean;
-  wiki: {
-    id: string;
-    content: string;
-    version: number;
-    updatedAt: string;
+  snapshot: {
+    script: string;
   } | null;
 };
 
@@ -101,7 +98,7 @@ export default function PlayEmberPage() {
   }, []);
 
   const handleNarrationToggle = async () => {
-    if (!data?.wiki?.content) {
+    if (!data?.snapshot?.script) {
       return;
     }
 
@@ -119,7 +116,7 @@ export default function PlayEmberPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: data.wiki.content,
+          script: data.snapshot.script,
           voicePreference,
         }),
       });
@@ -214,7 +211,7 @@ export default function PlayEmberPage() {
 
               <div className="mt-6 flex flex-wrap gap-2">
                 <span className="ember-chip">
-                  {data.wiki ? `Story v${data.wiki.version}` : 'Story not generated yet'}
+                  {data.snapshot?.script ? 'Snapshot ready' : 'Snapshot not generated yet'}
                 </span>
                 <span className="ember-chip">
                   {data.mediaType === 'VIDEO' ? 'Video Ember' : 'Photo Ember'}
@@ -262,7 +259,7 @@ export default function PlayEmberPage() {
           <button
             type="button"
             onClick={handleNarrationToggle}
-            disabled={!data.wiki?.content}
+            disabled={!data.snapshot?.script}
             className="ember-button-primary mt-6 w-full disabled:cursor-not-allowed disabled:opacity-60"
           >
             {narrationState === 'loading'
@@ -272,9 +269,9 @@ export default function PlayEmberPage() {
                 : 'Listen to narration'}
           </button>
 
-          {!data.wiki?.content && (
+          {!data.snapshot?.script && (
             <p className="mt-3 text-sm text-[var(--ember-muted)]">
-              Generate the memory story on the main Ember page first.
+              The snapshot is still being generated. Try again in a moment.
             </p>
           )}
         </div>
@@ -284,7 +281,7 @@ export default function PlayEmberPage() {
         <button
           type="button"
           onClick={handleNarrationToggle}
-          disabled={!data.wiki?.content}
+          disabled={!data.snapshot?.script}
           className="ember-card rounded-[1.8rem] px-5 py-5 text-left transition hover:border-[rgba(255,102,33,0.24)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Play className="h-5 w-5 text-[var(--ember-orange)]" />

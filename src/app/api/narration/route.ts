@@ -7,8 +7,6 @@ import {
 } from '@/lib/elevenlabs';
 import { requireApiUser } from '@/lib/auth-server';
 import {
-  buildNarrationText,
-  cleanNarrationScript,
   normalizeNarrationText,
   normalizeTextForSpeech,
 } from '@/lib/narration';
@@ -30,15 +28,13 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json().catch(() => null)) as
       | {
-          content?: string;
           script?: string;
           voicePreference?: NarrationPreference;
           voiceId?: string;
         }
       | null;
 
-    const content = typeof body?.content === 'string' ? body.content : '';
-    const providedScript =
+    const script =
       typeof body?.script === 'string' && body.script.trim()
         ? normalizeNarrationText(body.script)
         : '';
@@ -47,18 +43,14 @@ export async function POST(request: NextRequest) {
     const explicitVoiceId =
       typeof body?.voiceId === 'string' && body.voiceId.trim() ? body.voiceId.trim() : null;
 
-    const narrationText = providedScript || buildNarrationText(content);
-    if (!narrationText) {
+    if (!script) {
       return NextResponse.json(
-        { error: 'There is no story content available to narrate yet.' },
+        { error: 'There is no snapshot available to narrate yet.' },
         { status: 400 }
       );
     }
 
-    const cleanedNarrationText = providedScript
-      ? providedScript
-      : await cleanNarrationScript(narrationText);
-    const speechReadyNarrationText = normalizeTextForSpeech(cleanedNarrationText);
+    const speechReadyNarrationText = normalizeTextForSpeech(script);
 
     const voiceId = explicitVoiceId || (await resolveNarrationVoice(voicePreference)).voiceId;
 

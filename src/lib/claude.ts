@@ -661,7 +661,7 @@ export async function generateWiki({
   };
 
   const openai = getOpenAIClient();
-  const structurePrompt = await renderPromptTemplate('snapshot_generation.regenerate');
+  const structurePrompt = await renderPromptTemplate('wiki.structure');
   const structuredResponse = await openai.responses.create({
     model: await getConfiguredOpenAIModel('wiki.structure', getWikiStructureModel()),
     input: [
@@ -709,7 +709,7 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
     analysis,
   });
 
-  const systemPrompt = await renderPromptTemplate('snapshot_generation.regenerate');
+  const systemPrompt = await renderPromptTemplate('wiki.rewrite');
 
   const output = await chat(systemPrompt, [
     {
@@ -718,7 +718,7 @@ ${JSON.stringify(evidencePacket, null, 2)}`,
 ${JSON.stringify(structuredMemory, null, 2)}`,
     },
   ], {
-    capabilityKey: 'snapshot_generation.regenerate',
+    capabilityKey: 'wiki.rewrite',
     fallbackModel: DEFAULT_CLAUDE_MODEL,
   });
 

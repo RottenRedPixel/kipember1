@@ -2,6 +2,8 @@ export type PromptGroup =
   | 'Image Analysis'
   | 'Title Generation'
   | 'Snapshot Generation'
+  | 'Wiki'
+  | 'Captions'
   | 'Ember AI'
   | 'Housekeeping';
 
@@ -55,15 +57,38 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'snapshot_generation.initial',
     label: 'Snapshot Generation - Initial',
     group: 'Snapshot Generation',
-    description: 'Generates the snapshot script the first time it is created for an ember.',
-    variables: [],
+    description: 'Fires automatically when an ember is first created (after image analysis + wiki generation). Should pull from the wiki, image analysis, location, and tagged people to produce a short ~5-second opener (~12 words). Receives `targetWords`, `durationSeconds`, and `peopleInstruction`. Wiki content, image summary, location, and contributor memories are appended to the user message.',
+    variables: ['targetWords', 'durationSeconds', 'peopleInstruction'],
   },
   {
     key: 'snapshot_generation.regenerate',
     label: 'Snapshot Generation - Regenerate',
     group: 'Snapshot Generation',
-    description: 'Used when the user presses Regen Snapshot, plus other regeneration jobs (wiki structure + rewrites, caption suggestions, narration cleanup).',
+    description: 'Fires when the user opens the Snapshot slider in Tend, sets the controllers (length, required people), and presses Regen Snapshot. Receives `targetWords` (computed from the slider), `durationSeconds`, `peopleInstruction` (everyone tagged), and `requiredPeopleInstruction` (the names the user explicitly checked).',
+    variables: ['targetWords', 'durationSeconds', 'peopleInstruction', 'requiredPeopleInstruction'],
+  },
+
+  {
+    key: 'wiki.structure',
+    label: 'Wiki - Structure (JSON)',
+    group: 'Wiki',
+    description: 'System prompt for building the structured memory JSON object that backs the wiki. Receives no template variables — the evidence packet is sent as the user message.',
     variables: [],
+  },
+  {
+    key: 'wiki.rewrite',
+    label: 'Wiki - Rewrite (Markdown)',
+    group: 'Wiki',
+    description: 'System prompt for rendering the structured memory JSON into the wiki markdown the user reads. Receives no template variables — the structured JSON is sent as the user message.',
+    variables: [],
+  },
+
+  {
+    key: 'caption_generation.suggestions',
+    label: 'Captions - Suggestions',
+    group: 'Captions',
+    description: 'System prompt for generating caption suggestions for an ember. Receives `voiceStyle` and `voiceInstruction`.',
+    variables: ['voiceStyle', 'voiceInstruction'],
   },
 
   {
@@ -219,6 +244,8 @@ export const PROMPT_GROUPS: PromptGroup[] = [
   'Image Analysis',
   'Title Generation',
   'Snapshot Generation',
+  'Wiki',
+  'Captions',
   'Ember AI',
   'Housekeeping',
 ];
