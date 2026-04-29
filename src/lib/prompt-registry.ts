@@ -113,14 +113,6 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   },
 
   {
-    key: 'ember_sms.style',
-    label: 'Ember SMS - Style & Technique',
-    group: 'Ember AI',
-    description: 'Controls how the system replies in SMS interview follow-ups (Twilio). Same context shape as Ember Chat but tuned for the constraints of text messages.',
-    variables: ['role', 'trigger', 'title', 'snapshot'],
-  },
-
-  {
     key: 'ember_voice.style',
     label: 'Ember Voice - Style & Technique',
     group: 'Ember AI',
@@ -174,6 +166,14 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     group: 'Ember AI',
     description: 'Synced to Retell. Tells the Retell voice agent how to behave during outbound voice calls. The agent runs with a static system prompt (no per-call variable injection here yet), so this prompt should instruct it to open by saying what the wiki already knows about the moment, then naturally pursue who / when / where / what / why / how gaps. Live wiki context is delivered to Retell at call setup time. Saves here are pushed to Retell automatically.',
     variables: [],
+  },
+
+  {
+    key: 'ember_sms.style',
+    label: 'Ember SMS - Style & Technique',
+    group: 'Ember AI',
+    description: 'Controls how the system replies in SMS interview follow-ups (Twilio). Same context shape as Ember Chat but tuned for the constraints of text messages.',
+    variables: ['role', 'trigger', 'title', 'snapshot'],
   },
 
   {
