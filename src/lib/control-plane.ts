@@ -221,7 +221,7 @@ export function invalidatePromptOverrideCache() {
 
 export type PromptResolution = {
   body: string;
-  source: 'override' | 'control-plane' | 'override-alias' | 'control-plane-alias';
+  source: 'override' | 'override-alias';
   resolvedKey: string;
 };
 
@@ -230,31 +230,16 @@ export async function resolvePrompt(promptKey: string): Promise<PromptResolution
     throw new Error(`Prompt key "${promptKey}" is not registered. Add it to PROMPT_REGISTRY.`);
   }
 
-  const [overrides, snapshot] = await Promise.all([
-    getPromptOverrides(),
-    getControlPlaneSnapshot(),
-  ]);
-
+  const overrides = await getPromptOverrides();
   const chain = getPromptAliasChain(promptKey);
 
   for (let index = 0; index < chain.length; index += 1) {
     const candidate = chain[index];
-    const isAlias = index > 0;
-
     const overrideBody = overrides.get(candidate)?.trim();
     if (overrideBody) {
       return {
         body: overrideBody,
-        source: isAlias ? 'override-alias' : 'override',
-        resolvedKey: candidate,
-      };
-    }
-
-    const snapshotBody = snapshot?.prompts?.[candidate]?.body?.trim();
-    if (snapshotBody) {
-      return {
-        body: snapshotBody,
-        source: isAlias ? 'control-plane-alias' : 'control-plane',
+        source: index > 0 ? 'override-alias' : 'override',
         resolvedKey: candidate,
       };
     }
