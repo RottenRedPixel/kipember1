@@ -172,6 +172,7 @@ type TitlePromptContext = {
     source: 'voice' | 'text';
   }>;
   fullContext: string;
+  taggedPeople: string[];
   preferredPeople: string[];
 };
 
@@ -180,10 +181,11 @@ async function renderTitlePrompt(
   context: TitlePromptContext,
   promptKey: string
 ) {
-  const preferredPeopleHint =
-    context.preferredPeople.length > 0
-      ? context.preferredPeople.join(', ')
-      : '';
+  const preferredPeopleSet = new Set(context.preferredPeople);
+  const optionalTaggedPeople = context.taggedPeople.filter(
+    (person) => !preferredPeopleSet.has(person)
+  );
+
   const quoteEntries =
     context.quoteEntries.length > 0
       ? context.quoteEntries
@@ -201,7 +203,9 @@ async function renderTitlePrompt(
     humanContext: context.humanContext || '',
     quoteEntries,
     fullContext: context.fullContext || '',
-    preferredPeopleHint,
+    peopleInstruction: context.taggedPeople.join(', '),
+    preferredPeopleInstruction: context.preferredPeople.join(', '),
+    optionalTaggedPeopleInstruction: optionalTaggedPeople.join(', '),
   });
 }
 
@@ -518,6 +522,7 @@ export async function GET(
       humanContext: humanContext || context.promptContext,
       quoteEntries: quoteSourceEntries,
       fullContext: context.promptContext,
+      taggedPeople: context.confirmedPeople,
       preferredPeople,
     };
     const [analysisSuggestions, contextSuggestions, contributorQuotes] = await Promise.all([
@@ -614,7 +619,8 @@ export async function POST(
       humanContext: context.promptContext,
       quoteEntries: quoteSourceEntries,
       fullContext: context.promptContext,
-      preferredPeople: context.confirmedPeople,
+      taggedPeople: context.confirmedPeople,
+      preferredPeople: [],
     });
 
     if (!title) {

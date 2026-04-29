@@ -42,15 +42,15 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'title_generation.initial',
     label: 'Title Generation - Initial',
     group: 'Title Generation',
-    description: 'Generates one polished title for an ember from the analysis context.',
-    variables: ['mode', 'analysisContext', 'wikiContext', 'voiceContext'],
+    description: 'Generates one polished title for an ember at creation time. Receives `mode` (always "single" here), `analysisContext`, `humanContext`, `quoteEntries`, `fullContext`, `peopleInstruction` (everyone tagged in the photo), `preferredPeopleInstruction` (always empty on initial — the user has not picked yet), and `optionalTaggedPeopleInstruction` (everyone tagged, since none are preferred yet).',
+    variables: ['mode', 'analysisContext', 'humanContext', 'quoteEntries', 'fullContext', 'peopleInstruction', 'preferredPeopleInstruction', 'optionalTaggedPeopleInstruction'],
   },
   {
     key: 'title_generation.regenerate',
     label: 'Title Generation - Regenerate',
     group: 'Title Generation',
-    description: 'Generates several alternative titles in one call (used for both regular and quoted variants).',
-    variables: ['mode', 'analysisContext', 'wikiContext', 'voiceContext'],
+    description: 'Fires when the user opens the Title slider in Tend, checks people to prefer, and presses Regen Ideas. Generates three alternative titles per mode (analysis, context, quoted). Receives `mode`, `analysisContext`, `humanContext`, `quoteEntries`, `fullContext`, `peopleInstruction` (everyone tagged in the photo), `preferredPeopleInstruction` (the subset of tagged people the user explicitly checked — should be favored when natural), and `optionalTaggedPeopleInstruction` (tagged people the user did not check — may inform context but should not be forced).',
+    variables: ['mode', 'analysisContext', 'humanContext', 'quoteEntries', 'fullContext', 'peopleInstruction', 'preferredPeopleInstruction', 'optionalTaggedPeopleInstruction'],
   },
 
   {
