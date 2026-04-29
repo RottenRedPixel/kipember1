@@ -800,6 +800,8 @@ export async function generateSnapshotScript({
   promptKey?: string;
 }): Promise<string> {
   const targetWords = Math.round((durationSeconds / 60) * 150);
+  const requiredPeopleSet = new Set(requiredPeople);
+  const optionalTaggedPeople = taggedPeople.filter((person) => !requiredPeopleSet.has(person));
 
   const context = [
     `MEMORY TITLE\n${title}`,
@@ -827,6 +829,7 @@ export async function generateSnapshotScript({
     durationSeconds,
     peopleInstruction: taggedPeople.join(', '),
     requiredPeopleInstruction: requiredPeople.join(', '),
+    optionalTaggedPeopleInstruction: optionalTaggedPeople.join(', '),
   });
 
   return chat(systemPrompt, [

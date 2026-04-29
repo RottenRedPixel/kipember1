@@ -64,8 +64,8 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'snapshot_generation.regenerate',
     label: 'Snapshot Generation - Regenerate',
     group: 'Snapshot Generation',
-    description: 'Fires when the user opens the Snapshot slider in Tend, sets the controllers (length, required people), and presses Regen Snapshot. Receives `targetWords` (computed from the slider), `durationSeconds`, `peopleInstruction` (everyone tagged), and `requiredPeopleInstruction` (the names the user explicitly checked).',
-    variables: ['targetWords', 'durationSeconds', 'peopleInstruction', 'requiredPeopleInstruction'],
+    description: 'Fires when the user opens the Snapshot slider in Tend, sets the controllers (length, required people), and presses Regen Snapshot. Receives `targetWords` (computed from the slider), `durationSeconds`, `peopleInstruction` (everyone tagged in the photo), `requiredPeopleInstruction` (the subset of tagged people the user explicitly checked — must be named), and `optionalTaggedPeopleInstruction` (tagged people the user did not check — may be named for context but not required).',
+    variables: ['targetWords', 'durationSeconds', 'peopleInstruction', 'requiredPeopleInstruction', 'optionalTaggedPeopleInstruction'],
   },
 
   {
