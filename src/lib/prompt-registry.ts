@@ -95,10 +95,12 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     key: 'ember_chat.style',
     label: 'Ember Chat - Style & Technique',
     group: 'Ember AI',
-    description: 'Controls how the system replies in the in-app Ember Chat bubble. Receives the role, trigger, atomic facts (title, snapshot, captured date, location, tagged people, visual scene, emotional context), the full wiki markdown, and a heuristic interview coverage signal (answered/unanswered topics across who/when/where/what/why/how + next topic to probe). The reply should always read the wiki first, reference what is already known when probing, and naturally pursue the next unanswered topic so housekeeping has something fresh to extract.',
+    description: 'Controls how the system replies in the in-app Ember Chat bubble. Receives the role, trigger, atomic facts (title, snapshot, captured date, location, tagged people, visual scene, emotional context), the full wiki markdown, and a heuristic interview coverage signal (answered/unanswered topics across who/when/where/what/why/how + next topic to probe). On the welcome triggers (welcome_first_open / welcome_returning) it also receives `userFirstName` (greeting target — falls back to "there" when blank) and `isFirstEmber` (the string "true" or "false" — true when this is the user\'s first-ever owned ember). The reply should always read the wiki first, reference what is already known when probing, and naturally pursue the next unanswered topic so housekeeping has something fresh to extract.',
     variables: [
       'role',
       'trigger',
+      'userFirstName',
+      'isFirstEmber',
       'title',
       'snapshot',
       'capturedAt',

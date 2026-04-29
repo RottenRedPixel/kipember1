@@ -552,6 +552,32 @@ export default function HomeScreen({
       .catch(() => undefined);
   }, [createdImageId]);
 
+  // Poll for image-analysis completion: while the currently-selected ember has
+  // no title, refetch the image list every 3s. Once a title comes back (image
+  // analysis sets it), stop polling. Bail after ~2 minutes to avoid runaway.
+  const selectedImageHasTitle = Boolean(
+    selectedImageId &&
+      images.find((img) => img.id === selectedImageId)?.title?.trim()
+  );
+  useEffect(() => {
+    if (!selectedImageId || selectedImageHasTitle) return;
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      if (Date.now() - startedAt > 120_000) {
+        clearInterval(interval);
+        return;
+      }
+      void fetch('/api/images', { cache: 'no-store' })
+        .then(async (response) => {
+          if (!response.ok) return;
+          const payload = (await response.json()) as ImageSummary[];
+          setImages(payload);
+        })
+        .catch(() => undefined);
+    }, 3_000);
+    return () => clearInterval(interval);
+  }, [selectedImageId, selectedImageHasTitle]);
+
   useEffect(() => {
     if (!selectedImageId || modal !== 'play') {
       setSelectedImage(null);
@@ -869,7 +895,9 @@ export default function HomeScreen({
             transition: 'opacity 0.36s ease',
           }}
         >
-          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{title}</p>
+          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+            {selectedImageHasTitle ? title : ' '}
+          </p>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{subtitle}</p>
         </div>
       ) : null}

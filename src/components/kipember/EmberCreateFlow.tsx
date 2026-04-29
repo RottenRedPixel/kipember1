@@ -21,6 +21,19 @@ function EmberMark({ size = 18 }: { size?: number }) {
   );
 }
 
+// Minimum time the user spends watching the loader after the upload POST
+// completes. Image analysis is already running in the background — this hold
+// gives it a head start so the ember view + wiki feel ready when we land.
+const POST_UPLOAD_HOLD_MS = 10_000;
+
+const PROCESSING_PHASES: Array<{ title: string; subtitle: string; startMs: number }> = [
+  { title: 'Uploading your photo', subtitle: 'Sending the image up...', startMs: -1 },
+  { title: 'Photo uploaded', subtitle: 'Reading the image...', startMs: 0 },
+  { title: 'Analyzing the moment', subtitle: 'Looking for people, places, and details...', startMs: 2_500 },
+  { title: 'Building the memory wiki', subtitle: 'Drafting your ember’s story...', startMs: 5_000 },
+  { title: 'Almost ready', subtitle: 'Wrapping up the snapshot...', startMs: 7_500 },
+];
+
 export default function EmberCreateFlow({
   file,
   avatarUrl,
@@ -37,6 +50,8 @@ export default function EmberCreateFlow({
   const [previewUrl, setPreviewUrl] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [createdImageId, setCreatedImageId] = useState<string | null>(null);
+  const [postCompletedAt, setPostCompletedAt] = useState<number | null>(null);
+  const [phaseIndex, setPhaseIndex] = useState(0);
 
   useEffect(() => {
     const url = URL.createObjectURL(file);
@@ -44,17 +59,38 @@ export default function EmberCreateFlow({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  // Drive the status-line sequencer once the upload POST finishes.
   useEffect(() => {
-    if (!createdImageId || step !== 'processing') return;
+    if (step !== 'processing' || postCompletedAt === null) return;
+    const tick = () => {
+      const elapsed = Date.now() - postCompletedAt;
+      let nextIndex = 1;
+      for (let i = 1; i < PROCESSING_PHASES.length; i += 1) {
+        if (elapsed >= PROCESSING_PHASES[i].startMs) nextIndex = i;
+      }
+      setPhaseIndex(nextIndex);
+    };
+    tick();
+    const interval = setInterval(tick, 250);
+    return () => clearInterval(interval);
+  }, [step, postCompletedAt]);
+
+  // Redirect once the upload is done AND the minimum hold has elapsed.
+  useEffect(() => {
+    if (!createdImageId || postCompletedAt === null || step !== 'processing') return;
+    const elapsed = Date.now() - postCompletedAt;
+    const remaining = Math.max(0, POST_UPLOAD_HOLD_MS - elapsed);
     const timer = setTimeout(() => {
-      router.replace(`/ember/${createdImageId}?ember=owner`);
-    }, 400);
+      router.replace(`/ember/${createdImageId}?ember=owner&view=full`);
+    }, remaining);
     return () => clearTimeout(timer);
-  }, [createdImageId, step, router]);
+  }, [createdImageId, postCompletedAt, step, router]);
 
   async function handleCreate() {
     setUploadError('');
     setCreatedImageId(null);
+    setPostCompletedAt(null);
+    setPhaseIndex(0);
     setStep('processing');
     const formData = new FormData();
     formData.append('file', file);
@@ -64,10 +100,13 @@ export default function EmberCreateFlow({
       if (!response.ok || typeof payload?.id !== 'string') {
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
       }
+      setPostCompletedAt(Date.now());
       setCreatedImageId(payload.id);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Failed to create ember');
       setStep('confirm');
+      setPostCompletedAt(null);
+      setPhaseIndex(0);
     }
   }
 
@@ -131,10 +170,10 @@ export default function EmberCreateFlow({
         <EmberMark size={40} />
       </div>
       <p className="mt-8 font-medium text-base text-white">
-        {createdImageId ? 'Ember created!' : 'Igniting ember'}
+        {uploadError ? 'Something went wrong' : PROCESSING_PHASES[phaseIndex].title}
       </p>
       <p className="mt-1 text-sm text-white/60">
-        {uploadError || (createdImageId ? 'Opening your memory...' : 'Building the ember structure')}
+        {uploadError || PROCESSING_PHASES[phaseIndex].subtitle}
       </p>
     </div>
   );

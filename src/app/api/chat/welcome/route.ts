@@ -65,42 +65,44 @@ export async function POST(request: NextRequest) {
       status: 'active',
     });
 
-    // If the user has ever replied, the existing first welcome is preserved.
-    // If not, regenerate the welcome so it reflects the latest wiki state.
-    const userReplyCount = await prisma.emberMessage.count({
-      where: { sessionId: session.id, role: 'user' },
+    // Welcome is one-shot per session: if any assistant message already exists,
+    // return it as-is. Only generate a new welcome when the session is empty.
+    const existing = await prisma.emberMessage.findFirst({
+      where: { sessionId: session.id, role: 'assistant' },
+      orderBy: { createdAt: 'asc' },
     });
-
-    if (userReplyCount > 0) {
-      const existing = await prisma.emberMessage.findFirst({
-        where: { sessionId: session.id, role: 'assistant' },
-        orderBy: { createdAt: 'asc' },
-      });
-      if (existing) {
-        const response = NextResponse.json({ message: existing.content });
-        if (!existingBrowserId || session.browserId !== browserId) {
-          response.cookies.set(COOKIE_NAME, session.browserId ?? browserId, {
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 60 * 60 * 24 * 365,
-            path: '/',
-          });
-        }
-        return response;
+    if (existing) {
+      const response = NextResponse.json({ message: existing.content });
+      if (!existingBrowserId || session.browserId !== browserId) {
+        response.cookies.set(COOKIE_NAME, session.browserId ?? browserId, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 60 * 60 * 24 * 365,
+          path: '/',
+        });
       }
-    } else {
-      // Drop any prior unanswered welcomes so we can re-render against the latest wiki.
-      await prisma.emberMessage.deleteMany({
-        where: { sessionId: session.id, role: 'assistant' },
-      });
+      return response;
     }
+
+    // Look up the user's first name and whether this is their first-ever owned ember.
+    const [userRecord, ownedEmberCount] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: auth.user.id },
+        select: { name: true },
+      }),
+      prisma.image.count({ where: { ownerId: auth.user.id } }),
+    ]);
+    const userFirstName = userRecord?.name?.trim().split(/\s+/)[0] || '';
+    const isFirstEmber = ownedEmberCount <= 1;
 
     const welcome = await generateEmberChatReply({
       imageId,
       sessionId: session.id,
       role: participant.participantType,
       trigger: situation === 'returning' ? 'welcome_returning' : 'welcome_first_open',
+      userFirstName,
+      isFirstEmber,
     });
 
     await prisma.emberMessage.create({

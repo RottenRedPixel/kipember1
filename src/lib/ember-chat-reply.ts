@@ -26,6 +26,8 @@ export type EmberChatContext = {
   role: EmberChatRole;
   trigger: EmberChatTrigger;
   promptKey?: EmberChatPromptKey;
+  userFirstName?: string;
+  isFirstEmber?: boolean;
 };
 
 const HISTORY_LIMIT = 12;
@@ -190,6 +192,8 @@ export async function generateEmberChatReply(ctx: EmberChatContext): Promise<str
   const systemPrompt = await renderPromptTemplate(promptKey, '', {
     role: ctx.role,
     trigger: ctx.trigger,
+    userFirstName: ctx.userFirstName ?? '',
+    isFirstEmber: ctx.isFirstEmber === true ? 'true' : 'false',
     ...vars,
   });
 
