@@ -60,16 +60,18 @@ export async function POST(request: NextRequest) {
     await ensureOwnerContributorForImage(image.id, auth.user.id);
     invalidateAccessibleImagesForUser(auth.user.id);
 
-    // Block until image analysis is ready so the ember view opens with content.
-    // Best-effort: if analysis fails we still let the user proceed.
-    try {
-      await ensureImageAnalysisForImage(image.id);
-    } catch (error) {
-      console.error('Image analysis at create time failed:', error);
-    }
-
-    // Fire wiki + snapshot generation in the background — analysis is already done.
+    // All heavy work — image analysis, wiki, snapshot — runs in the background
+    // so the POST returns immediately. The UI shows its sequenced loader for
+    // ~10s and then opens the ember view; the title and wiki populate as the
+    // background work finishes (HomeScreen polls for the title to appear).
     void (async () => {
+      try {
+        await ensureImageAnalysisForImage(image.id);
+      } catch (error) {
+        console.error('Image analysis at create time failed:', error);
+        return;
+      }
+
       try {
         await generateWikiForImage(image.id);
       } catch (error) {
