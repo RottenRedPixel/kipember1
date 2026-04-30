@@ -1027,6 +1027,12 @@ export default function HomeScreen({
         {displayImage?.accessType === 'owner' ? (
           <RailBtn icon={BookOpen} label="wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/home'} />
         ) : null}
+        {displayImage?.accessType === 'owner' ? (
+          <RailBtn icon={UserStar} label="tag" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/home'} />
+        ) : null}
+        {displayImage?.accessType === 'owner' ? (
+          <RailBtn icon={Users} label="contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/home'} />
+        ) : null}
         <RailBtn icon={Leaf} label="tend" href={buildHomeHref({ m: 'tend' })} active={modal === 'tend'} />
         <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
