@@ -2,15 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PRIMARY_OWNER_EMAIL, requireApiUser } from '@/lib/auth-server';
 import { prisma } from '@/lib/db';
 
+const ADMIN_EMAILS = new Set<string>([
+  PRIMARY_OWNER_EMAIL.toLowerCase(),
+  'amadobatour@gmail.com',
+]);
+
 // Debug-only: search User rows by first name, last name, or email.
-// Gated to the primary owner email so it can't be hit by other accounts.
+// Gated to admin emails so it can't be hit by other accounts.
 //   GET /api/admin/lookup-user?q=amado
 export async function GET(request: NextRequest) {
   const auth = await requireApiUser();
   if (!auth) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  if (auth.user.email !== PRIMARY_OWNER_EMAIL) {
+  if (!ADMIN_EMAILS.has(auth.user.email.toLowerCase())) {
     return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
   }
 
