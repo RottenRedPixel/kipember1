@@ -9,7 +9,7 @@ declare global {
 }
 
 import Link from 'next/link';
-import { Calendar, ChevronLeft, ChevronRight, Copy, MapPin, MessageSquarePlus, Pencil, Phone, Settings, ShieldUser, User, UserRound, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageSquarePlus, Pencil, Phone, Settings, ShieldUser, User, UserRound, X } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -22,76 +22,14 @@ import KipemberWikiContent, {
 } from '@/components/kipember/KipemberWikiContent';
 import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor';
 import EditTitleSlider from '@/components/kipember/tend/EditTitleSlider';
+import EditTimePlaceSlider from '@/components/kipember/tend/EditTimePlaceSlider';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
-import {
-  usePlaceResolution,
-  clearPlaceResolutionCache,
-} from '@/components/kipember/usePlaceResolution';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 
 const fieldStyle = {
   background: 'var(--bg-input)',
   border: '1px solid var(--border-input)',
 };
-
-const US_STATES = new Set<string>([
-  'alabama','alaska','arizona','arkansas','california','colorado','connecticut',
-  'delaware','florida','georgia','hawaii','idaho','illinois','indiana','iowa',
-  'kansas','kentucky','louisiana','maine','maryland','massachusetts','michigan',
-  'minnesota','mississippi','missouri','montana','nebraska','nevada',
-  'new hampshire','new jersey','new mexico','new york','north carolina',
-  'north dakota','ohio','oklahoma','oregon','pennsylvania','rhode island',
-  'south carolina','south dakota','tennessee','texas','utah','vermont',
-  'virginia','washington','west virginia','wisconsin','wyoming',
-  'district of columbia',
-  'al','ak','az','ar','ca','co','ct','de','fl','ga','hi','id','il','in','ia',
-  'ks','ky','la','me','md','ma','mi','mn','ms','mo','mt','ne','nv','nh','nj',
-  'nm','ny','nc','nd','oh','ok','or','pa','ri','sc','sd','tn','tx','ut','vt',
-  'va','wa','wv','wi','wy','dc',
-]);
-
-function parseAddressParts(detail: string | null | undefined): {
-  street: string;
-  cityStateZip: string;
-  country: string;
-} {
-  const empty = { street: '', cityStateZip: '', country: '' };
-  if (typeof detail !== 'string') return empty;
-  const parts = detail
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (parts.length === 0) return empty;
-
-  const last = parts[parts.length - 1];
-  const isCountry = /^(USA|United States|US|U\.S\.|U\.S\.A\.)$/i.test(last);
-  const country = isCountry ? parts.pop() ?? '' : '';
-
-  // Pattern A: a "STATE ZIP" or "Statename ZIP" segment (e.g., "NY 11201").
-  const stateZipIdx = parts.findIndex(
-    (part) =>
-      /\b[A-Z]{2}\s+\d{5}(-\d{4})?$/.test(part) ||
-      /\b[A-Z][A-Za-z]+\s+\d{5}(-\d{4})?$/.test(part)
-  );
-  if (stateZipIdx > 0) {
-    const street = parts.slice(0, stateZipIdx - 1).join(', ');
-    const city = parts[stateZipIdx - 1];
-    const stateZip = parts[stateZipIdx];
-    return { street, cityStateZip: `${city}, ${stateZip}`, country };
-  }
-
-  // Pattern B: a US state name at the end without a ZIP.
-  const tail = parts[parts.length - 1];
-  if (parts.length >= 2 && tail && US_STATES.has(tail.toLowerCase())) {
-    const stateIdx = parts.length - 1;
-    const street = parts.slice(0, stateIdx - 1).join(', ');
-    const city = parts[stateIdx - 1];
-    const state = parts[stateIdx];
-    return { street, cityStateZip: `${city}, ${state}`, country };
-  }
-
-  return { street: parts.join(', '), cityStateZip: '', country };
-}
 
 function formatDate(value: string | null | undefined) {
   if (!value) {
@@ -438,21 +376,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [networkValue, setNetworkValue] = useState(false);
   const [keepPrivateValue, setKeepPrivateValue] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
-  const [timeDateValue, setTimeDateValue] = useState('');
-  const [timeDateSaving, setTimeDateSaving] = useState(false);
-  const [locationLabel, setLocationLabel] = useState('');
-  const [locationAddress, setLocationAddress] = useState('');
-  const [locationCityStateZip, setLocationCityStateZip] = useState('');
-  const [locationCountry, setLocationCountry] = useState('');
-  const [locationLatitude, setLocationLatitude] = useState('');
-  const [locationLongitude, setLocationLongitude] = useState('');
-  const [savedLocationLabel, setSavedLocationLabel] = useState('');
-  const [savedLocationAddress, setSavedLocationAddress] = useState('');
-  const [savedLocationCityStateZip, setSavedLocationCityStateZip] = useState('');
-  const [savedLocationCountry, setSavedLocationCountry] = useState('');
-  const [savedLocationLat, setSavedLocationLat] = useState('');
-  const [savedLocationLng, setSavedLocationLng] = useState('');
-  const [locationSaving, setLocationSaving] = useState(false);
+  // Time/place slider state moved to EditTimePlaceSlider.
   const [frameCrop, setFrameCrop] = useState({ x: 0, y: 0 });
   const [frameZoom, setFrameZoom] = useState(1);
   const [frameCroppedArea, setFrameCroppedArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
@@ -501,50 +425,6 @@ export default function TendActionScreen({ action }: { action: string }) {
       : `/api/images/${resolvedImageId}`
     : null;
 
-  const placeResolution = usePlaceResolution(detail);
-  const placePrefilledRef = useRef(false);
-
-  useEffect(() => {
-    placePrefilledRef.current = false;
-  }, [resolvedImageId, action]);
-
-  useEffect(() => {
-    if (action !== 'edit-time-place') return;
-    if (!detail) return;
-    if (detail.analysis?.confirmedLocation?.label) return;
-    if (placePrefilledRef.current) return;
-
-    const { nearbyPlaceSuggestion, exactAddressSuggestion } = placeResolution;
-    if (!nearbyPlaceSuggestion && !exactAddressSuggestion) return;
-
-    placePrefilledRef.current = true;
-
-    if (nearbyPlaceSuggestion) {
-      setLocationLabel(nearbyPlaceSuggestion.label);
-      setSavedLocationLabel(nearbyPlaceSuggestion.label);
-    }
-    if (exactAddressSuggestion) {
-      const fullAddress = [exactAddressSuggestion.label, exactAddressSuggestion.detail]
-        .filter(Boolean)
-        .join(', ');
-      const parsed = parseAddressParts(fullAddress);
-      const country =
-        exactAddressSuggestion.country?.trim() ||
-        nearbyPlaceSuggestion?.country?.trim() ||
-        parsed.country;
-      setLocationAddress(parsed.street);
-      setSavedLocationAddress(parsed.street);
-      setLocationCityStateZip(parsed.cityStateZip);
-      setSavedLocationCityStateZip(parsed.cityStateZip);
-      setLocationCountry(country);
-      setSavedLocationCountry(country);
-    } else if (nearbyPlaceSuggestion?.country?.trim()) {
-      const country = nearbyPlaceSuggestion.country.trim();
-      setLocationCountry(country);
-      setSavedLocationCountry(country);
-    }
-  }, [action, detail, placeResolution]);
-
   function applyDetail(payload: TendDetail) {
     setDetail(payload);
     const url = getPreviewMediaUrl({ mediaType: payload.mediaType, filename: payload.filename, posterFilename: payload.posterFilename });
@@ -554,39 +434,8 @@ export default function TendActionScreen({ action }: { action: string }) {
     }
     setNetworkValue(Boolean(payload.shareToNetwork));
     setKeepPrivateValue(Boolean(payload.keepPrivate));
-    // Populate time/date
-    const capturedAt = payload.analysis?.capturedAt;
-    if (capturedAt) {
-      const d = new Date(capturedAt);
-      if (!Number.isNaN(d.getTime())) {
-        // datetime-local expects "YYYY-MM-DDTHH:MM"
-        const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-          .toISOString()
-          .slice(0, 16);
-        setTimeDateValue(local);
-      }
-    }
-    // Populate location
-    const loc = payload.analysis?.confirmedLocation;
-    const label = loc?.label || '';
-    const fullAddress = loc?.detail || '';
-    const parsedAddress = parseAddressParts(fullAddress);
-    const lat = payload.analysis?.latitude ?? loc?.latitude ?? null;
-    const lng = payload.analysis?.longitude ?? loc?.longitude ?? null;
-    const latStr = lat != null ? parseFloat(lat.toFixed(5)).toString() : '';
-    const lngStr = lng != null ? parseFloat(lng.toFixed(5)).toString() : '';
-    setLocationLabel(label);
-    setLocationAddress(parsedAddress.street);
-    setLocationCityStateZip(parsedAddress.cityStateZip);
-    setLocationCountry(parsedAddress.country);
-    setLocationLatitude(latStr);
-    setLocationLongitude(lngStr);
-    setSavedLocationLabel(label);
-    setSavedLocationAddress(parsedAddress.street);
-    setSavedLocationCityStateZip(parsedAddress.cityStateZip);
-    setSavedLocationCountry(parsedAddress.country);
-    setSavedLocationLat(latStr);
-    setSavedLocationLng(lngStr);
+    // Time/date and location/GPS state lives in EditTimePlaceSlider now;
+    // it syncs from `detail` via its own useEffect.
     // Populate frame crop
     if (payload.cropX != null && payload.cropY != null) {
       setSavedFrameCrop({ x: payload.cropX, y: payload.cropY });
@@ -806,71 +655,6 @@ export default function TendActionScreen({ action }: { action: string }) {
     return payload as ContributorDetail;
   }
 
-  async function saveTimeDate() {
-    if (!resolvedImageId || !timeDateValue) return;
-    setTimeDateSaving(true);
-    setStatus('');
-    try {
-      const response = await fetch(`/api/images/${resolvedImageId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ capturedAt: new Date(timeDateValue).toISOString() }),
-      });
-      setStatus(response.ok ? 'Time & date saved.' : 'Failed to save time & date.');
-      if (response.ok) await refreshDetail();
-    } catch {
-      setStatus('Failed to save time & date.');
-    } finally {
-      setTimeDateSaving(false);
-    }
-  }
-
-  async function saveLocation() {
-    if (!resolvedImageId || !locationLabel.trim()) {
-      setStatus('A location name is required.');
-      return;
-    }
-    setLocationSaving(true);
-    setStatus('');
-    try {
-      const composedDetail = [locationAddress, locationCityStateZip, locationCountry]
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .join(', ') || null;
-      const body: Record<string, unknown> = {
-        label: locationLabel.trim(),
-        detail: composedDetail,
-        kind: 'place',
-      };
-      const lat = parseFloat(locationLatitude);
-      const lng = parseFloat(locationLongitude);
-      if (!Number.isNaN(lat)) body.latitude = lat;
-      if (!Number.isNaN(lng)) body.longitude = lng;
-
-      const response = await fetch(`/api/images/${resolvedImageId}/location-suggestions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (response.ok) {
-        setSavedLocationLabel(locationLabel.trim());
-        setSavedLocationAddress(locationAddress.trim());
-        setSavedLocationCityStateZip(locationCityStateZip.trim());
-        setSavedLocationCountry(locationCountry.trim());
-        setSavedLocationLat(locationLatitude);
-        setSavedLocationLng(locationLongitude);
-        setStatus('Location saved.');
-        clearPlaceResolutionCache(resolvedImageId);
-        await refreshDetail();
-      } else {
-        setStatus('Failed to save location.');
-      }
-    } catch {
-      setStatus('Failed to save location.');
-    } finally {
-      setLocationSaving(false);
-    }
-  }
 
   async function saveFrame() {
     if (!resolvedImageId) return;
@@ -1748,156 +1532,12 @@ export default function TendActionScreen({ action }: { action: string }) {
           ) : null}
 
           {action === 'edit-time-place' ? (
-            <>
-              {/* Date & Time */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <Calendar size={17} color="var(--text-secondary)" strokeWidth={1.6} />
-                  <h3 className="text-white font-medium text-base">Time &amp; Date</h3>
-                </div>
-                <input
-                  type="datetime-local"
-                  value={timeDateValue}
-                  onChange={(e) => setTimeDateValue(e.target.value)}
-                  className="w-full h-12 px-4 rounded-xl text-sm text-white outline-none cursor-pointer"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', colorScheme: 'dark' }}
-                />
-              </div>
-
-              {/* Location fields */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <MapPin size={17} color="var(--text-secondary)" strokeWidth={1.6} />
-                  <h3 className="text-white font-medium text-base">Place</h3>
-                </div>
-                <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                  <input
-                    type="text"
-                    value={locationLabel}
-                    onChange={(e) => setLocationLabel(e.target.value)}
-                    placeholder="Name of location"
-                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                  />
-                  <input
-                    type="text"
-                    value={locationAddress}
-                    onChange={(e) => setLocationAddress(e.target.value)}
-                    placeholder="Address"
-                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                    style={{ borderTop: '1px solid var(--border-subtle)' }}
-                  />
-                  <input
-                    type="text"
-                    value={locationCityStateZip}
-                    onChange={(e) => setLocationCityStateZip(e.target.value)}
-                    placeholder="City, State ZIP"
-                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                    style={{ borderTop: '1px solid var(--border-subtle)' }}
-                  />
-                  <input
-                    type="text"
-                    value={locationCountry}
-                    onChange={(e) => setLocationCountry(e.target.value)}
-                    placeholder="Country"
-                    className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                    style={{ borderTop: '1px solid var(--border-subtle)' }}
-                  />
-                </div>
-              </div>
-
-              {/* GPS coordinates */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <MapPin size={17} color="var(--text-secondary)" strokeWidth={1.6} />
-                  <h3 className="text-white font-medium text-base">GPS Data</h3>
-                </div>
-                <div className="rounded-xl px-4 flex items-center gap-2 min-h-[48px]" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                  {locationLatitude && locationLongitude ? (
-                    <>
-                      <a
-                        href={`https://maps.google.com/?q=${locationLatitude},${locationLongitude}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-1 py-3 text-sm text-white/80"
-                      >
-                        {locationLatitude}, {locationLongitude}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => void navigator.clipboard.writeText(`${locationLatitude}, ${locationLongitude}`)}
-                        className="flex-shrink-0 p-1 cursor-pointer"
-                        aria-label="Copy coordinates"
-                      >
-                        <Copy size={15} color="var(--text-secondary)" strokeWidth={1.6} />
-                      </button>
-                    </>
-                  ) : (
-                    <input
-                      type="text"
-                      value={locationLatitude || locationLongitude}
-                      onChange={(e) => {
-                        const parts = e.target.value.split(',');
-                        setLocationLatitude(parts[0]?.trim() ?? '');
-                        setLocationLongitude(parts[1]?.trim() ?? '');
-                      }}
-                      placeholder="Latitude, Longitude"
-                      className="flex-1 h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Combined save */}
-              <div className="flex gap-3">
-                <Link
-                  href={tendModalHref}
-                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
-                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-                >
-                  Cancel
-                </Link>
-                {(() => {
-                  const capturedAt = detail?.analysis?.capturedAt;
-                  let savedTimeDateValue = '';
-                  if (capturedAt) {
-                    const d = new Date(capturedAt);
-                    if (!Number.isNaN(d.getTime())) {
-                      savedTimeDateValue = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                    }
-                  }
-                  const isTimeDateDirty = Boolean(timeDateValue) && timeDateValue !== savedTimeDateValue;
-                  const isLocationDirty =
-                    locationLabel !== savedLocationLabel ||
-                    locationAddress !== savedLocationAddress ||
-                    locationCityStateZip !== savedLocationCityStateZip ||
-                    locationCountry !== savedLocationCountry ||
-                    locationLatitude !== savedLocationLat ||
-                    locationLongitude !== savedLocationLng;
-                  const isDirty = isTimeDateDirty || (Boolean(locationLabel.trim()) && isLocationDirty);
-                  const isSaving = timeDateSaving || locationSaving;
-                  async function saveAll() {
-                    if (isTimeDateDirty) await saveTimeDate();
-                    if (Boolean(locationLabel.trim()) && isLocationDirty) await saveLocation();
-                  }
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => void saveAll()}
-                      disabled={isSaving || !isDirty}
-                      className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-                      style={{
-                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
-                        border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-                        minHeight: 44,
-                        cursor: isDirty ? 'pointer' : 'default',
-                      }}
-                    >
-                      {isSaving ? 'Saving...' : 'Save'}
-                    </button>
-                  );
-                })()}
-              </div>
-            </>
+            <EditTimePlaceSlider
+              detail={detail}
+              imageId={resolvedImageId}
+              refreshDetail={refreshDetail}
+              onStatus={setStatus}
+            />
           ) : null}
 
           {action === 'frame' ? (
