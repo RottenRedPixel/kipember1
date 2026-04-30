@@ -3,19 +3,20 @@ import {
   applyUserSessionCookie,
   claimMemoriesForUser,
   createUserSession,
+  getPhoneAccountEmail,
   hashPassword,
   normalizeEmail,
   normalizePhone,
 } from '@/lib/auth-server';
-import { createUserAccount, findUserByEmail } from '@/lib/auth-users';
+import { createUserAccount, findUserByEmail, findUserByPhone } from '@/lib/auth-users';
 
 export async function POST(request: NextRequest) {
   try {
     const { firstName, lastName, email, phoneNumber, password } = await request.json();
 
-    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+    if (!phoneNumber || typeof phoneNumber !== 'string' || !password || typeof password !== 'string') {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Phone number and password are required' },
         { status: 400 }
       );
     }
@@ -27,16 +28,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const normalizedEmail = normalizeEmail(email);
     const normalizedPhone = normalizePhone(phoneNumber);
-
-    const existingUser = await findUserByEmail(normalizedEmail);
-
-    if (existingUser) {
+    if (!normalizedPhone) {
       return NextResponse.json(
-        { error: 'An account with that email already exists' },
+        { error: 'Please enter a valid phone number' },
         { status: 400 }
       );
+    }
+
+    const providedEmail = typeof email === 'string' && email.trim() ? normalizeEmail(email) : null;
+    const normalizedEmail = providedEmail ?? getPhoneAccountEmail(normalizedPhone);
+
+    const existingByPhone = await findUserByPhone(normalizedPhone);
+    if (existingByPhone) {
+      return NextResponse.json(
+        { error: 'An account with that phone number already exists' },
+        { status: 400 }
+      );
+    }
+
+    if (providedEmail) {
+      const existingByEmail = await findUserByEmail(providedEmail);
+      if (existingByEmail) {
+        return NextResponse.json(
+          { error: 'An account with that email already exists' },
+          { status: 400 }
+        );
+      }
     }
 
     const user = await createUserAccount({

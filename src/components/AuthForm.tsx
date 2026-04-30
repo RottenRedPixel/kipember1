@@ -36,7 +36,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
         body: JSON.stringify({
           firstName: isSignup ? form.firstName.trim() || undefined : undefined,
           lastName: isSignup ? form.lastName.trim() || undefined : undefined,
-          email: form.email,
+          email: isSignup ? form.email.trim() || undefined : form.email,
           phoneNumber: isSignup ? form.phoneNumber.trim() || undefined : undefined,
           password: form.password,
         }),
@@ -102,25 +102,26 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
               />
             </div>
           ) : null}
-          <Field
-            label="Email"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={handleChange}
-            required
-          />
           {isSignup ? (
             <Field
-              label="Phone Number (optional)"
+              label="Phone Number"
               name="phoneNumber"
               type="tel"
               placeholder="Phone number"
               value={form.phoneNumber}
               onChange={handleChange}
+              required
             />
           ) : null}
+          <Field
+            label={isSignup ? 'Email (optional)' : 'Email'}
+            name="email"
+            type="email"
+            placeholder="you@example.com"
+            value={form.email}
+            onChange={handleChange}
+            required={!isSignup}
+          />
           <Field
             label="Password"
             name="password"
