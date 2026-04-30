@@ -93,7 +93,7 @@ function formatDate(value: string | null | undefined) {
   return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
-export default function KipemberSnapshotEditor({
+export default function EditSnapshotSlider({
   detail,
   imageId,
   refreshDetail,

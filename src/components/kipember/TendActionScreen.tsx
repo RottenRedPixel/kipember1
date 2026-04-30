@@ -18,7 +18,7 @@ import KipemberWikiContent, {
   type KipemberContributor,
   type KipemberWikiDetail,
 } from '@/components/kipember/KipemberWikiContent';
-import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor';
+import EditSnapshotSlider from '@/components/kipember/tend/EditSnapshotSlider';
 import EditTitleSlider from '@/components/kipember/tend/EditTitleSlider';
 import EditTimePlaceSlider from '@/components/kipember/tend/EditTimePlaceSlider';
 import SettingsSlider from '@/components/kipember/tend/SettingsSlider';
@@ -444,7 +444,7 @@ export default function TendActionScreen({ action }: { action: string }) {
           ) : null}
 
           {action === 'edit-snapshot' ? (
-            <KipemberSnapshotEditor
+            <EditSnapshotSlider
               detail={detail}
               imageId={resolvedImageId}
               refreshDetail={refreshDetail}
