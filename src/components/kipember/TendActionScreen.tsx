@@ -9,7 +9,7 @@ declare global {
 }
 
 import Link from 'next/link';
-import { Calendar, ChevronLeft, ChevronRight, Copy, Lightbulb, MapPin, MessageSquarePlus, Pencil, Phone, Settings, ShieldUser, TicketSlash, User, UserRound, Users, X } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Copy, MapPin, MessageSquarePlus, Pencil, Phone, Settings, ShieldUser, User, UserRound, X } from 'lucide-react';
 import Cropper from 'react-easy-crop';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -21,6 +21,7 @@ import KipemberWikiContent, {
   type KipemberWikiDetail,
 } from '@/components/kipember/KipemberWikiContent';
 import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor';
+import EditTitleSlider from '@/components/kipember/tend/EditTitleSlider';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
 import {
   usePlaceResolution,
@@ -151,20 +152,6 @@ type ImageTag = {
   topPct?: number | null;
   widthPct?: number | null;
   heightPct?: number | null;
-};
-
-type TitleQuoteSuggestion = {
-  title: string;
-  contributorName: string;
-  quote: string;
-  source: 'voice' | 'text';
-};
-
-type TitleSuggestionResponse = {
-  analysisSuggestions: string[];
-  contextSuggestions: string[];
-  contributorQuotes: TitleQuoteSuggestion[];
-  suggestions: string[];
 };
 
 type FaceTag = {
@@ -446,12 +433,8 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [callingContributorId, setCallingContributorId] = useState('');
   const [images, setImages] = useState<Array<{ id: string }>>([]);
   const [status, setStatus] = useState('');
-  const [titleValue, setTitleValue] = useState('');
-  const [titleSuggestions, setTitleSuggestions] = useState<TitleSuggestionResponse | null>(null);
-  const [titlePreferredPeopleIds, setTitlePreferredPeopleIds] = useState<Set<string>>(new Set());
-  const [titleSuggestionsLoading, setTitleSuggestionsLoading] = useState(false);
-  const [titleSuggestionsRefreshing, setTitleSuggestionsRefreshing] = useState(false);
-  const [titleSuggestionsError, setTitleSuggestionsError] = useState('');
+  // Title slider state moved to EditTitleSlider — kept this comment as a
+  // breadcrumb so future migrations of other sliders see the pattern.
   const [networkValue, setNetworkValue] = useState(false);
   const [keepPrivateValue, setKeepPrivateValue] = useState(false);
   const [deletingImage, setDeletingImage] = useState(false);
@@ -569,7 +552,6 @@ export default function TendActionScreen({ action }: { action: string }) {
       sessionStorage.setItem(`cover-${resolvedImageId}`, url);
       setCachedCoverUrl(url);
     }
-    setTitleValue(payload.title || payload.originalName?.replace(/\.[^.]+$/, '') || '');
     setNetworkValue(Boolean(payload.shareToNetwork));
     setKeepPrivateValue(Boolean(payload.keepPrivate));
     // Populate time/date
@@ -649,73 +631,6 @@ export default function TendActionScreen({ action }: { action: string }) {
     const t = setTimeout(() => { frameInitRef.current = true; }, 150);
     return () => clearTimeout(t);
   }, [action]);
-
-  useEffect(() => {
-    if (action !== 'edit-title' || !resolvedImageId) {
-      setTitleSuggestions(null);
-      setTitleSuggestionsLoading(false);
-      setTitleSuggestionsRefreshing(false);
-      setTitleSuggestionsError('');
-      return;
-    }
-
-    let cancelled = false;
-
-    async function loadSuggestions(refresh = false) {
-      if (refresh) {
-        setTitleSuggestionsRefreshing(true);
-      } else {
-        setTitleSuggestionsLoading(true);
-      }
-
-      setTitleSuggestionsError('');
-
-      try {
-        const response = await fetch(
-          `/api/images/${resolvedImageId}/title-suggestions${refresh ? '?refresh=1' : ''}`,
-          { cache: 'no-store' }
-        );
-        const payload = (await response.json().catch(() => null)) as
-          | TitleSuggestionResponse
-          | { error?: string }
-          | null;
-
-        if (cancelled) {
-          return;
-        }
-
-        if (!response.ok || !payload || !('suggestions' in payload)) {
-          setTitleSuggestions(null);
-          setTitleSuggestionsError(
-            payload && 'error' in payload
-              ? payload.error || 'Failed to load title suggestions.'
-              : 'Failed to load title suggestions.'
-          );
-          return;
-        }
-
-        setTitleSuggestions(payload);
-      } catch (error) {
-        if (!cancelled) {
-          setTitleSuggestions(null);
-          setTitleSuggestionsError(
-            error instanceof Error ? error.message : 'Failed to load title suggestions.'
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setTitleSuggestionsLoading(false);
-          setTitleSuggestionsRefreshing(false);
-        }
-      }
-    }
-
-    void loadSuggestions();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [action, resolvedImageId]);
 
   useEffect(() => {
     if (action !== 'contributors' || !view || view === 'add') {
@@ -889,63 +804,6 @@ export default function TendActionScreen({ action }: { action: string }) {
     setSelectedContributorDetail(payload as ContributorDetail);
     setDetailError('');
     return payload as ContributorDetail;
-  }
-
-  async function saveTitle() {
-    if (!resolvedImageId) {
-      return;
-    }
-    const response = await fetch(`/api/images/${resolvedImageId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: titleValue }),
-    });
-    setStatus(response.ok ? 'Title saved.' : 'Failed to save title.');
-    await refreshDetail();
-  }
-
-  async function refreshTitleSuggestions() {
-    if (!resolvedImageId) {
-      return;
-    }
-
-    setTitleSuggestionsRefreshing(true);
-    setTitleSuggestionsError('');
-
-    try {
-      const params = new URLSearchParams({ refresh: '1' });
-      const preferredNames = (detail?.tags || [])
-        .filter((tag) => titlePreferredPeopleIds.has(tag.id))
-        .map((tag) => tag.label)
-        .filter(Boolean);
-      if (preferredNames.length > 0) params.set('preferredPeople', preferredNames.join(','));
-      const response = await fetch(`/api/images/${resolvedImageId}/title-suggestions?${params.toString()}`, {
-        cache: 'no-store',
-      });
-      const payload = (await response.json().catch(() => null)) as
-        | TitleSuggestionResponse
-        | { error?: string }
-        | null;
-
-      if (!response.ok || !payload || !('suggestions' in payload)) {
-        setTitleSuggestions(null);
-        setTitleSuggestionsError(
-          payload && 'error' in payload
-            ? payload.error || 'Failed to refresh title suggestions.'
-            : 'Failed to refresh title suggestions.'
-        );
-        return;
-      }
-
-      setTitleSuggestions(payload);
-      setStatus('Title suggestions refreshed.');
-    } catch (error) {
-      setTitleSuggestionsError(
-        error instanceof Error ? error.message : 'Failed to refresh title suggestions.'
-      );
-    } finally {
-      setTitleSuggestionsRefreshing(false);
-    }
   }
 
   async function saveTimeDate() {
@@ -1773,150 +1631,12 @@ export default function TendActionScreen({ action }: { action: string }) {
           {action === 'view-wiki' ? <KipemberWikiContent detail={detail} /> : null}
 
           {action === 'edit-title' ? (
-            <>
-              {/* Ember title input */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <TicketSlash size={17} color="var(--text-secondary)" strokeWidth={1.6} />
-                  <h3 className="text-white font-medium text-base">Title</h3>
-                </div>
-              <div
-                className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-              >
-                <input
-                  value={titleValue}
-                  onChange={(event) => setTitleValue(event.target.value.slice(0, 40))}
-                  placeholder="Ember title"
-                  maxLength={40}
-                  className="w-full px-0 py-2 text-base font-medium text-white placeholder-white/30 outline-none bg-transparent"
-                />
-                {(detail?.titleUpdatedAt || detail?.createdAt) ? (
-                  <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">
-                    {detail.titleUpdatedAt ? 'Last updated' : 'Created'}:{' '}
-                    {new Date(detail.titleUpdatedAt ?? detail.createdAt).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </p>
-                ) : null}
-              </div>
-              </div>
-
-              {/* Smart title suggestions */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <span style={{ color: 'var(--text-secondary)' }}><Lightbulb size={17} /></span>
-                  <h3 className="text-white font-medium text-base">Title Ideas</h3>
-                </div>
-              <WikiCard>
-
-                {titleSuggestionsLoading ? (
-                  <p className="text-white/45 text-sm">Loading suggestions...</p>
-                ) : null}
-
-                {titleSuggestionsError ? (
-                  <p className="text-white/45 text-sm">{titleSuggestionsError}</p>
-                ) : null}
-
-                {!titleSuggestionsLoading && !titleSuggestionsError && titleSuggestions ? (
-                  <div className="flex flex-col gap-4">
-                    {[...titleSuggestions.analysisSuggestions, ...titleSuggestions.contextSuggestions].length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {[...titleSuggestions.analysisSuggestions, ...titleSuggestions.contextSuggestions].map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => setTitleValue(suggestion)}
-                            className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
-                            style={{
-                              background:
-                                titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
-                                  ? 'rgba(249,115,22,0.22)'
-                                  : 'rgba(255,255,255,0.05)',
-                              border:
-                                titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
-                                  ? '1px solid rgba(249,115,22,0.7)'
-                                  : '1px solid rgba(255,255,255,0.08)',
-                            }}
-                          >
-                            {suggestion}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-
-                  </div>
-                ) : null}
-              </WikiCard>
-              </div>
-
-              {/* People hints */}
-              {detail?.tags && detail.tags.length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2">
-                    <span style={{ color: 'var(--text-secondary)' }}><Users size={17} /></span>
-                    <h3 className="text-white font-medium text-base">People</h3>
-                  </div>
-                <WikiCard>
-                  <div className="flex flex-col gap-2">
-                    {detail.tags.map((tag) => (
-                      <label key={tag.id} className="flex items-center gap-3 cursor-pointer" style={{ minHeight: 36 }}>
-                        <input
-                          type="checkbox"
-                          checked={titlePreferredPeopleIds.has(tag.id)}
-                          onChange={(e) => {
-                            setTitlePreferredPeopleIds((prev) => {
-                              const next = new Set(prev);
-                              if (e.target.checked) next.add(tag.id);
-                              else next.delete(tag.id);
-                              return next;
-                            });
-                          }}
-                          className="accent-orange-500 w-4 h-4 shrink-0"
-                        />
-                        <span className="text-white text-sm">{tag.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">Check names to prefer in title suggestions.</p>
-                </WikiCard>
-                </div>
-              ) : null}
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={refreshTitleSuggestions}
-                  disabled={titleSuggestionsRefreshing || titleSuggestionsLoading}
-                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
-                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-                >
-                  {titleSuggestionsRefreshing ? 'Regenerating...' : 'Regen Ideas'}
-                </button>
-                {(() => {
-                  const savedTitleValue = detail ? (detail.title || detail.originalName?.replace(/\.[^.]+$/, '') || '') : '';
-                  const isTitleDirty = titleValue.trim() !== savedTitleValue.trim();
-                  return (
-                    <button
-                      type="button"
-                      onClick={saveTitle}
-                      disabled={!isTitleDirty}
-                      className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-                      style={{
-                        background: isTitleDirty ? '#f97316' : 'var(--bg-surface)',
-                        border: isTitleDirty ? 'none' : '1px solid var(--border-subtle)',
-                        minHeight: 44,
-                        cursor: isTitleDirty ? 'pointer' : 'default',
-                      }}
-                    >
-                      Save
-                    </button>
-                  );
-                })()}
-              </div>
-            </>
+            <EditTitleSlider
+              detail={detail}
+              imageId={resolvedImageId}
+              refreshDetail={refreshDetail}
+              onStatus={setStatus}
+            />
           ) : null}
 
           {action === 'edit-snapshot' ? (
