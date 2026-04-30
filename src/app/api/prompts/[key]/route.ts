@@ -30,6 +30,31 @@ async function requireAuth() {
   return auth;
 }
 
+export async function GET(_request: NextRequest, context: RouteContext) {
+  const authResult = await requireAuth();
+  if (authResult instanceof NextResponse) return authResult;
+
+  const { key } = await context.params;
+  if (!APPROVED_PROMPT_KEYS.has(key)) {
+    return NextResponse.json({ error: 'unknown prompt key' }, { status: 404 });
+  }
+
+  const row = await prisma.promptOverride.findUnique({
+    where: { key },
+    select: { key: true, body: true, updatedAt: true },
+  });
+
+  if (!row) {
+    return NextResponse.json({ key, body: null, updatedAt: null });
+  }
+
+  return NextResponse.json({
+    key: row.key,
+    body: row.body,
+    updatedAt: row.updatedAt.toISOString(),
+  });
+}
+
 export async function POST(request: NextRequest, context: RouteContext) {
   const authResult = await requireAuth();
   if (authResult instanceof NextResponse) return authResult;
