@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Clock, FileText, Mic, ScanEye, Sliders, Users } from 'lucide-react';
+import { ChevronDown, Clock, FileText, ScanEye, Users } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type {
   KipemberAttachment,
@@ -8,13 +8,6 @@ import type {
   KipemberVoiceCallClip,
 } from '@/components/kipember/KipemberWikiContent';
 import { type EmberMediaType } from '@/lib/media';
-
-type VoiceOption = {
-  voiceId: string;
-  name: string;
-  label: string;
-  category: string;
-};
 
 type SnapshotDetail = {
   id: string;
@@ -42,14 +35,6 @@ type SnapshotDetail = {
     updatedAt: string;
   } | null;
 };
-
-const STYLE_OPTIONS = [
-  { value: 'documentary', label: 'Documentary' },
-  { value: 'publicRadio', label: 'Public Radio' },
-  { value: 'newsReport', label: 'News Report' },
-  { value: 'podcastNarrative', label: 'Podcast Narrative' },
-  { value: 'movieTrailer', label: 'Movie Trailer' },
-];
 
 function SnapshotCard({ children }: { children: React.ReactNode }) {
   return (
@@ -108,13 +93,9 @@ export default function EditSnapshotSlider({
   const [durationSeconds, setDurationSeconds] = useState(30);
   const [style, setStyle] = useState('documentary');
   const [voiceId, setVoiceId] = useState('');
-  const [voices, setVoices] = useState<VoiceOption[]>([]);
-  const [loadingVoices, setLoadingVoices] = useState(false);
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState('');
-  const [styleOpen, setStyleOpen] = useState(false);
-  const [voiceOpen, setVoiceOpen] = useState(false);
   const [requiredPeopleIds, setRequiredPeopleIds] = useState<Set<string>>(new Set());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -135,17 +116,6 @@ export default function EditSnapshotSlider({
     setStyle(detail?.snapshot?.style || 'documentary');
     setVoiceId(detail?.snapshot?.emberVoiceId || '');
   }, [detail]);
-
-  useEffect(() => {
-    setLoadingVoices(true);
-    fetch('/api/snapshot/voices')
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data?.voices)) setVoices(data.voices);
-      })
-      .catch(() => undefined)
-      .finally(() => setLoadingVoices(false));
-  }, []);
 
   // Auto-resize textarea to fit content
   useEffect(() => {
@@ -312,78 +282,6 @@ export default function EditSnapshotSlider({
           </SnapshotCard>
         </SnapshotSection>
       )}
-
-      {/* Snapshot Style */}
-      <SnapshotSection icon={<Sliders size={17} />} title="Style">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setStyleOpen((v) => !v)}
-            disabled={!detail.canManage}
-            className="flex items-center gap-1.5 px-3 rounded-xl can-hover w-full disabled:opacity-50 cursor-pointer"
-            style={{ background: 'var(--bg-surface)', opacity: 0.9, minHeight: 44 }}
-          >
-            <span className="text-white text-xs font-medium flex-1 text-left">
-              {STYLE_OPTIONS.find((o) => o.value === style)?.label ?? style}
-            </span>
-            <ChevronDown size={13} color="var(--text-secondary)" strokeWidth={2} />
-          </button>
-          {styleOpen ? (
-            <div
-              className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-10 flex flex-col w-full"
-              style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-default)' }}
-            >
-              {STYLE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => { setStyle(opt.value); setStyleOpen(false); }}
-                  className="px-4 py-2.5 text-xs font-medium can-hover text-left"
-                  style={{ color: opt.value === style ? '#f97316' : 'var(--text-primary)', opacity: 0.9 }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </SnapshotSection>
-
-      {/* Snapshot Voice */}
-      <SnapshotSection icon={<Mic size={17} />} title="Voice">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setVoiceOpen((v) => !v)}
-            disabled={!detail.canManage || loadingVoices}
-            className="flex items-center gap-1.5 px-3 rounded-xl can-hover w-full disabled:opacity-50 cursor-pointer"
-            style={{ background: 'var(--bg-surface)', opacity: 0.9, minHeight: 44 }}
-          >
-            <span className="text-white text-xs font-medium flex-1 text-left">
-              {voices.find((v) => v.voiceId === voiceId)?.name ?? 'Default voice'}
-            </span>
-            <ChevronDown size={13} color="var(--text-secondary)" strokeWidth={2} />
-          </button>
-          {voiceOpen ? (
-            <div
-              className="absolute top-full left-0 mt-1 rounded-xl overflow-hidden z-10 flex flex-col w-full"
-              style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-default)' }}
-            >
-              {[{ voiceId: '', name: 'Default voice' }, ...voices].map((v) => (
-                <button
-                  key={v.voiceId}
-                  type="button"
-                  onClick={() => { setVoiceId(v.voiceId); setVoiceOpen(false); }}
-                  className="px-4 py-2.5 text-xs font-medium can-hover text-left"
-                  style={{ color: v.voiceId === voiceId ? '#f97316' : 'var(--text-primary)', opacity: 0.9 }}
-                >
-                  {v.name}
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </SnapshotSection>
 
       {/* Actions */}
       <div className="flex gap-3">
