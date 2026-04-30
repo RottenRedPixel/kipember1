@@ -576,9 +576,6 @@ function EmotionalClaimRow({
   const isVoice = source === 'voice';
   const sourceDisplay = sourceName.trim() || 'Someone';
   const subjectDisplay = subjectName.trim();
-  const headerLabel = subjectDisplay
-    ? `${sourceDisplay} on ${subjectDisplay}`
-    : sourceDisplay;
 
   return (
     <div
@@ -595,7 +592,15 @@ function EmotionalClaimRow({
         ) : null}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-white text-xs font-medium truncate">{headerLabel}</p>
+        <p className="text-white text-xs font-medium truncate">
+          {sourceDisplay}
+          {subjectDisplay ? (
+            <>
+              <span className="font-normal text-white/40"> on </span>
+              {subjectDisplay}
+            </>
+          ) : null}
+        </p>
         <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{value}&rdquo;</p>
       </div>
       <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
