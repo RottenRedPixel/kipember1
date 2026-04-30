@@ -10,7 +10,6 @@ declare global {
 
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, MessageSquarePlus, Pencil, Phone, Settings, ShieldUser, User, UserRound, X } from 'lucide-react';
-import Cropper from 'react-easy-crop';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { TEND_ACTIONS, TEND_ICONS } from '@/app/tend/constants';
@@ -24,6 +23,7 @@ import KipemberSnapshotEditor from '@/components/kipember/KipemberSnapshotEditor
 import EditTitleSlider from '@/components/kipember/tend/EditTitleSlider';
 import EditTimePlaceSlider from '@/components/kipember/tend/EditTimePlaceSlider';
 import SettingsSlider from '@/components/kipember/tend/SettingsSlider';
+import FrameSlider from '@/components/kipember/tend/FrameSlider';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 
@@ -376,13 +376,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   // breadcrumb so future migrations of other sliders see the pattern.
   // Settings slider state moved to SettingsSlider.
   // Time/place slider state moved to EditTimePlaceSlider.
-  const [frameCrop, setFrameCrop] = useState({ x: 0, y: 0 });
-  const [frameZoom, setFrameZoom] = useState(1);
-  const [frameCroppedArea, setFrameCroppedArea] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [savedFrameCrop, setSavedFrameCrop] = useState<{ x: number; y: number } | null>(null);
-  const [frameIsDirty, setFrameIsDirty] = useState(false);
-  const [frameResetPending, setFrameResetPending] = useState(false);
-  const [frameSaving, setFrameSaving] = useState(false);
+  // Frame slider state moved to FrameSlider.
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
   const [editingContributor, setEditingContributor] = useState(false);
@@ -400,7 +394,6 @@ export default function TendActionScreen({ action }: { action: string }) {
   const dragStart = useRef<{ clientX: number; clientY: number; origX: number; origY: number } | null>(null);
   const faceTagsRef = useRef(faceTags);
   const savePositionRef = useRef<(tagId: string) => void>(() => {});
-  const frameInitRef = useRef(false);
 
   useEffect(() => {
     if (imageId) {
@@ -435,12 +428,8 @@ export default function TendActionScreen({ action }: { action: string }) {
     // via its own useEffect.
     // Time/date and location/GPS state lives in EditTimePlaceSlider now;
     // it syncs from `detail` via its own useEffect.
-    // Populate frame crop
-    if (payload.cropX != null && payload.cropY != null) {
-      setSavedFrameCrop({ x: payload.cropX, y: payload.cropY });
-    } else {
-      setSavedFrameCrop(null);
-    }
+    // Frame crop state lives in FrameSlider now; it syncs from `detail`
+    // via its own useEffect.
   }
 
   useEffect(() => {
@@ -471,14 +460,6 @@ export default function TendActionScreen({ action }: { action: string }) {
       controller.abort();
     };
   }, [detailPath, resolvedImageId]);
-
-  // Guard: prevent react-easy-crop's mount-time onCropChange from marking frame dirty
-  useEffect(() => {
-    if (action !== 'frame') return;
-    frameInitRef.current = false;
-    const t = setTimeout(() => { frameInitRef.current = true; }, 150);
-    return () => clearTimeout(t);
-  }, [action]);
 
   useEffect(() => {
     if (action !== 'contributors' || !view || view === 'add') {
@@ -654,48 +635,6 @@ export default function TendActionScreen({ action }: { action: string }) {
     return payload as ContributorDetail;
   }
 
-
-  async function saveFrame() {
-    if (!resolvedImageId) return;
-    if (!frameResetPending && !frameCroppedArea) return;
-    setFrameSaving(true);
-    try {
-      const body = frameResetPending
-        ? { crop: null }
-        : {
-            crop: {
-              x: parseFloat((frameCroppedArea!.x + frameCroppedArea!.width / 2).toFixed(2)),
-              y: parseFloat((frameCroppedArea!.y + frameCroppedArea!.height / 2).toFixed(2)),
-              width: parseFloat(frameCroppedArea!.width.toFixed(2)),
-              height: parseFloat(frameCroppedArea!.height.toFixed(2)),
-            },
-          };
-      const response = await fetch(`/api/images/${resolvedImageId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (response.ok) {
-        if (frameResetPending) {
-          setSavedFrameCrop(null);
-          setFrameResetPending(false);
-        } else {
-          const cx = frameCroppedArea!.x + frameCroppedArea!.width / 2;
-          const cy = frameCroppedArea!.y + frameCroppedArea!.height / 2;
-          setSavedFrameCrop({ x: cx, y: cy });
-        }
-        setFrameIsDirty(false);
-        setStatus('Frame saved.');
-        await refreshDetail();
-      } else {
-        setStatus('Failed to save frame.');
-      }
-    } catch {
-      setStatus('Failed to save frame.');
-    } finally {
-      setFrameSaving(false);
-    }
-  }
 
 
   async function addContributor() {
@@ -1406,95 +1345,13 @@ export default function TendActionScreen({ action }: { action: string }) {
           ) : null}
 
           {action === 'frame' ? (
-            <>
-              {coverPhotoUrl ? (
-                <div className="flex flex-col gap-3">
-                  <div
-                    className="relative w-full rounded-xl overflow-hidden"
-                    style={{ aspectRatio: '3 / 4' }}
-                  >
-                    <Cropper
-                      image={coverPhotoUrl}
-                      crop={frameCrop}
-                      zoom={frameZoom}
-                      aspect={3 / 4}
-                      onCropChange={(c) => {
-                        setFrameCrop(c);
-                        if (frameInitRef.current) {
-                          setFrameIsDirty(true);
-                          setFrameResetPending(false);
-                        }
-                      }}
-                      onZoomChange={(z) => {
-                        setFrameZoom(z);
-                        if (frameInitRef.current) {
-                          setFrameIsDirty(true);
-                          setFrameResetPending(false);
-                        }
-                      }}
-                      onCropComplete={(croppedAreaPercentage) => {
-                        setFrameCroppedArea(croppedAreaPercentage);
-                      }}
-                      style={{
-                        containerStyle: { borderRadius: 12 },
-                        mediaStyle: {},
-                        cropAreaStyle: { border: '2px solid rgba(249,115,22,0.8)', borderRadius: 8 },
-                      }}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <input
-                      type="range"
-                      min={1}
-                      max={3}
-                      step={0.01}
-                      value={frameZoom}
-                      onChange={(e) => {
-                        setFrameZoom(Number(e.target.value));
-                        if (frameInitRef.current) {
-                          setFrameIsDirty(true);
-                          setFrameResetPending(false);
-                        }
-                      }}
-                      className="w-full"
-                      style={{ accentColor: '#f97316' }}
-                    />
-                    <p className="text-center text-xs text-white/40">Drag to reframe · Pinch or slide to zoom</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-white/40 text-sm text-center py-8">No photo available.</p>
-              )}
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFrameCrop({ x: 0, y: 0 });
-                    setFrameZoom(1);
-                    setFrameResetPending(true);
-                    setFrameIsDirty(true);
-                  }}
-                  className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
-                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: 'pointer' }}
-                >
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void saveFrame()}
-                  disabled={frameSaving || !frameIsDirty || (!frameCroppedArea && !frameResetPending)}
-                  className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-                  style={{
-                    background: frameIsDirty ? '#f97316' : 'var(--bg-surface)',
-                    border: frameIsDirty ? 'none' : '1px solid var(--border-subtle)',
-                    minHeight: 44,
-                    cursor: frameIsDirty ? 'pointer' : 'default',
-                  }}
-                >
-                  {frameSaving ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </>
+            <FrameSlider
+              detail={detail}
+              imageId={resolvedImageId}
+              coverPhotoUrl={coverPhotoUrl}
+              refreshDetail={refreshDetail}
+              onStatus={setStatus}
+            />
           ) : null}
 
           {action === 'tag-people' ? (
