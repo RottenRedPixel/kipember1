@@ -1097,7 +1097,6 @@ export default function HomeScreen({
               <>
                 <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=contributor` : '/home'} icon={PlusCircle} />
                 <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
-                <SvgItem label="View Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
               </>
             ) : (
               <>

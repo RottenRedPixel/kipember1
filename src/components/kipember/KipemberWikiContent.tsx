@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   Clock,
   FileText,
   GitCompareArrows,
@@ -536,18 +537,109 @@ function EmotionalStateCard({
   return (
     <div className="flex flex-col gap-2">
       {claims.map((claim) => {
-        const name = claim.subject || claimSourceLabelFromMetadata(claim.metadata);
+        const sourceName = claimSourceLabelFromMetadata(claim.metadata);
+        const subjectName = claim.subject?.trim() || '';
         return (
-          <ClaimRow
+          <EmotionalClaimRow
             key={claim.id}
-            name={name}
+            sourceName={sourceName}
+            sourceAvatarUrl={findAvatar(sourceName)}
+            subjectName={subjectName}
+            subjectAvatarUrl={subjectName ? findAvatar(subjectName) : null}
             value={claim.value}
             source={claim.source}
             createdAt={claim.createdAt}
-            avatarUrl={findAvatar(name)}
           />
         );
       })}
+    </div>
+  );
+}
+
+function EmotionalClaimRow({
+  sourceName,
+  sourceAvatarUrl,
+  subjectName,
+  subjectAvatarUrl,
+  value,
+  source,
+  createdAt,
+}: {
+  sourceName: string;
+  sourceAvatarUrl?: string | null;
+  subjectName: string;
+  subjectAvatarUrl?: string | null;
+  value: string;
+  source: string;
+  createdAt: string;
+}) {
+  const isVoice = source === 'voice';
+  const sourceDisplay = sourceName.trim() || 'Someone';
+  const subjectDisplay = subjectName.trim();
+  const headerLabel = subjectDisplay
+    ? `${sourceDisplay} on ${subjectDisplay}`
+    : sourceDisplay;
+
+  return (
+    <div
+      className="rounded-lg px-3 py-2 flex items-center gap-2.5"
+      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+    >
+      <div className="flex items-center flex-shrink-0" style={{ gap: 2 }}>
+        <Avatar name={sourceDisplay} avatarUrl={sourceAvatarUrl} />
+        {subjectDisplay ? (
+          <>
+            <ChevronRight size={11} className="text-white/40" strokeWidth={2.5} />
+            <Avatar name={subjectDisplay} avatarUrl={subjectAvatarUrl} />
+          </>
+        ) : null}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-xs font-medium truncate">{headerLabel}</p>
+        <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{value}&rdquo;</p>
+      </div>
+      <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
+        {isVoice ? (
+          <Phone size={10} fill="currentColor" stroke="currentColor" />
+        ) : (
+          <MessageCircle size={10} fill="currentColor" stroke="currentColor" />
+        )}
+        <span>{relativeAt(createdAt)}</span>
+      </div>
+    </div>
+  );
+}
+
+function Avatar({
+  name,
+  avatarUrl,
+}: {
+  name: string;
+  avatarUrl?: string | null;
+}) {
+  if (avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={avatarUrl}
+        alt={name}
+        className="rounded-full object-cover flex-shrink-0"
+        style={{ width: 24, height: 24 }}
+      />
+    );
+  }
+  return (
+    <div
+      className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+      style={{
+        width: 24,
+        height: 24,
+        background: colorForName(name),
+        fontSize: 10,
+        fontWeight: 600,
+      }}
+    >
+      {initials(name)}
     </div>
   );
 }
@@ -1926,8 +2018,6 @@ export default function KipemberWikiContent({
       >
         <PlacesMentionedCard claims={placeClaims} findAvatar={findAvatar} />
       </WikiSection>
-
-      {detail?.canManage && imageId ? <MemoryReconciliationPanel imageId={imageId} /> : null}
 
     </div>
   );
