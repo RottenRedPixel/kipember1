@@ -5,6 +5,7 @@ import { getAvatarUrl } from '@/lib/avatar';
 import { prisma } from '@/lib/db';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AccountScreen from '@/components/kipember/AccountScreen';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ imageId?: string }> }) {
   const auth = await getCurrentAuth();
@@ -22,7 +23,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     ? getPreviewMediaUrl({ mediaType: image.mediaType, filename: image.filename, posterFilename: image.posterFilename ?? null })
     : null;
 
-  const userInitials = (auth.user.name || auth.user.email || 'ST')
+  const userInitials = (getUserDisplayName(auth.user) || auth.user.email || 'ST')
     .split(/\s+/)
     .filter(Boolean)
     .map((w: string) => w[0])
@@ -33,7 +34,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   return (
     <Suspense>
       <AccountScreen
-        name={auth.user.name}
+        firstName={auth.user.firstName}
+        lastName={auth.user.lastName}
         email={auth.user.email}
         phoneNumber={auth.user.phoneNumber ?? null}
         avatarUrl={avatarUrl}

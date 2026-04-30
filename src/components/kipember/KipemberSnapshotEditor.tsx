@@ -26,7 +26,8 @@ type SnapshotDetail = {
   canManage: boolean;
   owner?: {
     id: string;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
   } | null;
   attachments: KipemberAttachment[];

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { realContributorWhere } from '@/lib/contributors-pool';
 import { getAcceptedFriendIds } from '@/lib/ember-access';
 import type { EmberMediaType } from '@/lib/media';
+import { getUserDisplayName } from '@/lib/user-name';
 
 const IMAGE_SUMMARY_CACHE_TTL_MS = 15_000;
 
@@ -84,7 +85,7 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
       phoneNumber: true,
       createdAt: true,
       imageId: true,
-      user: { select: { name: true, email: true, avatarFilename: true } },
+      user: { select: { firstName: true, lastName: true, email: true, avatarFilename: true } },
     },
   });
 
@@ -94,7 +95,7 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
     const key = r.userId ?? r.email?.toLowerCase() ?? r.phoneNumber ?? `row:${r.id}`;
     if (byKey.has(key)) continue;
     const name =
-      r.user?.name ??
+      getUserDisplayName(r.user) ??
       r.name ??
       r.user?.email ??
       r.email ??

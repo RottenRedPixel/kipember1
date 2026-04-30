@@ -1,5 +1,6 @@
 import { getEmberTitle } from '@/lib/ember-title';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export const INTERVIEW_QUESTION_TYPES = ['context', 'who', 'when', 'where', 'what', 'why', 'how'] as const;
 
@@ -39,7 +40,8 @@ type InterviewContextImage = {
   tags: Array<{
     label: string;
     user: {
-      name: string | null;
+      firstName: string | null;
+      lastName: string | null;
       email: string;
     } | null;
     contributor: {
@@ -73,7 +75,7 @@ export function buildInterviewKnownContextFromImage(
   const confirmedPeople = Array.from(
     new Set(
       image.tags
-        .map((tag) => tag.user?.name || tag.contributor?.name || tag.label)
+        .map((tag) => getUserDisplayName(tag.user) || tag.contributor?.name || tag.label)
         .map((value) => value?.trim())
         .filter((value): value is string => Boolean(value))
     )

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db';
 import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { invalidateSmartTitleSuggestions } from '@/lib/smart-title-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export async function POST(
   request: NextRequest,
@@ -36,7 +37,8 @@ export async function POST(
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             phoneNumber: true,
           },
@@ -61,7 +63,7 @@ export async function POST(
 
     const tagEmail = tag.user?.email || (tag.email ? normalizeEmail(tag.email) : null);
     const tagPhoneNumber = normalizePhone(tag.user?.phoneNumber || tag.phoneNumber);
-    const tagName = tag.user?.name || tag.contributor?.name || tag.label;
+    const tagName = getUserDisplayName(tag.user) || tag.contributor?.name || tag.label;
 
     let contributor = tag.contributor
       ? await prisma.contributor.findUnique({

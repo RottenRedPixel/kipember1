@@ -1,4 +1,5 @@
 import { prisma } from '../db';
+import { getUserDisplayName } from '../user-name';
 import type { ContextRetriever } from './index';
 
 /**
@@ -66,7 +67,8 @@ export class SimpleRetriever implements ContextRetriever {
         email: string | null;
         phoneNumber: string | null;
         user: {
-          name: string | null;
+          firstName: string | null;
+          lastName: string | null;
           email: string;
         } | null;
       };
@@ -87,7 +89,8 @@ export class SimpleRetriever implements ContextRetriever {
               phoneNumber: true,
               user: {
                 select: {
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                 },
               },
@@ -132,7 +135,7 @@ export class SimpleRetriever implements ContextRetriever {
     for (const clip of voiceCallClips) {
       const contributorName =
         clip.contributor.name ||
-        clip.contributor.user?.name ||
+        getUserDisplayName(clip.contributor.user) ||
         clip.contributor.email ||
         clip.contributor.phoneNumber ||
         'Contributor';

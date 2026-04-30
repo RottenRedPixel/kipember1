@@ -3,6 +3,7 @@ import { getEmberTitle } from './ember-title';
 import { ensureImageAnalysisForImage } from './image-analysis';
 import { parseConfirmedLocationContext } from './location-suggestions';
 import { generateWiki } from './claude';
+import { getUserDisplayName } from './user-name';
 
 type ParsedEntity = {
   label: string;
@@ -300,7 +301,8 @@ async function fetchImageForWiki(imageId: string) {
       owner: {
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
         },
       },
@@ -321,7 +323,8 @@ async function fetchImageForWiki(imageId: string) {
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             },
           },
@@ -378,7 +381,8 @@ async function fetchImageForWiki(imageId: string) {
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             },
           },
@@ -401,7 +405,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   const getContributorLabel = (contributor: (typeof image.contributors)[number]) =>
     cleanInlineText(contributor.name) ||
-    cleanInlineText(contributor.user?.name) ||
+    cleanInlineText(getUserDisplayName(contributor.user)) ||
     cleanInlineText(contributor.email) ||
     cleanInlineText(contributor.phoneNumber) ||
     'Contributor';
@@ -518,7 +522,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       createdAt: Date;
     }>;
   }> = [];
-  const ownerStoryLabel = cleanInlineText(image.owner.name) || image.owner.email || 'Owner';
+  const ownerStoryLabel = cleanInlineText(getUserDisplayName(image.owner)) || image.owner.email || 'Owner';
 
   for (const contributor of image.contributors) {
     const contributorLabel = getContributorLabel(contributor);
@@ -759,14 +763,14 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   const confirmedPeople = Array.from(
     new Set(
       image.tags
-        .map((tag) => tag.user?.name || tag.contributor?.name || tag.label)
+        .map((tag) => getUserDisplayName(tag.user) || tag.contributor?.name || tag.label)
         .map((label) => label?.trim())
         .filter((label): label is string => Boolean(label))
     )
   );
   const confirmedTags = image.tags
     .map((tag) => ({
-      label: (tag.user?.name || tag.contributor?.name || tag.label || '').trim(),
+      label: (getUserDisplayName(tag.user) || tag.contributor?.name || tag.label || '').trim(),
       userId: tag.userId,
       contributorId: tag.contributorId,
       leftPct: tag.leftPct,
@@ -825,7 +829,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     });
   }
 
-  const ownerLabel = cleanInlineText(image.owner.name) || image.owner.email;
+  const ownerLabel = cleanInlineText(getUserDisplayName(image.owner)) || image.owner.email;
   const linkedContributors = image.contributors.filter(
     (contributor) => getContributorKind(contributor) === 'contributor'
   );

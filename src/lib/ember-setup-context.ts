@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
+import { getUserDisplayName } from '@/lib/user-name';
 
 function compactLines(lines: Array<string | null | undefined>) {
   return lines
@@ -20,7 +21,8 @@ export async function loadEmberSetupContext(imageId: string) {
       owner: {
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
         },
       },
@@ -57,7 +59,8 @@ export async function loadEmberSetupContext(imageId: string) {
               user: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                 },
               },
@@ -82,7 +85,8 @@ export async function loadEmberSetupContext(imageId: string) {
         include: {
           user: {
             select: {
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             },
           },
@@ -100,7 +104,8 @@ export async function loadEmberSetupContext(imageId: string) {
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             },
           },
@@ -163,7 +168,7 @@ export async function loadEmberSetupContext(imageId: string) {
   const confirmedPeople = Array.from(
     new Set(
       image.tags
-        .map((tag) => tag.user?.name || tag.contributor?.name || tag.label)
+        .map((tag) => getUserDisplayName(tag.user) || tag.contributor?.name || tag.label)
         .map((label) => label?.trim())
         .filter((label): label is string => Boolean(label))
     )
@@ -179,7 +184,7 @@ export async function loadEmberSetupContext(imageId: string) {
       contributorUserId: contributor.user?.id || contributor.userId || null,
       contributorName:
         contributor.name ||
-        contributor.user?.name ||
+        getUserDisplayName(contributor.user) ||
         contributor.email ||
         contributor.phoneNumber ||
         'Contributor',
@@ -199,7 +204,7 @@ export async function loadEmberSetupContext(imageId: string) {
         contributorUserId: contributor.user?.id || contributor.userId || null,
         contributorName:
           contributor.name ||
-          contributor.user?.name ||
+          getUserDisplayName(contributor.user) ||
           contributor.email ||
           contributor.phoneNumber ||
           'Contributor',
@@ -214,7 +219,7 @@ export async function loadEmberSetupContext(imageId: string) {
       clip.contributor.user?.id || clip.contributor.userId || null,
     contributorName:
       clip.contributor.name ||
-      clip.contributor.user?.name ||
+      getUserDisplayName(clip.contributor.user) ||
       clip.contributor.email ||
       clip.contributor.phoneNumber ||
       'Contributor',

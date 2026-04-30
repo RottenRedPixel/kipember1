@@ -8,6 +8,7 @@ import {
   invalidateFriendNetworkForUser,
 } from '@/lib/friend-network';
 import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export async function GET() {
   try {
@@ -53,12 +54,13 @@ export async function POST(request: NextRequest) {
     const targetUser =
       (await prisma.user.findUnique({
         where: { email: normalizedEmail },
-        select: { id: true, name: true, email: true, phoneNumber: true },
+        select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
       })) ||
       (await createUserAccount({
         email: normalizedEmail,
         phoneNumber: null,
-        name: null,
+        firstName: null,
+        lastName: null,
       }));
 
     const existingFriendship = await prisma.friendship.findFirst({
@@ -119,7 +121,7 @@ export async function POST(request: NextRequest) {
         });
 
     try {
-      const requesterName = auth.user.name || auth.user.email;
+      const requesterName = getUserDisplayName(auth.user) || auth.user.email;
       await sendFriendRequestEmail({
         toEmail: targetUser.email,
         requesterName,

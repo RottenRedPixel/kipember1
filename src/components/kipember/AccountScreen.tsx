@@ -15,7 +15,8 @@ import type { UnifiedContributor } from '@/lib/contributors-pool';
 type Section = 'profile' | 'contributors' | 'preferences' | 'password' | 'settings' | null;
 
 type AccountScreenProps = {
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   phoneNumber: string | null;
   avatarUrl: string | null;
@@ -82,7 +83,8 @@ function ToggleRow({
 }
 
 export default function AccountScreen({
-  name: initialName,
+  firstName: initialFirstName,
+  lastName: initialLastName,
   email: initialEmail,
   phoneNumber: initialPhone,
   avatarUrl: initialAvatarUrl,
@@ -100,14 +102,8 @@ export default function AccountScreen({
   const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Profile
-  function splitName(full: string | null) {
-    const trimmed = full?.trim() || '';
-    const [first = '', ...rest] = trimmed.split(/\s+/);
-    return { firstName: first, lastName: rest.join(' ') };
-  }
-  const { firstName: initFirst, lastName: initLast } = splitName(initialName);
-  const [firstName, setFirstName] = useState(initFirst);
-  const [lastName, setLastName] = useState(initLast);
+  const [firstName, setFirstName] = useState(initialFirstName ?? '');
+  const [lastName, setLastName] = useState(initialLastName ?? '');
   const [form, setForm] = useState({
     email: initialEmail,
     phoneNumber: initialPhone ?? '',
@@ -201,11 +197,14 @@ export default function AccountScreen({
 
   async function saveProfile() {
     setProfileStatus('');
-    const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || null;
     const res = await fetch('/api/profile', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, name }),
+      body: JSON.stringify({
+        ...form,
+        firstName: firstName.trim() || null,
+        lastName: lastName.trim() || null,
+      }),
     });
     const payload = await res.json().catch(() => ({}));
     setProfileStatus(res.ok ? 'Saved.' : payload?.error || 'Failed to save.');

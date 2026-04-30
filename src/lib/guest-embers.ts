@@ -31,12 +31,14 @@ export async function createGuestOwnerUser() {
     data: {
       email: `guest-${randomUUID()}@${GUEST_EMAIL_DOMAIN}`,
       passwordHash: hashGuestPassword(randomUUID()),
-      name: null,
+      firstName: null,
+      lastName: null,
       phoneNumber: null,
     },
     select: {
       id: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       email: true,
       phoneNumber: true,
     },
@@ -45,12 +47,12 @@ export async function createGuestOwnerUser() {
 
 export async function claimGuestMemoriesForUser({
   userId,
-  name,
+  displayName,
   email,
   phoneNumber,
 }: {
   userId: string;
-  name: string | null;
+  displayName: string | null;
   email: string;
   phoneNumber: string | null;
 }) {
@@ -116,7 +118,7 @@ export async function claimGuestMemoriesForUser({
       },
       data: {
         userId,
-        name,
+        name: displayName,
         email,
         phoneNumber: normalizedPhone,
       },

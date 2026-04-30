@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
 
     await claimMemoriesForUser({
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       phoneNumber: user.phoneNumber,
     });
@@ -41,7 +42,8 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       user: {
         id: user.id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         phoneNumber: user.phoneNumber,
       },

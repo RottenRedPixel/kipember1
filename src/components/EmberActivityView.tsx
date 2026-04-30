@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import MediaPreview from '@/components/MediaPreview';
+import { getUserDisplayName } from '@/lib/user-name';
 
 type MediaType = 'IMAGE' | 'VIDEO' | 'AUDIO';
 type ActivityTab = 'wiki' | 'media';
@@ -13,7 +14,8 @@ type ContributorRecord = {
   phoneNumber: string | null;
   inviteSent: boolean;
   user: {
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
   } | null;
 };
 
@@ -180,7 +182,7 @@ export default function EmberActivityView({
                 contributors.map((contributor, index) => {
                   const contributorLabel =
                     contributor.name ||
-                    contributor.user?.name ||
+                    getUserDisplayName(contributor.user) ||
                     contributor.email ||
                     contributor.phoneNumber ||
                     'Contributor';

@@ -4,6 +4,7 @@ import { getCurrentAuth } from '@/lib/auth-server';
 import { getAccessibleImagesForUser } from '@/lib/image-summaries';
 import MyEmbersScreen from '@/components/kipember/MyEmbersScreen';
 import { getAvatarUrl } from '@/lib/avatar';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export default async function MyEmbersPage() {
   const auth = await getCurrentAuth();
@@ -14,7 +15,7 @@ export default async function MyEmbersPage() {
     getAvatarUrl(auth.user.id),
   ]);
 
-  const userInitials = (auth.user.name || auth.user.email || 'ST')
+  const userInitials = (getUserDisplayName(auth.user) || auth.user.email || 'ST')
     .split(/\s+/)
     .filter(Boolean)
     .map((w: string) => w[0])

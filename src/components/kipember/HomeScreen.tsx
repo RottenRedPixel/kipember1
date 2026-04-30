@@ -38,10 +38,12 @@ import ContributorFlow from '@/components/kipember/workflows/ContributorFlow';
 import OwnerFlow from '@/components/kipember/workflows/OwnerFlow';
 import type { AccessibleImageSummary } from '@/lib/image-summaries';
 import { getEmberTitle } from '@/lib/ember-title';
+import { getUserDisplayName } from '@/lib/user-name';
 
 type AuthUser = {
   id: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   phoneNumber: string | null;
   avatarUrl?: string | null;
@@ -882,7 +884,7 @@ export default function HomeScreen({
 
       <AppHeader
         avatarUrl={avatarUrl}
-        userInitials={initials(profile?.name || profile?.email || 'ST')}
+        userInitials={initials(getUserDisplayName(profile) || profile?.email || 'ST')}
         userModalHref={selectedImageId ? `/account?imageId=${selectedImageId}` : '/account'}
       />
 

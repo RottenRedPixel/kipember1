@@ -4,7 +4,8 @@ const FRIEND_NETWORK_CACHE_TTL_MS = 15_000;
 
 export type FriendProfile = {
   id: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   phoneNumber: string | null;
 };
@@ -69,10 +70,10 @@ export async function getFriendNetworkForUser(
     },
     include: {
       requester: {
-        select: { id: true, name: true, email: true, phoneNumber: true },
+        select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
       },
       addressee: {
-        select: { id: true, name: true, email: true, phoneNumber: true },
+        select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
       },
     },
     orderBy: { createdAt: 'desc' },

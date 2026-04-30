@@ -6,6 +6,7 @@ import { Activity, ChevronRight, Star, Users } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
 import { getPreviewMediaUrl, type EmberMediaType } from '@/lib/media';
+import { getUserDisplayName } from '@/lib/user-name';
 
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
@@ -257,7 +258,7 @@ export default function UserHomeScreen({
   initialContributors,
   initialHomeActivity,
 }: {
-  initialProfile: { name: string | null; email: string } | null;
+  initialProfile: { firstName: string | null; lastName: string | null; email: string } | null;
   initialImages?: Array<{
     accessType: string;
     filename: string;
@@ -290,7 +291,7 @@ export default function UserHomeScreen({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const [dismissedActivity, setDismissedActivity] = useState<Set<string>>(new Set());
 
-  const displayName = initialProfile?.name || initialProfile?.email || 'Ember User';
+  const displayName = getUserDisplayName(initialProfile) || initialProfile?.email || 'Ember User';
 
   function handleFile(file: File) {
     if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
@@ -332,7 +333,7 @@ export default function UserHomeScreen({
     );
   }
 
-  const firstName = (displayName || '').split(/\s+/)[0] ?? displayName;
+  const firstName = (initialProfile?.firstName?.trim() || (displayName || '').split(/\s+/)[0]) ?? displayName;
 
   return (
     <div

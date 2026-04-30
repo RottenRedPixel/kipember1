@@ -9,7 +9,8 @@ import {
 
 export const authUserSelect = {
   id: true,
-  name: true,
+  firstName: true,
+  lastName: true,
   email: true,
   phoneNumber: true,
 } as const;
@@ -35,19 +36,22 @@ export async function findUserByPhone(phoneNumber: string) {
 export async function createUserAccount({
   email,
   phoneNumber,
-  name,
+  firstName,
+  lastName,
   passwordHash,
 }: {
   email: string;
   phoneNumber: string | null;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   passwordHash?: string;
 }) {
   const user = await prisma.user.create({
     data: {
       email: normalizeEmail(email),
       phoneNumber: normalizePhone(phoneNumber),
-      name: typeof name === 'string' && name.trim() ? name.trim() : null,
+      firstName: typeof firstName === 'string' && firstName.trim() ? firstName.trim() : null,
+      lastName: typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null,
       passwordHash: passwordHash || createTemporaryPasswordHash(),
     },
     select: authUserSelect,
@@ -81,6 +85,7 @@ export async function getOrCreatePhoneUser({
   return createUserAccount({
     email: getPhoneAccountEmail(normalizedPhone),
     phoneNumber: normalizedPhone,
-    name: null,
+    firstName: null,
+    lastName: null,
   });
 }

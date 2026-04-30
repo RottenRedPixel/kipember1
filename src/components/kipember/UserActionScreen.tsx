@@ -10,6 +10,7 @@ import { getPreviewMediaUrl } from '@/lib/media';
 import type { FriendNetworkPayload } from '@/lib/friend-network';
 import type { AccessibleImageSummary } from '@/lib/image-summaries';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
+import { getUserDisplayName } from '@/lib/user-name';
 
 type ImageSummary = AccessibleImageSummary & {
   mediaType: EmberMediaType;
@@ -18,7 +19,8 @@ type ImageSummary = AccessibleImageSummary & {
 
 type Profile = {
   id: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   phoneNumber: string | null;
   avatarUrl?: string | null;
@@ -65,7 +67,8 @@ export default function UserActionScreen({
   const [images, setImages] = useState<ImageSummary[]>(initialImages);
   const [friends, setFriends] = useState<FriendNetworkPayload | null>(initialFriends);
   const [form, setForm] = useState({
-    name: initialProfile?.name || '',
+    firstName: initialProfile?.firstName || '',
+    lastName: initialProfile?.lastName || '',
     email: initialProfile?.email || '',
     phoneNumber: initialProfile?.phoneNumber || '',
   });
@@ -104,7 +107,8 @@ export default function UserActionScreen({
           }
           const payload = (await response.json()) as { user: Profile };
           setForm({
-            name: payload.user.name || '',
+            firstName: payload.user.firstName || '',
+            lastName: payload.user.lastName || '',
             email: payload.user.email,
             phoneNumber: payload.user.phoneNumber || '',
           });
@@ -357,7 +361,7 @@ export default function UserActionScreen({
                       <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-white text-xl font-medium">
-                        {initials(form.name || form.email || 'U')}
+                        {initials(getUserDisplayName(form) || form.email || 'U')}
                       </span>
                     )}
                   </div>
@@ -378,7 +382,8 @@ export default function UserActionScreen({
                 <p className="text-white/30 text-xs font-medium mb-3">Profile</p>
                 <div className="flex flex-col">
                   {[
-                    { key: 'name', placeholder: 'Your name' },
+                    { key: 'firstName', placeholder: 'First name' },
+                    { key: 'lastName', placeholder: 'Last name' },
                     { key: 'email', placeholder: 'Email address' },
                     { key: 'phoneNumber', placeholder: 'Phone number' },
                   ].map((field, index) => (
@@ -433,7 +438,7 @@ export default function UserActionScreen({
                 <div className="flex flex-col gap-2">
                   {(friends?.friends || []).map((friend) => (
                     <div key={friend.id} className="text-sm text-white/90">
-                      {friend.user.name || friend.user.email}
+                      {getUserDisplayName(friend.user) || friend.user.email}
                     </div>
                   ))}
                   {friends && friends.friends.length === 0 ? (

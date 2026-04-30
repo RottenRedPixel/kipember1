@@ -22,7 +22,8 @@ export async function GET() {
   return NextResponse.json({
     user: {
       id: auth.user.id,
-      name: auth.user.name,
+      firstName: auth.user.firstName,
+      lastName: auth.user.lastName,
       email: auth.user.email,
       phoneNumber: auth.user.phoneNumber,
       avatarUrl: userRecord?.avatarFilename ? `/api/uploads/${userRecord.avatarFilename}` : null,
@@ -38,7 +39,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { name, email, phoneNumber } = await request.json();
+    const { firstName, lastName, email, phoneNumber } = await request.json();
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -65,13 +66,15 @@ export async function PATCH(request: NextRequest) {
     const user = await prisma.user.update({
       where: { id: auth.user.id },
       data: {
-        name: typeof name === 'string' && name.trim() ? name.trim() : null,
+        firstName: typeof firstName === 'string' && firstName.trim() ? firstName.trim() : null,
+        lastName: typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null,
         email: normalizedEmail,
         phoneNumber: normalizedPhone,
       },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         phoneNumber: true,
         avatarFilename: true,
@@ -80,7 +83,8 @@ export async function PATCH(request: NextRequest) {
 
     await claimMemoriesForUser({
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       phoneNumber: user.phoneNumber,
     });
@@ -88,7 +92,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       user: {
         id: user.id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
         phoneNumber: user.phoneNumber,
         avatarUrl: user.avatarFilename ? `/api/uploads/${user.avatarFilename}` : null,

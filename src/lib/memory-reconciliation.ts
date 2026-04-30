@@ -2,6 +2,7 @@ import { chat } from '@/lib/claude';
 import { renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
+import { getUserDisplayName } from '@/lib/user-name';
 
 type ExtractedClaim = {
   claimType?: unknown;
@@ -393,7 +394,8 @@ export async function reconcileEmberMessage(messageId: string) {
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             },
           },
@@ -430,7 +432,7 @@ export async function reconcileEmberMessage(messageId: string) {
 
   const source: ReconciliationClaimSource = {
     sourceLabel:
-      message.session.user?.name ||
+      getUserDisplayName(message.session.user) ||
       message.session.contributor?.name ||
       message.session.user?.email ||
       message.session.contributor?.email ||
@@ -608,7 +610,7 @@ async function runClassificationFromContext({
       tags: {
         select: {
           label: true,
-          user: { select: { name: true } },
+          user: { select: { firstName: true, lastName: true } },
           contributor: { select: { name: true } },
         },
       },
@@ -622,7 +624,7 @@ async function runClassificationFromContext({
   const taggedPeople = Array.from(
     new Set(
       image.tags
-        .map((t) => (t.user?.name || t.contributor?.name || t.label || '').trim())
+        .map((t) => (getUserDisplayName(t.user) || t.contributor?.name || t.label || '').trim())
         .filter(Boolean)
     )
   ).join(', ');
@@ -696,7 +698,7 @@ async function runClassificationExtractor({
       },
       session: {
         include: {
-          user: { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, firstName: true, lastName: true, email: true } },
           contributor: {
             select: { id: true, name: true, email: true, phoneNumber: true },
           },
@@ -716,7 +718,7 @@ async function runClassificationExtractor({
   }
 
   const sourceLabel =
-    message.session.user?.name ||
+    getUserDisplayName(message.session.user) ||
     message.session.contributor?.name ||
     message.session.user?.email ||
     message.session.contributor?.email ||

@@ -89,11 +89,11 @@ export async function POST(request: NextRequest) {
     const [userRecord, ownedEmberCount] = await Promise.all([
       prisma.user.findUnique({
         where: { id: auth.user.id },
-        select: { name: true },
+        select: { firstName: true },
       }),
       prisma.image.count({ where: { ownerId: auth.user.id } }),
     ]);
-    const userFirstName = userRecord?.name?.trim().split(/\s+/)[0] || '';
+    const userFirstName = userRecord?.firstName?.trim() || '';
     const isFirstEmber = ownedEmberCount <= 1;
 
     const welcome = await generateEmberChatReply({

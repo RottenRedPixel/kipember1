@@ -4,6 +4,7 @@ import { ensureImageOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { invalidateSmartTitleSuggestions } from '@/lib/smart-title-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
+import { getUserDisplayName } from '@/lib/user-name';
 
 function parseOptionalPercentage(value: unknown): number | null {
   if (typeof value !== 'number' || Number.isNaN(value) || !Number.isFinite(value)) {
@@ -56,7 +57,8 @@ export async function POST(
         where: { id: userId },
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           phoneNumber: true,
         },
@@ -67,7 +69,7 @@ export async function POST(
       }
 
       linkedUserId = user.id;
-      tagLabel = user.name || user.email;
+      tagLabel = getUserDisplayName(user) || user.email;
       tagEmail = user.email;
       tagPhoneNumber = normalizePhone(user.phoneNumber);
     }
@@ -120,7 +122,8 @@ export async function POST(
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             phoneNumber: true,
           },

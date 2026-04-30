@@ -5,6 +5,7 @@ import {
   ensureImageOwnerAccess,
 } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +30,8 @@ export async function POST(request: NextRequest) {
     let linkedUser:
       | {
           id: string;
-          name: string | null;
+          firstName: string | null;
+          lastName: string | null;
           email: string;
           phoneNumber: string | null;
         }
@@ -40,7 +42,8 @@ export async function POST(request: NextRequest) {
         where: { id: userId },
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           phoneNumber: true,
         },
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
     const normalizedPhone = normalizePhone(linkedUser?.phoneNumber || phoneNumber);
     const normalizedEmail = linkedUser?.email || (typeof email === 'string' && email.trim() ? normalizeEmail(email) : null);
     const contributorName =
-      linkedUser?.name || (typeof name === 'string' && name.trim() ? name.trim() : null);
+      getUserDisplayName(linkedUser) || (typeof name === 'string' && name.trim() ? name.trim() : null);
 
     if (!normalizedPhone && !normalizedEmail && !linkedUser) {
       return NextResponse.json(
@@ -93,7 +96,8 @@ export async function POST(request: NextRequest) {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             phoneNumber: true,
           },

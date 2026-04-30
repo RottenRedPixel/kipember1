@@ -5,6 +5,7 @@ import { requireApiUser } from '@/lib/auth-server';
 import { ensureImageOwnerAccess, getImageAccessType } from '@/lib/ember-access';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export async function GET(
   request: NextRequest,
@@ -170,7 +171,8 @@ export async function GET(
               phoneNumber: true,
               user: {
                 select: {
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                 },
               },
@@ -190,7 +192,7 @@ export async function GET(
         createdAt: clip.createdAt,
         contributorName:
           clip.contributor.name ||
-          clip.contributor.user?.name ||
+          getUserDisplayName(clip.contributor.user) ||
           clip.contributor.email ||
           clip.contributor.user?.email ||
           clip.contributor.phoneNumber ||

@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
           where: { id: challenge.userId },
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             phoneNumber: true,
           },
@@ -42,7 +43,8 @@ export async function POST(request: NextRequest) {
           where: { email: challenge.email },
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             phoneNumber: true,
           },
@@ -50,13 +52,15 @@ export async function POST(request: NextRequest) {
         (await createUserAccount({
           email: challenge.email,
           phoneNumber: challenge.phoneNumber || null,
-          name: challenge.name || null,
+          firstName: challenge.firstName || null,
+          lastName: challenge.lastName || null,
         }));
     }
 
     await claimMemoriesForUser({
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       phoneNumber: user.phoneNumber,
     });

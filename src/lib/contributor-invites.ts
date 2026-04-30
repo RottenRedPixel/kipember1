@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { sendSMS } from '@/lib/twilio';
+import { getUserDisplayName } from '@/lib/user-name';
 
 const BASE_URL = getAppBaseUrl();
 
@@ -34,7 +35,8 @@ export async function sendContributorSmsInvite(
         select: {
           owner: {
             select: {
-              name: true,
+              firstName: true,
+              lastName: true,
             },
           },
         },
@@ -51,7 +53,7 @@ export async function sendContributorSmsInvite(
   }
 
   const inviteUrl = buildContributorInviteUrl(contributor.token);
-  const ownerName = contributor.image.owner.name?.trim() || 'Someone';
+  const ownerName = getUserDisplayName(contributor.image.owner) || 'Someone';
   const intro = `${ownerName} needs your help to complete a memory shared with you.`;
   const linkMessage = `Go to ${inviteUrl} to start!`;
   const emberMessage =

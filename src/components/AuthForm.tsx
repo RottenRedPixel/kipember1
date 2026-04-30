@@ -30,14 +30,12 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
     setError('');
 
     try {
-      const combinedName = [form.firstName.trim(), form.lastName.trim()]
-        .filter(Boolean)
-        .join(' ');
       const response = await fetch(`/api/auth/${mode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: isSignup ? combinedName : undefined,
+          firstName: isSignup ? form.firstName.trim() || undefined : undefined,
+          lastName: isSignup ? form.lastName.trim() || undefined : undefined,
           email: form.email,
           phoneNumber: isSignup ? form.phoneNumber.trim() || undefined : undefined,
           password: form.password,

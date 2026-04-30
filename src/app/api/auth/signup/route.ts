@@ -11,7 +11,7 @@ import { createUserAccount, findUserByEmail } from '@/lib/auth-users';
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, phoneNumber, password } = await request.json();
+    const { firstName, lastName, email, phoneNumber, password } = await request.json();
 
     if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
       return NextResponse.json(
@@ -40,7 +40,8 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await createUserAccount({
-      name: typeof name === 'string' && name.trim() ? name.trim() : null,
+      firstName: typeof firstName === 'string' && firstName.trim() ? firstName.trim() : null,
+      lastName: typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null,
       email: normalizedEmail,
       phoneNumber: normalizedPhone,
       passwordHash: hashPassword(password),
@@ -48,7 +49,8 @@ export async function POST(request: NextRequest) {
 
     await claimMemoriesForUser({
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       phoneNumber: user.phoneNumber,
     });

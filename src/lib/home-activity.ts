@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { getUserDisplayName } from '@/lib/user-name';
 
 const FACEPILE_COLORS = ['#7c3aed', '#0891b2', '#16a34a', '#b45309', '#db2777', '#2563eb', '#d97706', '#9333ea'];
 
@@ -108,10 +109,10 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
               id: true,
               name: true,
               email: true,
-              user: { select: { id: true, name: true, email: true, avatarFilename: true } },
+              user: { select: { id: true, firstName: true, lastName: true, email: true, avatarFilename: true } },
             },
           },
-          user: { select: { id: true, name: true, email: true, avatarFilename: true } },
+          user: { select: { id: true, firstName: true, lastName: true, email: true, avatarFilename: true } },
           image: {
             select: { id: true, title: true, mediaType: true, filename: true, posterFilename: true },
           },
@@ -161,7 +162,7 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
       let avatarUrl: string | null = null;
       if (linkedUser) {
         key = `u:${linkedUser.id}`;
-        name = linkedUser.name || linkedUser.email || 'Contributor';
+        name = getUserDisplayName(linkedUser) || linkedUser.email || 'Contributor';
         avatarUrl = linkedUser.avatarFilename ? `/api/uploads/${linkedUser.avatarFilename}` : null;
       } else if (s.contributor) {
         key = `c:${s.contributor.id}`;

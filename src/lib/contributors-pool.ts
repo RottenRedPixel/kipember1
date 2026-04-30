@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { getUserDisplayName } from '@/lib/user-name';
 
 /**
  * One row per unique person across all the user's owned embers.
@@ -68,7 +69,7 @@ export async function getUnifiedContributorsForUser(
       phoneNumber: true,
       userId: true,
       imageId: true,
-      user: { select: { name: true, email: true, avatarFilename: true } },
+      user: { select: { firstName: true, lastName: true, email: true, avatarFilename: true } },
       image: { select: { id: true, title: true, originalName: true } },
     },
   });
@@ -82,7 +83,7 @@ export async function getUnifiedContributorsForUser(
     let entry = byKey.get(key);
     if (!entry) {
       const displayName =
-        r.user?.name ?? r.name ?? r.user?.email ?? r.email ?? r.phoneNumber ?? 'Contributor';
+        getUserDisplayName(r.user) ?? r.name ?? r.user?.email ?? r.email ?? r.phoneNumber ?? 'Contributor';
       entry = {
         key,
         name: displayName,

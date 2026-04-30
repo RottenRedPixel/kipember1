@@ -5,6 +5,7 @@ import { normalizeEmail, normalizePhone } from '@/lib/auth-server';
 import { getCapabilityModel, renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
+import { getUserDisplayName } from '@/lib/user-name';
 
 type Confidence = 'high' | 'medium' | 'low';
 
@@ -282,11 +283,12 @@ function buildIdentityKey(tag: {
 function buildCandidateLabel(tag: {
   label: string;
   user: {
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
   } | null;
 }) {
-  return tag.user?.name || tag.label || tag.user?.email || 'Known person';
+  return getUserDisplayName(tag.user) || tag.label || tag.user?.email || 'Known person';
 }
 
 async function cropFaceBuffer(
@@ -701,7 +703,8 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
       user: {
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
         },
       },

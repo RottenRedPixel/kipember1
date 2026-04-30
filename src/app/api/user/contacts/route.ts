@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
 import { prisma } from '@/lib/db';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export async function GET() {
   const auth = await requireApiUser();
@@ -21,7 +22,7 @@ export async function GET() {
       email: true,
       inviteSent: true,
       userId: true,
-      user: { select: { name: true, avatarFilename: true } },
+      user: { select: { firstName: true, lastName: true, avatarFilename: true } },
       image: { select: { id: true, title: true, originalName: true } },
       voiceCalls: { select: { id: true } },
       emberSession: {
@@ -73,7 +74,7 @@ export async function GET() {
     .map((c) => ({
       id: c.id,
       emberId: c.image.id,
-      name: c.user?.name || c.name,
+      name: getUserDisplayName(c.user) || c.name,
       phoneNumber: c.phoneNumber,
       email: c.email,
       avatarFilename: c.user?.avatarFilename ?? null,

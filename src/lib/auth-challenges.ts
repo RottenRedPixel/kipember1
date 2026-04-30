@@ -55,13 +55,15 @@ export function getPhoneCodeTtlMinutes() {
 export async function createMagicLinkChallenge({
   email,
   phoneNumber,
-  name,
+  firstName,
+  lastName,
   userId,
   mode,
 }: {
   email: string;
   phoneNumber: string | null;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   userId: string | null;
   mode: MagicLinkMode;
 }) {
@@ -84,7 +86,8 @@ export async function createMagicLinkChallenge({
       tokenHash: hashAuthSecret(rawToken),
       email,
       phoneNumber,
-      name,
+      firstName,
+      lastName,
       userId,
       metadataJson: JSON.stringify({ mode }),
       expiresAt: getExpiry(getMagicLinkTtlMinutes()),

@@ -27,6 +27,7 @@ import FrameSlider from '@/components/kipember/tend/FrameSlider';
 import TagPeopleSlider from '@/components/kipember/tend/TagPeopleSlider';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
+import { getUserDisplayName } from '@/lib/user-name';
 
 const fieldStyle = {
   background: 'var(--bg-input)',
@@ -145,7 +146,8 @@ type ContributorDetail = {
   createdAt: string;
   user?: {
     id: string;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     phoneNumber: string | null;
   } | null;
@@ -185,7 +187,7 @@ function contributorDisplayName(contributor: ContributorRecord | null | undefine
 
   return (
     contributor.name ||
-    contributor.user?.name ||
+    getUserDisplayName(contributor.user) ||
     contributor.email ||
     contributor.user?.email ||
     contributor.phoneNumber ||

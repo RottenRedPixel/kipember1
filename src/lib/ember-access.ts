@@ -12,7 +12,8 @@ export async function getAcceptedFriends(userId: string) {
       requester: {
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           phoneNumber: true,
         },
@@ -20,7 +21,8 @@ export async function getAcceptedFriends(userId: string) {
       addressee: {
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           phoneNumber: true,
         },
@@ -128,7 +130,8 @@ export async function ensureOwnedContributorAccess(userId: string, contributorId
       user: {
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           phoneNumber: true,
         },
@@ -156,7 +159,8 @@ export async function ensureContributorRemovalAccess(userId: string, contributor
       user: {
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           phoneNumber: true,
         },

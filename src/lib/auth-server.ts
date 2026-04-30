@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { claimGuestMemoriesForUser } from '@/lib/guest-embers';
 import { ensureOwnerContributorsForOwnedImages } from '@/lib/owner-contributor';
+import { getUserDisplayName } from '@/lib/user-name';
 
 const SESSION_COOKIE_NAME = 'ember_session';
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -89,7 +90,8 @@ async function syncContributorLinksForUser(user: {
   id: string;
   email: string;
   phoneNumber: string | null;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
 }) {
   const orFilters: Array<Record<string, string>> = [{ email: user.email }];
 
@@ -104,7 +106,7 @@ async function syncContributorLinksForUser(user: {
     },
     data: {
       userId: user.id,
-      name: user.name || null,
+      name: getUserDisplayName(user),
       email: user.email,
       phoneNumber: user.phoneNumber,
     },
@@ -115,7 +117,8 @@ export async function claimMemoriesForUser(user: {
   id: string;
   email: string;
   phoneNumber: string | null;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
 }) {
   await Promise.all([
     syncContributorLinksForUser(user),
@@ -123,7 +126,7 @@ export async function claimMemoriesForUser(user: {
       userId: user.id,
       email: user.email,
       phoneNumber: user.phoneNumber,
-      name: user.name,
+      displayName: getUserDisplayName(user),
     }),
     ensureOwnerContributorsForOwnedImages(user.id),
   ]);

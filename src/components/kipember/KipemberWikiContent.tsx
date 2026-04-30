@@ -34,6 +34,7 @@ import VoiceMessageList, { type VoiceMessage } from '@/components/kipember/workf
 import MediaPreview from '@/components/MediaPreview';
 import { usePlaceResolution } from '@/components/kipember/usePlaceResolution';
 import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
+import { getUserDisplayName } from '@/lib/user-name';
 
 type ConversationMessage = {
   id: string;
@@ -108,7 +109,8 @@ export type KipemberContributor = {
   createdAt: string;
   user?: {
     id: string;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     phoneNumber: string | null;
     avatarFilename?: string | null;
@@ -130,7 +132,8 @@ export type KipemberTag = {
   createdAt?: string | Date;
   createdBy?: {
     id: string;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     avatarUrl: string | null;
   } | null;
@@ -176,7 +179,8 @@ export type KipemberWikiDetail = {
   } | null;
   owner?: {
     id: string;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     avatarFilename?: string | null;
     createdAt?: string | null;
@@ -1255,7 +1259,7 @@ export default function KipemberWikiContent({
   const placeResolution = usePlaceResolution(detail);
   const contributors = detail?.contributors || [];
   const imageId = detail?.id || null;
-  const ownerName = detail?.owner?.name || detail?.owner?.email || null;
+  const ownerName = getUserDisplayName(detail?.owner) || detail?.owner?.email || null;
   const ownerUserId = detail?.owner?.id;
 
   const avatarLookup = useMemo(() => {
@@ -1267,7 +1271,7 @@ export default function KipemberWikiContent({
     };
 
     if (detail?.owner) {
-      const name = detail.owner.name || detail.owner.email;
+      const name = getUserDisplayName(detail.owner) || detail.owner.email;
       if (detail.owner.avatarFilename) {
         add(name, `/api/uploads/${detail.owner.avatarFilename}`);
         // Also map the literal "Owner" since claims sometimes attribute to "Owner"
@@ -1275,14 +1279,14 @@ export default function KipemberWikiContent({
       }
     }
     for (const contributor of detail?.contributors ?? []) {
-      const name = contributor.user?.name || contributor.name;
+      const name = getUserDisplayName(contributor.user) || contributor.name;
       const filename = contributor.user?.avatarFilename;
       if (name && filename) {
         add(name, `/api/uploads/${filename}`);
       }
     }
     for (const tag of detail?.tags ?? []) {
-      add(tag.createdBy?.name, tag.createdBy?.avatarUrl);
+      add(getUserDisplayName(tag.createdBy), tag.createdBy?.avatarUrl);
       add(tag.label, tag.createdBy?.avatarUrl);
     }
     return map;
@@ -1491,7 +1495,7 @@ export default function KipemberWikiContent({
               {activeContributors.map((contributor) => {
                 const contributorName =
                   contributor.name ||
-                  contributor.user?.name ||
+                  getUserDisplayName(contributor.user) ||
                   contributor.email ||
                   contributor.user?.email ||
                   contributor.phoneNumber ||

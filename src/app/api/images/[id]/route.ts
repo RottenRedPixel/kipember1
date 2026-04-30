@@ -8,6 +8,7 @@ import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/li
 import { parseVoiceCallTranscriptSegments } from '@/lib/voice-call-clips';
 import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
 import { toTitleCase } from '@/lib/ember-title';
+import { getUserDisplayName } from '@/lib/user-name';
 
 function normalizeLabelKey(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -135,7 +136,8 @@ export async function GET(
             owner: {
               select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 createdAt: true,
               },
@@ -146,7 +148,8 @@ export async function GET(
                 user: {
                   select: {
                     id: true,
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true,
                     phoneNumber: true,
                   },
@@ -255,7 +258,8 @@ export async function GET(
           owner: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
               avatarFilename: true,
               createdAt: true,
@@ -267,7 +271,8 @@ export async function GET(
               user: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                   phoneNumber: true,
                   avatarFilename: true,
@@ -358,7 +363,8 @@ export async function GET(
               user: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                   phoneNumber: true,
                 },
@@ -375,7 +381,8 @@ export async function GET(
               createdByUser: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                   avatarFilename: true,
                 },
@@ -459,7 +466,8 @@ export async function GET(
                 user: {
                   select: {
                     id: true,
-                    name: true,
+                    firstName: true,
+                    lastName: true,
                     email: true,
                   },
                 },
@@ -540,7 +548,8 @@ export async function GET(
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
               phoneNumber: true,
             },
@@ -558,7 +567,7 @@ export async function GET(
 
       for (const tag of priorTagIdentities) {
         const label =
-          tag.user?.name ||
+          getUserDisplayName(tag.user) ||
           tag.contributor?.name ||
           tag.label.trim();
 
@@ -631,7 +640,7 @@ export async function GET(
       const emberSessions = await prisma.emberSession.findMany({
         where: { imageId: id, sessionType: { in: ['chat', 'call', 'voice'] } },
         include: {
-          user: { select: { id: true, name: true, email: true, avatarFilename: true } },
+          user: { select: { id: true, firstName: true, lastName: true, email: true, avatarFilename: true } },
           contributor: { select: { id: true, name: true, email: true } },
           messages: { orderBy: { createdAt: 'asc' } },
         },
@@ -661,7 +670,7 @@ export async function GET(
       const byPerson = new Map<string, PersonBucket>();
       for (const session of emberSessions) {
         const personName =
-          session.user?.name ||
+          getUserDisplayName(session.user) ||
           session.contributor?.name ||
           session.user?.email ||
           session.contributor?.email ||
@@ -765,7 +774,7 @@ export async function GET(
       for (const contributor of image.contributors) {
         const personName =
           contributor.name ||
-          contributor.user?.name ||
+          getUserDisplayName(contributor.user) ||
           contributor.email ||
           contributor.phoneNumber ||
           'Contributor';
@@ -837,7 +846,8 @@ export async function GET(
         createdBy: tag.createdByUser
           ? {
               id: tag.createdByUser.id,
-              name: tag.createdByUser.name,
+              firstName: tag.createdByUser.firstName,
+              lastName: tag.createdByUser.lastName,
               email: tag.createdByUser.email,
               avatarUrl: tag.createdByUser.avatarFilename
                 ? `/api/uploads/${tag.createdByUser.avatarFilename}`
@@ -867,7 +877,7 @@ export async function GET(
         contributorUserId: clip.contributor.user?.id || clip.contributor.userId || null,
         contributorName:
           clip.contributor.name ||
-          clip.contributor.user?.name ||
+          getUserDisplayName(clip.contributor.user) ||
           clip.contributor.email ||
           clip.contributor.phoneNumber ||
           'Contributor',

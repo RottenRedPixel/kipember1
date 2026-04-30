@@ -8,7 +8,7 @@ import { isEmailConfigured } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, name, phoneNumber, mode } = await request.json();
+    const { email, firstName, lastName, phoneNumber, mode } = await request.json();
 
     if (!email || typeof email !== 'string') {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
     const token = await createMagicLinkChallenge({
       email: normalizedEmail,
       phoneNumber: normalizedPhone,
-      name: typeof name === 'string' && name.trim() ? name.trim() : null,
+      firstName: typeof firstName === 'string' && firstName.trim() ? firstName.trim() : null,
+      lastName: typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null,
       userId: existingUser?.id || null,
       mode: mode as MagicLinkMode,
     });

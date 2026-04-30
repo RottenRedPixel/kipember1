@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
       },
       select: {
         id: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         email: true,
         phoneNumber: true,
       },
@@ -49,7 +50,8 @@ export async function POST(request: NextRequest) {
 
     await claimMemoriesForUser({
       id: user.id,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       phoneNumber: user.phoneNumber,
     });

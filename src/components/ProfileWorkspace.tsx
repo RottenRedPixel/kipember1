@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import LogoutButton from '@/components/LogoutButton';
+import { getUserDisplayName } from '@/lib/user-name';
 
 type FriendUser = {
   id: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   phoneNumber: string | null;
 };
@@ -22,11 +24,12 @@ type PendingRequest = {
 };
 
 function formatPersonLabel(user: FriendUser) {
-  return user.name || user.email;
+  return getUserDisplayName(user) || user.email;
 }
 
 export default function ProfileWorkspace() {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [friendEmail, setFriendEmail] = useState('');
@@ -55,7 +58,8 @@ export default function ProfileWorkspace() {
       const profilePayload = await profileResponse.json();
       const friendsPayload = await friendsResponse.json();
 
-      setName(profilePayload.user.name || '');
+      setFirstName(profilePayload.user.firstName || '');
+      setLastName(profilePayload.user.lastName || '');
       setEmail(profilePayload.user.email || '');
       setPhoneNumber(profilePayload.user.phoneNumber || '');
       setFriends(friendsPayload.friends || []);
@@ -82,7 +86,7 @@ export default function ProfileWorkspace() {
       const response = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phoneNumber }),
+        body: JSON.stringify({ firstName, lastName, email, phoneNumber }),
       });
 
       const payload = await response.json();
@@ -91,7 +95,8 @@ export default function ProfileWorkspace() {
         throw new Error(payload.error || 'Failed to save profile');
       }
 
-      setName(payload.user.name || '');
+      setFirstName(payload.user.firstName || '');
+      setLastName(payload.user.lastName || '');
       setEmail(payload.user.email || '');
       setPhoneNumber(payload.user.phoneNumber || '');
       setSuccess('Profile updated.');
@@ -247,12 +252,24 @@ export default function ProfileWorkspace() {
             <form onSubmit={handleProfileSave} className="mt-8 space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-medium text-[var(--kip-text-secondary)]">
-                  Name
+                  First name
                 </label>
                 <input
                   type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  className="kip-input"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-[var(--kip-text-secondary)]">
+                  Last name
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
                   className="kip-input"
                 />
               </div>

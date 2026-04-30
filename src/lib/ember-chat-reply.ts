@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
 import { INTERVIEW_QUESTION_TYPES } from '@/lib/interview-flow';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
+import { getUserDisplayName } from '@/lib/user-name';
 
 export type EmberChatTrigger =
   | 'welcome_first_open'
@@ -56,13 +57,13 @@ function formatLocation(metadataJson: string | null | undefined): string {
 function formatTaggedPeople(
   tags: Array<{
     label: string;
-    user: { name: string | null } | null;
+    user: { firstName: string | null; lastName: string | null } | null;
     contributor: { name: string | null } | null;
   }>
 ): string {
   const names = new Set<string>();
   for (const tag of tags) {
-    const name = (tag.user?.name || tag.contributor?.name || tag.label || '').trim();
+    const name = (getUserDisplayName(tag.user) || tag.contributor?.name || tag.label || '').trim();
     if (name) names.add(name);
   }
   return Array.from(names).join(', ');
@@ -118,7 +119,7 @@ export async function loadPromptVariables(imageId: string) {
         orderBy: { createdAt: 'asc' },
         select: {
           label: true,
-          user: { select: { name: true } },
+          user: { select: { firstName: true, lastName: true } },
           contributor: { select: { name: true } },
         },
       },

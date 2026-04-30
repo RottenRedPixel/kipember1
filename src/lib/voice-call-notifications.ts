@@ -331,7 +331,7 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
   const { contributor } = voiceCall;
   const owner = contributor.image.owner;
   const emberTitle = getEmberTitle(contributor.image);
-  const ownerFirstName = getFirstName(owner.name, 'Someone');
+  const ownerFirstName = getFirstName(owner.firstName, 'Someone');
   const contributorName =
     contributor.name?.trim() || contributor.email?.trim() || 'there';
   const targetUrl = `/contribute/${contributor.token}`;

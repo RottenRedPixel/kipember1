@@ -1,8 +1,10 @@
 import { prisma } from '@/lib/db';
+import { getUserDisplayName } from '@/lib/user-name';
 
 type OwnerProfile = {
   id: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   phoneNumber: string | null;
 };
@@ -12,7 +14,8 @@ async function getOwnerProfile(userId: string): Promise<OwnerProfile | null> {
     where: { id: userId },
     select: {
       id: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       email: true,
       phoneNumber: true,
     },
@@ -26,6 +29,8 @@ export async function ensureUserContributorForImage(imageId: string, userId: str
     return null;
   }
 
+  const displayName = getUserDisplayName(user);
+
   return prisma.contributor.upsert({
     where: {
       imageId_userId: {
@@ -34,14 +39,14 @@ export async function ensureUserContributorForImage(imageId: string, userId: str
       },
     },
     update: {
-      name: user.name,
+      name: displayName,
       email: user.email,
       phoneNumber: user.phoneNumber,
     },
     create: {
       imageId,
       userId,
-      name: user.name,
+      name: displayName,
       email: user.email,
       phoneNumber: user.phoneNumber,
     },
@@ -91,13 +96,15 @@ export async function ensureOwnerContributorsForOwnedImages(userId: string) {
     return;
   }
 
+  const ownerDisplayName = getUserDisplayName(owner);
+
   await prisma.$transaction(
     missingImageIds.map((imageId) =>
       prisma.contributor.create({
         data: {
           imageId,
           userId,
-          name: owner.name,
+          name: ownerDisplayName,
           email: owner.email,
           phoneNumber: owner.phoneNumber,
         },

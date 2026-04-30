@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { X, ChevronLeft, MessageSquare, Phone, Link as LinkIcon, ChevronDown } from 'lucide-react';
 import MediaPreview from '@/components/MediaPreview';
+import { getUserDisplayName } from '@/lib/user-name';
 
 interface Contributor {
   id: string;
@@ -19,7 +20,8 @@ interface Contributor {
   } | null;
   user: {
     id: string;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     phoneNumber: string | null;
   } | null;
@@ -43,7 +45,8 @@ type ContributorDetail = {
   createdAt: string;
   user: {
     id: string;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
     email: string;
     phoneNumber: string | null;
   } | null;
@@ -127,7 +130,7 @@ function splitName(value: string | null | undefined) {
 function contributorDisplayName(contributor: Contributor | ContributorDetail) {
   return (
     contributor.name ||
-    contributor.user?.name ||
+    getUserDisplayName(contributor.user) ||
     contributor.email ||
     contributor.phoneNumber ||
     'Contributor'
