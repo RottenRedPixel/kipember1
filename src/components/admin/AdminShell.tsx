@@ -3,10 +3,34 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, Users, X } from 'lucide-react';
+import { Menu, MessageSquareText, Users, X } from 'lucide-react';
+import { PROMPT_GROUPS } from '@/lib/prompt-registry';
+import { groupSlug } from '@/lib/admin-prompt-groups';
 
-const NAV_ITEMS = [
-  { label: 'Users', href: '/admin/users', icon: Users },
+type NavItem = {
+  label: string;
+  href: string;
+  icon?: typeof Users;
+};
+
+type NavSection = {
+  title?: string;
+  icon?: typeof Users;
+  items: NavItem[];
+};
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    items: [{ label: 'Users', href: '/admin/users', icon: Users }],
+  },
+  {
+    title: 'Prompts',
+    icon: MessageSquareText,
+    items: PROMPT_GROUPS.map((group) => ({
+      label: group,
+      href: `/admin/prompts/${groupSlug(group)}`,
+    })),
+  },
 ];
 
 export default function AdminShell({
@@ -64,25 +88,41 @@ export default function AdminShell({
             </button>
           </div>
 
-          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-            {NAV_ITEMS.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const Icon = item.icon;
+          <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+            {NAV_SECTIONS.map((section, sectionIndex) => {
+              const SectionIcon = section.icon;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${
-                    active
-                      ? 'bg-gray-200 text-gray-900 font-medium'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Icon size={16} />
-                  {item.label}
-                </Link>
+                <div key={section.title ?? `section-${sectionIndex}`} className="space-y-0.5">
+                  {section.title ? (
+                    <div className="flex items-center gap-2 px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                      {SectionIcon ? <SectionIcon size={12} strokeWidth={2} /> : null}
+                      {section.title}
+                    </div>
+                  ) : null}
+                  {section.items.map((item) => {
+                    const active =
+                      pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const Icon = item.icon;
+                    const isNested = Boolean(section.title);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${
+                          isNested ? 'pl-7 text-[13px]' : ''
+                        } ${
+                          active
+                            ? 'bg-gray-200 text-gray-900 font-medium'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {Icon ? <Icon size={16} /> : null}
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
               );
             })}
           </nav>
