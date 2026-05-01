@@ -8,16 +8,16 @@ import AppHeader from '@/components/kipember/AppHeader';
 import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
 import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
-import type { AccessibleImageSummary } from '@/lib/image-summaries';
+import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
 
-type ImageSummary = AccessibleImageSummary & {
+type EmberSummary = BaseEmberSummary & {
   mediaType: EmberMediaType;
   createdAt: string | Date;
 };
 
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A-Z', 'Z-A'];
 
-function sortEmbers(embers: ImageSummary[], sort: string) {
+function sortEmbers(embers: EmberSummary[], sort: string) {
   return [...embers].sort((a, b) => {
     if (sort === 'A-Z') return (a.title || a.originalName).localeCompare(b.title || b.originalName);
     if (sort === 'Z-A') return (b.title || b.originalName).localeCompare(a.title || a.originalName);
@@ -27,16 +27,16 @@ function sortEmbers(embers: ImageSummary[], sort: string) {
 }
 
 export default function MyEmbersScreen({
-  initialImages = [],
+  initialEmbers = [],
   avatarUrl,
   userInitials,
 }: {
-  initialImages?: ImageSummary[];
+  initialEmbers?: EmberSummary[];
   avatarUrl?: string | null;
   userInitials?: string;
 }) {
   const searchParams = useSearchParams();
-  const [images, setImages] = useState<ImageSummary[]>(initialImages);
+  const [embers, setEmbers] = useState<EmberSummary[]>(initialEmbers);
   const [createFile, setCreateFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -46,14 +46,14 @@ export default function MyEmbersScreen({
   }
 
   useEffect(() => {
-    if (initialImages.length > 0) return;
+    if (initialEmbers.length > 0) return;
     void fetch('/api/images')
       .then(async (res) => {
         if (!res.ok) return;
-        setImages((await res.json()) as ImageSummary[]);
+        setEmbers((await res.json()) as EmberSummary[]);
       })
       .catch(() => undefined);
-  }, [initialImages.length]);
+  }, [initialEmbers.length]);
 
   const view = searchParams.get('view') ?? 'mine';
   const sort = searchParams.get('sort') ?? 'Newest';
@@ -80,8 +80,8 @@ export default function MyEmbersScreen({
     return query ? `/embers?${query}` : '/embers';
   };
 
-  const filtered = images.filter((img) =>
-    isShared ? img.accessType !== 'owner' : img.accessType === 'owner'
+  const filtered = embers.filter((ember) =>
+    isShared ? ember.accessType !== 'owner' : ember.accessType === 'owner'
   );
   const sorted = sortEmbers(filtered, sort);
 
@@ -252,22 +252,22 @@ export default function MyEmbersScreen({
             </div>
           ) : isRowLayout ? (
             <div className="flex flex-col gap-2">
-              {sorted.map((image) => {
+              {sorted.map((ember) => {
                 const completenessScore = [
-                  Boolean(image.title),
-                  Boolean(image.description),
-                  Boolean(image.capturedAt),
-                  image.hasLocation,
-                  image.contributorCount > 0,
-                  image.hasVoiceCall,
-                  image.hasWiki,
+                  Boolean(ember.title),
+                  Boolean(ember.description),
+                  Boolean(ember.capturedAt),
+                  ember.hasLocation,
+                  ember.contributorCount > 0,
+                  ember.hasVoiceCall,
+                  ember.hasWiki,
                 ].filter(Boolean).length;
                 const completenessPercent = (completenessScore / 7) * 100;
-                const displayDate = image.capturedAt ?? image.createdAt;
+                const displayDate = ember.capturedAt ?? ember.createdAt;
                 return (
                   <Link
-                    key={image.id}
-                    href={`/ember/${image.id}`}
+                    key={ember.id}
+                    href={`/ember/${ember.id}`}
                     className="flex rounded-xl overflow-hidden can-hover-card"
                     style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
                   >
@@ -275,14 +275,14 @@ export default function MyEmbersScreen({
                     <div className="relative flex-shrink-0" style={{ width: 177, height: 177 }}>
                       <img
                         src={getPreviewMediaUrl({
-                          mediaType: image.mediaType,
-                          filename: image.filename,
-                          posterFilename: image.posterFilename,
+                          mediaType: ember.mediaType,
+                          filename: ember.filename,
+                          posterFilename: ember.posterFilename,
                         })}
-                        alt={image.title || image.originalName}
+                        alt={ember.title || ember.originalName}
                         className="absolute inset-0 h-full w-full object-cover"
                       />
-                      {image.photoCount > 1 ? (
+                      {ember.photoCount > 1 ? (
                         <div className="absolute top-1.5 right-1.5">
                           <FileStack size={13} className="text-white drop-shadow-md" />
                         </div>
@@ -294,7 +294,7 @@ export default function MyEmbersScreen({
                       {/* Title + date */}
                       <div>
                         <p className="text-white text-sm font-medium leading-snug truncate">
-                          {image.title || image.originalName}
+                          {ember.title || ember.originalName}
                         </p>
                         <p className="text-white/40 text-xs mt-0.5">
                           {new Date(displayDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -305,15 +305,15 @@ export default function MyEmbersScreen({
                       <div className="flex items-center gap-3 mt-2">
                         {/* Contributor count */}
                         <div className="flex items-center gap-1">
-                          <Users size={12} style={{ color: image.contributorCount > 0 ? '#f97316' : 'var(--text-secondary)' }} />
-                          <span className="text-xs" style={{ color: image.contributorCount > 0 ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)' }}>
-                            {image.contributorCount}
+                          <Users size={12} style={{ color: ember.contributorCount > 0 ? '#f97316' : 'var(--text-secondary)' }} />
+                          <span className="text-xs" style={{ color: ember.contributorCount > 0 ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)' }}>
+                            {ember.contributorCount}
                           </span>
                         </div>
 
                         {/* Wiki completeness bar */}
                         <div className="flex items-center gap-1.5 flex-1">
-                          <BookOpen size={12} style={{ color: image.hasWiki ? '#f97316' : 'var(--text-secondary)', flexShrink: 0 }} />
+                          <BookOpen size={12} style={{ color: ember.hasWiki ? '#f97316' : 'var(--text-secondary)', flexShrink: 0 }} />
                           <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: 'rgba(255,255,255,0.08)' }}>
                             <div
                               className="h-full rounded-full transition-all"
@@ -337,23 +337,23 @@ export default function MyEmbersScreen({
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-1.5">
-              {sorted.map((image) => (
+              {sorted.map((ember) => (
                 <Link
-                  key={image.id}
-                  href={`/ember/${image.id}`}
+                  key={ember.id}
+                  href={`/ember/${ember.id}`}
                   className="aspect-square rounded-xl overflow-hidden can-hover-card relative"
                   style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: 0.95 }}
                 >
                   <img
                     src={getPreviewMediaUrl({
-                      mediaType: image.mediaType,
-                      filename: image.filename,
-                      posterFilename: image.posterFilename,
+                      mediaType: ember.mediaType,
+                      filename: ember.filename,
+                      posterFilename: ember.posterFilename,
                     })}
-                    alt={image.title || image.originalName}
+                    alt={ember.title || ember.originalName}
                     className="absolute inset-0 h-full w-full object-cover"
                   />
-                  {image.photoCount > 1 ? (
+                  {ember.photoCount > 1 ? (
                     <div className="absolute top-1.5 right-1.5 z-10">
                       <FileStack size={16} className="text-white drop-shadow-md" />
                     </div>

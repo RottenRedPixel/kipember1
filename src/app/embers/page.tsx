@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
-import { getAccessibleImagesForUser } from '@/lib/image-summaries';
+import { getAccessibleEmbersForUser } from '@/lib/ember';
 import MyEmbersScreen from '@/components/kipember/MyEmbersScreen';
 import { getAvatarUrl } from '@/lib/avatar';
 import { getUserDisplayName } from '@/lib/user-name';
@@ -10,8 +10,8 @@ export default async function MyEmbersPage() {
   const auth = await getCurrentAuth();
   if (!auth) redirect('/signin');
 
-  const [initialImages, avatarUrl] = await Promise.all([
-    getAccessibleImagesForUser(auth.user.id),
+  const [initialEmbers, avatarUrl] = await Promise.all([
+    getAccessibleEmbersForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
   ]);
 
@@ -26,7 +26,7 @@ export default async function MyEmbersPage() {
   return (
     <Suspense>
       <MyEmbersScreen
-        initialImages={initialImages}
+        initialEmbers={initialEmbers}
         avatarUrl={avatarUrl}
         userInitials={userInitials}
       />
