@@ -33,15 +33,15 @@ declare global {
 }
 
 export default function OwnerFlow({
-  imageId,
+  emberId,
   onConversationStateChange,
   chatTab = 'chats',
 }: {
-  imageId: string;
+  emberId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
   chatTab?: 'chats' | 'voice' | 'calls';
 }) {
-  const voice = useVoiceRecording(imageId);
+  const voice = useVoiceRecording(emberId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -68,7 +68,7 @@ export default function OwnerFlow({
     async function loadHistory() {
       setIsLoadingHistory(true);
       try {
-        const response = await fetch(`/api/chat?imageId=${encodeURIComponent(imageId)}`, { cache: 'no-store' });
+        const response = await fetch(`/api/chat?imageId=${encodeURIComponent(emberId)}`, { cache: 'no-store' });
         if (!response.ok) { if (!cancelled) { setMessages([]); onConversationStateChange?.(false); } return; }
         const payload = await response.json();
         const nextMessages = Array.isArray(payload.messages) ? (payload.messages as Message[]) : [];
@@ -85,7 +85,7 @@ export default function OwnerFlow({
             const welcomeRes = await fetch('/api/chat/welcome', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ imageId, situation: 'first_open' }),
+              body: JSON.stringify({ imageId: emberId, situation: 'first_open' }),
             });
             if (welcomeRes.ok) {
               const { message } = await welcomeRes.json();
@@ -115,7 +115,7 @@ export default function OwnerFlow({
     }
     void loadHistory();
     return () => { cancelled = true; };
-  }, [imageId, onConversationStateChange]);
+  }, [emberId, onConversationStateChange]);
 
   useEffect(() => {
     return () => { if (recognitionRef.current) { recognitionRef.current.stop(); recognitionRef.current = null; } };
@@ -125,7 +125,7 @@ export default function OwnerFlow({
     let cancelled = false;
     async function loadCalls() {
       try {
-        const response = await fetch(`/api/images/${encodeURIComponent(imageId)}`, { cache: 'no-store' });
+        const response = await fetch(`/api/images/${encodeURIComponent(emberId)}`, { cache: 'no-store' });
         if (!response.ok) return;
         const payload = await response.json();
         if (cancelled) return;
@@ -137,7 +137,7 @@ export default function OwnerFlow({
     }
     void loadCalls();
     return () => { cancelled = true; };
-  }, [imageId]);
+  }, [emberId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +152,7 @@ export default function OwnerFlow({
     if (isCalling || hasPhoneNumber === false || hasPhoneNumber === null) return;
     setIsCalling(true);
     try {
-      const response = await fetch(`/api/images/${encodeURIComponent(imageId)}/self-invite`, {
+      const response = await fetch(`/api/images/${encodeURIComponent(emberId)}/self-invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'call' }),
@@ -176,7 +176,7 @@ export default function OwnerFlow({
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageId, message: trimmed, inputMode }),
+        body: JSON.stringify({ imageId: emberId, message: trimmed, inputMode }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || 'Failed to send message.');
@@ -201,7 +201,7 @@ export default function OwnerFlow({
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await fetch(`/api/images/${imageId}/attachments`, { method: 'POST', body: formData });
+      const response = await fetch(`/api/images/${emberId}/attachments`, { method: 'POST', body: formData });
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error || 'Failed to add content.');
       const uploadedFilename: string | null = payload?.attachment?.filename ?? null;
@@ -209,7 +209,7 @@ export default function OwnerFlow({
         const patchRes = await fetch('/api/chat', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageId, imageFilename: uploadedFilename }),
+          body: JSON.stringify({ imageId: emberId, imageFilename: uploadedFilename }),
         });
         const patchPayload = await patchRes.json().catch(() => null);
         const reply = typeof patchPayload?.response === 'string' ? patchPayload.response.trim() : '';

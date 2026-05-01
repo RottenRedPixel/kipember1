@@ -227,23 +227,23 @@ function RailBtn({
 
 function WorkflowSlot({
   flow,
-  imageId,
+  emberId,
   onConversationStateChange,
   chatTab,
 }: {
   flow: HomeEmberFlow;
-  imageId: string | null;
+  emberId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
   chatTab: 'chats' | 'voice' | 'calls';
 }) {
   switch (flow) {
     case 'owner':
-      return imageId ? (
-        <OwnerFlow imageId={imageId} onConversationStateChange={onConversationStateChange} chatTab={chatTab} />
+      return emberId ? (
+        <OwnerFlow emberId={emberId} onConversationStateChange={onConversationStateChange} chatTab={chatTab} />
       ) : null;
     case 'contributor':
-      return imageId ? (
-        <ContributorFlow imageId={imageId} onConversationStateChange={onConversationStateChange} chatTab={chatTab} />
+      return emberId ? (
+        <ContributorFlow emberId={emberId} onConversationStateChange={onConversationStateChange} chatTab={chatTab} />
       ) : null;
     default:
       return null;
@@ -1221,7 +1221,7 @@ export default function HomeScreen({
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <WorkflowSlot
                 flow={flow}
-                imageId={selectedEmberId}
+                emberId={selectedEmberId}
                 onConversationStateChange={setHasConversationHistory}
                 chatTab={chatTab}
               />
