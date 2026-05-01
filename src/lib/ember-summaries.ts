@@ -4,9 +4,9 @@ import { getAcceptedFriendIds } from '@/lib/ember-access';
 import type { EmberMediaType } from '@/lib/media';
 import { getUserDisplayName } from '@/lib/user-name';
 
-const IMAGE_SUMMARY_CACHE_TTL_MS = 15_000;
+const EMBER_SUMMARY_CACHE_TTL_MS = 15_000;
 
-export type AccessibleImageSummary = {
+export type EmberSummary = {
   id: string;
   filename: string;
   mediaType: EmberMediaType;
@@ -30,30 +30,23 @@ export type AccessibleImageSummary = {
   cropHeight: number | null;
 };
 
-/**
- * Canonical Ember-shape summary. Equivalent to AccessibleImageSummary;
- * prefer this name in new code. The legacy alias is kept so existing
- * imports continue to work.
- */
-export type EmberSummary = AccessibleImageSummary;
-
-const globalForImageSummaries = globalThis as unknown as {
-  accessibleImageSummaryCache?: Map<
+const globalForEmberSummaries = globalThis as unknown as {
+  accessibleEmberSummaryCache?: Map<
     string,
-    { expiresAt: number; value: AccessibleImageSummary[] }
+    { expiresAt: number; value: EmberSummary[] }
   >;
 };
 
-const accessibleImageSummaryCache =
-  globalForImageSummaries.accessibleImageSummaryCache ??
-  new Map<string, { expiresAt: number; value: AccessibleImageSummary[] }>();
+const accessibleEmberSummaryCache =
+  globalForEmberSummaries.accessibleEmberSummaryCache ??
+  new Map<string, { expiresAt: number; value: EmberSummary[] }>();
 
 if (process.env.NODE_ENV !== 'production') {
-  globalForImageSummaries.accessibleImageSummaryCache = accessibleImageSummaryCache;
+  globalForEmberSummaries.accessibleEmberSummaryCache = accessibleEmberSummaryCache;
 }
 
-export function invalidateAccessibleImagesForUser(userId: string) {
-  accessibleImageSummaryCache.delete(userId);
+export function invalidateAccessibleEmbersForUser(userId: string) {
+  accessibleEmberSummaryCache.delete(userId);
 }
 
 export async function getTotalContributorsForUser(userId: string) {
@@ -117,8 +110,8 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
   );
 }
 
-export async function getAccessibleImagesForUser(userId: string) {
-  const cached = accessibleImageSummaryCache.get(userId);
+export async function getAccessibleEmbersForUser(userId: string) {
+  const cached = accessibleEmberSummaryCache.get(userId);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.value;
   }
@@ -173,7 +166,7 @@ export async function getAccessibleImagesForUser(userId: string) {
     },
   });
 
-  const value = images.map<AccessibleImageSummary>((image) => {
+  const value = images.map<EmberSummary>((image) => {
     const nonOwnerContributors = image.contributors.filter(
       (c) => c.userId !== image.ownerId
     );
@@ -207,21 +200,10 @@ export async function getAccessibleImagesForUser(userId: string) {
     };
   });
 
-  accessibleImageSummaryCache.set(userId, {
-    expiresAt: Date.now() + IMAGE_SUMMARY_CACHE_TTL_MS,
+  accessibleEmberSummaryCache.set(userId, {
+    expiresAt: Date.now() + EMBER_SUMMARY_CACHE_TTL_MS,
     value,
   });
 
   return value;
 }
-
-// ---------------------------------------------------------------------------
-// Ember-language aliases (Phase 1 of domain-language migration).
-// Prefer these names in new code; the legacy ones remain for backward compat.
-// ---------------------------------------------------------------------------
-
-/** Canonical: get the Embers a user can access. Alias of getAccessibleImagesForUser. */
-export const getAccessibleEmbersForUser = getAccessibleImagesForUser;
-
-/** Canonical: invalidate the per-user Ember summary cache. Alias of invalidateAccessibleImagesForUser. */
-export const invalidateAccessibleEmbersForUser = invalidateAccessibleImagesForUser;

@@ -16,13 +16,13 @@
  * Phase 3 (later, only if needed) considers schema/URL renames.
  */
 
-export type { EmberSummary, ContributorSummary } from '@/lib/image-summaries';
+export type { EmberSummary, ContributorSummary } from '@/lib/ember-summaries';
 export {
   getAccessibleEmbersForUser,
   invalidateAccessibleEmbersForUser,
   getTotalContributorsForUser,
   getContributorsListForUser,
-} from '@/lib/image-summaries';
+} from '@/lib/ember-summaries';
 
 export type { EmberAccessType } from '@/lib/ember-access';
 export {

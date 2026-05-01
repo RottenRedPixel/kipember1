@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 
-export type ImageAccessType = 'owner' | 'contributor' | 'network';
+export type EmberAccessType = 'owner' | 'contributor' | 'network';
 
 export async function getAcceptedFriends(userId: string) {
   const friendships = await prisma.friendship.findMany({
@@ -68,10 +68,10 @@ async function isAcceptedFriend(userId: string, otherUserId: string) {
   return Boolean(friendship);
 }
 
-export async function getImageAccessType(
+export async function getEmberAccessType(
   userId: string,
   imageId: string
-): Promise<ImageAccessType | null> {
+): Promise<EmberAccessType | null> {
   const image = await prisma.image.findUnique({
     where: { id: imageId },
     select: {
@@ -104,7 +104,7 @@ export async function getImageAccessType(
   return (await isAcceptedFriend(userId, image.ownerId)) ? 'network' : null;
 }
 
-export async function ensureImageOwnerAccess(userId: string, imageId: string) {
+export async function ensureEmberOwnerAccess(userId: string, imageId: string) {
   const image = await prisma.image.findUnique({
     where: { id: imageId },
     select: { id: true, ownerId: true },
@@ -145,20 +145,6 @@ export async function ensureOwnedContributorAccess(userId: string, contributorId
 
   return contributor;
 }
-
-// ---------------------------------------------------------------------------
-// Ember-language aliases (Phase 1 of domain-language migration).
-// Prefer these names in new code; the legacy ones remain for backward compat.
-// ---------------------------------------------------------------------------
-
-/** Canonical: a user's relationship to an Ember. Alias of ImageAccessType. */
-export type EmberAccessType = ImageAccessType;
-
-/** Canonical: resolve the caller's access to an Ember. Alias of getImageAccessType. */
-export const getEmberAccessType = getImageAccessType;
-
-/** Canonical: confirm the caller owns the Ember. Alias of ensureImageOwnerAccess. */
-export const ensureEmberOwnerAccess = ensureImageOwnerAccess;
 
 export async function ensureContributorRemovalAccess(userId: string, contributorId: string) {
   const contributor = await prisma.contributor.findUnique({
