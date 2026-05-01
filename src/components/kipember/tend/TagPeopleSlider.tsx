@@ -375,9 +375,11 @@ export default function TagPeopleSlider({
     void refreshPeopleSuggestions();
   }
 
-  // Auto-detect faces and create a tag at each detected position. After tags
-  // exist, the per-tag picker (handleEditTag) lets the owner identify each
-  // face — including its own AI matching button.
+  // Auto-detect faces and create a tag at each detected position. When the
+  // owner already has tagged faces on other photos, also runs a face-match
+  // pass (server-side Claude) to auto-name recognized people. Unmatched
+  // faces still get a "Person N" placeholder so the owner can identify
+  // them via the per-tag picker.
   async function handleAutoDetect() {
     const img = tagImgRef.current;
     if (!img || !imageId || detectingFaces) return;
@@ -406,11 +408,47 @@ export default function TagPeopleSlider({
         const payload = await res.json().catch(() => ({}));
         faces = Array.isArray(payload?.faces) ? (payload.faces as DetectedFace[]) : [];
       }
+      if (faces.length === 0) return;
+
+      // Second pass: try to match each detected face against the owner's
+      // previously-tagged faces. The match endpoint returns suggestions
+      // keyed by faceIndex (matching the order of the faces we sent in).
+      const matchByIndex = new Map<number, { label: string; contributorId: string | null; userId: string | null }>();
+      try {
+        const matchRes = await fetch(`/api/images/${imageId}/tag-suggestions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ faces }),
+        });
+        const matchPayload = await matchRes.json().catch(() => ({}));
+        const matches = Array.isArray(matchPayload?.suggestions)
+          ? (matchPayload.suggestions as Array<{
+              faceIndex: number;
+              label: string;
+              contributorId: string | null;
+              userId: string | null;
+              confidence: 'high' | 'medium' | 'low';
+            }>)
+          : [];
+        for (const m of matches) {
+          if (m.confidence === 'low') continue;
+          if (typeof m.faceIndex === 'number' && m.label) {
+            matchByIndex.set(m.faceIndex, {
+              label: m.label,
+              contributorId: m.contributorId,
+              userId: m.userId,
+            });
+          }
+        }
+      } catch {
+        // Matching is best-effort. If it fails, we still create placeholder tags.
+      }
 
       // Skip faces that overlap an existing tag center (within 5pp).
       const existing = faceTagsRef.current;
       const created: FaceTag[] = [];
-      for (const face of faces) {
+      for (let i = 0; i < faces.length; i += 1) {
+        const face = faces[i];
         const cx = face.leftPct + face.widthPct / 2;
         const cy = face.topPct + face.heightPct / 2;
         const overlaps = existing.some(
@@ -418,13 +456,16 @@ export default function TagPeopleSlider({
         );
         if (overlaps) continue;
         const color = TAG_COLORS[(existing.length + created.length) % TAG_COLORS.length];
-        const defaultName = `Person ${existing.length + created.length + 1}`;
+        const match = matchByIndex.get(i);
+        const tagName = match?.label ?? `Person ${existing.length + created.length + 1}`;
         try {
           const res = await fetch(`/api/images/${imageId}/tags`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              label: defaultName,
+              label: tagName,
+              contributorId: match?.contributorId ?? undefined,
+              userId: match?.userId ?? undefined,
               leftPct: face.leftPct,
               topPct: face.topPct,
               widthPct: face.widthPct,
@@ -434,13 +475,15 @@ export default function TagPeopleSlider({
           });
           const payload = await res.json().catch(() => ({}));
           if (res.ok && payload?.tag?.id) {
+            // Server may have overridden label using contributor/user data — trust it.
+            const finalName = (payload.tag.label as string) || tagName;
             created.push({
               id: payload.tag.id,
               dbId: payload.tag.id,
               x: cx,
               y: cy,
               color,
-              name: defaultName,
+              name: finalName,
             });
           }
         } catch {
@@ -449,6 +492,7 @@ export default function TagPeopleSlider({
       }
       if (created.length > 0) {
         setFaceTags((prev) => [...prev, ...created]);
+        void refreshPeopleSuggestions();
       }
     } finally {
       setDetectingFaces(false);
