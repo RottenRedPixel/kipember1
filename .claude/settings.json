@@ -1,5 +1,18 @@
 {
   "permissions": {
     "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/bootstrap-worktree.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
   }
 }
