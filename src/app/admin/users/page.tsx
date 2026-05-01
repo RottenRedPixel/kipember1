@@ -1,4 +1,6 @@
+import { getCurrentAuth } from '@/lib/auth-server';
 import { prisma } from '@/lib/db';
+import DeleteUserButton from '@/components/admin/DeleteUserButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +13,9 @@ function formatJoinedDate(date: Date) {
 }
 
 export default async function AdminUsersPage() {
+  const auth = await getCurrentAuth();
+  const currentUserId = auth?.user.id ?? null;
+
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     select: {
@@ -42,11 +47,13 @@ export default async function AdminUsersPage() {
               <th className="px-4 py-3 font-medium">Phone</th>
               <th className="px-4 py-3 font-medium tabular-nums">Embers</th>
               <th className="px-4 py-3 font-medium">Joined</th>
+              <th className="px-4 py-3 w-12"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => {
               const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || '—';
+              const isSelf = currentUserId === u.id;
               return (
                 <tr key={u.id} className="border-t border-gray-200 hover:bg-gray-50">
                   <td className="px-4 py-3">{name}</td>
@@ -54,6 +61,13 @@ export default async function AdminUsersPage() {
                   <td className="px-4 py-3 text-gray-600">{u.phoneNumber || '—'}</td>
                   <td className="px-4 py-3 tabular-nums">{u._count.ownedImages}</td>
                   <td className="px-4 py-3 text-gray-500">{formatJoinedDate(u.createdAt)}</td>
+                  <td className="px-2 py-3 text-right">
+                    <DeleteUserButton
+                      userId={u.id}
+                      userLabel={u.email}
+                      isSelf={isSelf}
+                    />
+                  </td>
                 </tr>
               );
             })}
