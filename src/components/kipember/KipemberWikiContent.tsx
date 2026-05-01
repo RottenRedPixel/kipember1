@@ -1412,7 +1412,14 @@ export default function KipemberWikiContent({
     [wikiClaims]
   );
   const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
-  const pendingContributors = contributors.filter((contributor) => !contributor.userId && !contributor.user);
+  // A real pending contributor has at least one identifier (name / email /
+  // phoneNumber). Rows with all identity fields null are share-link
+  // placeholders that anchor the share token — never surface them.
+  const pendingContributors = contributors.filter((contributor) =>
+    !contributor.userId &&
+    !contributor.user &&
+    Boolean(contributor.name || contributor.email || contributor.phoneNumber)
+  );
   // Story Circle completion is gated on contributor (non-owner) engagement —
   // the owner's own sessions don't count. Auto-welcome assistant messages are
   // also excluded since they don't reflect real engagement.
