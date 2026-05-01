@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
 import { ensureEmberOwnerAccess } from '@/lib/ember';
 import {
-  suggestAutoTagMatchesForImage,
   suggestFaceMatchesForImage,
   type FaceBox,
 } from '@/lib/face-match-suggestions';
 import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 
+/**
+ * Per-face match suggestions — used by the per-tag picker's
+ * "Suggest from photo" button. Bulk auto-detect was removed; for
+ * the full detect+match pipeline, see /api/images/[id]/auto-tag.
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -28,18 +32,12 @@ export async function POST(
 
     const body = await request.json();
     const faces = Array.isArray(body?.faces) ? (body.faces as FaceBox[]) : [];
-    const autoDetect = body?.autoDetect === true;
 
-    const suggestions = autoDetect
-      ? await suggestAutoTagMatchesForImage({
-          ownerId: auth.user.id,
-          imageId: id,
-        })
-      : await suggestFaceMatchesForImage({
-          ownerId: auth.user.id,
-          imageId: id,
-          faces,
-        });
+    const suggestions = await suggestFaceMatchesForImage({
+      ownerId: auth.user.id,
+      imageId: id,
+      faces,
+    });
 
     return NextResponse.json({ suggestions });
   } catch (error) {

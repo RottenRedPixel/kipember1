@@ -6,13 +6,13 @@ import { detectAndMatchFacesInImage } from '@/lib/face-match-suggestions';
 /**
  * POST /api/images/[id]/auto-tag
  *
- * Single-call replacement for the two-step Auto Detect flow
- * (POST /detect-faces + POST /tag-suggestions). Detects every visible
- * face in the cover photo AND matches each one against the owner's
- * previously-tagged faces in a single Claude vision call.
- *
- * Returns one entry per detected face, with identity fields populated
+ * Detects every visible face in the cover photo AND matches each one
+ * against the owner's previously-tagged faces — both in a single
+ * Claude vision call. Returns one entry per detected face, with
+ * identity fields (contributorId / userId / label / etc.) populated
  * when a match was found at non-low confidence.
+ *
+ * Used by the Tag People slider's Auto Detect button.
  */
 export async function POST(
   _request: NextRequest,

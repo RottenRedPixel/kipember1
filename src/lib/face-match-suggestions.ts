@@ -101,42 +101,6 @@ const FACE_VERIFY_SCHEMA = {
   },
 } as const;
 
-const AUTO_TAG_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['matches'],
-  properties: {
-    matches: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: [
-          'personKey',
-          'confidence',
-          'reason',
-          'leftPct',
-          'topPct',
-          'widthPct',
-          'heightPct',
-        ],
-        properties: {
-          personKey: { type: 'string' },
-          confidence: {
-            type: 'string',
-            enum: ['high', 'medium', 'low'],
-          },
-          reason: { type: 'string' },
-          leftPct: { type: 'number' },
-          topPct: { type: 'number' },
-          widthPct: { type: 'number' },
-          heightPct: { type: 'number' },
-        },
-      },
-    },
-  },
-} as const;
-
 function parseJsonFromText(text: string): unknown {
   const trimmed = text.trim();
 
@@ -208,21 +172,6 @@ function expandFaceBox(box: FaceBox): FaceBox {
   return normalizeFaceBox({
     leftPct: centerX - widthPct / 2,
     topPct: centerY - heightPct / 2 - heightPct * 0.08,
-    widthPct,
-    heightPct,
-  });
-}
-
-function tightenLocatedFaceBox(box: FaceBox): FaceBox {
-  const normalized = normalizeFaceBox(box);
-  const widthPct = Math.max(8, Math.min(22, normalized.widthPct * 0.82));
-  const heightPct = Math.max(10, Math.min(26, normalized.heightPct * 0.8));
-  const centerX = normalized.leftPct + normalized.widthPct / 2;
-  const centerY = normalized.topPct + normalized.heightPct / 2;
-
-  return normalizeFaceBox({
-    leftPct: centerX - widthPct / 2,
-    topPct: centerY - heightPct / 2,
     widthPct,
     heightPct,
   });
@@ -426,37 +375,6 @@ async function repairFaceVerifyJson(responseText: string): Promise<unknown> {
   const repairMessage = await anthropic.messages.create({
     model: await getFaceMatchModel(),
     max_tokens: 800,
-    system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: responseText,
-          },
-        ],
-      },
-    ],
-  });
-
-  const repairedText = repairMessage.content
-    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
-    .join('\n')
-    .trim();
-
-  return parseJsonFromText(repairedText);
-}
-
-async function repairAutoTagJson(responseText: string): Promise<unknown> {
-  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
-    task: 'auto_tag_repair',
-    schemaJson: JSON.stringify(AUTO_TAG_SCHEMA),
-  });
-  const repairMessage = await anthropic.messages.create({
-    model: await getFaceMatchModel(),
-    max_tokens: 1000,
     system: systemPrompt,
     messages: [
       {
@@ -790,123 +708,6 @@ async function loadTargetImageBuffer(image: {
     .toBuffer();
 }
 
-async function locateCandidateMatchesInImage(
-  targetImage: Buffer,
-  candidates: Array<
-    CandidateGroup & {
-      referenceImages: Buffer[];
-    }
-  >
-) {
-  const candidateKeys = new Set(candidates.map((candidate) => candidate.personKey));
-  const content: Anthropic.Messages.ContentBlockParam[] = [
-    {
-      type: 'text',
-      text: 'target',
-    },
-    {
-      type: 'image',
-      source: {
-        type: 'base64',
-        media_type: 'image/jpeg',
-        data: targetImage.toString('base64'),
-      },
-    },
-  ];
-
-  candidates.forEach((candidate, index) => {
-    content.push({
-      type: 'text',
-      text: `Candidate ${index + 1}\npersonKey: ${candidate.personKey}\nlabel: ${candidate.label}`,
-    });
-
-    candidate.referenceImages.slice(0, 2).forEach((referenceImage, referenceIndex) => {
-      content.push({
-        type: 'text',
-        text: `Reference ${referenceIndex + 1} for ${candidate.label}`,
-      });
-      content.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: 'image/jpeg',
-          data: referenceImage.toString('base64'),
-        },
-      });
-    });
-  });
-
-  const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo', '', {
-    task: 'auto_tag',
-    schemaJson: JSON.stringify(AUTO_TAG_SCHEMA),
-  });
-  const response = await anthropic.messages.create({
-    model: await getFaceMatchModel(),
-    max_tokens: 1400,
-    system: systemPrompt,
-    messages: [
-      {
-        role: 'user',
-        content,
-      },
-    ],
-  });
-
-  const responseText = response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-    .map((block) => block.text)
-    .join('\n')
-    .trim();
-
-  let parsed: unknown;
-
-  try {
-    parsed = parseJsonFromText(responseText);
-  } catch {
-    parsed = await repairAutoTagJson(responseText);
-  }
-
-  const record = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
-  const matches = Array.isArray(record.matches) ? record.matches : [];
-
-  return matches
-    .map((match) => {
-      const item = match as Record<string, unknown>;
-      const personKey = sanitizeString(item.personKey);
-      const confidence =
-        item.confidence === 'high' ||
-        item.confidence === 'medium' ||
-        item.confidence === 'low'
-          ? item.confidence
-          : 'low';
-      const reason = sanitizeString(item.reason) || '';
-
-      if (
-        !personKey ||
-        !candidateKeys.has(personKey) ||
-        typeof item.leftPct !== 'number' ||
-        typeof item.topPct !== 'number' ||
-        typeof item.widthPct !== 'number' ||
-        typeof item.heightPct !== 'number'
-      ) {
-        return null;
-      }
-
-      return {
-        personKey,
-        confidence,
-        reason,
-        box: tightenLocatedFaceBox({
-          leftPct: item.leftPct,
-          topPct: item.topPct,
-          widthPct: item.widthPct,
-          heightPct: item.heightPct,
-        }),
-      };
-    })
-    .filter((match): match is NonNullable<typeof match> => Boolean(match));
-}
-
 export async function suggestFaceMatchesForImage({
   ownerId,
   imageId,
@@ -1045,97 +846,6 @@ export async function suggestFaceMatchesForImage({
   return suggestions;
 }
 
-export async function suggestAutoTagMatchesForImage({
-  ownerId,
-  imageId,
-}: {
-  ownerId: string;
-  imageId: string;
-}): Promise<FaceMatchSuggestion[]> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return [];
-  }
-
-  const image = await prisma.image.findFirst({
-    where: {
-      id: imageId,
-      ownerId,
-    },
-    select: {
-      id: true,
-      filename: true,
-      mediaType: true,
-      posterFilename: true,
-    },
-  });
-
-  if (!image || image.mediaType === 'AUDIO') {
-    throw new Error('Image not found');
-  }
-
-  const visualImage = {
-    filename: image.filename,
-    mediaType: image.mediaType,
-    posterFilename: image.posterFilename,
-  } as const;
-
-  const referenceCandidates = await getReferenceCandidates(ownerId, imageId);
-  if (referenceCandidates.length === 0) {
-    return [];
-  }
-
-  const targetImage = await loadTargetImageBuffer(visualImage);
-  const validCandidates = await loadCandidatesWithReferences(referenceCandidates);
-
-  if (validCandidates.length === 0) {
-    return [];
-  }
-
-  const matches =
-    validCandidates.length <= 3
-      ? (
-          await (async () => {
-            const sequentialMatches: Array<NonNullable<Awaited<ReturnType<typeof locateCandidateMatchesInImage>>[number]>> = [];
-
-            for (const candidate of validCandidates) {
-              const candidateMatches = await locateCandidateMatchesInImage(targetImage, [candidate]);
-              if (candidateMatches[0]) {
-                sequentialMatches.push(candidateMatches[0]);
-              }
-            }
-
-            return sequentialMatches;
-          })()
-        ).filter((match): match is NonNullable<typeof match> => Boolean(match))
-      : await locateCandidateMatchesInImage(targetImage, validCandidates);
-
-  const suggestions: FaceMatchSuggestion[] = [];
-
-  matches.forEach((match, index) => {
-    const candidate = validCandidates.find((item) => item.personKey === match.personKey);
-    if (!candidate || match.confidence === 'low') {
-      return;
-    }
-
-    suggestions.push({
-      faceIndex: index,
-      leftPct: match.box.leftPct,
-      topPct: match.box.topPct,
-      widthPct: match.box.widthPct,
-      heightPct: match.box.heightPct,
-      label: candidate.label,
-      userId: candidate.userId,
-      contributorId: candidate.contributorId,
-      email: candidate.email,
-      phoneNumber: candidate.phoneNumber,
-      confidence: match.confidence as Confidence,
-      reason: match.reason,
-    });
-  });
-
-  return suggestions;
-}
-
 /**
  * Auto-tag pipeline (combined detect + match in a single Claude vision call).
  *
@@ -1145,10 +855,8 @@ export async function suggestAutoTagMatchesForImage({
  *   (contributorId / userId / label / email / phoneNumber / confidence)
  * - or all identity fields null when no candidate matched.
  *
- * This replaces the two-step Auto Detect path (POST /detect-faces +
- * POST /tag-suggestions) with one round-trip. Cold-start (no
- * candidates) skips the candidate context entirely and acts as plain
- * face detection.
+ * Cold-start (no reference candidates) skips the candidate context
+ * entirely and acts as plain face detection.
  */
 
 const MAX_CANDIDATES_FOR_AUTO_TAG = 10;
