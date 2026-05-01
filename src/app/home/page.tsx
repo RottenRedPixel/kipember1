@@ -6,7 +6,7 @@ import {
   getAccessibleEmbersForUser,
   getContributorsListForUser,
   getTotalContributorsForUser,
-} from '@/lib/image-summaries';
+} from '@/lib/ember';
 import { getAvatarUrl } from '@/lib/avatar';
 import { getHomeActivity } from '@/lib/home-activity';
 

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import MediaPreview from '@/components/MediaPreview';
 import StoryCircleThread from '@/components/StoryCircleThread';
 import { requirePageUser } from '@/lib/auth-server';
-import { getEmberAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember';
 import { getStoryCircleForImage } from '@/lib/story-circle';
 
 export default async function StoryCirclePage({

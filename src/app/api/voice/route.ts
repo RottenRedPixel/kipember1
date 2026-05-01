@@ -8,7 +8,7 @@ import {
   ensureEmberSession,
   type EmberParticipantType,
 } from '@/lib/ember-sessions';
-import { getEmberAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember';
 import { generateEmberVoiceReply } from '@/lib/ember-voice-reply';
 import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 import {

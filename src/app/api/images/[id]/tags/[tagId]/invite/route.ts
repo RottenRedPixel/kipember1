@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import { sendContributorSmsInvite } from '@/lib/contributor-invites';
 import { prisma } from '@/lib/db';
-import { ensureEmberOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { invalidateSmartTitleSuggestions } from '@/lib/smart-title-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { getUserDisplayName } from '@/lib/user-name';

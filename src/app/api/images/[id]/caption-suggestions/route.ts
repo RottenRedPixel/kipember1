@@ -5,7 +5,7 @@ import {
   isPromptRemovedError,
   renderPromptTemplate,
 } from '@/lib/control-plane';
-import { ensureEmberOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { getConfiguredOpenAIModel, getOpenAIClient, getWikiModel } from '@/lib/openai';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 

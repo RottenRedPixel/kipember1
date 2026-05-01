@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { refreshMemoryReconciliationForImage } from '@/lib/memory-reconciliation';
 

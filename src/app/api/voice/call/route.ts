@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureOwnedContributorAccess } from '@/lib/ember-access';
+import { ensureOwnedContributorAccess } from '@/lib/ember';
 import { startVoiceCallForContributor } from '@/lib/voice-calls';
 
 export async function POST(request: NextRequest) {

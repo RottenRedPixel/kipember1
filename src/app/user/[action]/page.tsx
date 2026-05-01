@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
 import UserActionScreen from '@/components/kipember/UserActionScreen';
 import { getFriendNetworkForUser } from '@/lib/friend-network';
-import { getAccessibleEmbersForUser } from '@/lib/image-summaries';
+import { getAccessibleEmbersForUser } from '@/lib/ember';
 
 export default async function UserActionPage({
   params,

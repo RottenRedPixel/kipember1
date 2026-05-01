@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureOwnedContributorAccess } from '@/lib/ember-access';
+import { ensureOwnedContributorAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 
 export async function GET(

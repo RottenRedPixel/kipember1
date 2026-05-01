@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { getEmberAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { contributorChatSessionIdentity, ensureEmberSession } from '@/lib/ember-sessions';
 import { persistUploadedMedia } from '@/lib/media-upload';

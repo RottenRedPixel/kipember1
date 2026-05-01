@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess, getEmberAccessType } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess, getEmberAccessType } from '@/lib/ember';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 import { getUserDisplayName } from '@/lib/user-name';

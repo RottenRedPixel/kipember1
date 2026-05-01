@@ -3,7 +3,7 @@ import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-serve
 import {
   ensureContributorRemovalAccess,
   ensureEmberOwnerAccess,
-} from '@/lib/ember-access';
+} from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { getUserDisplayName } from '@/lib/user-name';
 

@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises';
 import Anthropic from '@anthropic-ai/sdk';
 import sharp from 'sharp';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
 import {

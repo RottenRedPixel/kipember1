@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess, getAcceptedFriends, getEmberAccessType } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess, getAcceptedFriends, getEmberAccessType } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 import { parseVoiceCallTranscriptSegments } from '@/lib/voice-call-clips';
-import { invalidateAccessibleEmbersForUser } from '@/lib/image-summaries';
+import { invalidateAccessibleEmbersForUser } from '@/lib/ember';
 import { toTitleCase } from '@/lib/ember-title';
 import { getUserDisplayName } from '@/lib/user-name';
 

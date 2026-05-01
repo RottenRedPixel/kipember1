@@ -9,7 +9,7 @@ import {
 } from '@/lib/audio-processing';
 import { getOrCreateAudioSegmentPath, getOrCreateNormalizedAudioPath } from '@/lib/audio-segments';
 import { getElevenLabsApiKey, getElevenLabsModelId, resolveNarrationVoice } from '@/lib/elevenlabs';
-import { getEmberAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { normalizeTextForSpeech } from '@/lib/narration';
 import { getUploadsDir } from '@/lib/uploads';

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess, ensureOwnedContributorAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess, ensureOwnedContributorAccess } from '@/lib/ember';
 import { sendContributorSmsInvite } from '@/lib/contributor-invites';
 
 export async function POST(request: NextRequest) {

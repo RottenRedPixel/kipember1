@@ -7,7 +7,7 @@ import {
   getFriendNetworkForUser,
   invalidateFriendNetworkForUser,
 } from '@/lib/friend-network';
-import { invalidateAccessibleEmbersForUser } from '@/lib/image-summaries';
+import { invalidateAccessibleEmbersForUser } from '@/lib/ember';
 import { getUserDisplayName } from '@/lib/user-name';
 
 export async function GET() {

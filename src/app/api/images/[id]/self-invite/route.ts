@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { startVoiceCallForContributor } from '@/lib/voice-calls';
 import { sendOwnerSelfSms } from '@/lib/owner-self-invite';

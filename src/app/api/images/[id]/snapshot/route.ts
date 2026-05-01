@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { generateSnapshotScript } from '@/lib/claude';
 import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';

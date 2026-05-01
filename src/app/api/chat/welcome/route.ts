@@ -8,7 +8,7 @@ import {
   ensureEmberSession,
   type EmberParticipantType,
 } from '@/lib/ember-sessions';
-import { getEmberAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember';
 
 const COOKIE_NAME = 'kb-chat-browser';
 

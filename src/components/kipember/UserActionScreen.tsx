@@ -8,11 +8,11 @@ import { USER_ACTIONS, USER_ICONS } from '@/app/user/constants';
 import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
 import type { FriendNetworkPayload } from '@/lib/friend-network';
-import type { AccessibleImageSummary } from '@/lib/image-summaries';
+import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
 import { getUserDisplayName } from '@/lib/user-name';
 
-type ImageSummary = AccessibleImageSummary & {
+type EmberSummary = BaseEmberSummary & {
   mediaType: EmberMediaType;
   createdAt: string | Date;
 };
@@ -32,7 +32,7 @@ function initials(value: string) {
 
 const SORT_OPTIONS = ['Newest', 'Oldest', 'A-Z', 'Z-A'];
 
-function sortEmbers(embers: ImageSummary[], sort: string) {
+function sortEmbers(embers: EmberSummary[], sort: string) {
   return [...embers].sort((left, right) => {
     if (sort === 'A-Z') {
       return (left.title || left.originalName).localeCompare(right.title || right.originalName);
@@ -58,13 +58,13 @@ export default function UserActionScreen({
   action: string;
   basePath?: string;
   rootView?: boolean;
-  initialImages?: ImageSummary[];
+  initialImages?: EmberSummary[];
   initialProfile?: Profile | null;
   initialFriends?: FriendNetworkPayload | null;
 }) {
   const searchParams = useSearchParams();
   const title = USER_ACTIONS[action];
-  const [images, setImages] = useState<ImageSummary[]>(initialImages);
+  const [images, setImages] = useState<EmberSummary[]>(initialImages);
   const [friends, setFriends] = useState<FriendNetworkPayload | null>(initialFriends);
   const [form, setForm] = useState({
     firstName: initialProfile?.firstName || '',
@@ -92,7 +92,7 @@ export default function UserActionScreen({
           if (!response.ok) {
             return;
           }
-          setImages((await response.json()) as ImageSummary[]);
+          setImages((await response.json()) as EmberSummary[]);
         })
         .catch(() => undefined);
 

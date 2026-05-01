@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
-import { ensureOwnedContributorAccess } from '@/lib/ember-access';
+import { ensureOwnedContributorAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 
 export async function PATCH(

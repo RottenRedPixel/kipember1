@@ -8,7 +8,7 @@ import { persistUploadedMedia } from '@/lib/media-upload';
 import {
   getAccessibleEmbersForUser,
   invalidateAccessibleEmbersForUser,
-} from '@/lib/image-summaries';
+} from '@/lib/ember';
 import { generateSnapshotScript } from '@/lib/claude';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 

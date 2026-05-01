@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createReadStream, promises as fs } from 'fs';
 import { requireApiUser } from '@/lib/auth-server';
-import { getEmberAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember';
 import { getOrCreateAudioSegmentPath, resolveAudioSourceForMedia } from '@/lib/audio-segments';
 
 function parseBoundedMs(value: string | null, fallback: number | null = null) {
