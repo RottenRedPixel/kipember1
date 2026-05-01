@@ -36,7 +36,7 @@ import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import ContributorFlow from '@/components/kipember/workflows/ContributorFlow';
 import OwnerFlow from '@/components/kipember/workflows/OwnerFlow';
-import type { AccessibleImageSummary } from '@/lib/image-summaries';
+import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -49,7 +49,7 @@ type AuthUser = {
   avatarUrl?: string | null;
 };
 
-type ImageSummary = AccessibleImageSummary & {
+type EmberSummary = BaseEmberSummary & {
   createdAt: string | Date;
   capturedAt: string | Date | null;
 };
@@ -64,7 +64,7 @@ type ImageAttachment = {
   description: string | null;
 };
 
-type ImageDetail = ImageSummary & {
+type EmberDetail = EmberSummary & {
   analysis: {
     summary: string | null;
     capturedAt: string | null;
@@ -88,12 +88,12 @@ type CreateEmberResponse = {
   mediaType?: string;
   warning?: string | null;
   error?: string;
-  image?: ImageSummary;
+  image?: EmberSummary;
 };
 
 type HomeEmberFlow = 'owner' | 'contributor' | null;
 
-function getDefaultHomeEmberFlow(accessType: ImageSummary['accessType'] | undefined): Exclude<HomeEmberFlow, null> {
+function getDefaultHomeEmberFlow(accessType: EmberSummary['accessType'] | undefined): Exclude<HomeEmberFlow, null> {
   return accessType === 'contributor' ? 'contributor' : 'owner';
 }
 
@@ -268,13 +268,13 @@ function XIcon() {
 
 export default function HomeScreen({
   initialProfile,
-  initialImages = [],
-  initialImageId,
+  initialEmbers = [],
+  initialEmberId,
   initialAvatarUrl,
 }: {
   initialProfile?: AuthUser | null;
-  initialImages?: ImageSummary[];
-  initialImageId?: string;
+  initialEmbers?: EmberSummary[];
+  initialEmberId?: string;
   initialAvatarUrl?: string | null;
 }) {
   const params = useSearchParams();
@@ -288,13 +288,13 @@ export default function HomeScreen({
 
   const [profile, setProfile] = useState<AuthUser | null>(initialProfile ?? null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? initialProfile?.avatarUrl ?? null);
-  const [images, setImages] = useState<ImageSummary[]>(initialImages);
-  const [selectedImage, setSelectedImage] = useState<ImageDetail | null>(null);
+  const [embers, setEmbers] = useState<EmberSummary[]>(initialEmbers);
+  const [selectedEmber, setSelectedEmber] = useState<EmberDetail | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPreviewUrl, setSelectedPreviewUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadKey, setUploadKey] = useState(0);
-  const [createdImageId, setCreatedImageId] = useState<string | null>(null);
+  const [createdEmberId, setCreatedEmberId] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState('');
   const [storedTheme, setStoredTheme] = useState<string | null>(null);
   const [hasConversationHistory, setHasConversationHistory] = useState(false);
@@ -315,11 +315,11 @@ export default function HomeScreen({
   const swipeAxisRef = useRef<'x' | 'y' | null>(null);
   const pendingEntryRef = useRef(0);
 
-  const selectedImageId = initialImageId || params.get('id') || images[0]?.id || null;
-  const hasExistingEmbers = images.length > 0;
-  const selectedSummary = images.find((image) => image.id === selectedImageId) || null;
-  const displayImage = selectedImage || selectedSummary;
-  const defaultChatFlow = getDefaultHomeEmberFlow(displayImage?.accessType);
+  const selectedEmberId = initialEmberId || params.get('id') || embers[0]?.id || null;
+  const hasExistingEmbers = embers.length > 0;
+  const selectedSummary = embers.find((ember) => ember.id === selectedEmberId) || null;
+  const displayEmber = selectedEmber || selectedSummary;
+  const defaultChatFlow = getDefaultHomeEmberFlow(displayEmber?.accessType);
   const flow = parseHomeEmberFlow(rawFlow);
   const emberOpen = flow !== null;
   const chatExpanded = emberOpen && view === 'full';
@@ -327,19 +327,19 @@ export default function HomeScreen({
   const chatTab: 'chats' | 'voice' | 'calls' =
     rawChatParam === 'voice' ? 'voice' : rawChatParam === 'calls' ? 'calls' : 'chats';
   const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
-  const swipeEnabled = !firstEmber && !emberOpen && !modal && !step && images.length > 1;
-  const title = displayImage ? getEmberTitle({ title: displayImage.title, originalName: stripExtension(displayImage.originalName) }) : 'Beach Day';
-  const capturedAt = selectedImage?.analysis?.capturedAt ?? displayImage?.capturedAt ?? null;
-  const subtitle = displayImage
+  const swipeEnabled = !firstEmber && !emberOpen && !modal && !step && embers.length > 1;
+  const title = displayEmber ? getEmberTitle({ title: displayEmber.title, originalName: stripExtension(displayEmber.originalName) }) : 'Beach Day';
+  const capturedAt = selectedEmber?.analysis?.capturedAt ?? displayEmber?.capturedAt ?? null;
+  const subtitle = displayEmber
     ? capturedAt
       ? new Date(capturedAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
       : 'Date Unknown'
     : '';
-  const mediaUrl = displayImage
+  const mediaUrl = displayEmber
       ? getPreviewMediaUrl({
-        mediaType: displayImage.mediaType,
-        filename: displayImage.filename,
-        posterFilename: displayImage.posterFilename,
+        mediaType: displayEmber.mediaType,
+        filename: displayEmber.filename,
+        posterFilename: displayEmber.posterFilename,
       })
     : '';
 
@@ -354,9 +354,9 @@ export default function HomeScreen({
   const currentPhotoUrl = allMedia[photoIndex]?.url ?? mediaUrl;
   const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
 
-  const currentEmberIndex = selectedImageId ? images.findIndex((i) => i.id === selectedImageId) : -1;
-  const prevEmber = currentEmberIndex > 0 ? images[currentEmberIndex - 1] : null;
-  const nextEmber = currentEmberIndex >= 0 && currentEmberIndex < images.length - 1 ? images[currentEmberIndex + 1] : null;
+  const currentEmberIndex = selectedEmberId ? embers.findIndex((i) => i.id === selectedEmberId) : -1;
+  const prevEmber = currentEmberIndex > 0 ? embers[currentEmberIndex - 1] : null;
+  const nextEmber = currentEmberIndex >= 0 && currentEmberIndex < embers.length - 1 ? embers[currentEmberIndex + 1] : null;
   const prevEmberPreloadUrl = prevEmber
     ? getPreviewMediaUrl({ mediaType: prevEmber.mediaType, filename: prevEmber.filename, posterFilename: prevEmber.posterFilename })
     : null;
@@ -376,11 +376,11 @@ export default function HomeScreen({
       }
     });
     const query = next.toString();
-    if (selectedImageId) {
-      return query ? `/ember/${selectedImageId}?${query}` : `/ember/${selectedImageId}`;
+    if (selectedEmberId) {
+      return query ? `/ember/${selectedEmberId}?${query}` : `/ember/${selectedEmberId}`;
     }
     return query ? `/home?${query}` : '/home';
-  }, [params, selectedImageId]);
+  }, [params, selectedEmberId]);
   const isDarkTheme = params.get('theme')
     ? params.get('theme') !== 'light'
     : storedTheme !== 'light';
@@ -508,7 +508,7 @@ export default function HomeScreen({
     }
     setSwipeSettling(false);
     setDragY(0);
-  }, [selectedImageId]);
+  }, [selectedEmberId]);
 
   useEffect(() => {
     if (profile) {
@@ -548,21 +548,21 @@ export default function HomeScreen({
         if (!response.ok) {
           return;
         }
-        const payload = (await response.json()) as ImageSummary[];
-        setImages(payload);
+        const payload = (await response.json()) as EmberSummary[];
+        setEmbers(payload);
       })
       .catch(() => undefined);
-  }, [createdImageId]);
+  }, [createdEmberId]);
 
   // Poll for image-analysis completion: while the currently-selected ember has
   // no title, refetch the image list every 3s. Once a title comes back (image
   // analysis sets it), stop polling. Bail after ~2 minutes to avoid runaway.
-  const selectedImageHasTitle = Boolean(
-    selectedImageId &&
-      images.find((img) => img.id === selectedImageId)?.title?.trim()
+  const selectedEmberHasTitle = Boolean(
+    selectedEmberId &&
+      embers.find((img) => img.id === selectedEmberId)?.title?.trim()
   );
   useEffect(() => {
-    if (!selectedImageId || selectedImageHasTitle) return;
+    if (!selectedEmberId || selectedEmberHasTitle) return;
     const startedAt = Date.now();
     const interval = setInterval(() => {
       if (Date.now() - startedAt > 120_000) {
@@ -572,56 +572,56 @@ export default function HomeScreen({
       void fetch('/api/images', { cache: 'no-store' })
         .then(async (response) => {
           if (!response.ok) return;
-          const payload = (await response.json()) as ImageSummary[];
-          setImages(payload);
+          const payload = (await response.json()) as EmberSummary[];
+          setEmbers(payload);
         })
         .catch(() => undefined);
     }, 3_000);
     return () => clearInterval(interval);
-  }, [selectedImageId, selectedImageHasTitle]);
+  }, [selectedEmberId, selectedEmberHasTitle]);
 
   useEffect(() => {
-    if (!selectedImageId || modal !== 'play') {
-      setSelectedImage(null);
+    if (!selectedEmberId || modal !== 'play') {
+      setSelectedEmber(null);
       return;
     }
 
-    void fetch(`/api/images/${selectedImageId}?scope=play`)
+    void fetch(`/api/images/${selectedEmberId}?scope=play`)
       .then(async (response) => {
         if (!response.ok) {
           return;
         }
-        const payload = (await response.json()) as ImageDetail;
-        setSelectedImage(payload);
+        const payload = (await response.json()) as EmberDetail;
+        setSelectedEmber(payload);
       })
       .catch(() => undefined);
-  }, [modal, selectedImageId]);
+  }, [modal, selectedEmberId]);
 
   useEffect(() => {
     setPhotoIndex(0);
     setPhotoOpacity(1);
-    if (!selectedImageId || firstEmber) {
+    if (!selectedEmberId || firstEmber) {
       setAttachments([]);
       return;
     }
-    void fetch(`/api/images/${encodeURIComponent(selectedImageId)}/attachments`, { cache: 'no-store' })
+    void fetch(`/api/images/${encodeURIComponent(selectedEmberId)}/attachments`, { cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) return;
         const payload = await r.json() as { attachments: ImageAttachment[] };
         setAttachments(payload.attachments ?? []);
       })
       .catch(() => undefined);
-  }, [selectedImageId, firstEmber]);
+  }, [selectedEmberId, firstEmber]);
 
   useEffect(() => {
-    if (!selectedImageId || firstEmber) {
+    if (!selectedEmberId || firstEmber) {
       setHasConversationHistory(false);
       return;
     }
 
     let cancelled = false;
 
-    void fetch(`/api/chat?imageId=${encodeURIComponent(selectedImageId)}`, {
+    void fetch(`/api/chat?imageId=${encodeURIComponent(selectedEmberId)}`, {
       cache: 'no-store',
     })
       .then(async (response) => {
@@ -648,7 +648,7 @@ export default function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, [firstEmber, selectedImageId]);
+  }, [firstEmber, selectedEmberId]);
 
   useEffect(() => {
     return () => {
@@ -659,12 +659,12 @@ export default function HomeScreen({
   }, [selectedPreviewUrl]);
 
   useEffect(() => {
-    if (modal !== 'share' || !selectedImageId) {
+    if (modal !== 'share' || !selectedEmberId) {
       setShareToken(null);
       return;
     }
 
-    void fetch(`/api/images/${selectedImageId}/share-token`, { method: 'POST' })
+    void fetch(`/api/images/${selectedEmberId}/share-token`, { method: 'POST' })
       .then(async (res) => {
         const payload = await res.json().catch(() => null);
         if (typeof payload?.token === 'string') {
@@ -672,7 +672,7 @@ export default function HomeScreen({
         }
       })
       .catch(() => undefined);
-  }, [modal, selectedImageId]);
+  }, [modal, selectedEmberId]);
 
   useEffect(() => {
     const stored = localStorage.getItem('ember-theme');
@@ -706,7 +706,7 @@ export default function HomeScreen({
 
     setUploading(true);
     setUploadError('');
-    setCreatedImageId(null);
+    setCreatedEmberId(null);
     setUploadKey((value) => value + 1);
     router.push(buildHomeHref({ step: 'processing', mode: 'first-ember' }));
 
@@ -721,12 +721,12 @@ export default function HomeScreen({
       }
       const createdSummary = payload.image;
       if (createdSummary) {
-        setImages((current) => [
+        setEmbers((current) => [
           createdSummary,
-          ...current.filter((image) => image.id !== createdSummary.id),
+          ...current.filter((ember) => ember.id !== createdSummary.id),
         ]);
       }
-      setCreatedImageId(payload.id);
+      setCreatedEmberId(payload.id);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Failed to create ember');
     } finally {
@@ -735,18 +735,18 @@ export default function HomeScreen({
   }
 
   useEffect(() => {
-    if (!createdImageId || step !== 'processing') {
+    if (!createdEmberId || step !== 'processing') {
       return;
     }
 
     const timer = setTimeout(() => {
       setSelectedFile(null);
       setSelectedPreviewUrl('');
-      router.replace(`/ember/${createdImageId}?ember=owner`);
+      router.replace(`/ember/${createdEmberId}?ember=owner`);
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [createdImageId, router, step]);
+  }, [createdEmberId, router, step]);
 
   return (
     <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
@@ -816,10 +816,10 @@ export default function HomeScreen({
                 setPhotoOpacity(1);
               }}
               style={(() => {
-                const cx = displayImage?.cropX;
-                const cy = displayImage?.cropY;
-                const cw = displayImage?.cropWidth;
-                const ch = displayImage?.cropHeight;
+                const cx = displayEmber?.cropX;
+                const cy = displayEmber?.cropY;
+                const cw = displayEmber?.cropWidth;
+                const ch = displayEmber?.cropHeight;
                 const hasCrop = !chatExpanded && cx != null && cy != null && cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100;
                 const scale = hasCrop && cw != null && ch != null && cw > 0 && ch > 0
                   ? Math.min(100 / cw, 100 / ch)
@@ -885,10 +885,10 @@ export default function HomeScreen({
       <AppHeader
         avatarUrl={avatarUrl}
         userInitials={initials(getUserDisplayName(profile) || profile?.email || 'ST')}
-        userModalHref={selectedImageId ? `/account?imageId=${selectedImageId}` : '/account'}
+        userModalHref={selectedEmberId ? `/account?imageId=${selectedEmberId}` : '/account'}
       />
 
-      {!firstEmber && displayImage && !chatExpanded ? (
+      {!firstEmber && displayEmber && !chatExpanded ? (
         <div
           className="absolute left-4 z-20 pointer-events-none"
           style={{
@@ -898,10 +898,10 @@ export default function HomeScreen({
           }}
         >
           <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-            {selectedImageHasTitle ? title : ' '}
+            {selectedEmberHasTitle ? title : ' '}
           </p>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-            {selectedImageHasTitle ? subtitle : ' '}
+            {selectedEmberHasTitle ? subtitle : ' '}
           </p>
         </div>
       ) : null}
@@ -990,10 +990,10 @@ export default function HomeScreen({
             <EmberMark size={40} />
           </div>
           <p className="mt-8 font-medium text-base text-white">
-            {createdImageId ? 'Ember created!' : 'Igniting ember'}
+            {createdEmberId ? 'Ember created!' : 'Igniting ember'}
           </p>
           <p className="mt-1 text-sm text-white/60">
-            {uploadError || (createdImageId ? 'Opening your memory...' : 'Building the ember structure')}
+            {uploadError || (createdEmberId ? 'Opening your memory...' : 'Building the ember structure')}
           </p>
         </div>
       ) : null}
@@ -1084,22 +1084,22 @@ export default function HomeScreen({
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-            {displayImage?.accessType === 'contributor' ? (
+            {displayEmber?.accessType === 'contributor' ? (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=contributor` : '/home'} icon={PlusCircle} />
-                <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
+                <SvgItem label="Add Content" href={selectedEmberId ? `/ember/${selectedEmberId}?ember=contributor` : '/home'} icon={PlusCircle} />
+                <SvgItem label="Tag People" href={selectedEmberId ? `/tend/tag-people?id=${selectedEmberId}` : '/tend/tag-people'} icon={UserStar} />
               </>
             ) : (
               <>
-                <SvgItem label="Add Content" href={selectedImageId ? `/ember/${selectedImageId}?ember=owner` : '/home'} icon={PlusCircle} />
-                <SvgItem label="Edit Title" href={selectedImageId ? `/tend/edit-title?id=${selectedImageId}` : '/tend/edit-title'} icon={PencilLine} />
-                <SvgItem label="Edit Time & Place" href={selectedImageId ? `/tend/edit-time-place?id=${selectedImageId}` : '/tend/edit-time-place'} icon={Clock} />
-                <SvgItem label="Edit Snapshot" href={selectedImageId ? `/tend/edit-snapshot?id=${selectedImageId}` : '/tend/edit-snapshot'} icon={ScanEye} />
-                <SvgItem label="Frame" href={selectedImageId ? `/tend/frame?id=${selectedImageId}` : '/tend/frame'} icon={ScanLine} />
-                <SvgItem label="View Wiki" href={selectedImageId ? `/tend/view-wiki?id=${selectedImageId}` : '/tend/view-wiki'} icon={BookOpen} />
-                <SvgItem label="Tag People" href={selectedImageId ? `/tend/tag-people?id=${selectedImageId}` : '/tend/tag-people'} icon={UserStar} />
-                <SvgItem label="Settings" href={selectedImageId ? `/tend/settings?id=${selectedImageId}` : '/tend/settings'} icon={Settings} />
-                <SvgItem label="Contributors" href={selectedImageId ? `/tend/contributors?id=${selectedImageId}` : '/tend/contributors'} icon={Users} />
+                <SvgItem label="Add Content" href={selectedEmberId ? `/ember/${selectedEmberId}?ember=owner` : '/home'} icon={PlusCircle} />
+                <SvgItem label="Edit Title" href={selectedEmberId ? `/tend/edit-title?id=${selectedEmberId}` : '/tend/edit-title'} icon={PencilLine} />
+                <SvgItem label="Edit Time & Place" href={selectedEmberId ? `/tend/edit-time-place?id=${selectedEmberId}` : '/tend/edit-time-place'} icon={Clock} />
+                <SvgItem label="Edit Snapshot" href={selectedEmberId ? `/tend/edit-snapshot?id=${selectedEmberId}` : '/tend/edit-snapshot'} icon={ScanEye} />
+                <SvgItem label="Frame" href={selectedEmberId ? `/tend/frame?id=${selectedEmberId}` : '/tend/frame'} icon={ScanLine} />
+                <SvgItem label="View Wiki" href={selectedEmberId ? `/tend/view-wiki?id=${selectedEmberId}` : '/tend/view-wiki'} icon={BookOpen} />
+                <SvgItem label="Tag People" href={selectedEmberId ? `/tend/tag-people?id=${selectedEmberId}` : '/tend/tag-people'} icon={UserStar} />
+                <SvgItem label="Settings" href={selectedEmberId ? `/tend/settings?id=${selectedEmberId}` : '/tend/settings'} icon={Settings} />
+                <SvgItem label="Contributors" href={selectedEmberId ? `/tend/contributors?id=${selectedEmberId}` : '/tend/contributors'} icon={Users} />
               </>
             )}
           </div>
@@ -1108,10 +1108,10 @@ export default function HomeScreen({
 
       {modal === 'play' ? (
         <KipemberPlayOverlay
-          key={`${selectedImageId || 'empty'}:${selectedImage?.wiki?.updatedAt || 'wiki'}:${selectedImage?.snapshot?.script ? 'snapshot' : 'fallback'}`}
+          key={`${selectedEmberId || 'empty'}:${selectedEmber?.wiki?.updatedAt || 'wiki'}:${selectedEmber?.snapshot?.script ? 'snapshot' : 'fallback'}`}
           closeHref={buildHomeHref({ m: null })}
-          imageId={selectedImageId}
-          storyScript={selectedImage?.snapshot?.script || null}
+          imageId={selectedEmberId}
+          storyScript={selectedEmber?.snapshot?.script || null}
         />
       ) : null}
 
@@ -1221,7 +1221,7 @@ export default function HomeScreen({
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               <WorkflowSlot
                 flow={flow}
-                imageId={selectedImageId}
+                imageId={selectedEmberId}
                 onConversationStateChange={setHasConversationHistory}
                 chatTab={chatTab}
               />

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
 import HomeScreen from '@/components/kipember/HomeScreen';
-import { getAccessibleImagesForUser } from '@/lib/image-summaries';
+import { getAccessibleEmbersForUser } from '@/lib/ember';
 import { getAvatarUrl } from '@/lib/avatar';
 
 export default async function EmberViewPage({
@@ -16,8 +16,8 @@ export default async function EmberViewPage({
   }
 
   const { id } = await params;
-  const [initialImages, initialAvatarUrl] = await Promise.all([
-    getAccessibleImagesForUser(auth.user.id),
+  const [initialEmbers, initialAvatarUrl] = await Promise.all([
+    getAccessibleEmbersForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
   ]);
 
@@ -25,8 +25,8 @@ export default async function EmberViewPage({
     <Suspense>
       <HomeScreen
         initialProfile={auth.user}
-        initialImages={initialImages}
-        initialImageId={id}
+        initialEmbers={initialEmbers}
+        initialEmberId={id}
         initialAvatarUrl={initialAvatarUrl}
       />
     </Suspense>
