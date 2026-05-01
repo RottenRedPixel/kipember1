@@ -1135,3 +1135,198 @@ export async function suggestAutoTagMatchesForImage({
 
   return suggestions;
 }
+
+/**
+ * Auto-tag pipeline (combined detect + match in a single Claude vision call).
+ *
+ * For each visible face in the target image, returns:
+ * - the bounding box (always)
+ * - identity fields populated from a reference candidate when matched
+ *   (contributorId / userId / label / email / phoneNumber / confidence)
+ * - or all identity fields null when no candidate matched.
+ *
+ * This replaces the two-step Auto Detect path (POST /detect-faces +
+ * POST /tag-suggestions) with one round-trip. Cold-start (no
+ * candidates) skips the candidate context entirely and acts as plain
+ * face detection.
+ */
+
+const MAX_CANDIDATES_FOR_AUTO_TAG = 10;
+
+export type DetectedFaceWithMatch = FaceBox & {
+  /** Populated when the face matched a reference candidate. */
+  contributorId: string | null;
+  userId: string | null;
+  label: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  confidence: Confidence | null;
+  reason: string | null;
+};
+
+export async function detectAndMatchFacesInImage({
+  ownerId,
+  imageId,
+}: {
+  ownerId: string;
+  imageId: string;
+}): Promise<DetectedFaceWithMatch[]> {
+  if (!process.env.ANTHROPIC_API_KEY) return [];
+
+  const image = await prisma.image.findFirst({
+    where: { id: imageId, ownerId },
+    select: { filename: true, mediaType: true, posterFilename: true },
+  });
+  if (!image || image.mediaType === 'AUDIO') return [];
+
+  const targetImage = await loadTargetImageBuffer({
+    filename: image.filename,
+    mediaType: image.mediaType,
+    posterFilename: image.posterFilename,
+  });
+
+  const allReferenceCandidates = await getReferenceCandidates(ownerId, imageId);
+  const referenceCandidates = allReferenceCandidates.slice(0, MAX_CANDIDATES_FOR_AUTO_TAG);
+  const loadedCandidates =
+    referenceCandidates.length > 0 ? await loadCandidatesWithReferences(referenceCandidates) : [];
+  const candidatesByKey = new Map(loadedCandidates.map((c) => [c.personKey, c]));
+
+  const candidatesPreamble =
+    loadedCandidates.length === 0
+      ? 'There are no reference candidates. Set personKey to null for every detected face.'
+      : `You have ${loadedCandidates.length} reference candidate(s) listed below the target image. For each detected face in the target, decide if it is the same person as one of the candidates and set personKey accordingly. Use null when there is no match.`;
+
+  const systemPrompt = `You are a face detector and identifier.
+
+You will receive a TARGET image, and ${loadedCandidates.length} reference CANDIDATE(s), each with a personKey label and example image(s) showing that person.
+
+${candidatesPreamble}
+
+Return ONLY a JSON object with this exact shape (no markdown, no commentary):
+
+{
+  "faces": [
+    {
+      "leftPct": <number 0-100>,
+      "topPct": <number 0-100>,
+      "widthPct": <number 0-100>,
+      "heightPct": <number 0-100>,
+      "personKey": <string|null>,
+      "confidence": <"high"|"medium"|"low"|null>,
+      "reason": <string|null>
+    }
+  ]
+}
+
+Rules:
+- Detect EVERY visible human face in the target — matched or not
+- Bounding box should be tight (forehead to chin, ear to ear) using percentages of the target image's full dimensions
+- "high" confidence = certain it's the same person; "medium" = likely; "low" = guess
+- Set personKey to null if the face does not clearly match any listed candidate
+- If you set personKey, it MUST be one of the keys you were given
+- Order does not matter`;
+
+  const content: Anthropic.Messages.ContentBlockParam[] = [
+    { type: 'text', text: 'TARGET image (find all faces here):' },
+    {
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: targetImage.toString('base64') },
+    },
+  ];
+
+  for (const candidate of loadedCandidates) {
+    content.push({
+      type: 'text',
+      text: `CANDIDATE — personKey: ${candidate.personKey} — name: ${candidate.label}`,
+    });
+    for (const referenceImage of candidate.referenceImages.slice(0, 2)) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/jpeg',
+          data: referenceImage.toString('base64'),
+        },
+      });
+    }
+  }
+
+  const response = await anthropic.messages.create({
+    model: await getFaceMatchModel(),
+    max_tokens: 1500,
+    system: systemPrompt,
+    messages: [{ role: 'user', content }],
+  });
+
+  const responseText = response.content
+    .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+
+  let parsed: unknown;
+  try {
+    parsed = parseJsonFromText(responseText);
+  } catch {
+    return [];
+  }
+
+  const record = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+  const rawFaces = Array.isArray(record.faces) ? record.faces : [];
+
+  const detected: DetectedFaceWithMatch[] = [];
+  for (const raw of rawFaces) {
+    const item = raw as Record<string, unknown>;
+    if (
+      typeof item.leftPct !== 'number' ||
+      typeof item.topPct !== 'number' ||
+      typeof item.widthPct !== 'number' ||
+      typeof item.heightPct !== 'number' ||
+      item.widthPct <= 0 ||
+      item.heightPct <= 0
+    ) {
+      continue;
+    }
+
+    const box = normalizeFaceBox({
+      leftPct: item.leftPct,
+      topPct: item.topPct,
+      widthPct: item.widthPct,
+      heightPct: item.heightPct,
+    });
+
+    const personKey = sanitizeString(item.personKey);
+    const candidate = personKey ? candidatesByKey.get(personKey) : undefined;
+    const confidence =
+      item.confidence === 'high' || item.confidence === 'medium' || item.confidence === 'low'
+        ? (item.confidence as Confidence)
+        : null;
+    const reason = sanitizeString(item.reason);
+
+    if (candidate && confidence && confidence !== 'low') {
+      detected.push({
+        ...box,
+        contributorId: candidate.contributorId,
+        userId: candidate.userId,
+        label: candidate.label,
+        email: candidate.email,
+        phoneNumber: candidate.phoneNumber,
+        confidence,
+        reason,
+      });
+    } else {
+      detected.push({
+        ...box,
+        contributorId: null,
+        userId: null,
+        label: null,
+        email: null,
+        phoneNumber: null,
+        confidence: null,
+        reason: null,
+      });
+    }
+  }
+
+  return detected;
+}
