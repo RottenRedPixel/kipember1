@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
 import UserActionScreen from '@/components/kipember/UserActionScreen';
 import { getFriendNetworkForUser } from '@/lib/friend-network';
-import { getAccessibleImagesForUser } from '@/lib/image-summaries';
+import { getAccessibleEmbersForUser } from '@/lib/image-summaries';
 
 export default async function UserActionPage({
   params,
@@ -18,7 +18,7 @@ export default async function UserActionPage({
   const isEmberList = action === 'my-embers' || action === 'shared-embers';
 
   if (isEmberList) {
-    const initialImages = await getAccessibleImagesForUser(auth.user.id);
+    const initialImages = await getAccessibleEmbersForUser(auth.user.id);
     return <UserActionScreen action={action} initialImages={initialImages} />;
   }
 

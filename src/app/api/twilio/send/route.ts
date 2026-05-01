@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess, ensureOwnedContributorAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess, ensureOwnedContributorAccess } from '@/lib/ember-access';
 import { sendContributorSmsInvite } from '@/lib/contributor-invites';
 
 export async function POST(request: NextRequest) {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (imageId) {
-      const image = await ensureImageOwnerAccess(auth.user.id, imageId);
+      const image = await ensureEmberOwnerAccess(auth.user.id, imageId);
       if (!image) {
         return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
       }

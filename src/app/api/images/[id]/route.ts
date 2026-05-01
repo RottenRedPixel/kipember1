@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess, getAcceptedFriends, getImageAccessType } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess, getAcceptedFriends, getEmberAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 import { parseVoiceCallTranscriptSegments } from '@/lib/voice-call-clips';
-import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
+import { invalidateAccessibleEmbersForUser } from '@/lib/image-summaries';
 import { toTitleCase } from '@/lib/ember-title';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -38,7 +38,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const accessType = await getImageAccessType(auth.user.id, id);
+    const accessType = await getEmberAccessType(auth.user.id, id);
     const scope = request.nextUrl.searchParams.get('scope');
 
     if (!accessType) {
@@ -927,7 +927,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const ownedImage = await ensureImageOwnerAccess(auth.user.id, id);
+    const ownedImage = await ensureEmberOwnerAccess(auth.user.id, id);
 
     if (!ownedImage) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
@@ -936,7 +936,7 @@ export async function DELETE(
     await prisma.image.delete({
       where: { id: ownedImage.id },
     });
-    invalidateAccessibleImagesForUser(auth.user.id);
+    invalidateAccessibleEmbersForUser(auth.user.id);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -960,7 +960,7 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const ownedImage = await ensureImageOwnerAccess(auth.user.id, id);
+    const ownedImage = await ensureEmberOwnerAccess(auth.user.id, id);
 
     if (!ownedImage) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
@@ -1095,7 +1095,7 @@ export async function PATCH(
       });
     }
 
-    invalidateAccessibleImagesForUser(auth.user.id);
+    invalidateAccessibleEmbersForUser(auth.user.id);
 
     return NextResponse.json(image);
   } catch (error) {

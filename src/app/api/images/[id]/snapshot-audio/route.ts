@@ -9,7 +9,7 @@ import {
 } from '@/lib/audio-processing';
 import { getOrCreateAudioSegmentPath, getOrCreateNormalizedAudioPath } from '@/lib/audio-segments';
 import { getElevenLabsApiKey, getElevenLabsModelId, resolveNarrationVoice } from '@/lib/elevenlabs';
-import { getImageAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { normalizeTextForSpeech } from '@/lib/narration';
 import { getUploadsDir } from '@/lib/uploads';
@@ -241,7 +241,7 @@ export async function GET(
       if (!auth) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      const accessType = await getImageAccessType(auth.user.id, id);
+      const accessType = await getEmberAccessType(auth.user.id, id);
       if (!accessType) {
         return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
       }
@@ -314,7 +314,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const accessType = await getImageAccessType(auth.user.id, id);
+    const accessType = await getEmberAccessType(auth.user.id, id);
     if (!accessType) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }

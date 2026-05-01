@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import { sendContributorSmsInvite } from '@/lib/contributor-invites';
 import { prisma } from '@/lib/db';
-import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember-access';
 import { invalidateSmartTitleSuggestions } from '@/lib/smart-title-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { getUserDisplayName } from '@/lib/user-name';
@@ -19,7 +19,7 @@ export async function POST(
     }
 
     const { id, tagId } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, id);
+    const image = await ensureEmberOwnerAccess(auth.user.id, id);
 
     if (!image) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });

@@ -3,7 +3,7 @@ import { readFile } from 'fs/promises';
 import Anthropic from '@anthropic-ai/sdk';
 import sharp from 'sharp';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
 import {
@@ -23,7 +23,7 @@ export async function POST(
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, id);
+    const image = await ensureEmberOwnerAccess(auth.user.id, id);
     if (!image) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const record = await prisma.image.findFirst({

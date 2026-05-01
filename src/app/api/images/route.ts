@@ -6,8 +6,8 @@ import { generateWikiForImage } from '@/lib/wiki-generator';
 import { ensureImageAnalysisForImage } from '@/lib/image-analysis';
 import { persistUploadedMedia } from '@/lib/media-upload';
 import {
-  getAccessibleImagesForUser,
-  invalidateAccessibleImagesForUser,
+  getAccessibleEmbersForUser,
+  invalidateAccessibleEmbersForUser,
 } from '@/lib/image-summaries';
 import { generateSnapshotScript } from '@/lib/claude';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     });
 
     await ensureOwnerContributorForImage(image.id, auth.user.id);
-    invalidateAccessibleImagesForUser(auth.user.id);
+    invalidateAccessibleEmbersForUser(auth.user.id);
 
     // All heavy work — image analysis, wiki, snapshot — runs in the background
     // so the POST returns immediately. The UI shows its sequenced loader for
@@ -161,7 +161,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    return NextResponse.json(await getAccessibleImagesForUser(auth.user.id));
+    return NextResponse.json(await getAccessibleEmbersForUser(auth.user.id));
   } catch (error) {
     console.error('Error fetching images:', error);
     return NextResponse.json(

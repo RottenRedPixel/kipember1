@@ -5,7 +5,7 @@ import {
   isPromptRemovedError,
   renderPromptTemplate,
 } from '@/lib/control-plane';
-import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember-access';
 import { getConfiguredOpenAIModel, getOpenAIClient, getWikiModel } from '@/lib/openai';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 import { prisma } from '@/lib/db';
@@ -386,7 +386,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, id);
+    const image = await ensureEmberOwnerAccess(auth.user.id, id);
 
     if (!image) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
@@ -581,7 +581,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, id);
+    const image = await ensureEmberOwnerAccess(auth.user.id, id);
 
     if (!image) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });

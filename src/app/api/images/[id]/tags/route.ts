@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { invalidateSmartTitleSuggestions } from '@/lib/smart-title-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
@@ -26,7 +26,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, id);
+    const image = await ensureEmberOwnerAccess(auth.user.id, id);
 
     if (!image) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });

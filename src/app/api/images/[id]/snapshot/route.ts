@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { generateSnapshotScript } from '@/lib/claude';
 import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
@@ -19,7 +19,7 @@ export async function POST(
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, id);
+    const image = await ensureEmberOwnerAccess(auth.user.id, id);
     if (!image) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const body = await request.json().catch(() => ({}));
@@ -113,7 +113,7 @@ export async function PATCH(
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, id);
+    const image = await ensureEmberOwnerAccess(auth.user.id, id);
     if (!image) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const body = await request.json().catch(() => ({}));

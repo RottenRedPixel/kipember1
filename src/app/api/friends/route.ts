@@ -7,7 +7,7 @@ import {
   getFriendNetworkForUser,
   invalidateFriendNetworkForUser,
 } from '@/lib/friend-network';
-import { invalidateAccessibleImagesForUser } from '@/lib/image-summaries';
+import { invalidateAccessibleEmbersForUser } from '@/lib/image-summaries';
 import { getUserDisplayName } from '@/lib/user-name';
 
 export async function GET() {
@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
 
         invalidateFriendNetworkForUser(auth.user.id);
         invalidateFriendNetworkForUser(targetUser.id);
-        invalidateAccessibleImagesForUser(auth.user.id);
-        invalidateAccessibleImagesForUser(targetUser.id);
+        invalidateAccessibleEmbersForUser(auth.user.id);
+        invalidateAccessibleEmbersForUser(targetUser.id);
 
         return NextResponse.json({ friendship: accepted, autoAccepted: true });
       }

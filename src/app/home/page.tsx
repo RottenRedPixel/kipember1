@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
 import UserHomeScreen from '@/components/kipember/UserHomeScreen';
 import {
-  getAccessibleImagesForUser,
+  getAccessibleEmbersForUser,
   getContributorsListForUser,
   getTotalContributorsForUser,
 } from '@/lib/image-summaries';
@@ -40,7 +40,7 @@ export default async function HomePage({
   }
 
   const [initialImages, initialAvatarUrl, initialTotalContributors, initialContributors, initialHomeActivity] = await Promise.all([
-    getAccessibleImagesForUser(auth.user.id),
+    getAccessibleEmbersForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
     getTotalContributorsForUser(auth.user.id),
     getContributorsListForUser(auth.user.id),

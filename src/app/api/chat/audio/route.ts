@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { getImageAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { contributorChatSessionIdentity, ensureEmberSession } from '@/lib/ember-sessions';
 import { persistUploadedMedia } from '@/lib/media-upload';
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'imageId and file are required' }, { status: 400 });
     }
 
-    const accessType = await getImageAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, imageId);
     if (!accessType) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }

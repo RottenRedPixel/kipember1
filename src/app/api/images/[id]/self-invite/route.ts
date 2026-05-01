@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess } from '@/lib/ember-access';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { startVoiceCallForContributor } from '@/lib/voice-calls';
 import { sendOwnerSelfSms } from '@/lib/owner-self-invite';
@@ -25,7 +25,7 @@ export async function POST(
       );
     }
 
-    const image = await ensureImageOwnerAccess(auth.user.id, imageId);
+    const image = await ensureEmberOwnerAccess(auth.user.id, imageId);
     if (!image) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }

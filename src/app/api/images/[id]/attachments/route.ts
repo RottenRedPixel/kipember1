@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess, getImageAccessType } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess, getEmberAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { persistUploadedMedia } from '@/lib/media-upload';
 import { analyzeAttachmentImage } from '@/lib/image-analysis';
@@ -17,7 +17,7 @@ export async function GET(
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const accessType = await getImageAccessType(auth.user.id, id);
+    const accessType = await getEmberAccessType(auth.user.id, id);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const attachments = await prisma.imageAttachment.findMany({
@@ -53,7 +53,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, id);
+    const image = await ensureEmberOwnerAccess(auth.user.id, id);
 
     if (!image) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });

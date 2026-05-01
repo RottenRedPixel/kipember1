@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureImageOwnerAccess, getImageAccessType } from '@/lib/ember-access';
+import { ensureEmberOwnerAccess, getEmberAccessType } from '@/lib/ember-access';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
 import { getUserDisplayName } from '@/lib/user-name';
@@ -19,7 +19,7 @@ export async function GET(
     }
 
     const { imageId } = await params;
-    const accessType = await getImageAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, imageId);
 
     if (!accessType) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
@@ -239,7 +239,7 @@ export async function POST(
     }
 
     const { imageId } = await params;
-    const image = await ensureImageOwnerAccess(auth.user.id, imageId);
+    const image = await ensureEmberOwnerAccess(auth.user.id, imageId);
 
     if (!image) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });

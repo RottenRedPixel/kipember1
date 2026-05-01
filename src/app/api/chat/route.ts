@@ -8,7 +8,7 @@ import {
   ensureEmberSession,
   type EmberParticipantType,
 } from '@/lib/ember-sessions';
-import { getImageAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember-access';
 import { generateEmberChatReply } from '@/lib/ember-chat-reply';
 import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'imageId and message are required' }, { status: 400 });
     }
 
-    const accessType = await getImageAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, imageId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
     const imageId = searchParams.get('imageId');
     if (!imageId) return NextResponse.json({ error: 'imageId is required' }, { status: 400 });
 
-    const accessType = await getImageAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, imageId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;
@@ -192,7 +192,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'imageId and imageFilename are required' }, { status: 400 });
     }
 
-    const accessType = await getImageAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, imageId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;

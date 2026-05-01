@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-server';
 import {
   ensureContributorRemovalAccess,
-  ensureImageOwnerAccess,
+  ensureEmberOwnerAccess,
 } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 import { getUserDisplayName } from '@/lib/user-name';
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'imageId is required' }, { status: 400 });
     }
 
-    const image = await ensureImageOwnerAccess(auth.user.id, imageId);
+    const image = await ensureEmberOwnerAccess(auth.user.id, imageId);
 
     if (!image) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });

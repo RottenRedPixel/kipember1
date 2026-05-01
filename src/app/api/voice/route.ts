@@ -8,7 +8,7 @@ import {
   ensureEmberSession,
   type EmberParticipantType,
 } from '@/lib/ember-sessions';
-import { getImageAccessType } from '@/lib/ember-access';
+import { getEmberAccessType } from '@/lib/ember-access';
 import { generateEmberVoiceReply } from '@/lib/ember-voice-reply';
 import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 import {
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const accessType = await getImageAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, imageId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
     const imageId = searchParams.get('imageId');
     if (!imageId) return NextResponse.json({ error: 'imageId is required' }, { status: 400 });
 
-    const accessType = await getImageAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, imageId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;
