@@ -30,6 +30,13 @@ export type AccessibleImageSummary = {
   cropHeight: number | null;
 };
 
+/**
+ * Canonical Ember-shape summary. Equivalent to AccessibleImageSummary;
+ * prefer this name in new code. The legacy alias is kept so existing
+ * imports continue to work.
+ */
+export type EmberSummary = AccessibleImageSummary;
+
 const globalForImageSummaries = globalThis as unknown as {
   accessibleImageSummaryCache?: Map<
     string,
@@ -207,3 +214,14 @@ export async function getAccessibleImagesForUser(userId: string) {
 
   return value;
 }
+
+// ---------------------------------------------------------------------------
+// Ember-language aliases (Phase 1 of domain-language migration).
+// Prefer these names in new code; the legacy ones remain for backward compat.
+// ---------------------------------------------------------------------------
+
+/** Canonical: get the Embers a user can access. Alias of getAccessibleImagesForUser. */
+export const getAccessibleEmbersForUser = getAccessibleImagesForUser;
+
+/** Canonical: invalidate the per-user Ember summary cache. Alias of invalidateAccessibleImagesForUser. */
+export const invalidateAccessibleEmbersForUser = invalidateAccessibleImagesForUser;

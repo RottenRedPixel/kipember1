@@ -146,6 +146,20 @@ export async function ensureOwnedContributorAccess(userId: string, contributorId
   return contributor;
 }
 
+// ---------------------------------------------------------------------------
+// Ember-language aliases (Phase 1 of domain-language migration).
+// Prefer these names in new code; the legacy ones remain for backward compat.
+// ---------------------------------------------------------------------------
+
+/** Canonical: a user's relationship to an Ember. Alias of ImageAccessType. */
+export type EmberAccessType = ImageAccessType;
+
+/** Canonical: resolve the caller's access to an Ember. Alias of getImageAccessType. */
+export const getEmberAccessType = getImageAccessType;
+
+/** Canonical: confirm the caller owns the Ember. Alias of ensureImageOwnerAccess. */
+export const ensureEmberOwnerAccess = ensureImageOwnerAccess;
+
 export async function ensureContributorRemovalAccess(userId: string, contributorId: string) {
   const contributor = await prisma.contributor.findUnique({
     where: { id: contributorId },
