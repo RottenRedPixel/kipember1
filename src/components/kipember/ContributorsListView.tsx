@@ -11,7 +11,8 @@ import {
   UserCheck,
   UserPlus,
 } from 'lucide-react';
-import type { UnifiedContributor } from '@/lib/contributors-pool';
+import type { TaggedPhoto, UnifiedContributor } from '@/lib/contributors-pool';
+import { getPreviewMediaUrl } from '@/lib/media';
 
 const SORT_OPTIONS = ['Name', 'Most Embers'] as const;
 type SortOption = (typeof SORT_OPTIONS)[number];
@@ -55,6 +56,43 @@ function initialsOf(value: string) {
       .join('')
       .slice(0, 2)
       .toUpperCase() || '?'
+  );
+}
+
+/**
+ * Show a face thumbnail by cropping into the source photo using the
+ * stored bounding-box percentages. Pixel-precise: scales the image so
+ * the face box fills the circle, then shifts to center the face.
+ */
+function FaceCrop({ photo, size = 40 }: { photo: TaggedPhoto; size?: number }) {
+  const url = getPreviewMediaUrl({
+    mediaType: photo.mediaType,
+    filename: photo.filename,
+    posterFilename: photo.posterFilename,
+  });
+  const widthPct = Math.max(photo.widthPct, 0.001);
+  const heightPct = Math.max(photo.heightPct, 0.001);
+  return (
+    <div
+      className="rounded-full flex-shrink-0 overflow-hidden relative"
+      style={{ width: size, height: size, background: 'rgba(100,116,139,0.6)' }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt=""
+        draggable={false}
+        style={{
+          position: 'absolute',
+          width: `${(100 / widthPct) * 100}%`,
+          height: `${(100 / heightPct) * 100}%`,
+          left: `${(-photo.leftPct * 100) / widthPct}%`,
+          top: `${(-photo.topPct * 100) / heightPct}%`,
+          maxWidth: 'none',
+          objectFit: 'cover',
+        }}
+      />
+    </div>
   );
 }
 
@@ -238,16 +276,31 @@ export default function ContributorsListView({
             const showAddAction =
               context.kind === 'ember' && context.filter === 'all' && !onThis;
 
+            const facePhoto = c.taggedPhotos[0] ?? null;
+            const tagSubtext =
+              c.taggedPhotoCount > 1
+                ? `Tagged in ${c.taggedPhotoCount} photos`
+                : c.taggedPhotoCount === 1
+                  ? `Tagged in ${facePhoto?.emberTitle || '1 photo'}`
+                  : null;
             const rowInner = (
               <>
-                <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
-                  {c.avatarUrl ? (
-                    <img src={c.avatarUrl} alt={c.name} className="w-full h-full object-cover" />
-                  ) : initialsOf(c.name)}
-                </div>
+                {facePhoto ? (
+                  <FaceCrop photo={facePhoto} size={40} />
+                ) : (
+                  <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
+                    {c.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={c.avatarUrl} alt={c.name} className="w-full h-full object-cover" />
+                    ) : initialsOf(c.name)}
+                  </div>
+                )}
                 <div className="flex flex-col min-w-0 flex-1">
                   <span className="text-white text-sm font-medium truncate">{c.name}</span>
                   {sub && <span className="text-white/25 text-xs truncate">{sub}</span>}
+                  {tagSubtext && (
+                    <span className="text-orange-500/80 text-[10px] truncate">{tagSubtext}</span>
+                  )}
                 </div>
               </>
             );
