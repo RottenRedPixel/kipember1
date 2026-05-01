@@ -375,45 +375,90 @@ export default function TagPeopleSlider({
     void refreshPeopleSuggestions();
   }
 
-  // detectingFaces is wired but the Auto Detect button is currently disabled
-  // in the UI. Keeping the handler for when the flow is re-enabled.
-  void detectingFaces;
-  void setDetectingFaces;
-  async function handleDetectFaces() {
+  // Auto-detect faces and create a tag at each detected position. After tags
+  // exist, the per-tag picker (handleEditTag) lets the owner identify each
+  // face — including its own AI matching button.
+  async function handleAutoDetect() {
     const img = tagImgRef.current;
     if (!img || !imageId || detectingFaces) return;
     setDetectingFaces(true);
-    setDetectedFaces([]);
     setImgAspectRatio(img.naturalWidth / img.naturalHeight);
     try {
+      let faces: DetectedFace[] = [];
+      // Try the browser's native FaceDetector first (instant, free); fall
+      // back to the server-side Claude vision endpoint.
       if (typeof window !== 'undefined' && window.FaceDetector) {
-        const detector = new window.FaceDetector({
-          fastMode: true,
-          maxDetectedFaces: 20,
-        });
-        const faces = await detector.detect(img);
-        setDetectedFaces(
-          faces.map((f) => ({
+        try {
+          const detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 20 });
+          const browserFaces = await detector.detect(img);
+          faces = browserFaces.map((f) => ({
             leftPct: (f.boundingBox.x / img.naturalWidth) * 100,
             topPct: (f.boundingBox.y / img.naturalHeight) * 100,
             widthPct: (f.boundingBox.width / img.naturalWidth) * 100,
             heightPct: (f.boundingBox.height / img.naturalHeight) * 100,
-          }))
-        );
-      } else {
-        const res = await fetch(`/api/images/${imageId}/detect-faces`, {
-          method: 'POST',
-        });
-        const payload = await res.json().catch(() => ({}));
-        setDetectedFaces(payload?.faces ?? []);
+          }));
+        } catch {
+          // fall through to server
+        }
       }
-    } catch {
-      // silently skip
+      if (faces.length === 0) {
+        const res = await fetch(`/api/images/${imageId}/detect-faces`, { method: 'POST' });
+        const payload = await res.json().catch(() => ({}));
+        faces = Array.isArray(payload?.faces) ? (payload.faces as DetectedFace[]) : [];
+      }
+
+      // Skip faces that overlap an existing tag center (within 5pp).
+      const existing = faceTagsRef.current;
+      const created: FaceTag[] = [];
+      for (const face of faces) {
+        const cx = face.leftPct + face.widthPct / 2;
+        const cy = face.topPct + face.heightPct / 2;
+        const overlaps = existing.some(
+          (t) => Math.abs(t.x - cx) < 5 && Math.abs(t.y - cy) < 5
+        );
+        if (overlaps) continue;
+        const color = TAG_COLORS[(existing.length + created.length) % TAG_COLORS.length];
+        const defaultName = `Person ${existing.length + created.length + 1}`;
+        try {
+          const res = await fetch(`/api/images/${imageId}/tags`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              label: defaultName,
+              leftPct: face.leftPct,
+              topPct: face.topPct,
+              widthPct: face.widthPct,
+              heightPct: face.heightPct,
+              refreshWiki: false,
+            }),
+          });
+          const payload = await res.json().catch(() => ({}));
+          if (res.ok && payload?.tag?.id) {
+            created.push({
+              id: payload.tag.id,
+              dbId: payload.tag.id,
+              x: cx,
+              y: cy,
+              color,
+              name: defaultName,
+            });
+          }
+        } catch {
+          // skip this face
+        }
+      }
+      if (created.length > 0) {
+        setFaceTags((prev) => [...prev, ...created]);
+      }
     } finally {
       setDetectingFaces(false);
     }
   }
-  void handleDetectFaces;
+  // detectedFaces state predates auto-detect creating real tags; keeping
+  // the no-op references so removing the visual-only outline pass below
+  // doesn't trigger an unused-state lint error in dev.
+  void detectedFaces;
+  void setDetectedFaces;
 
   return (
     <>
@@ -662,16 +707,17 @@ export default function TagPeopleSlider({
       <div className="flex gap-3">
         <button
           type="button"
-          disabled
-          className="flex-1 flex items-center justify-center rounded-full text-white/30 text-sm font-medium disabled:opacity-50"
+          onClick={() => void handleAutoDetect()}
+          disabled={detectingFaces || !imageId}
+          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium disabled:opacity-50"
           style={{
             background: 'transparent',
             border: '1.5px solid var(--border-btn)',
             minHeight: 44,
-            cursor: 'not-allowed',
+            cursor: detectingFaces ? 'default' : 'pointer',
           }}
         >
-          Auto Detect
+          {detectingFaces ? 'Detecting…' : 'Auto Detect'}
         </button>
         <button
           type="button"

@@ -6,13 +6,41 @@ import { requireApiUser } from '@/lib/auth-server';
 import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { getUploadPath } from '@/lib/uploads';
-import {
-  PROMPT_REMOVED_MESSAGE,
-  isPromptRemovedError,
-  renderPromptTemplate,
-} from '@/lib/control-plane';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const FACE_DETECT_PROMPT = `You are a face detector. Examine the image and return a tight bounding box for each visible human face.
+
+Return ONLY a JSON object with this exact shape, no markdown, no commentary:
+
+{
+  "faces": [
+    { "leftPct": <number 0-100>, "topPct": <number 0-100>, "widthPct": <number 0-100>, "heightPct": <number 0-100> }
+  ]
+}
+
+Where:
+- leftPct, topPct = the top-left corner of the face's bounding box, as a percentage of image width / height
+- widthPct, heightPct = the box's size, as a percentage of image width / height
+- Boxes should be tight to the visible face (forehead to chin, ear to ear), not generous
+- Include partial faces if a recognizable portion is visible
+- If the image has no faces, return { "faces": [] }
+- Do not include speculation about identity — just box coordinates`;
+
+type DetectedFace = { leftPct: number; topPct: number; widthPct: number; heightPct: number };
+
+function isValidFace(value: unknown): value is DetectedFace {
+  if (!value || typeof value !== 'object') return false;
+  const f = value as Record<string, unknown>;
+  return (
+    typeof f.leftPct === 'number' &&
+    typeof f.topPct === 'number' &&
+    typeof f.widthPct === 'number' &&
+    typeof f.heightPct === 'number' &&
+    f.widthPct > 0 &&
+    f.heightPct > 0
+  );
+}
 
 export async function POST(
   _request: NextRequest,
@@ -23,8 +51,8 @@ export async function POST(
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
-    const image = await ensureEmberOwnerAccess(auth.user.id, id);
-    if (!image) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    const ember = await ensureEmberOwnerAccess(auth.user.id, id);
+    if (!ember) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const record = await prisma.image.findFirst({
       where: { id, ownerId: auth.user.id },
@@ -47,11 +75,10 @@ export async function POST(
       .jpeg({ quality: 78 })
       .toBuffer();
 
-    const systemPrompt = await renderPromptTemplate('image_analysis.initial_photo');
     const response = await anthropic.messages.create({
       model: process.env.ANTHROPIC_FACE_MATCH_MODEL || 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: systemPrompt,
+      max_tokens: 1500,
+      system: FACE_DETECT_PROMPT,
       messages: [
         {
           role: 'user',
@@ -74,28 +101,19 @@ export async function POST(
       .replace(/^```\s*/i, '')
       .replace(/\s*```$/i, '');
 
-    let faces: { leftPct: number; topPct: number; widthPct: number; heightPct: number }[] = [];
+    let faces: DetectedFace[] = [];
     try {
       const parsed = JSON.parse(text) as { faces?: unknown };
       if (Array.isArray(parsed?.faces)) {
-        faces = (parsed.faces as unknown[]).filter(
-          (f): f is typeof faces[number] =>
-            typeof (f as Record<string,unknown>).leftPct === 'number' &&
-            typeof (f as Record<string,unknown>).topPct === 'number' &&
-            typeof (f as Record<string,unknown>).widthPct === 'number' &&
-            typeof (f as Record<string,unknown>).heightPct === 'number'
-        );
+        faces = parsed.faces.filter(isValidFace);
       }
     } catch {
-      // return empty on parse failure
+      // Empty response on parse failure — surfaces as "no faces detected" in the UI.
     }
 
     return NextResponse.json({ faces });
   } catch (error) {
     console.error('Face detection error:', error);
-    if (isPromptRemovedError(error)) {
-      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
-    }
     return NextResponse.json({ error: 'Failed to detect faces' }, { status: 500 });
   }
 }
