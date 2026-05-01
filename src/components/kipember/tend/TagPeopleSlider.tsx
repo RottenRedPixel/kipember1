@@ -1,7 +1,7 @@
 'use client';
 
-import { Pencil, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Pencil, Sparkles, X } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type ImageTagShape = {
   id: string;
@@ -11,6 +11,35 @@ type ImageTagShape = {
   widthPct?: number | null;
   heightPct?: number | null;
 };
+
+type PeopleContributor = {
+  contributorId: string;
+  userId: string | null;
+  name: string;
+  email: string | null;
+  phoneNumber: string | null;
+  avatarUrl: string | null;
+  alreadyTagged: boolean;
+};
+
+type AiSuggestion = {
+  contributorId: string | null;
+  userId: string | null;
+  label: string;
+  confidence: 'high' | 'medium' | 'low';
+};
+
+function initialsFor(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || '?'
+  );
+}
 
 type TagPeopleDetail = {
   tags?: ImageTagShape[];
@@ -61,6 +90,9 @@ export default function TagPeopleSlider({
   const [imgAspectRatio, setImgAspectRatio] = useState(1);
   const [detectedFaces, setDetectedFaces] = useState<DetectedFace[]>([]);
   const [detectingFaces, setDetectingFaces] = useState(false);
+  const [peopleSuggestions, setPeopleSuggestions] = useState<PeopleContributor[]>([]);
+  const [aiSuggestionsByTagId, setAiSuggestionsByTagId] = useState<Record<string, AiSuggestion[]>>({});
+  const [aiLoadingTagId, setAiLoadingTagId] = useState<string | null>(null);
 
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
   const tagImgRef = useRef<HTMLImageElement | null>(null);
@@ -233,12 +265,114 @@ export default function TagPeopleSlider({
     setFaceTags((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
     setEditingTagId(null);
     if (tag?.dbId && imageId) {
+      // Free-text save: keep label, clear any prior FK linkage so the tag
+      // doesn't claim to be a contributor it isn't.
       await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: name, refreshWiki: false }),
+        body: JSON.stringify({
+          label: name,
+          contributorId: null,
+          userId: null,
+          refreshWiki: false,
+        }),
       });
     }
+  }
+
+  // ---- Picker: invited contributors + AI face-match suggestions ----------
+
+  const refreshPeopleSuggestions = useCallback(async () => {
+    if (!imageId) return;
+    try {
+      const res = await fetch(`/api/images/${imageId}/people-suggestions`);
+      if (!res.ok) return;
+      const payload = await res.json().catch(() => ({}));
+      if (Array.isArray(payload?.contributors)) {
+        setPeopleSuggestions(payload.contributors as PeopleContributor[]);
+      }
+    } catch {
+      // silent
+    }
+  }, [imageId]);
+
+  useEffect(() => {
+    void refreshPeopleSuggestions();
+  }, [refreshPeopleSuggestions]);
+
+  async function loadAiSuggestionsForTag(tag: FaceTag) {
+    if (!imageId || aiLoadingTagId) return;
+    const ar = imgAspectRatio;
+    setAiLoadingTagId(tag.id);
+    try {
+      const res = await fetch(`/api/images/${imageId}/tag-suggestions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          faces: [
+            {
+              leftPct: tag.x - CIRCLE_SIZE / 2,
+              topPct: tag.y - (CIRCLE_SIZE * ar) / 2,
+              widthPct: CIRCLE_SIZE,
+              heightPct: CIRCLE_SIZE * ar,
+            },
+          ],
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      const suggestions = Array.isArray(payload?.suggestions) ? payload.suggestions : [];
+      setAiSuggestionsByTagId((prev) => ({
+        ...prev,
+        [tag.id]: suggestions.map((s: { contributorId: string | null; userId: string | null; label: string; confidence: 'high' | 'medium' | 'low' }) => ({
+          contributorId: s.contributorId,
+          userId: s.userId,
+          label: s.label,
+          confidence: s.confidence,
+        })),
+      }));
+    } catch {
+      // silent
+    } finally {
+      setAiLoadingTagId(null);
+    }
+  }
+
+  async function handleSelectContributor(tagId: string, person: PeopleContributor) {
+    const tag = faceTags.find((t) => t.id === tagId);
+    if (!tag?.dbId || !imageId) return;
+    setFaceTags((prev) => prev.map((t) => (t.id === tagId ? { ...t, name: person.name } : t)));
+    setEditingTagId(null);
+    setEditingName('');
+    await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        label: person.name,
+        contributorId: person.contributorId,
+        userId: person.userId,
+        refreshWiki: false,
+      }),
+    });
+    void refreshPeopleSuggestions();
+  }
+
+  async function handleSelectAiSuggestion(tagId: string, suggestion: AiSuggestion) {
+    const tag = faceTags.find((t) => t.id === tagId);
+    if (!tag?.dbId || !imageId) return;
+    setFaceTags((prev) => prev.map((t) => (t.id === tagId ? { ...t, name: suggestion.label } : t)));
+    setEditingTagId(null);
+    setEditingName('');
+    await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        label: suggestion.label,
+        contributorId: suggestion.contributorId,
+        userId: suggestion.userId,
+        refreshWiki: false,
+      }),
+    });
+    void refreshPeopleSuggestions();
   }
 
   // detectingFaces is wired but the Auto Detect button is currently disabled
@@ -373,57 +507,155 @@ export default function TagPeopleSlider({
       {/* Tag list */}
       {faceTags.length > 0 ? (
         <div className="flex flex-col gap-2">
-          {faceTags.map((tag) => (
-            <div
-              key={tag.id}
-              className="flex items-center gap-3 px-4 rounded-xl"
-              style={{
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                minHeight: 44,
-              }}
-            >
+          {faceTags.map((tag) => {
+            const isEditing = editingTagId === tag.id;
+            const aiSuggestions = aiSuggestionsByTagId[tag.id] ?? null;
+            const aiLoading = aiLoadingTagId === tag.id;
+            const filterText = editingName.trim().toLowerCase();
+            const filteredContributors = peopleSuggestions.filter(
+              (p) => !filterText || p.name.toLowerCase().includes(filterText)
+            );
+            const exactMatch = peopleSuggestions.some(
+              (p) => p.name.toLowerCase() === filterText && filterText.length > 0
+            );
+            return (
               <div
-                className="w-3 h-3 rounded-full flex-shrink-0"
-                style={{ background: tag.color }}
-              />
-              {editingTagId === tag.id ? (
-                <input
-                  autoFocus
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  onBlur={() => handleSaveTagName(tag.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void handleSaveTagName(tag.id);
-                    if (e.key === 'Escape') setEditingTagId(null);
-                  }}
-                  className="flex-1 bg-transparent text-white text-sm outline-none"
-                  placeholder="Enter name..."
-                />
-              ) : (
-                <span className="flex-1 text-white text-sm">
-                  {tag.name || 'Unnamed'}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => handleEditTag(tag)}
-                className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
-                style={{ cursor: 'pointer' }}
+                key={tag.id}
+                className="rounded-xl"
+                style={{
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border-subtle)',
+                }}
               >
-                <Pencil size={13} color="var(--text-primary)" strokeWidth={1.8} />
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleDeleteTag(tag.id)}
-                className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
-                style={{ cursor: 'pointer' }}
-              >
-                <X size={14} color="#f87171" strokeWidth={1.8} />
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center gap-3 px-4" style={{ minHeight: 44 }}>
+                  <div
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ background: tag.color }}
+                  />
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void handleSaveTagName(tag.id);
+                        if (e.key === 'Escape') {
+                          setEditingTagId(null);
+                          setEditingName('');
+                        }
+                      }}
+                      className="flex-1 bg-transparent text-white text-sm outline-none"
+                      placeholder="Type a name or pick below…"
+                    />
+                  ) : (
+                    <span className="flex-1 text-white text-sm">
+                      {tag.name || 'Unnamed'}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleEditTag(tag)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <Pencil size={13} color="var(--text-primary)" strokeWidth={1.8} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteTag(tag.id)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <X size={14} color="#f87171" strokeWidth={1.8} />
+                  </button>
+                </div>
+                {isEditing ? (
+                  <div className="flex flex-col gap-1.5 px-4 pb-3 pt-1 border-t border-white/5">
+                    {aiSuggestions && aiSuggestions.length > 0 ? (
+                      <>
+                        <div className="text-white/30 text-[10px] uppercase tracking-wider px-1 pt-1">
+                          Suggested from photo
+                        </div>
+                        {aiSuggestions.map((s, idx) => (
+                          <button
+                            key={`ai-${idx}`}
+                            type="button"
+                            onClick={() => void handleSelectAiSuggestion(tag.id, s)}
+                            className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left can-hover"
+                            style={{ minHeight: 36 }}
+                          >
+                            <div className="w-7 h-7 rounded-full bg-orange-500/20 flex items-center justify-center text-orange-500">
+                              <Sparkles size={12} strokeWidth={2} />
+                            </div>
+                            <span className="text-white text-sm flex-1">{s.label}</span>
+                            <span className="text-white/30 text-[10px] uppercase tracking-wide">
+                              {s.confidence}
+                            </span>
+                          </button>
+                        ))}
+                      </>
+                    ) : null}
+                    {!aiSuggestions ? (
+                      <button
+                        type="button"
+                        onClick={() => void loadAiSuggestionsForTag(tag)}
+                        disabled={aiLoading}
+                        className="self-start flex items-center gap-1.5 text-white/60 text-xs px-2 py-1.5 rounded-md disabled:opacity-50 can-hover"
+                        style={{ cursor: aiLoading ? 'default' : 'pointer' }}
+                      >
+                        <Sparkles size={11} strokeWidth={2} />
+                        {aiLoading ? 'Looking…' : 'Suggest from photo'}
+                      </button>
+                    ) : null}
+                    {filteredContributors.length > 0 ? (
+                      <>
+                        <div className="text-white/30 text-[10px] uppercase tracking-wider px-1 pt-1">
+                          Invited to this ember
+                        </div>
+                        {filteredContributors.map((p) => (
+                          <button
+                            key={p.contributorId}
+                            type="button"
+                            disabled={p.alreadyTagged}
+                            onClick={() => void handleSelectContributor(tag.id, p)}
+                            className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left can-hover disabled:opacity-40"
+                            style={{ minHeight: 36, cursor: p.alreadyTagged ? 'default' : 'pointer' }}
+                          >
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-medium overflow-hidden"
+                              style={{ background: 'rgba(255,255,255,0.1)' }}
+                            >
+                              {p.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                              ) : (
+                                initialsFor(p.name)
+                              )}
+                            </div>
+                            <span className="text-white text-sm flex-1">{p.name}</span>
+                            {p.alreadyTagged ? (
+                              <span className="text-white/30 text-[10px]">already tagged</span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </>
+                    ) : null}
+                    {filterText && !exactMatch ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveTagName(tag.id)}
+                        className="self-start text-orange-500 text-xs px-2 py-1.5 can-hover"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        + Tag as &quot;{editingName.trim()}&quot;
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       ) : null}
 

@@ -3,6 +3,7 @@ import { normalizeEmail, normalizePhone, requireApiUser } from '@/lib/auth-serve
 import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { invalidateSmartTitleSuggestions } from '@/lib/smart-title-suggestions';
+import { getUserDisplayName } from '@/lib/user-name';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 
 function parseOptionalPercentage(value: unknown): number | null | undefined {
@@ -37,6 +38,50 @@ export async function PATCH(
 
     const body = await request.json();
     const updates: Record<string, unknown> = {};
+
+    // Resolve contributor and user FKs first so we can mirror their identity
+    // fields onto the tag (POST does the same on create — keep PATCH in sync).
+    if (body.contributorId !== undefined) {
+      if (body.contributorId === null) {
+        updates.contributorId = null;
+      } else if (typeof body.contributorId === 'string' && body.contributorId) {
+        const contributor = await prisma.contributor.findFirst({
+          where: { id: body.contributorId, imageId: id },
+          select: { id: true, name: true, email: true, phoneNumber: true, userId: true },
+        });
+        if (!contributor) {
+          return NextResponse.json({ error: 'Contributor not found' }, { status: 404 });
+        }
+        updates.contributorId = contributor.id;
+        // If userId wasn't explicitly set in this request, inherit from the contributor.
+        if (body.userId === undefined && contributor.userId) {
+          updates.userId = contributor.userId;
+        }
+        // Mirror identity fields onto the tag for legacy display paths that
+        // read tag.label / tag.email directly.
+        if (typeof body.label !== 'string' && contributor.name) updates.label = contributor.name;
+        if (body.email === undefined) updates.email = contributor.email;
+        if (body.phoneNumber === undefined) updates.phoneNumber = normalizePhone(contributor.phoneNumber);
+      }
+    }
+
+    if (body.userId !== undefined) {
+      if (body.userId === null) {
+        updates.userId = null;
+      } else if (typeof body.userId === 'string' && body.userId) {
+        const user = await prisma.user.findUnique({
+          where: { id: body.userId },
+          select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
+        });
+        if (!user) {
+          return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+        updates.userId = user.id;
+        if (typeof body.label !== 'string') updates.label = getUserDisplayName(user) || user.email;
+        if (body.email === undefined) updates.email = user.email;
+        if (body.phoneNumber === undefined) updates.phoneNumber = normalizePhone(user.phoneNumber);
+      }
+    }
 
     if (typeof body.label === 'string') {
       const trimmed = body.label.trim();
