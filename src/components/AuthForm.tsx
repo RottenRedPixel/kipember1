@@ -17,8 +17,13 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
     phoneNumber: '',
     password: '',
   });
+  const [confirmationType, setConfirmationType] = useState<'email' | 'sms' | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const [error, setError] = useState('');
+  const [confirmationEmail, setConfirmationEmail] = useState('');
+  const [confirmationPhone, setConfirmationPhone] = useState('');
+  const [smsCode, setSmsCode] = useState('');
 
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
@@ -28,6 +33,9 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
     event.preventDefault();
     setIsSubmitting(true);
     setError('');
+    setConfirmationEmail('');
+    setConfirmationPhone('');
+    setConfirmationType('');
 
     try {
       const response = await fetch(`/api/auth/${mode}`, {
@@ -50,6 +58,21 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
         );
       }
 
+      if (isSignup && payload?.confirmationRequired) {
+        const nextType = payload.confirmationType === 'sms' ? 'sms' : 'email';
+        setConfirmationType(nextType);
+        if (nextType === 'sms') {
+          setConfirmationPhone(
+            typeof payload.phoneNumber === 'string' ? payload.phoneNumber : form.phoneNumber.trim()
+          );
+        } else {
+          setConfirmationEmail(
+            typeof payload.email === 'string' ? payload.email : form.email.trim()
+          );
+        }
+        return;
+      }
+
       router.push(isSignup ? '/home?mode=first-ember' : '/home');
       router.refresh();
     } catch (submitError) {
@@ -58,6 +81,40 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleVerifySmsCode(event: React.FormEvent) {
+    event.preventDefault();
+    setIsVerifyingCode(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/phone/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: confirmationPhone || form.phoneNumber,
+          code: smsCode,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          typeof payload?.error === 'string' ? payload.error : 'Failed to verify signup code'
+        );
+      }
+
+      router.push('/home?mode=first-ember');
+      router.refresh();
+    } catch (verifyError) {
+      setError(
+        verifyError instanceof Error ? verifyError.message : 'Failed to verify signup code'
+      );
+    } finally {
+      setIsVerifyingCode(false);
     }
   }
 
@@ -73,13 +130,51 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
             {isSignup ? 'Create your account' : 'Welcome back'}
           </h1>
           <p className="text-white/60 text-sm">
-            {isSignup
-              ? 'Start preserving your memories with Ember.'
-              : 'Log in to continue to Ember.'}
+            {confirmationType
+              ? confirmationType === 'sms'
+                ? 'Enter the code we texted you to finish creating your account.'
+                : 'Check your email to finish creating your account.'
+              : isSignup
+                ? 'Start preserving your memories with Ember.'
+                : 'Log in to continue to Ember.'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {confirmationType === 'email' ? (
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/70">
+            We sent a confirmation link to{' '}
+            <span className="font-medium text-white">{confirmationEmail}</span>. Open that email
+            to finish creating your Ember account.
+          </div>
+        ) : null}
+
+        {confirmationType === 'sms' ? (
+          <form onSubmit={handleVerifySmsCode} className="flex flex-col gap-4">
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/70">
+              We sent a signup code to{' '}
+              <span className="font-medium text-white">{confirmationPhone}</span>.
+            </div>
+            <Field
+              label="Signup Code"
+              name="smsCode"
+              type="text"
+              placeholder="6-digit code"
+              value={smsCode}
+              onChange={(event) => setSmsCode(event.target.value)}
+              required
+            />
+            {error ? <p className="text-sm text-red-300">{error}</p> : null}
+            <button
+              type="submit"
+              disabled={isVerifyingCode}
+              className="flex items-center justify-center rounded-full text-white text-sm font-medium transition-opacity hover:opacity-80 w-full btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+              style={{ background: '#f97316', minHeight: 44 }}
+            >
+              {isVerifyingCode ? 'Verifying...' : 'Verify Code'}
+            </button>
+          </form>
+        ) : confirmationType === 'email' ? null : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {isSignup ? (
             <div className="flex gap-3">
               <Field
@@ -155,13 +250,14 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
           >
             {isSubmitting
               ? isSignup
-                ? 'Signing Up...'
+                ? 'Sending confirmation...'
                 : 'Logging in...'
               : isSignup
                 ? 'Sign Up'
                 : 'Login'}
           </button>
-        </form>
+          </form>
+        )}
 
         <p className="text-center text-white/60 text-sm">
           {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}

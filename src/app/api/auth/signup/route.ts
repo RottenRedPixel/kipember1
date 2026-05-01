@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  applyUserSessionCookie,
-  claimMemoriesForUser,
-  createUserSession,
   getPhoneAccountEmail,
   hashPassword,
   normalizeEmail,
   normalizePhone,
 } from '@/lib/auth-server';
-import { createUserAccount, findUserByEmail, findUserByPhone } from '@/lib/auth-users';
+import {
+  createMagicLinkChallenge,
+  createPhoneSigninChallenge,
+  getMagicLinkTtlMinutes,
+  getPhoneCodeTtlMinutes,
+} from '@/lib/auth-challenges';
+import { sendMagicLinkEmail } from '@/lib/auth-email';
+import { findUserByEmail, findUserByPhone } from '@/lib/auth-users';
+import { getRequestBaseUrl } from '@/lib/app-url';
+import { isEmailConfigured } from '@/lib/email';
+import { sendSMS } from '@/lib/twilio';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +44,9 @@ export async function POST(request: NextRequest) {
     }
 
     const providedEmail = typeof email === 'string' && email.trim() ? normalizeEmail(email) : null;
-    const normalizedEmail = providedEmail ?? getPhoneAccountEmail(normalizedPhone);
+    const firstNameValue = typeof firstName === 'string' && firstName.trim() ? firstName.trim() : null;
+    const lastNameValue = typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null;
+    const passwordHash = hashPassword(password);
 
     const existingByPhone = await findUserByPhone(normalizedPhone);
     if (existingByPhone) {
@@ -48,6 +57,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (providedEmail) {
+      if (!isEmailConfigured()) {
+        return NextResponse.json(
+          { error: 'Email sending is not configured yet' },
+          { status: 500 }
+        );
+      }
+
       const existingByEmail = await findUserByEmail(providedEmail);
       if (existingByEmail) {
         return NextResponse.json(
@@ -55,28 +71,51 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+
+      const token = await createMagicLinkChallenge({
+        email: providedEmail,
+        phoneNumber: normalizedPhone,
+        firstName: firstNameValue,
+        lastName: lastNameValue,
+        userId: null,
+        mode: 'signup',
+        passwordHash,
+      });
+
+      await sendMagicLinkEmail({
+        email: providedEmail,
+        token,
+        mode: 'signup',
+        ttlMinutes: getMagicLinkTtlMinutes(),
+        baseUrl: getRequestBaseUrl(request),
+      });
+
+      return NextResponse.json({
+        confirmationRequired: true,
+        confirmationType: 'email',
+        email: providedEmail,
+      });
     }
 
-    const user = await createUserAccount({
-      firstName: typeof firstName === 'string' && firstName.trim() ? firstName.trim() : null,
-      lastName: typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null,
-      email: normalizedEmail,
+    const code = await createPhoneSigninChallenge({
       phoneNumber: normalizedPhone,
-      passwordHash: hashPassword(password),
+      userId: null,
+      firstName: firstNameValue,
+      lastName: lastNameValue,
+      passwordHash,
     });
 
-    await claimMemoriesForUser({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-    });
+    await sendSMS(
+      normalizedPhone,
+      `Your Ember signup code is ${code}. It expires in ${getPhoneCodeTtlMinutes()} minutes.`
+    );
 
-    const token = await createUserSession(user.id);
-    const response = NextResponse.json({ user });
-    applyUserSessionCookie(response, token);
-    return response;
+    return NextResponse.json({
+      confirmationRequired: true,
+      confirmationType: 'sms',
+      phoneNumber: normalizedPhone,
+      email: getPhoneAccountEmail(normalizedPhone),
+    });
   } catch (error) {
     console.error('Signup error:', error);
     return NextResponse.json(
