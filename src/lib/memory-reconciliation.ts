@@ -785,7 +785,15 @@ async function safeRun<T>(fn: () => Promise<T>, label: string): Promise<T | null
   }
 }
 
+function housekeepingExtractorsEnabled() {
+  return process.env.ENABLE_HOUSEKEEPING_EXTRACTORS === 'true';
+}
+
 export async function reconcileEmberMessageSafely(messageId: string, context = 'housekeeping') {
+  if (!housekeepingExtractorsEnabled()) {
+    return { claimsCreated: 0, conflictsCreated: 0 };
+  }
+
   await safeRun(() => extractWhyForMessage(messageId), `${context}: why`);
   await safeRun(() => extractEmotionsForMessage(messageId), `${context}: emotions`);
   await safeRun(() => extractStoriesForMessage(messageId), `${context}: extra stories`);
@@ -797,6 +805,10 @@ export async function extractAllClaimsFromContent(
   context: ClassificationContext,
   logContext = 'housekeeping'
 ) {
+  if (!housekeepingExtractorsEnabled()) {
+    return;
+  }
+
   await safeRun(
     () =>
       runClassificationFromContext({
