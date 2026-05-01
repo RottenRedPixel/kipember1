@@ -39,7 +39,7 @@ export default async function HomePage({
     redirect(query ? `/ember/${legacyId}?${query}` : `/ember/${legacyId}`);
   }
 
-  const [initialImages, initialAvatarUrl, initialTotalContributors, initialContributors, initialHomeActivity] = await Promise.all([
+  const [initialEmbers, initialAvatarUrl, initialTotalContributors, initialContributors, initialHomeActivity] = await Promise.all([
     getAccessibleEmbersForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
     getTotalContributorsForUser(auth.user.id),
@@ -51,7 +51,7 @@ export default async function HomePage({
     <Suspense>
       <UserHomeScreen
         initialProfile={auth.user}
-        initialImages={initialImages}
+        initialEmbers={initialEmbers}
         initialAvatarUrl={initialAvatarUrl}
         initialTotalContributors={initialTotalContributors}
         initialContributors={initialContributors}

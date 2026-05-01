@@ -252,14 +252,14 @@ type HomeActivityItemProp = {
 
 export default function UserHomeScreen({
   initialProfile,
-  initialImages,
+  initialEmbers,
   initialAvatarUrl,
   initialTotalContributors,
   initialContributors,
   initialHomeActivity,
 }: {
   initialProfile: { firstName: string | null; lastName: string | null; email: string } | null;
-  initialImages?: Array<{
+  initialEmbers?: Array<{
     accessType: string;
     filename: string;
     mediaType: EmberMediaType;
@@ -274,14 +274,14 @@ export default function UserHomeScreen({
     guestViews:    { items: HomeActivityItemProp[] };
   };
 }) {
-  const totalEmbers = initialImages?.filter((img) => img.accessType === 'owner').length ?? 0;
+  const totalEmbers = initialEmbers?.filter((ember) => ember.accessType === 'owner').length ?? 0;
   const totalContributors = initialTotalContributors ?? 0;
   const contributors = initialContributors ?? [];
-  const activityImages = (initialImages ?? []).slice(0, 3).map((img) =>
+  const activityImages = (initialEmbers ?? []).slice(0, 3).map((ember) =>
     getPreviewMediaUrl({
-      mediaType: img.mediaType,
-      filename: img.filename,
-      posterFilename: img.posterFilename,
+      mediaType: ember.mediaType,
+      filename: ember.filename,
+      posterFilename: ember.posterFilename,
     })
   );
 

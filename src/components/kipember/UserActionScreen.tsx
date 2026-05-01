@@ -51,20 +51,20 @@ export default function UserActionScreen({
   action,
   basePath,
   rootView = false,
-  initialImages = [],
+  initialEmbers = [],
   initialProfile = null,
   initialFriends = null,
 }: {
   action: string;
   basePath?: string;
   rootView?: boolean;
-  initialImages?: EmberSummary[];
+  initialEmbers?: EmberSummary[];
   initialProfile?: Profile | null;
   initialFriends?: FriendNetworkPayload | null;
 }) {
   const searchParams = useSearchParams();
   const title = USER_ACTIONS[action];
-  const [images, setImages] = useState<EmberSummary[]>(initialImages);
+  const [embers, setEmbers] = useState<EmberSummary[]>(initialEmbers);
   const [friends, setFriends] = useState<FriendNetworkPayload | null>(initialFriends);
   const [form, setForm] = useState({
     firstName: initialProfile?.firstName || '',
@@ -83,7 +83,7 @@ export default function UserActionScreen({
 
   useEffect(() => {
     if (isEmberList) {
-      if (initialImages.length > 0) {
+      if (initialEmbers.length > 0) {
         return;
       }
 
@@ -92,7 +92,7 @@ export default function UserActionScreen({
           if (!response.ok) {
             return;
           }
-          setImages((await response.json()) as EmberSummary[]);
+          setEmbers((await response.json()) as EmberSummary[]);
         })
         .catch(() => undefined);
 
@@ -127,7 +127,7 @@ export default function UserActionScreen({
         })
         .catch(() => undefined);
     }
-  }, [initialFriends, initialImages.length, initialProfile, isEmberList]);
+  }, [initialFriends, initialEmbers.length, initialProfile, isEmberList]);
 
   if (!title) {
     return null;
@@ -138,8 +138,8 @@ export default function UserActionScreen({
   const showSort = searchParams.get('sort-open') === '1';
   const emberSet =
     action === 'shared-embers'
-      ? images.filter((image) => image.accessType !== 'owner')
-      : images.filter((image) => image.accessType === 'owner');
+      ? embers.filter((ember) => ember.accessType !== 'owner')
+      : embers.filter((ember) => ember.accessType === 'owner');
   const sorted = sortEmbers(emberSet, sort);
   const buildHref = (updates: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -299,23 +299,23 @@ export default function UserActionScreen({
 
               <div className="flex-1 overflow-y-auto pb-6 no-scrollbar">
                 <div className="grid grid-cols-3 gap-1.5">
-                  {sorted.map((image) => (
+                  {sorted.map((ember) => (
                     <Link
-                      key={image.id}
-                      href={`/ember/${image.id}`}
+                      key={ember.id}
+                      href={`/ember/${ember.id}`}
                       className="aspect-square rounded-xl overflow-hidden can-hover relative"
                       style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: 0.95 }}
                     >
                       <img
                         src={getPreviewMediaUrl({
-                          mediaType: image.mediaType,
-                          filename: image.filename,
-                          posterFilename: image.posterFilename,
+                          mediaType: ember.mediaType,
+                          filename: ember.filename,
+                          posterFilename: ember.posterFilename,
                         })}
-                        alt={image.title || image.originalName}
+                        alt={ember.title || ember.originalName}
                         className="absolute inset-0 h-full w-full object-cover"
                       />
-                      {image.photoCount > 1 ? (
+                      {ember.photoCount > 1 ? (
                         <div className="absolute top-1.5 right-1.5 z-10">
                           <FileStack size={16} className="text-white drop-shadow-md" />
                         </div>

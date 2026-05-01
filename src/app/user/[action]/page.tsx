@@ -18,8 +18,8 @@ export default async function UserActionPage({
   const isEmberList = action === 'my-embers' || action === 'shared-embers';
 
   if (isEmberList) {
-    const initialImages = await getAccessibleEmbersForUser(auth.user.id);
-    return <UserActionScreen action={action} initialImages={initialImages} />;
+    const initialEmbers = await getAccessibleEmbersForUser(auth.user.id);
+    return <UserActionScreen action={action} initialEmbers={initialEmbers} />;
   }
 
   const initialFriends = await getFriendNetworkForUser(auth.user.id);
