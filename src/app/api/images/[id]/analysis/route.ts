@@ -4,7 +4,7 @@ import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { ensureImageAnalysisForImage } from '@/lib/image-analysis';
 import { generateWikiForImage } from '@/lib/wiki-generator';
-import { generateSnapshotScript } from '@/lib/claude';
+import { generateSnapshotScript } from '@/lib/snapshot-generator';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 

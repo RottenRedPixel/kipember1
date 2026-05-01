@@ -9,7 +9,7 @@ import {
   getAccessibleEmbersForUser,
   invalidateAccessibleEmbersForUser,
 } from '@/lib/ember';
-import { generateSnapshotScript } from '@/lib/claude';
+import { generateSnapshotScript } from '@/lib/snapshot-generator';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 
 export async function POST(request: NextRequest) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
 import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { prisma } from '@/lib/db';
-import { generateSnapshotScript } from '@/lib/claude';
+import { generateSnapshotScript } from '@/lib/snapshot-generator';
 import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
