@@ -1,10 +1,9 @@
-import { readFile } from 'fs/promises';
 import Anthropic from '@anthropic-ai/sdk';
 import sharp from 'sharp';
 import { normalizeEmail, normalizePhone } from '@/lib/auth-server';
 import { getCapabilityModel, renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
-import { getUploadPath } from '@/lib/uploads';
+import { readUploadBuffer } from '@/lib/uploads';
 import { getUserDisplayName } from '@/lib/user-name';
 
 type Confidence = 'high' | 'medium' | 'low';
@@ -252,7 +251,7 @@ async function cropFaceBuffer(
   const normalizedBox =
     variant === 'expanded' ? expandFaceBox(box) : normalizeFaceBox(box);
   const sourceFilename = getSourceFilename(image);
-  const input = await readFile(getUploadPath(sourceFilename));
+  const input = await readUploadBuffer(sourceFilename);
   const rotated = sharp(input).rotate();
   const metadata = await rotated.metadata();
 
@@ -696,7 +695,7 @@ async function loadTargetImageBuffer(image: {
   posterFilename: string | null;
 }) {
   const sourceFilename = getSourceFilename(image);
-  const input = await readFile(getUploadPath(sourceFilename));
+  const input = await readUploadBuffer(sourceFilename);
 
   return sharp(input)
     .rotate()

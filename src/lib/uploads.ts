@@ -1,4 +1,5 @@
 import { accessSync, constants, existsSync } from 'fs';
+import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 
@@ -64,6 +65,51 @@ export function getUploadFallbackBaseUrl(): string | null {
 export function getUploadFallbackUrl(filename: string): string | null {
   const baseUrl = getUploadFallbackBaseUrl();
   return baseUrl ? `${baseUrl}/api/uploads/${filename}` : null;
+}
+
+/**
+ * Read an upload as a Buffer, regardless of whether it's on local disk
+ * (dev / Render persistent disk), in R2 object storage (production),
+ * or only available via the legacy fallback URL.
+ *
+ * Mirrors the lookup chain in /api/uploads/[filename]/route.ts so any
+ * lib doing direct image processing (face match, image analysis, etc.)
+ * works on production as well as locally.
+ */
+export async function readUploadBuffer(filename: string): Promise<Buffer> {
+  // 1. Local disk (fastest when present)
+  try {
+    return await readFile(getUploadPath(filename));
+  } catch {
+    // fall through
+  }
+
+  // 2. R2 object storage (production primary)
+  try {
+    const { getUploadFromObjectStorage } = await import('@/lib/object-storage');
+    const stored = await getUploadFromObjectStorage({ filename });
+    if (stored?.body) {
+      const response = new Response(stored.body as BodyInit);
+      return Buffer.from(await response.arrayBuffer());
+    }
+  } catch {
+    // fall through
+  }
+
+  // 3. Legacy upload-host fallback (covers files migrated from the prior deploy)
+  const fallbackUrl = getUploadFallbackUrl(filename);
+  if (fallbackUrl) {
+    try {
+      const response = await fetch(fallbackUrl);
+      if (response.ok) {
+        return Buffer.from(await response.arrayBuffer());
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  throw new Error(`Upload not found in any source: ${filename}`);
 }
 
 export function getPreviewUploadUrl({
