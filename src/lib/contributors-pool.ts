@@ -24,9 +24,25 @@ export type UnifiedContributor = {
   /** Embers across the user's pool that this person is on. */
   embers: { id: string; title: string; contributorId: string }[];
   emberCount: number;
+  /** Photos across the owner's embers where this person is tagged with a face box. */
+  taggedPhotos: TaggedPhoto[];
+  taggedPhotoCount: number;
   /** Only meaningful when currentEmberId is given. */
   onThisEmber: boolean;
   currentEmberContributorId: string | null;
+};
+
+export type TaggedPhoto = {
+  tagId: string;
+  emberId: string;
+  emberTitle: string;
+  filename: string;
+  posterFilename: string | null;
+  mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
+  leftPct: number;
+  topPct: number;
+  widthPct: number;
+  heightPct: number;
 };
 
 function pickKey(c: { userId: string | null; email: string | null; phoneNumber: string | null; id: string }): string {
@@ -75,9 +91,16 @@ export async function getUnifiedContributorsForUser(
   });
 
   const byKey = new Map<string, UnifiedContributor>();
+  const contributorIdToKey = new Map<string, string>();
+  const userIdToKey = new Map<string, string>();
+  const emberTitles = new Map<string, string>();
+
   for (const r of rows) {
     const key = pickKey(r);
     const title = r.image.title || r.image.originalName.replace(/\.[^.]+$/, '');
+    emberTitles.set(r.image.id, title);
+    contributorIdToKey.set(r.id, key);
+    if (r.userId) userIdToKey.set(r.userId, key);
     const isOnCurrent = currentEmberId ? r.imageId === currentEmberId : false;
 
     let entry = byKey.get(key);
@@ -92,6 +115,8 @@ export async function getUnifiedContributorsForUser(
         avatarUrl: r.user?.avatarFilename ? `/api/uploads/${r.user.avatarFilename}` : null,
         embers: [],
         emberCount: 0,
+        taggedPhotos: [],
+        taggedPhotoCount: 0,
         onThisEmber: false,
         currentEmberContributorId: null,
       };
@@ -103,6 +128,76 @@ export async function getUnifiedContributorsForUser(
     if (isOnCurrent) {
       entry.onThisEmber = true;
       entry.currentEmberContributorId = r.id;
+    }
+  }
+
+  // Pull positioned tags that link (via contributorId or userId) to anyone in
+  // the pool, so each unified entry knows which face crops to display.
+  const allContributorIds = Array.from(contributorIdToKey.keys());
+  const allUserIds = Array.from(userIdToKey.keys());
+
+  if (allContributorIds.length > 0 || allUserIds.length > 0) {
+    const tagFilters: Array<Record<string, unknown>> = [];
+    if (allContributorIds.length > 0) tagFilters.push({ contributorId: { in: allContributorIds } });
+    if (allUserIds.length > 0) tagFilters.push({ userId: { in: allUserIds } });
+
+    const tags = await prisma.imageTag.findMany({
+      where: {
+        image: { ownerId: userId },
+        leftPct: { not: null },
+        topPct: { not: null },
+        widthPct: { not: null },
+        heightPct: { not: null },
+        OR: tagFilters,
+      },
+      select: {
+        id: true,
+        contributorId: true,
+        userId: true,
+        imageId: true,
+        leftPct: true,
+        topPct: true,
+        widthPct: true,
+        heightPct: true,
+        image: {
+          select: {
+            filename: true,
+            mediaType: true,
+            posterFilename: true,
+          },
+        },
+      },
+    });
+
+    const seenTagPerKey = new Map<string, Set<string>>();
+    for (const t of tags) {
+      const key =
+        (t.contributorId && contributorIdToKey.get(t.contributorId)) ||
+        (t.userId && userIdToKey.get(t.userId)) ||
+        null;
+      if (!key) continue;
+      const entry = byKey.get(key);
+      if (!entry) continue;
+
+      // Dedupe on (key, imageId) — at most one tag thumbnail per ember.
+      const seen = seenTagPerKey.get(key) ?? new Set<string>();
+      if (seen.has(t.imageId)) continue;
+      seen.add(t.imageId);
+      seenTagPerKey.set(key, seen);
+
+      entry.taggedPhotos.push({
+        tagId: t.id,
+        emberId: t.imageId,
+        emberTitle: emberTitles.get(t.imageId) ?? 'Ember',
+        filename: t.image.filename,
+        posterFilename: t.image.posterFilename,
+        mediaType: t.image.mediaType,
+        leftPct: t.leftPct ?? 0,
+        topPct: t.topPct ?? 0,
+        widthPct: t.widthPct ?? 0,
+        heightPct: t.heightPct ?? 0,
+      });
+      entry.taggedPhotoCount += 1;
     }
   }
 
