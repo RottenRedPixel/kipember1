@@ -54,19 +54,49 @@ function formatLocation(metadataJson: string | null | undefined): string {
   return [parsed.label, parsed.detail].filter(Boolean).join(', ');
 }
 
+function describePosition(leftPct: number | null, topPct: number | null, widthPct: number | null, heightPct: number | null): string | null {
+  if (leftPct == null || topPct == null || widthPct == null || heightPct == null) {
+    return null;
+  }
+  const cx = leftPct + widthPct / 2;
+  const cy = topPct + heightPct / 2;
+
+  let horizontal: string;
+  if (cx < 33) horizontal = 'left';
+  else if (cx < 45) horizontal = 'left of center';
+  else if (cx < 55) horizontal = 'center';
+  else if (cx < 67) horizontal = 'right of center';
+  else horizontal = 'right';
+
+  let vertical: string | null = null;
+  if (cy < 33) vertical = 'upper';
+  else if (cy >= 67) vertical = 'lower';
+
+  const zone = vertical ? `${vertical} ${horizontal}` : horizontal;
+  return `${zone} side of the photo (centered around ${Math.round(cx)}% from the left, ${Math.round(cy)}% from the top)`;
+}
+
 function formatTaggedPeople(
   tags: Array<{
     label: string;
+    leftPct: number | null;
+    topPct: number | null;
+    widthPct: number | null;
+    heightPct: number | null;
     user: { firstName: string | null; lastName: string | null } | null;
     contributor: { name: string | null } | null;
   }>
 ): string {
-  const names = new Set<string>();
+  const lines: string[] = [];
+  const seen = new Set<string>();
   for (const tag of tags) {
     const name = (getUserDisplayName(tag.user) || tag.contributor?.name || tag.label || '').trim();
-    if (name) names.add(name);
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    const position = describePosition(tag.leftPct, tag.topPct, tag.widthPct, tag.heightPct);
+    lines.push(position ? `${name} — ${position}` : name);
   }
-  return Array.from(names).join(', ');
+  return lines.join('\n');
 }
 
 function computeInterviewCoverage({
@@ -119,6 +149,10 @@ export async function loadPromptVariables(imageId: string) {
         orderBy: { createdAt: 'asc' },
         select: {
           label: true,
+          leftPct: true,
+          topPct: true,
+          widthPct: true,
+          heightPct: true,
           user: { select: { firstName: true, lastName: true } },
           contributor: { select: { name: true } },
         },
