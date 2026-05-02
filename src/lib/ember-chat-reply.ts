@@ -88,6 +88,59 @@ function formatLocation(
   return '';
 }
 
+type RawClaim = {
+  claimType: string;
+  value: string;
+  subject: string;
+  metadataJson: string | null;
+};
+
+function claimSourceLabel(metadataJson: string | null): string {
+  if (!metadataJson) return 'Someone';
+  try {
+    const parsed = JSON.parse(metadataJson) as { sourceLabel?: unknown };
+    return typeof parsed.sourceLabel === 'string' && parsed.sourceLabel.trim()
+      ? parsed.sourceLabel.trim()
+      : 'Someone';
+  } catch {
+    return 'Someone';
+  }
+}
+
+const CLAIM_TYPE_HEADINGS: Record<string, string> = {
+  why: 'Why this memory matters',
+  emotion: 'Emotional states',
+  extra_story: 'Extra stories',
+  place: 'Places mentioned',
+};
+
+// Surface the housekeeping claim data to the chat prompt so it can answer
+// questions like "what did Amado say about Zia?" with the actual recorded
+// value and source. Without this, only the *count* of claims is exposed
+// (via the interview-coverage signal) and the model can't quote anything.
+function formatClaims(claims: RawClaim[]): string {
+  if (!claims.length) return '';
+  const grouped = new Map<string, string[]>();
+  for (const claim of claims) {
+    const heading = CLAIM_TYPE_HEADINGS[claim.claimType];
+    if (!heading) continue;
+    const source = claimSourceLabel(claim.metadataJson);
+    const subject = claim.subject?.trim();
+    const value = claim.value?.trim() || '';
+    if (!value) continue;
+    const line = subject
+      ? `- ${source} said about ${subject}: "${value}"`
+      : `- ${source} said: "${value}"`;
+    const list = grouped.get(heading) ?? [];
+    list.push(line);
+    grouped.set(heading, list);
+  }
+  if (grouped.size === 0) return '';
+  return Array.from(grouped.entries())
+    .map(([heading, lines]) => `${heading}:\n${lines.join('\n')}`)
+    .join('\n\n');
+}
+
 function describePosition(leftPct: number | null, topPct: number | null, widthPct: number | null, heightPct: number | null): string | null {
   if (leftPct == null || topPct == null || widthPct == null || heightPct == null) {
     return null;
@@ -195,7 +248,13 @@ export async function loadPromptVariables(imageId: string) {
       },
       memoryClaims: {
         where: { status: 'active' },
-        select: { claimType: true },
+        select: {
+          claimType: true,
+          value: true,
+          subject: true,
+          metadataJson: true,
+        },
+        orderBy: { createdAt: 'asc' },
       },
     },
   });
@@ -209,6 +268,7 @@ export async function loadPromptVariables(imageId: string) {
       taggedPeople: '',
       visualScene: '',
       emotionalContext: '',
+      claims: '',
       wiki: '',
       answeredTopics: '',
       unansweredTopics: INTERVIEW_QUESTION_TYPES.filter((s) => s !== 'context').join(', '),
@@ -235,6 +295,7 @@ export async function loadPromptVariables(imageId: string) {
     taggedPeople,
     visualScene: image.analysis?.summary ?? '',
     emotionalContext: extractEmotionalContext(image.analysis?.sceneInsightsJson),
+    claims: formatClaims(image.memoryClaims),
     wiki: image.wiki?.content ?? '',
     ...coverage,
   };
@@ -257,7 +318,33 @@ function defaultChatPromptKey(role: EmberChatRole): EmberChatPromptKey {
   return role === 'guest' ? 'ember_chat.guest_style' : 'ember_chat.style';
 }
 
+const GUEST_WELCOME_MESSAGE =
+  "Hello, I'm ember — do you have any questions about this memory?";
+
 export async function generateEmberChatReply(ctx: EmberChatContext): Promise<string> {
+  // Guests always see the same opening line — no Claude call, no token cost,
+  // no risk of the model inventing details before the guest has even asked.
+  if (
+    ctx.role === 'guest' &&
+    (ctx.trigger === 'welcome_first_open' || ctx.trigger === 'welcome_returning')
+  ) {
+    return GUEST_WELCOME_MESSAGE;
+  }
+
+  // Acknowledge photo / video uploads so the user gets immediate feedback
+  // that the file landed. Owner + contributor get a soft probe; guests just
+  // get a thank-you (we don't probe guests).
+  if (ctx.trigger === 'photo_upload') {
+    return ctx.role === 'guest'
+      ? 'Got it — thanks for sharing that photo.'
+      : "Got it — I've added that photo to the memory. Want to tell me anything about it?";
+  }
+  if (ctx.trigger === 'video_upload') {
+    return ctx.role === 'guest'
+      ? 'Got it — thanks for sharing that video.'
+      : "Got it — I've added that video to the memory. Want to share what's happening?";
+  }
+
   const promptKey = ctx.promptKey ?? defaultChatPromptKey(ctx.role);
   const [vars, history] = await Promise.all([
     loadPromptVariables(ctx.imageId),
