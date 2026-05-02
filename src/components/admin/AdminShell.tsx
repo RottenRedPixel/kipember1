@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BarChart3, ChevronDown, Menu, MessageSquareText, Users, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, ChevronDown, Menu, MessageSquareText, Users, X } from 'lucide-react';
 import { PROMPT_GROUPS, PROMPT_REGISTRY } from '@/lib/prompt-registry';
 import { groupSlug, shortPromptLabel } from '@/lib/admin-prompt-groups';
 
@@ -20,9 +20,34 @@ type NavSection = {
   items: NavItem[];
 };
 
+// Ember mark with black rays + orange center dot. Mirrors the SVG in
+// AppHeader but recolored for the admin's light theme.
+function EmberAdminBrand({ size = 22 }: { size?: number }) {
+  return (
+    <span className="flex items-center gap-2">
+      <svg width={size} height={size} viewBox="0 0 72 72" fill="black">
+        <circle cx="36" cy="36" r="7.2" fill="#f97316" />
+        <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+        <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+        <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
+        <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(22.02 94.02) rotate(-90)" />
+        <rect x="47.97" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(29.55 -30.48) rotate(45)" />
+        <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(42.45 .66) rotate(45)" />
+        <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
+        <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
+      </svg>
+      <span className="font-semibold text-sm">
+        <span style={{ color: '#f97316' }}>Ember</span>{' '}
+        <span className="text-gray-900">Admin</span>
+      </span>
+    </span>
+  );
+}
+
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
+      { label: 'Back to App', href: '/home', icon: ArrowLeft },
       { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
       { label: 'Users', href: '/admin/users', icon: Users },
     ],
@@ -92,8 +117,8 @@ export default function AdminShell({
         >
           <Menu size={20} />
         </button>
-        <span className="font-semibold text-sm">Admin</span>
-        <span className="text-xs text-gray-500 truncate max-w-[160px]">{userEmail}</span>
+        <EmberAdminBrand size={20} />
+        <span className="text-xs text-gray-500 truncate max-w-[140px]">{userEmail}</span>
       </div>
 
       <div className="flex min-h-[calc(100vh-3.5rem)] lg:min-h-screen">
@@ -114,7 +139,7 @@ export default function AdminShell({
           }`}
         >
           <div className="flex items-center justify-between px-5 h-14 border-b border-gray-200">
-            <span className="font-semibold text-sm">Admin</span>
+            <EmberAdminBrand />
             <button
               type="button"
               aria-label="Close navigation"
