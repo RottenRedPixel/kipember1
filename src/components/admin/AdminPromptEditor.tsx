@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Check, Eye, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+type EmberOption = { id: string; title: string };
 
 export type AdminPromptEditorProps = {
   promptKey: string;
@@ -11,9 +13,16 @@ export type AdminPromptEditorProps = {
   groupHref: string;
   description: string;
   variables: string[];
+  whatItDoes: string;
+  whenItFires: string[];
+  affects: Array<{ label: string; on: boolean }>;
   body: string;
   isActive: boolean;
   updatedAt: string | null;
+  /** Embers the admin can use as preview targets. */
+  previewEmbers: EmberOption[];
+  /** Whether the preview endpoint can render this prompt. */
+  previewSupported: boolean;
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -38,6 +47,13 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(props.updatedAt);
+
+  const [previewEmberId, setPreviewEmberId] = useState<string>(
+    props.previewEmbers[0]?.id ?? ''
+  );
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [previewBody, setPreviewBody] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const isDirty = draft !== savedBody;
 
@@ -76,6 +92,34 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
     }
   }
 
+  async function runPreview() {
+    if (!previewEmberId || previewBusy) return;
+    setPreviewBusy(true);
+    setPreviewError(null);
+    setPreviewBody(null);
+    try {
+      const res = await fetch('/api/admin/prompts/preview', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          promptKey: props.promptKey,
+          emberId: previewEmberId,
+          // Send the live draft so the user can see changes BEFORE saving.
+          bodyOverride: draft,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error || `preview failed (${res.status})`);
+      }
+      setPreviewBody(typeof payload.body === 'string' ? payload.body : '(empty)');
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : 'preview failed');
+    } finally {
+      setPreviewBusy(false);
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-3.5rem)] lg:min-h-screen">
       {/* Header */}
@@ -100,15 +144,68 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
             <p className="text-xs text-gray-400 mt-0.5">{formatLastSaved(updatedAt)}</p>
           </div>
         </div>
-        <p className="text-sm leading-relaxed text-gray-600 mt-3">{props.description}</p>
+      </div>
+
+      {/* Narrative panels — what / when / affects */}
+      <div className="bg-gray-50 px-4 lg:px-8 py-5 grid grid-cols-1 lg:grid-cols-3 gap-3 border-b border-gray-200">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
+            What this prompt does
+          </div>
+          <p className="text-sm leading-relaxed text-gray-700">{props.whatItDoes}</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
+            When it fires
+          </div>
+          <ul className="text-sm leading-relaxed text-gray-700 space-y-1.5">
+            {props.whenItFires.map((trigger, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-gray-400 select-none">•</span>
+                <span>{trigger}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
+            Editing this affects
+          </div>
+          <ul className="text-sm leading-relaxed space-y-1.5">
+            {props.affects.map((row, i) => (
+              <li key={i} className="flex gap-2">
+                {row.on ? (
+                  <Check size={14} strokeWidth={2.5} className="text-emerald-600 mt-0.5 shrink-0" />
+                ) : (
+                  <X size={14} strokeWidth={2.5} className="text-gray-300 mt-0.5 shrink-0" />
+                )}
+                <span className={row.on ? 'text-gray-800' : 'text-gray-500'}>{row.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Read-only registry-defined description + variable list */}
+      <div className="bg-white px-4 lg:px-8 py-3 border-b border-gray-200 text-xs text-gray-500 space-y-1">
+        <p>{props.description}</p>
         {props.variables.length > 0 ? (
-          <p className="font-mono text-[11px] leading-relaxed text-gray-500 mt-2">
-            Variables: {props.variables.map((v) => `{{${v}}}`).join('  ')}
+          <p className="font-mono text-[11px] text-gray-500">
+            Variables Ember fills in: {props.variables.map((v) => `{{${v}}}`).join('  ')}
           </p>
-        ) : null}
+        ) : (
+          <p className="font-mono text-[11px] text-gray-500">
+            (No template variables — body is sent to the model as-is.)
+          </p>
+        )}
       </div>
 
       {/* Editor — full-pane textarea */}
+      <div className="bg-white px-4 lg:px-8 pt-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+        Prompt body — editable
+      </div>
       <textarea
         className="flex-1 block w-full bg-gray-50 px-4 lg:px-8 py-4 font-mono text-sm leading-6 text-gray-900 outline-none border-0 resize-none min-h-[400px]"
         spellCheck={false}
@@ -118,6 +215,58 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
           if (saveState !== 'idle') setSaveState('idle');
         }}
       />
+
+      {/* Preview with sample data */}
+      <div className="bg-white border-t border-gray-200 px-4 lg:px-8 py-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Preview with real ember data
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {props.previewSupported
+                ? 'Renders the prompt body against a real ember’s variables, so you can see exactly what the AI receives.'
+                : 'Preview is not yet wired for this prompt type. The body shown below is what the AI sees as-is (no variable substitution applies).'}
+            </p>
+          </div>
+        </div>
+        {props.previewSupported && props.previewEmbers.length > 0 ? (
+          <div className="flex items-center gap-2 mb-3">
+            <select
+              value={previewEmberId}
+              onChange={(e) => {
+                setPreviewEmberId(e.target.value);
+                setPreviewBody(null);
+                setPreviewError(null);
+              }}
+              className="flex-1 lg:flex-none rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900"
+            >
+              {props.previewEmbers.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.title}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={runPreview}
+              disabled={!previewEmberId || previewBusy}
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Eye size={14} />
+              {previewBusy ? 'Rendering…' : 'Generate preview'}
+            </button>
+          </div>
+        ) : null}
+        {previewError ? (
+          <p className="text-xs text-rose-600 mb-2">{previewError}</p>
+        ) : null}
+        {previewBody ? (
+          <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 text-[12px] leading-5 font-mono overflow-x-auto whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+            {previewBody}
+          </pre>
+        ) : null}
+      </div>
 
       {/* Save bar — sticky at bottom */}
       <div className="bg-white border-t border-gray-200 px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
