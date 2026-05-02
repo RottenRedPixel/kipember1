@@ -41,17 +41,18 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
   const row = await prisma.promptOverride.findUnique({
     where: { key },
-    select: { key: true, body: true, updatedAt: true },
+    select: { key: true, body: true, updatedAt: true, updatedBy: true },
   });
 
   if (!row) {
-    return NextResponse.json({ key, body: null, updatedAt: null });
+    return NextResponse.json({ key, body: null, updatedAt: null, updatedBy: null });
   }
 
   return NextResponse.json({
     key: row.key,
     body: row.body,
     updatedAt: row.updatedAt.toISOString(),
+    updatedBy: row.updatedBy ?? null,
   });
 }
 
@@ -82,8 +83,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const saved = await prisma.promptOverride.upsert({
     where: { key },
-    create: { key, body },
-    update: { body },
+    create: { key, body, updatedBy: authResult.user.email },
+    update: { body, updatedBy: authResult.user.email },
   });
 
   invalidatePromptOverrideCache();

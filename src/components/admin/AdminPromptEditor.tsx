@@ -17,21 +17,26 @@ export type AdminPromptEditorProps = {
   body: string;
   isActive: boolean;
   updatedAt: string | null;
+  /** Display name of the admin who last saved this prompt (resolved from email). */
+  updatedByName: string | null;
+  /** Name of the admin currently viewing — used to update the byline after save. */
+  currentAdminName: string;
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
-function formatLastSaved(value: string | null): string {
+function formatLastSaved(value: string | null, byName: string | null): string {
   if (!value) return 'Never saved';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Never saved';
-  return `Last saved ${date.toLocaleString('en-US', {
+  const stamp = `Last saved ${date.toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   })}`;
+  return byName ? `${stamp} by ${byName}` : stamp;
 }
 
 export default function AdminPromptEditor(props: AdminPromptEditorProps) {
@@ -41,6 +46,7 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(props.updatedAt);
+  const [updatedByName, setUpdatedByName] = useState<string | null>(props.updatedByName);
 
   const isDirty = draft !== savedBody;
 
@@ -73,6 +79,7 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
       setIsActive(true);
       setSaveState('saved');
       setUpdatedAt(payload?.updatedAt ?? new Date().toISOString());
+      setUpdatedByName(props.currentAdminName);
     } catch (error) {
       setSaveState('error');
       setErrorMessage(error instanceof Error ? error.message : 'save failed');
@@ -100,7 +107,7 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
           <div className="flex-1 min-w-0">
             <h1 className="text-lg lg:text-xl font-semibold text-gray-900">{props.label}</h1>
             <p className="font-mono text-xs text-gray-500 mt-0.5 break-all">{props.promptKey}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{formatLastSaved(updatedAt)}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{formatLastSaved(updatedAt, updatedByName)}</p>
           </div>
         </div>
       </div>
@@ -174,7 +181,7 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
         Prompt body — editable
       </div>
       <textarea
-        className="flex-1 block w-full bg-gray-50 px-4 lg:px-8 py-4 font-mono text-sm leading-6 text-gray-900 outline-none border-0 resize-none min-h-[400px]"
+        className="flex-1 block w-full bg-blue-50 px-4 lg:px-8 py-4 font-mono text-sm leading-6 text-gray-900 outline-none border-0 resize-none min-h-[400px]"
         spellCheck={false}
         value={draft}
         onChange={(event) => {

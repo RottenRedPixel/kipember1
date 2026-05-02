@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getCurrentAuth } from '@/lib/auth-server';
 import { resolvePrompt } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getPromptDefinition } from '@/lib/prompt-registry';
@@ -20,13 +21,31 @@ export default async function AdminPromptEditorPage({
   const definition = getPromptDefinition(promptKey);
   if (!definition || definition.group !== group) notFound();
 
-  const [resolution, override] = await Promise.all([
+  const [auth, resolution, override] = await Promise.all([
+    getCurrentAuth(),
     resolvePrompt(definition.key).catch(() => null),
     prisma.promptOverride.findUnique({
       where: { key: definition.key },
-      select: { updatedAt: true },
+      select: { updatedAt: true, updatedBy: true },
     }),
   ]);
+  const currentAdminName =
+    [auth?.user?.firstName, auth?.user?.lastName].filter(Boolean).join(' ').trim() ||
+    auth?.user?.email ||
+    'You';
+
+  // The editor is recorded as an email. Resolve to a display name (first +
+  // last). If the admin who edited it has been deleted or the override is old
+  // enough to predate this column, fall back to the email or null.
+  let updatedByName: string | null = null;
+  if (override?.updatedBy) {
+    const editor = await prisma.user.findUnique({
+      where: { email: override.updatedBy },
+      select: { firstName: true, lastName: true },
+    });
+    const fullName = [editor?.firstName, editor?.lastName].filter(Boolean).join(' ').trim();
+    updatedByName = fullName || override.updatedBy;
+  }
 
   return (
     <AdminPromptEditor
@@ -42,6 +61,8 @@ export default async function AdminPromptEditorPage({
       body={resolution?.body || ''}
       isActive={resolution !== null}
       updatedAt={override?.updatedAt.toISOString() ?? null}
+      updatedByName={updatedByName}
+      currentAdminName={currentAdminName}
     />
   );
 }

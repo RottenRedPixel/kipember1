@@ -505,4 +505,5 @@ model PromptOverride {
   key       String   @id
   body      String
   updatedAt DateTime @updatedAt
+  updatedBy String?
 }

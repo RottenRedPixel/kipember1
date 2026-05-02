@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { BarChart3, Menu, MessageSquareText, Users, X } from 'lucide-react';
+import { BarChart3, ChevronDown, Menu, MessageSquareText, Users, X } from 'lucide-react';
 import { PROMPT_GROUPS, PROMPT_REGISTRY } from '@/lib/prompt-registry';
 import { groupSlug, shortPromptLabel } from '@/lib/admin-prompt-groups';
 
@@ -50,6 +50,18 @@ export default function AdminShell({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  // Groups collapsed by default — user explicitly expands what they want.
+  // Tracks which group hrefs the user has manually toggled open.
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (href: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) next.delete(href);
+      else next.add(href);
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900" style={{ colorScheme: 'light' }}>
@@ -112,25 +124,51 @@ export default function AdminShell({
                       pathname === item.href || pathname.startsWith(`${item.href}/`);
                     const Icon = item.icon;
                     const isNested = Boolean(section.title);
+                    const hasChildren = Boolean(item.children && item.children.length > 0);
+                    // Auto-expand the group that contains the active route so
+                    // the user can see where they are even on first render.
+                    const containsActive = hasChildren && pathname.startsWith(`${item.href}/`);
+                    const isExpanded = hasChildren && (expandedGroups.has(item.href) || containsActive);
                     return (
                       <div key={item.href}>
-                        <Link
-                          href={item.href}
-                          onClick={() => setOpen(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
-                            isNested ? 'pl-10' : ''
-                          } ${
-                            active
-                              ? 'bg-gray-200 text-gray-900'
-                              : 'text-gray-700 hover:bg-gray-100'
-                          }`}
-                        >
-                          {Icon ? <Icon size={16} strokeWidth={1.8} /> : null}
-                          {item.label}
-                        </Link>
-                        {item.children && item.children.length > 0 ? (
+                        {hasChildren ? (
+                          // Group header — toggles expand/collapse of its prompts.
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(item.href)}
+                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 ${
+                              isNested ? 'pl-10' : ''
+                            }`}
+                          >
+                            {Icon ? <Icon size={16} strokeWidth={1.8} /> : null}
+                            <span className="flex-1 text-left">{item.label}</span>
+                            <ChevronDown
+                              size={14}
+                              strokeWidth={2}
+                              className={`text-gray-400 transition-transform ${
+                                isExpanded ? '' : '-rotate-90'
+                              }`}
+                            />
+                          </button>
+                        ) : (
+                          <Link
+                            href={item.href}
+                            onClick={() => setOpen(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
+                              isNested ? 'pl-10' : ''
+                            } ${
+                              active
+                                ? 'bg-gray-200 text-gray-900'
+                                : 'text-gray-700 hover:bg-gray-100'
+                            }`}
+                          >
+                            {Icon ? <Icon size={16} strokeWidth={1.8} /> : null}
+                            {item.label}
+                          </Link>
+                        )}
+                        {hasChildren && isExpanded ? (
                           <div className="space-y-0.5 mt-0.5">
-                            {item.children.map((child) => {
+                            {item.children!.map((child) => {
                               const childActive = pathname === child.href;
                               return (
                                 <Link
