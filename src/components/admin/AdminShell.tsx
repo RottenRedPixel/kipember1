@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BarChart3, ChevronDown, Menu, MessageSquareText, Users, X } from 'lucide-react';
 import { PROMPT_GROUPS, PROMPT_REGISTRY } from '@/lib/prompt-registry';
 import { groupSlug, shortPromptLabel } from '@/lib/admin-prompt-groups';
@@ -50,9 +50,26 @@ export default function AdminShell({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  // Groups collapsed by default — user explicitly expands what they want.
-  // Tracks which group hrefs the user has manually toggled open.
+  // Groups collapsed by default. The set holds hrefs of currently expanded
+  // groups. We auto-expand whichever group contains the active route on
+  // navigation (so context is visible after a click), but don't force it —
+  // the user can still collapse it after if they want.
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    for (const section of NAV_SECTIONS) {
+      for (const item of section.items) {
+        if (item.children?.length && pathname.startsWith(`${item.href}/`)) {
+          setExpandedGroups((prev) => {
+            if (prev.has(item.href)) return prev;
+            const next = new Set(prev);
+            next.add(item.href);
+            return next;
+          });
+        }
+      }
+    }
+  }, [pathname]);
 
   const toggleGroup = (href: string) => {
     setExpandedGroups((prev) => {
@@ -125,10 +142,7 @@ export default function AdminShell({
                     const Icon = item.icon;
                     const isNested = Boolean(section.title);
                     const hasChildren = Boolean(item.children && item.children.length > 0);
-                    // Auto-expand the group that contains the active route so
-                    // the user can see where they are even on first render.
-                    const containsActive = hasChildren && pathname.startsWith(`${item.href}/`);
-                    const isExpanded = hasChildren && (expandedGroups.has(item.href) || containsActive);
+                    const isExpanded = hasChildren && expandedGroups.has(item.href);
                     return (
                       <div key={item.href}>
                         {hasChildren ? (
