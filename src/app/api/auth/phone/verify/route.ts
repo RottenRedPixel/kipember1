@@ -3,11 +3,10 @@ import {
   applyUserSessionCookie,
   claimMemoriesForUser,
   createUserSession,
-  getPhoneAccountEmail,
   normalizePhone,
 } from '@/lib/auth-server';
 import { consumePhoneSigninChallenge } from '@/lib/auth-challenges';
-import { createUserAccount, getOrCreatePhoneUser } from '@/lib/auth-users';
+import { getOrCreatePhoneUser } from '@/lib/auth-users';
 import { prisma } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
@@ -48,22 +47,9 @@ export async function POST(request: NextRequest) {
       : null;
 
     if (!user) {
-      const passwordHash =
-        typeof challenge.metadata.passwordHash === 'string'
-          ? challenge.metadata.passwordHash
-          : undefined;
-
-      user = passwordHash
-        ? await createUserAccount({
-            email: getPhoneAccountEmail(normalizedPhone),
-            phoneNumber: normalizedPhone,
-            firstName: challenge.firstName || null,
-            lastName: challenge.lastName || null,
-            passwordHash,
-          })
-        : await getOrCreatePhoneUser({
-            phoneNumber: normalizedPhone,
-          });
+      user = await getOrCreatePhoneUser({
+        phoneNumber: normalizedPhone,
+      });
     }
 
     await claimMemoriesForUser({

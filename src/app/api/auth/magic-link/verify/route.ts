@@ -54,10 +54,6 @@ export async function POST(request: NextRequest) {
           phoneNumber: challenge.phoneNumber || null,
           firstName: challenge.firstName || null,
           lastName: challenge.lastName || null,
-          passwordHash:
-            typeof challenge.metadata.passwordHash === 'string'
-              ? challenge.metadata.passwordHash
-              : undefined,
         }));
     }
 

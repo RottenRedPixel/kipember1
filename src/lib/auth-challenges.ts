@@ -7,7 +7,6 @@ export type MagicLinkMode = 'login' | 'signup';
 
 type ParsedMetadata = {
   mode?: MagicLinkMode;
-  passwordHash?: string;
 };
 
 type ChallengeRecord = Awaited<ReturnType<typeof prisma.authChallenge.findUnique>>;
@@ -60,7 +59,6 @@ export async function createMagicLinkChallenge({
   lastName,
   userId,
   mode,
-  passwordHash,
 }: {
   email: string;
   phoneNumber: string | null;
@@ -68,7 +66,6 @@ export async function createMagicLinkChallenge({
   lastName: string | null;
   userId: string | null;
   mode: MagicLinkMode;
-  passwordHash?: string | null;
 }) {
   const rawToken = randomBytes(32).toString('hex');
 
@@ -92,7 +89,7 @@ export async function createMagicLinkChallenge({
       firstName,
       lastName,
       userId,
-      metadataJson: JSON.stringify({ mode, ...(passwordHash ? { passwordHash } : {}) }),
+      metadataJson: JSON.stringify({ mode }),
       expiresAt: getExpiry(getMagicLinkTtlMinutes()),
     },
   });
@@ -188,15 +185,9 @@ export async function consumePasswordResetChallenge(rawToken: string) {
 export async function createPhoneSigninChallenge({
   phoneNumber,
   userId,
-  firstName = null,
-  lastName = null,
-  passwordHash = null,
 }: {
   phoneNumber: string;
   userId: string | null;
-  firstName?: string | null;
-  lastName?: string | null;
-  passwordHash?: string | null;
 }) {
   const code = randomInt(100000, 1000000).toString();
 
@@ -217,9 +208,6 @@ export async function createPhoneSigninChallenge({
       codeHash: hashAuthSecret(code),
       phoneNumber,
       userId,
-      firstName,
-      lastName,
-      metadataJson: JSON.stringify({ ...(passwordHash ? { passwordHash } : {}) }),
       expiresAt: getExpiry(getPhoneCodeTtlMinutes()),
     },
   });
