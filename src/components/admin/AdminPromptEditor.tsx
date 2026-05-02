@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowLeft, Check, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 export type AdminPromptEditorProps = {
   promptKey: string;
@@ -47,8 +47,18 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(props.updatedAt);
   const [updatedByName, setUpdatedByName] = useState<string | null>(props.updatedByName);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const isDirty = draft !== savedBody;
+
+  // Auto-grow the textarea so the full prompt is visible without internal
+  // scrolling — the page just gets longer.
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [draft]);
 
   useEffect(() => {
     if (saveState === 'saved') {
@@ -181,7 +191,8 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
         Prompt body — editable
       </div>
       <textarea
-        className="flex-1 block w-full bg-blue-50 px-4 lg:px-8 py-4 font-mono text-sm leading-6 text-gray-900 outline-none border-0 resize-none min-h-[400px]"
+        ref={textareaRef}
+        className="block w-full bg-blue-50 px-4 lg:px-8 py-4 font-mono text-sm leading-6 text-gray-900 outline-none border-0 resize-none overflow-hidden"
         spellCheck={false}
         value={draft}
         onChange={(event) => {
@@ -190,8 +201,8 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
         }}
       />
 
-      {/* Save bar — sticky at bottom */}
-      <div className="bg-white border-t border-gray-200 px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
+      {/* Save bar — sticky at bottom of viewport */}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 lg:px-8 py-3 flex items-center justify-between gap-3">
         <div className="text-xs">
           {saveState === 'saving' ? <span className="text-gray-500">saving…</span> : null}
           {saveState === 'saved' ? <span className="text-emerald-600 font-medium">saved</span> : null}
