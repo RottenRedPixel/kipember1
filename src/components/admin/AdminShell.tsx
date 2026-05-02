@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { BarChart3, Menu, MessageSquareText, Users, X } from 'lucide-react';
-import { PROMPT_GROUPS } from '@/lib/prompt-registry';
-import { groupSlug } from '@/lib/admin-prompt-groups';
+import { PROMPT_GROUPS, PROMPT_REGISTRY } from '@/lib/prompt-registry';
+import { groupSlug, shortPromptLabel } from '@/lib/admin-prompt-groups';
 
 type NavItem = {
   label: string;
   href: string;
   icon?: typeof Users;
+  children?: NavItem[];
 };
 
 type NavSection = {
@@ -22,8 +23,8 @@ type NavSection = {
 const NAV_SECTIONS: NavSection[] = [
   {
     items: [
-      { label: 'Users', href: '/admin/users', icon: Users },
       { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+      { label: 'Users', href: '/admin/users', icon: Users },
     ],
   },
   {
@@ -32,6 +33,10 @@ const NAV_SECTIONS: NavSection[] = [
     items: PROMPT_GROUPS.map((group) => ({
       label: group,
       href: `/admin/prompts/${groupSlug(group)}`,
+      children: PROMPT_REGISTRY.filter((p) => p.group === group).map((p) => ({
+        label: shortPromptLabel(p.key),
+        href: `/admin/prompts/${groupSlug(group)}/${encodeURIComponent(p.key)}`,
+      })),
     })),
   },
 ];
@@ -91,7 +96,7 @@ export default function AdminShell({
             </button>
           </div>
 
-          <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
             {NAV_SECTIONS.map((section, sectionIndex) => {
               const SectionIcon = section.icon;
               return (
@@ -108,21 +113,43 @@ export default function AdminShell({
                     const Icon = item.icon;
                     const isNested = Boolean(section.title);
                     return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={() => setOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
-                          isNested ? 'pl-10' : ''
-                        } ${
-                          active
-                            ? 'bg-gray-200 text-gray-900'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        {Icon ? <Icon size={16} strokeWidth={1.8} /> : null}
-                        {item.label}
-                      </Link>
+                      <div key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
+                            isNested ? 'pl-10' : ''
+                          } ${
+                            active
+                              ? 'bg-gray-200 text-gray-900'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          {Icon ? <Icon size={16} strokeWidth={1.8} /> : null}
+                          {item.label}
+                        </Link>
+                        {item.children && item.children.length > 0 ? (
+                          <div className="space-y-0.5 mt-0.5">
+                            {item.children.map((child) => {
+                              const childActive = pathname === child.href;
+                              return (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  onClick={() => setOpen(false)}
+                                  className={`flex items-center gap-3 pl-14 pr-3 py-1.5 rounded-md text-xs font-normal ${
+                                    childActive
+                                      ? 'bg-gray-200 text-gray-900'
+                                      : 'text-gray-600 hover:bg-gray-100'
+                                  }`}
+                                >
+                                  {child.label}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
                     );
                   })}
                 </div>

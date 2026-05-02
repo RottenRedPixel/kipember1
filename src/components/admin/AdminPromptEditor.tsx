@@ -148,11 +148,19 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
       </div>
 
       {/* Read-only registry-defined description + variable list */}
-      <div className="bg-white px-4 lg:px-8 py-3 border-b border-gray-200 text-xs text-gray-500 space-y-1">
+      <div className="bg-white px-4 lg:px-8 py-3 border-b border-gray-200 text-xs text-gray-500 space-y-1.5">
         <p>{props.description}</p>
         {props.variables.length > 0 ? (
-          <p className="font-mono text-[11px] text-gray-500">
-            Variables Ember fills in: {props.variables.map((v) => `{{${v}}}`).join('  ')}
+          <p className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-gray-500">Variables Ember fills in:</span>
+            {props.variables.map((v) => (
+              <code
+                key={v}
+                className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
+              >
+                {`{{${v}}}`}
+              </code>
+            ))}
           </p>
         ) : (
           <p className="font-mono text-[11px] text-gray-500">
