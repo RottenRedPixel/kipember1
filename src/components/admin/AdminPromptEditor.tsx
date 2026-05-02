@@ -1,10 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Check, Eye, X } from 'lucide-react';
+import { ArrowLeft, Check, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-
-type EmberOption = { id: string; title: string };
 
 export type AdminPromptEditorProps = {
   promptKey: string;
@@ -19,10 +17,6 @@ export type AdminPromptEditorProps = {
   body: string;
   isActive: boolean;
   updatedAt: string | null;
-  /** Embers the admin can use as preview targets. */
-  previewEmbers: EmberOption[];
-  /** Whether the preview endpoint can render this prompt. */
-  previewSupported: boolean;
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -47,13 +41,6 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(props.updatedAt);
-
-  const [previewEmberId, setPreviewEmberId] = useState<string>(
-    props.previewEmbers[0]?.id ?? ''
-  );
-  const [previewBusy, setPreviewBusy] = useState(false);
-  const [previewBody, setPreviewBody] = useState<string | null>(null);
-  const [previewError, setPreviewError] = useState<string | null>(null);
 
   const isDirty = draft !== savedBody;
 
@@ -89,34 +76,6 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
     } catch (error) {
       setSaveState('error');
       setErrorMessage(error instanceof Error ? error.message : 'save failed');
-    }
-  }
-
-  async function runPreview() {
-    if (!previewEmberId || previewBusy) return;
-    setPreviewBusy(true);
-    setPreviewError(null);
-    setPreviewBody(null);
-    try {
-      const res = await fetch('/api/admin/prompts/preview', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          promptKey: props.promptKey,
-          emberId: previewEmberId,
-          // Send the live draft so the user can see changes BEFORE saving.
-          bodyOverride: draft,
-        }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(payload?.error || `preview failed (${res.status})`);
-      }
-      setPreviewBody(typeof payload.body === 'string' ? payload.body : '(empty)');
-    } catch (error) {
-      setPreviewError(error instanceof Error ? error.message : 'preview failed');
-    } finally {
-      setPreviewBusy(false);
     }
   }
 
@@ -215,58 +174,6 @@ export default function AdminPromptEditor(props: AdminPromptEditorProps) {
           if (saveState !== 'idle') setSaveState('idle');
         }}
       />
-
-      {/* Preview with sample data */}
-      <div className="bg-white border-t border-gray-200 px-4 lg:px-8 py-4">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-              Preview with real ember data
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {props.previewSupported
-                ? 'Renders the prompt body against a real ember’s variables, so you can see exactly what the AI receives.'
-                : 'Preview is not yet wired for this prompt type. The body shown below is what the AI sees as-is (no variable substitution applies).'}
-            </p>
-          </div>
-        </div>
-        {props.previewSupported && props.previewEmbers.length > 0 ? (
-          <div className="flex items-center gap-2 mb-3">
-            <select
-              value={previewEmberId}
-              onChange={(e) => {
-                setPreviewEmberId(e.target.value);
-                setPreviewBody(null);
-                setPreviewError(null);
-              }}
-              className="flex-1 lg:flex-none rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900"
-            >
-              {props.previewEmbers.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.title}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={runPreview}
-              disabled={!previewEmberId || previewBusy}
-              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Eye size={14} />
-              {previewBusy ? 'Rendering…' : 'Generate preview'}
-            </button>
-          </div>
-        ) : null}
-        {previewError ? (
-          <p className="text-xs text-rose-600 mb-2">{previewError}</p>
-        ) : null}
-        {previewBody ? (
-          <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 text-[12px] leading-5 font-mono overflow-x-auto whitespace-pre-wrap max-h-[400px] overflow-y-auto">
-            {previewBody}
-          </pre>
-        ) : null}
-      </div>
 
       {/* Save bar — sticky at bottom */}
       <div className="bg-white border-t border-gray-200 px-4 lg:px-8 py-3 flex items-center justify-between gap-3">

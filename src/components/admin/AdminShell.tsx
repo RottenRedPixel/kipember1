@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, MessageSquareText, Users, X } from 'lucide-react';
+import { BarChart3, Menu, MessageSquareText, Users, X } from 'lucide-react';
 import { PROMPT_GROUPS } from '@/lib/prompt-registry';
 import { groupSlug } from '@/lib/admin-prompt-groups';
 
@@ -21,7 +21,10 @@ type NavSection = {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    items: [{ label: 'Users', href: '/admin/users', icon: Users }],
+    items: [
+      { label: 'Users', href: '/admin/users', icon: Users },
+      { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+    ],
   },
   {
     title: 'Prompts',
@@ -94,8 +97,8 @@ export default function AdminShell({
               return (
                 <div key={section.title ?? `section-${sectionIndex}`} className="space-y-0.5">
                   {section.title ? (
-                    <div className="flex items-center gap-2 px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                      {SectionIcon ? <SectionIcon size={12} strokeWidth={2} /> : null}
+                    <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-500">
+                      {SectionIcon ? <SectionIcon size={16} strokeWidth={1.8} /> : null}
                       {section.title}
                     </div>
                   ) : null}
@@ -109,15 +112,15 @@ export default function AdminShell({
                         key={item.href}
                         href={item.href}
                         onClick={() => setOpen(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm ${
-                          isNested ? 'pl-7 text-[13px]' : ''
+                        className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium ${
+                          isNested ? 'pl-10' : ''
                         } ${
                           active
-                            ? 'bg-gray-200 text-gray-900 font-medium'
+                            ? 'bg-gray-200 text-gray-900'
                             : 'text-gray-700 hover:bg-gray-100'
                         }`}
                       >
-                        {Icon ? <Icon size={16} /> : null}
+                        {Icon ? <Icon size={16} strokeWidth={1.8} /> : null}
                         {item.label}
                       </Link>
                     );
