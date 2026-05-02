@@ -267,9 +267,13 @@ export function usePlaceResolution(
     exactAddressSuggestion?.label?.trim() ||
     null;
 
+  // The suggestion's `detail` field is metadata text like
+  // "Reverse-geocoded address from photo GPS" — not an actual address.
+  // Always prefer the suggestion's `label` (the real formatted address).
+  // `confirmed.detail` is the address the user chose/saved in the slider,
+  // so it's safe to use as-is when present.
   const addressSource =
     confirmed?.detail?.trim() ||
-    exactAddressSuggestion?.detail?.trim() ||
     exactAddressSuggestion?.label?.trim() ||
     null;
 

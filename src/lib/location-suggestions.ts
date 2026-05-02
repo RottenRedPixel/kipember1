@@ -634,6 +634,82 @@ export function mergeConfirmedLocationContext({
   return JSON.stringify(parsed);
 }
 
+// Persisted cache for the geocode + LLM ranking result so we don't re-spend
+// Google + Claude tokens on every wiki page load. Keyed by lat/lng so a new
+// photo (different coords) misses the cache automatically.
+export type LocationSuggestionsCache = {
+  latitude: number;
+  longitude: number;
+  suggestions: LocationSuggestion[];
+  cachedAt: string;
+};
+
+const COORD_TOLERANCE = 1e-6;
+
+export function parseLocationSuggestionsCache(
+  metadataJson: string | null | undefined,
+  latitude: number,
+  longitude: number
+): LocationSuggestion[] | null {
+  if (!metadataJson) return null;
+  try {
+    const parsed = JSON.parse(metadataJson) as Record<string, unknown>;
+    const raw = parsed.suggestionsCache;
+    if (!raw || typeof raw !== 'object') return null;
+    const cache = raw as LocationSuggestionsCache;
+    if (
+      typeof cache.latitude !== 'number' ||
+      typeof cache.longitude !== 'number' ||
+      !Array.isArray(cache.suggestions)
+    ) {
+      return null;
+    }
+    if (
+      Math.abs(cache.latitude - latitude) > COORD_TOLERANCE ||
+      Math.abs(cache.longitude - longitude) > COORD_TOLERANCE
+    ) {
+      return null;
+    }
+    return cache.suggestions;
+  } catch {
+    return null;
+  }
+}
+
+export function mergeLocationSuggestionsCache({
+  metadataJson,
+  latitude,
+  longitude,
+  suggestions,
+}: {
+  metadataJson: string | null | undefined;
+  latitude: number;
+  longitude: number;
+  suggestions: LocationSuggestion[];
+}) {
+  const parsed =
+    metadataJson && metadataJson.trim()
+      ? (() => {
+          try {
+            const candidate = JSON.parse(metadataJson);
+            return candidate && typeof candidate === 'object'
+              ? (candidate as Record<string, unknown>)
+              : {};
+          } catch {
+            return {};
+          }
+        })()
+      : {};
+
+  parsed.suggestionsCache = {
+    latitude,
+    longitude,
+    suggestions,
+    cachedAt: new Date().toISOString(),
+  } satisfies LocationSuggestionsCache;
+  return JSON.stringify(parsed);
+}
+
 export async function getLocationSuggestionsForCoordinates({
   latitude,
   longitude,

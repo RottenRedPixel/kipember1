@@ -1671,7 +1671,7 @@ export default function KipemberWikiContent({
             Source: {placeSource === 'manual'
               ? 'Manual entry'
               : placeSource === 'gps'
-                ? 'Photo GPS metadata'
+                ? 'Photo GPS metadata & Reverse Geocoded'
                 : 'Not set'}
           </p>
         </WikiCard>

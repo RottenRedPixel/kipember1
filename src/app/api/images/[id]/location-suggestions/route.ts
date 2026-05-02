@@ -5,7 +5,9 @@ import { prisma } from '@/lib/db';
 import {
   getLocationSuggestionsForCoordinates,
   mergeConfirmedLocationContext,
+  mergeLocationSuggestionsCache,
   parseConfirmedLocationContext,
+  parseLocationSuggestionsCache,
   type ConfirmedLocationContext,
 } from '@/lib/location-suggestions';
 import { generateWikiForImage } from '@/lib/wiki-generator';
@@ -68,6 +70,20 @@ export async function GET(
       });
     }
 
+    // Cached suggestions live in metadataJson keyed by lat/lng — saves the
+    // round-trip to Google + the Claude ranking call on every wiki load.
+    const cached = parseLocationSuggestionsCache(
+      analysis.metadataJson,
+      analysis.latitude,
+      analysis.longitude
+    );
+    if (cached) {
+      return NextResponse.json({
+        suggestions: cached,
+        confirmedLocation,
+      });
+    }
+
     const suggestions = await getLocationSuggestionsForCoordinates({
       latitude: analysis.latitude,
       longitude: analysis.longitude,
@@ -84,6 +100,24 @@ export async function GET(
         },
       },
     });
+
+    // Persist for next time. Best-effort — cache write failure shouldn't
+    // break the response.
+    try {
+      await prisma.imageAnalysis.update({
+        where: { imageId: id },
+        data: {
+          metadataJson: mergeLocationSuggestionsCache({
+            metadataJson: analysis.metadataJson,
+            latitude: analysis.latitude,
+            longitude: analysis.longitude,
+            suggestions,
+          }),
+        },
+      });
+    } catch (cacheError) {
+      console.warn('Failed to cache location suggestions:', cacheError);
+    }
 
     return NextResponse.json({
       suggestions,
