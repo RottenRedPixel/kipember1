@@ -145,24 +145,28 @@ export default function GuestEmberScreen({ token }: { token: string }) {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'var(--bg-screen)' }}>
-        <p className="text-white/60 text-sm">Loading memory...</p>
+      <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
+        <div className="relative w-full max-w-xl h-full flex items-center justify-center">
+          <p className="text-white/60 text-sm">Loading memory...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: 'var(--bg-screen)' }}>
-        <p className="text-white font-medium text-base mb-2">Memory not found</p>
-        <p className="text-white/60 text-sm text-center mb-6">{error || 'This memory is no longer available.'}</p>
-        <Link
-          href="/"
-          className="px-8 rounded-full text-white text-sm font-medium"
-          style={{ background: '#f97316', minHeight: 44, display: 'flex', alignItems: 'center' }}
-        >
-          Back to Ember
-        </Link>
+      <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
+        <div className="relative w-full max-w-xl h-full flex flex-col items-center justify-center px-6">
+          <p className="text-white font-medium text-base mb-2">Memory not found</p>
+          <p className="text-white/60 text-sm text-center mb-6">{error || 'This memory is no longer available.'}</p>
+          <Link
+            href="/"
+            className="px-8 rounded-full text-white text-sm font-medium"
+            style={{ background: '#f97316', minHeight: 44, display: 'flex', alignItems: 'center' }}
+          >
+            Back to Ember
+          </Link>
+        </div>
       </div>
     );
   }
@@ -189,7 +193,8 @@ export default function GuestEmberScreen({ token }: { token: string }) {
   const shareUrl = typeof window !== 'undefined' ? window.location.origin + base : base;
 
   return (
-    <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
+    <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
+      <div className="relative w-full max-w-xl h-full overflow-hidden">
       {/* Background image */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -327,6 +332,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
           </Link>
         </div>
         {flowOpen ? <GuestFlow token={token} /> : null}
+      </div>
       </div>
     </div>
   );
