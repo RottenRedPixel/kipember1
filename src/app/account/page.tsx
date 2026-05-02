@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getCurrentAuth } from '@/lib/auth-server';
+import { isAdmin } from '@/lib/admin-access';
 import { getAvatarUrl } from '@/lib/avatar';
 import { prisma } from '@/lib/db';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -42,6 +43,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         userInitials={userInitials}
         joinedAt={user?.createdAt ?? null}
         coverPhotoUrl={coverPhotoUrl}
+        canAccessAdmin={isAdmin(auth.user)}
       />
     </Suspense>
   );

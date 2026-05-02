@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Camera, ChevronLeft, ChevronRight,
-  KeyRound,
+  KeyRound, LayoutDashboard,
   Settings, ShieldAlert, User, Users,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -23,6 +23,8 @@ type AccountScreenProps = {
   userInitials: string;
   joinedAt?: Date | null;
   coverPhotoUrl?: string | null;
+  /** True when this user has admin access (drives the Admin View row). */
+  canAccessAdmin?: boolean;
 };
 
 function InputRow({
@@ -91,6 +93,7 @@ export default function AccountScreen({
   userInitials,
   joinedAt,
   coverPhotoUrl,
+  canAccessAdmin = false,
 }: AccountScreenProps) {
   const router = useRouter();
   const [section, setSection] = useState<Section>(null);
@@ -398,6 +401,23 @@ export default function AccountScreen({
                     <ChevronRight size={16} color="var(--text-secondary)" strokeWidth={1.8} />
                   </button>
                 ))}
+                {canAccessAdmin ? (
+                  <Link
+                    href="/admin"
+                    className="w-full flex items-center gap-3 px-4"
+                    style={{
+                      minHeight: 52,
+                      cursor: 'pointer',
+                      borderTop: '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      <LayoutDashboard size={20} strokeWidth={1.6} />
+                    </span>
+                    <span className="flex-1 text-left text-sm text-white">Admin View</span>
+                    <ChevronRight size={16} color="var(--text-secondary)" strokeWidth={1.8} />
+                  </Link>
+                ) : null}
               </div>
 
               {/* Logout */}
