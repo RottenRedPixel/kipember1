@@ -33,9 +33,13 @@ function readString(value: unknown) {
 async function loadRetellRuntimeConfig(): Promise<RetellRuntimeConfig> {
   const fallbackAgentId = readString(process.env.RETELL_AGENT_ID);
 
+  // Retell has a single agent today, so we sync the CONTRIBUTOR call prompt
+  // to it (the primary use case is calling invited contributors). Owner
+  // self-test calls also hit the same agent; differentiating would require
+  // either a second Retell agent or per-call prompt swapping.
   const [snapshot, callPrompt] = await Promise.all([
     getControlPlaneSnapshot(),
-    getPromptBody('ember_call.style'),
+    getPromptBody('ember_call.contributor_style'),
   ]);
 
   const remoteAgent = snapshot?.remoteAgents?.['retell.memory_interviewer'];
@@ -44,7 +48,7 @@ async function loadRetellRuntimeConfig(): Promise<RetellRuntimeConfig> {
   const fallbackModel = readString(remoteAgent?.model);
 
   if (!callPrompt) {
-    throw new Error('ember_call.style has no body');
+    throw new Error('ember_call.contributor_style has no body');
   }
 
   return {
@@ -188,4 +192,7 @@ export async function syncRetellAgent(): Promise<RetellSyncResult> {
   };
 }
 
-export const RETELL_PROMPT_KEYS = new Set<string>(['ember_call.style']);
+export const RETELL_PROMPT_KEYS = new Set<string>([
+  'ember_call.owner_style',
+  'ember_call.contributor_style',
+]);

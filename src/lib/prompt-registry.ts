@@ -200,10 +200,10 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   },
 
   {
-    key: 'ember_chat.style',
-    label: 'Ember Chat - Style & Technique',
+    key: 'ember_chat.owner_style',
+    label: 'Chat (Owner)',
     group: 'Ember AI',
-    description: 'Controls how the system replies in the in-app Ember Chat bubble. Receives the role, trigger, atomic facts (title, snapshot, captured date, location, tagged people, visual scene, emotional context), the full wiki markdown, and a heuristic interview coverage signal (answered/unanswered topics across who/when/where/what/why/how + next topic to probe). On the welcome triggers (welcome_first_open / welcome_returning) it also receives `userFirstName` (greeting target — falls back to "there" when blank) and `isFirstEmber` (the string "true" or "false" — true when this is the user\'s first-ever owned ember). The reply should always read the wiki first, reference what is already known when probing, and naturally pursue the next unanswered topic so housekeeping has something fresh to extract.',
+    description: 'In-app text chat, owner only. The owner is filling in their own ember; this prompt helps them remember more by answering their questions from the wiki and probing gently for missing details.',
     variables: [
       'role',
       'trigger',
@@ -224,27 +224,59 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
       'interviewProgress',
     ],
     whatItDoes:
-      'Drives every text reply Ember sends inside the chat bubble at the bottom of an ember view. Sets the persona (warm, attentive guide), the greeting rule ("Hi {firstName}"), response shape (1-3 sentences, one question, no markdown), and the rule that the AI must consult the wiki and tagged-people list before asking who/where someone is.',
+      'Owner-facing chat bubble inside /ember/[id]. Helps the owner build out their own wiki: answers their questions from the wiki, then nudges toward the next unanswered topic when they share a fact.',
     whenItFires: [
-      'User opens chat on an ember for the first time → trigger "welcome_first_open"',
-      'User opens chat on an ember they have used before → "welcome_returning"',
-      'User sends a typed message in chat → "message"',
-      'User uploads a photo into the chat thread → "photo_upload"',
-      'User uploads a video into the chat thread → "video_upload"',
-      'A follow-up turn after a previous AI question → "followup"',
+      'Owner sends a typed message in chat → "message"',
+      'Owner uploads a photo / video into chat → "photo_upload" / "video_upload" (handled with a hardcoded acknowledgement, not this prompt)',
+      'Owner opens chat on an ember → "welcome_first_open" / "welcome_returning"',
     ],
     affects: [
-      { label: 'Ember Chat (the chat bubble in /ember/[id])', on: true },
-      { label: 'Ember Voice — uses ember_voice.style instead', on: false },
-      { label: 'Ember Call — uses ember_call.style (Retell)', on: false },
-      { label: 'Ember SMS — uses ember_sms.style', on: false },
-      { label: 'Guest viewers via share link — use ember_chat.guest_style', on: false },
+      { label: 'Ember Chat replies sent to the owner of an ember', on: true },
+      { label: 'Chat replies to a contributor (uses ember_chat.contributor_style)', on: false },
+      { label: 'Chat replies to a guest (uses ember_chat.guest_style)', on: false },
+    ],
+  },
+
+  {
+    key: 'ember_chat.contributor_style',
+    label: 'Chat (Contributor)',
+    group: 'Ember AI',
+    description: 'In-app text chat, signed-in contributor only. The contributor is helping fill in someone else\'s ember; this prompt helps them share what THEY remember about the moment and answers their questions from the wiki.',
+    variables: [
+      'role',
+      'trigger',
+      'userFirstName',
+      'isFirstEmber',
+      'title',
+      'snapshot',
+      'capturedAt',
+      'location',
+      'taggedPeople',
+      'visualScene',
+      'emotionalContext',
+      'claims',
+      'wiki',
+      'answeredTopics',
+      'unansweredTopics',
+      'nextTopic',
+      'interviewProgress',
+    ],
+    whatItDoes:
+      'Contributor-facing chat bubble. The framing is "help us hear what YOU remember about this moment" — distinct from the owner who is reconstructing their own memory.',
+    whenItFires: [
+      'A signed-in contributor opens chat on an ember they were invited to → "welcome_*"',
+      'Contributor sends a typed message → "message"',
+    ],
+    affects: [
+      { label: 'Ember Chat replies sent to invited contributors', on: true },
+      { label: 'Chat replies to the owner (uses ember_chat.owner_style)', on: false },
+      { label: 'Chat replies to a share-link guest (uses ember_chat.guest_style)', on: false },
     ],
   },
 
   {
     key: 'ember_chat.guest_style',
-    label: 'Ember Chat (Guest) - Style & Technique',
+    label: 'Chat (Guest)',
     group: 'Ember AI',
     description: 'Used for guest viewers who arrived via a share link. Same context shape as Ember Chat. Guests do not contribute, so this prompt should answer questions about the memory using the wiki and avoid probing for unanswered topics. No follow-up questions back at the guest.',
     variables: [
@@ -271,15 +303,15 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     ],
     affects: [
       { label: 'Chat replies to anyone visiting via /guest/[token]', on: true },
-      { label: 'Chat replies to the owner or any logged-in contributor (uses ember_chat.style)', on: false },
+      { label: 'Chat replies to the owner (uses ember_chat.owner_style) or contributors (ember_chat.contributor_style)', on: false },
     ],
   },
 
   {
-    key: 'ember_voice.style',
-    label: 'Ember Voice - Style & Technique',
+    key: 'ember_voice.owner_style',
+    label: 'Voice (Owner)',
     group: 'Ember AI',
-    description: 'Controls how the system replies when the user is using the in-app mic for a voice conversation. Receives the role, the live transcript, the same atomic facts and wiki markdown as Ember Chat, plus the same interview coverage signal (answered/unanswered topics + next topic). Spoken replies should reference what the wiki already establishes and pursue gaps naturally rather than repeating known facts.',
+    description: 'In-app voice (mic) replies sent to the owner. Spoken via TTS — same memory context as Chat (Owner) but tuned for the ear.',
     variables: [
       'role',
       'trigger',
@@ -291,6 +323,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
       'taggedPeople',
       'visualScene',
       'emotionalContext',
+      'claims',
       'wiki',
       'answeredTopics',
       'unansweredTopics',
@@ -298,21 +331,55 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
       'interviewProgress',
     ],
     whatItDoes:
-      'Drives Ember’s replies when the user is talking through the in-app microphone. Same memory context as the chat surface, but tuned for voice — shorter sentences, conversational rhythm, easier to say out loud than to read.',
+      'Drives Ember\'s spoken replies when the OWNER is talking through the in-app microphone. Tuned for voice — shorter sentences, conversational rhythm. Same job as Chat (Owner): help the owner build their wiki.',
     whenItFires: [
-      'User taps the Voice tab in the Ember Chat bar and speaks',
+      'Owner taps the mic in chat and speaks',
     ],
     affects: [
-      { label: 'In-app voice replies for owners and logged-in contributors', on: true },
-      { label: 'Text chat replies (uses ember_chat.style)', on: false },
-      { label: 'Phone calls via Retell (uses ember_call.style)', on: false },
-      { label: 'Guests using voice (uses ember_voice.guest_style)', on: false },
+      { label: 'In-app voice replies sent to the owner', on: true },
+      { label: 'Voice replies to a contributor (uses ember_voice.contributor_style)', on: false },
+      { label: 'Voice replies to a guest (uses ember_voice.guest_style)', on: false },
+    ],
+  },
+
+  {
+    key: 'ember_voice.contributor_style',
+    label: 'Voice (Contributor)',
+    group: 'Ember AI',
+    description: 'In-app voice (mic) replies sent to a signed-in contributor. Spoken via TTS — same memory context as Chat (Contributor) but tuned for the ear.',
+    variables: [
+      'role',
+      'trigger',
+      'transcript',
+      'title',
+      'snapshot',
+      'capturedAt',
+      'location',
+      'taggedPeople',
+      'visualScene',
+      'emotionalContext',
+      'claims',
+      'wiki',
+      'answeredTopics',
+      'unansweredTopics',
+      'nextTopic',
+      'interviewProgress',
+    ],
+    whatItDoes:
+      'Drives Ember\'s spoken replies when a CONTRIBUTOR is talking through the in-app microphone. Tuned for voice. Same job as Chat (Contributor): help the contributor share what THEY remember about the moment.',
+    whenItFires: [
+      'Contributor taps the mic in chat and speaks',
+    ],
+    affects: [
+      { label: 'In-app voice replies sent to invited contributors', on: true },
+      { label: 'Voice replies to the owner (uses ember_voice.owner_style)', on: false },
+      { label: 'Voice replies to a guest (uses ember_voice.guest_style)', on: false },
     ],
   },
 
   {
     key: 'ember_voice.guest_style',
-    label: 'Ember Voice (Guest) - Style & Technique',
+    label: 'Voice (Guest)',
     group: 'Ember AI',
     description: 'Used for guest viewers using the in-app mic. Same context shape as Ember Voice. Spoken replies should answer questions about the memory using the wiki and avoid probing the guest. Guests do not contribute, so do not push interview-style follow-ups.',
     variables: [
@@ -339,44 +406,94 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     ],
     affects: [
       { label: 'Voice replies to share-link visitors', on: true },
-      { label: 'Voice replies to owners or logged-in contributors (uses ember_voice.style)', on: false },
+      { label: 'Voice replies to the owner (uses ember_voice.owner_style) or contributors (ember_voice.contributor_style)', on: false },
     ],
   },
 
   {
-    key: 'ember_call.style',
-    label: 'Ember Call - Style & Technique',
+    key: 'ember_call.owner_style',
+    label: 'Call (Owner)',
     group: 'Ember AI',
-    description: 'Synced to Retell. Tells the Retell voice agent how to behave during outbound voice calls. The agent runs with a static system prompt (no per-call variable injection here yet), so this prompt should instruct it to open by saying what the wiki already knows about the moment, then naturally pursue who / when / where / what / why / how gaps. Live wiki context is delivered to Retell at call setup time. Saves here are pushed to Retell automatically.',
-    variables: [],
+    description: 'Phone-call agent prompt for self-test calls the owner triggers from the Tend slider. Synced to Retell when saved. Receives per-call dynamic variables: contributor_name, image_title, image_description, prior_interview_count, previous_memory_summary, follow_up_focus, plus the merged wiki bag (wiki, tagged_people, location, captured_at, claims).',
+    variables: [
+      'contributor_name',
+      'image_title',
+      'image_description',
+      'previous_memory_summary',
+      'follow_up_focus',
+      'wiki',
+      'tagged_people',
+      'location',
+      'captured_at',
+      'claims',
+    ],
     whatItDoes:
-      'Behavior of the Retell voice agent during outbound phone calls — what tone it uses, how it opens, how it pursues unanswered interview topics. Important: this prompt is STATIC at the agent level — it does not receive per-call variables yet, so it cannot reference a specific ember’s wiki content directly during a call. Saving here pushes the new body to Retell automatically.',
+      'Behavior of the Retell voice agent when the OWNER is on the line. Frames the conversation as helping the owner remember more about their own moment.',
     whenItFires: [
-      'A contributor accepts a phone-call invite and Retell dials them',
       'An owner triggers a self-test call from the Tend slider',
     ],
     affects: [
-      { label: 'How the Retell voice agent talks during outbound phone calls', on: true },
-      { label: 'In-app mic / voice replies (uses ember_voice.style)', on: false },
-      { label: 'Per-call wiki content awareness — would require dynamic-variable plumbing first', on: false },
+      { label: 'Phone calls placed to the owner (Retell agent)', on: true },
+      { label: 'Phone calls placed to contributors (uses ember_call.contributor_style)', on: false },
+      { label: 'Per-call wiki awareness — see Step 3 of the chat overhaul plan', on: false },
+    ],
+  },
+
+  {
+    key: 'ember_call.contributor_style',
+    label: 'Call (Contributor)',
+    group: 'Ember AI',
+    description: 'Phone-call agent prompt for outbound calls to invited contributors. Synced to Retell when saved. Receives per-call dynamic variables: contributor_name, image_title, image_description, prior_interview_count, previous_memory_summary, follow_up_focus, plus the merged wiki bag (wiki, tagged_people, location, captured_at, claims).',
+    variables: [
+      'contributor_name',
+      'image_title',
+      'image_description',
+      'previous_memory_summary',
+      'follow_up_focus',
+      'wiki',
+      'tagged_people',
+      'location',
+      'captured_at',
+      'claims',
+    ],
+    whatItDoes:
+      'Behavior of the Retell voice agent when a CONTRIBUTOR is on the line. Frames the conversation as helping them share what THEY remember about someone else\'s moment.',
+    whenItFires: [
+      'A contributor accepts a phone-call invite and Retell dials them',
+    ],
+    affects: [
+      { label: 'Phone calls placed to contributors (Retell agent)', on: true },
+      { label: 'Phone calls placed to the owner (uses ember_call.owner_style)', on: false },
     ],
   },
 
   {
     key: 'ember_sms.style',
-    label: 'Ember SMS - Style & Technique',
+    label: 'SMS',
     group: 'Ember AI',
-    description: 'Controls how the system replies in SMS interview follow-ups (Twilio). Same context shape as Ember Chat but tuned for the constraints of text messages.',
-    variables: ['role', 'trigger', 'title', 'snapshot'],
+    description: 'Controls how the system replies in SMS interview follow-ups (Twilio). Same merged-wiki context as the chat / voice prompts, tuned for the constraints of text messages.',
+    variables: [
+      'role',
+      'trigger',
+      'title',
+      'snapshot',
+      'capturedAt',
+      'location',
+      'taggedPeople',
+      'visualScene',
+      'emotionalContext',
+      'claims',
+      'wiki',
+    ],
     whatItDoes:
-      'Controls follow-up SMS messages when an interview is happening over text. Tuned for SMS constraints (short messages, plain language, no markdown). Receives only the title and snapshot — taggedPeople and wiki are NOT injected here today, so position-aware questions like "who is on the right" cannot be answered well from SMS yet.',
+      'Controls follow-up SMS messages when an interview is happening over text. Tuned for SMS constraints (short messages, plain language, no markdown). Receives the same merged wiki bag every other Ember AI surface gets, so it can answer questions about who, where, and what people said.',
     whenItFires: [
       'After a contributor answers a question via SMS, this prompt decides whether to send a follow-up question',
     ],
     affects: [
       { label: 'Text SMS replies sent via Twilio during interview follow-ups', on: true },
       { label: 'Inbound SMS routing or webhook handling (code-side, not prompt-driven)', on: false },
-      { label: 'In-app chat (uses ember_chat.style)', on: false },
+      { label: 'In-app chat (uses ember_chat.owner_style / ember_chat.contributor_style / ember_chat.guest_style)', on: false },
     ],
   },
 
@@ -395,7 +512,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     ],
     affects: [
       { label: 'The "Why" claims captured from messages and shown in the wiki', on: true },
-      { label: 'The user-facing chat/voice reply (those use ember_chat.style / ember_voice.style)', on: false },
+      { label: 'The user-facing chat/voice reply (those use ember_chat.* / ember_voice.* prompts)', on: false },
     ],
   },
   {

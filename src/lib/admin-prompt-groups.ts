@@ -18,11 +18,14 @@ export function groupFromSlug(slug: string): PromptGroup | null {
  * Ember AI entries end in `.style`).
  */
 const SHORT_PROMPT_LABEL_OVERRIDES: Record<string, string> = {
-  'ember_chat.style': 'Chat',
+  'ember_chat.owner_style': 'Chat (Owner)',
+  'ember_chat.contributor_style': 'Chat (Contributor)',
   'ember_chat.guest_style': 'Chat (Guest)',
-  'ember_voice.style': 'Voice',
+  'ember_voice.owner_style': 'Voice (Owner)',
+  'ember_voice.contributor_style': 'Voice (Contributor)',
   'ember_voice.guest_style': 'Voice (Guest)',
-  'ember_call.style': 'Call',
+  'ember_call.owner_style': 'Call (Owner)',
+  'ember_call.contributor_style': 'Call (Contributor)',
   'ember_sms.style': 'SMS',
   'housekeeping.why_extraction': 'Why',
   'housekeeping.emotion_extraction': 'Emotion',

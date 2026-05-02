@@ -19,7 +19,12 @@ export async function generateEmberVoiceReply({
   transcript: string;
 }): Promise<string> {
   const vars = await loadPromptVariables(imageId);
-  const promptKey = role === 'guest' ? 'ember_voice.guest_style' : 'ember_voice.style';
+  const promptKey: 'ember_voice.owner_style' | 'ember_voice.contributor_style' | 'ember_voice.guest_style' =
+    role === 'guest'
+      ? 'ember_voice.guest_style'
+      : role === 'contributor'
+        ? 'ember_voice.contributor_style'
+        : 'ember_voice.owner_style';
 
   const systemPrompt = await renderPromptTemplate(promptKey, '', {
     role,

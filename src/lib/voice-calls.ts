@@ -6,6 +6,7 @@ import {
   contributorParticipant,
   ensureEmberSession,
 } from '@/lib/ember-sessions';
+import { loadEmberContext } from '@/lib/ember-context';
 import { getEmberTitle } from '@/lib/ember-title';
 import { createRetellPhoneCall, createRetellWebCall, retrieveRetellCall } from '@/lib/retell';
 import {
@@ -716,10 +717,13 @@ async function prepareVoiceCallContext(contributorId: string) {
     },
   });
 
-  const priorMemoryContext = await buildPriorMemoryContext({
-    contributorId: contributor.id,
-    emberSessionId: session.id,
-  });
+  const [priorMemoryContext, emberContext] = await Promise.all([
+    buildPriorMemoryContext({
+      contributorId: contributor.id,
+      emberSessionId: session.id,
+    }),
+    loadEmberContext(contributor.imageId),
+  ]);
 
   const dynamicVariables = pickDynamicVariables({
     contributor_name: contributor.name,
@@ -731,6 +735,14 @@ async function prepareVoiceCallContext(contributorId: string) {
         : null,
     previous_memory_summary: priorMemoryContext.previousMemorySummary,
     follow_up_focus: priorMemoryContext.followUpFocus,
+    // Per-call merged wiki + supporting facts so the Retell agent can answer
+    // questions about who's tagged, where this was, and what people said —
+    // the same picture every other Ember surface gets.
+    wiki: emberContext.wiki,
+    tagged_people: emberContext.taggedPeople,
+    location: emberContext.location,
+    captured_at: emberContext.capturedAt,
+    claims: emberContext.claims,
   });
 
   return {

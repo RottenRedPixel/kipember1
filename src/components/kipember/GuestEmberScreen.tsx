@@ -207,15 +207,18 @@ export default function GuestEmberScreen({ token }: { token: string }) {
           opacity: 0.7,
         }}
       />
+      {/* Photo — letterboxed inside the band between the 56px header and
+          the chat bar at the bottom (~72px). Matches the owner ember view
+          so the photo never spills past the chrome. */}
       <img
         src={currentPhotoUrl}
         alt=""
         className="absolute left-0 right-0 pointer-events-none w-full"
         style={{
-          top: 72,
+          top: 56,
           bottom: 72,
-          height: 'calc(100% - 144px)',
-          objectFit: 'cover',
+          height: 'calc(100% - 128px)',
+          objectFit: 'contain',
           objectPosition: 'center center',
         }}
       />
@@ -224,24 +227,28 @@ export default function GuestEmberScreen({ token }: { token: string }) {
         style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
       />
 
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-4 pt-4 pb-4">
+      {/* Header — same height + chrome as the owner AppHeader so the two
+          views share visual rules. */}
+      <div
+        className="absolute top-0 left-0 right-0 z-20 flex items-center gap-3 px-4"
+        style={{ height: 56, background: 'var(--bg-screen)', borderBottom: '1px solid var(--border-subtle)' }}
+      >
         <Link
           href="/"
-          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--bg-rail-btn)', WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: 'var(--bg-rail-btn)' }}
         >
-          <Home size={20} color="var(--text-primary)" strokeWidth={1.8} />
+          <Home size={18} color="var(--text-primary)" strokeWidth={1.8} />
         </Link>
-        <div className="pointer-events-none flex-1">
-          <p className="text-white font-medium text-base leading-tight">{title}</p>
+        <div className="pointer-events-none flex-1 min-w-0">
+          <p className="text-white font-medium text-base leading-tight truncate">{title}</p>
         </div>
         <Link
           href="/signup"
-          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
           style={{ background: 'rgba(249,115,22,0.85)' }}
         >
-          <UserPlus size={20} color="white" strokeWidth={1.8} />
+          <UserPlus size={18} color="white" strokeWidth={1.8} />
         </Link>
       </div>
 

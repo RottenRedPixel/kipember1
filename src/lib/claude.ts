@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { renderPromptTemplate, getCapabilityModel } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
+import { loadEmberContext } from '@/lib/ember-context';
 import { getConfiguredOpenAIModel, getOpenAIClient, getWikiStructureModel } from './openai';
 
 const anthropic = new Anthropic({
@@ -735,19 +736,23 @@ export async function generateFollowUpQuestion(
   collectedResponses: { questionType: string; answer: string }[],
   { imageId }: { imageId: string }
 ): Promise<string | null> {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
-    select: {
-      title: true,
-      snapshot: { select: { script: true } },
-    },
-  });
+  // Same merged-wiki context the chat / voice prompts get, so SMS can answer
+  // and probe with the same picture of "what we know" as the rest of the
+  // conversational surfaces.
+  const ctx = await loadEmberContext(imageId);
 
   const systemPrompt = await renderPromptTemplate('ember_sms.style', '', {
     role: 'contributor',
     trigger: 'followup',
-    title: image?.title ?? '',
-    snapshot: image?.snapshot?.script ?? '',
+    title: ctx.title,
+    snapshot: ctx.snapshot,
+    capturedAt: ctx.capturedAt,
+    location: ctx.location,
+    taggedPeople: ctx.taggedPeople,
+    visualScene: ctx.visualScene,
+    emotionalContext: ctx.emotionalContext,
+    claims: ctx.claims,
+    wiki: ctx.wiki,
   });
 
   const responseSummary = collectedResponses
