@@ -180,6 +180,17 @@ export default function EditTitleSlider({
   const isDirty = titleValue.trim() !== savedTitleValue.trim();
   const updatedAtLabel = detail?.titleUpdatedAt || detail?.createdAt || null;
 
+  // Match the Snapshot slider — wait for the ember to load before rendering
+  // the form so the title input, ideas card, and People list all appear at
+  // once instead of the People section popping in after the title input.
+  if (!detail || !imageId) {
+    return (
+      <WikiCard>
+        <p className="text-white/60 text-sm">Loading title...</p>
+      </WikiCard>
+    );
+  }
+
   return (
     <>
       {/* Ember title input */}
@@ -229,7 +240,7 @@ export default function EditTitleSlider({
             <div className="flex flex-col gap-4">
               {[...suggestions.analysisSuggestions, ...suggestions.contextSuggestions].length > 0 ? (
                 <div className="flex flex-wrap gap-2">
-                  {[...suggestions.analysisSuggestions, ...suggestions.contextSuggestions].map(
+                  {[...suggestions.analysisSuggestions, ...suggestions.contextSuggestions].slice(0, 3).map(
                     (suggestion) => (
                       <button
                         key={suggestion}
@@ -268,13 +279,28 @@ export default function EditTitleSlider({
             <h3 className="text-white font-medium text-base">People</h3>
           </div>
           <WikiCard>
+            <p className="text-white/40 text-xs mb-2">Check names to prefer in title suggestions.</p>
             <div className="flex flex-col gap-2">
+              {detail.tags.length > 1 ? (
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={detail.tags.every((tag) => preferredPeopleIds.has(tag.id))}
+                    onChange={(e) => {
+                      if (!detail.tags) return;
+                      setPreferredPeopleIds(
+                        e.target.checked
+                          ? new Set(detail.tags.map((tag) => tag.id))
+                          : new Set()
+                      );
+                    }}
+                    className="accent-orange-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-white/60 text-sm">Select all</span>
+                </label>
+              ) : null}
               {detail.tags.map((tag) => (
-                <label
-                  key={tag.id}
-                  className="flex items-center gap-3 cursor-pointer"
-                  style={{ minHeight: 36 }}
-                >
+                <label key={tag.id} className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={preferredPeopleIds.has(tag.id)}
@@ -292,9 +318,6 @@ export default function EditTitleSlider({
                 </label>
               ))}
             </div>
-            <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">
-              Check names to prefer in title suggestions.
-            </p>
           </WikiCard>
         </div>
       ) : null}

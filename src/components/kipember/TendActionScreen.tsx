@@ -369,7 +369,7 @@ export default function TendActionScreen({ action }: { action: string }) {
       >
       <button type="button" onClick={handleBack} className="w-[7%] h-full" style={{ cursor: 'pointer' }} aria-label="Back" />
       <div
-        className="w-[93%] h-full flex flex-col slide-in-right"
+        className="flex-1 h-full flex flex-col slide-in-right"
         style={{ background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }}
       >
         <div

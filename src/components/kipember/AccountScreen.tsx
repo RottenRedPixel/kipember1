@@ -258,7 +258,7 @@ export default function AccountScreen({
     >
       <Link href="/home" className="w-[7%] h-full" />
       <div
-        className="w-[93%] h-full flex flex-col slide-in-right"
+        className="flex-1 h-full flex flex-col slide-in-right"
         style={{ background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }}
       >
         {/* Header */}

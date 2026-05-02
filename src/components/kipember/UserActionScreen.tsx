@@ -210,7 +210,7 @@ export default function UserActionScreen({
       <div className={`relative w-full max-w-xl h-full flex ${rootView ? 'flex-col' : ''}`}>
       {!rootView ? <Link href="/home" className="w-[7%] h-full" /> : null}
       <div
-        className={`${rootView ? 'w-full' : 'w-[93%]'} h-full flex flex-col ${rootView ? '' : 'slide-in-right'}`}
+        className={`${rootView ? 'w-full' : 'flex-1'} h-full flex flex-col ${rootView ? '' : 'slide-in-right'}`}
         style={{
           background: 'var(--bg-screen)',
           borderLeft: rootView ? 'none' : '1px solid var(--border-subtle)',

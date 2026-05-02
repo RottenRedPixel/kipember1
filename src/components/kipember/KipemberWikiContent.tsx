@@ -1475,8 +1475,12 @@ export default function KipemberWikiContent({
       }
     }
     for (const tag of detail?.tags ?? []) {
+      // Map the tag's *creator* to their own avatar (e.g. "Amado" → Amado's photo).
+      // Don't map the tag *label* to the creator's avatar — that paints the tagged
+      // person ("Zia") with the creator's face. If the tagged person is also a
+      // contributor with a real account, their avatar is already in the lookup
+      // above; otherwise findAvatar returns null and we fall back to initials.
       add(getUserDisplayName(tag.createdBy), tag.createdBy?.avatarUrl);
-      add(tag.label, tag.createdBy?.avatarUrl);
     }
     return map;
   }, [detail]);

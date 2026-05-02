@@ -257,8 +257,27 @@ export default function EditSnapshotSlider({
       {detail.tags && detail.tags.length > 0 && (
         <SnapshotSection icon={<Users size={17} />} title="People">
           <SnapshotCard>
-            <p className="text-white/40 text-xs mb-2">Check a person to require their name in the regenerated snapshot.</p>
+            <p className="text-white/40 text-xs mb-2">Check names to require in the regenerated snapshot.</p>
             <div className="flex flex-col gap-2">
+              {detail.tags.length > 1 ? (
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={detail.tags.every((tag) => requiredPeopleIds.has(tag.id))}
+                    onChange={(e) => {
+                      if (!detail.tags) return;
+                      setRequiredPeopleIds(
+                        e.target.checked
+                          ? new Set(detail.tags.map((tag) => tag.id))
+                          : new Set()
+                      );
+                    }}
+                    disabled={!detail.canManage}
+                    className="accent-orange-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-white/60 text-sm">Select all</span>
+                </label>
+              ) : null}
               {detail.tags.map((tag) => (
                 <label key={tag.id} className="flex items-center gap-3 cursor-pointer">
                   <input
