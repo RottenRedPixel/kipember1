@@ -10,6 +10,18 @@ type AppHeaderProps = {
   userModalHref?: string;
 };
 
+function computeInitials(value: string): string {
+  return (
+    value
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'ST'
+  );
+}
+
 export default function AppHeader({
   avatarUrl: externalAvatarUrl,
   userInitials = 'ST',
@@ -17,6 +29,7 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(externalAvatarUrl ?? null);
   const [authenticated, setAuthenticated] = useState(externalAvatarUrl !== undefined);
+  const [localInitials, setLocalInitials] = useState<string>(userInitials);
   const pathname = usePathname();
   const isHomeDashboard = pathname === '/home';
   const isEmbersList = pathname === '/embers';
@@ -29,7 +42,10 @@ export default function AppHeader({
       return;
     }
 
-    // Self-fetch: determine auth state and load avatar
+    // Self-fetch: determine auth state, load avatar, and compute initials
+    // from the profile. Without this last step, pages that don't pass
+    // userInitials (e.g. the landing page rendering <AppHeader />) fell
+    // back to the literal "ST" default even when a real user was signed in.
     void fetch('/api/profile', { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) {
@@ -38,8 +54,15 @@ export default function AppHeader({
         }
         setAuthenticated(true);
         const payload = await res.json();
-        if (typeof payload?.user?.avatarUrl === 'string') {
-          setAvatarUrl(payload.user.avatarUrl);
+        const user = payload?.user;
+        if (typeof user?.avatarUrl === 'string') {
+          setAvatarUrl(user.avatarUrl);
+        }
+        const display =
+          [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+          (typeof user?.email === 'string' ? user.email : '');
+        if (display) {
+          setLocalInitials(computeInitials(display));
         }
       })
       .catch(() => {
@@ -101,7 +124,7 @@ export default function AppHeader({
           {avatarUrl ? (
             <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
           ) : (
-            <span className="text-white text-sm font-medium">{userInitials}</span>
+            <span className="text-white text-sm font-medium">{localInitials}</span>
           )}
         </Link>
       ) : (
