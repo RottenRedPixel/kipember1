@@ -1,6 +1,6 @@
 'use client';
 
-import { Phone, Play } from 'lucide-react';
+import { ChevronDown, Phone, Play } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 export type EmberCallSegment = {
@@ -70,6 +70,7 @@ function CallHeaderAvatar({
 export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = useState(true);
   const stopAtMsRef = useRef<number | null>(null);
 
   const playSegment = (segment: EmberCallSegment) => {
@@ -98,23 +99,42 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
   const baseDate = block.startedAt ? new Date(block.startedAt) : null;
   const baseValid = baseDate && !Number.isNaN(baseDate.getTime()) ? baseDate : null;
 
+  const segmentCount = block.segments.length;
+
   return (
     <div
       className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
       style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <CallHeaderAvatar name={block.personName} avatarUrl={block.avatarUrl} />
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-2 cursor-pointer"
+        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
+      >
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
           style={{ width: 29, height: 29, background: '#f97316' }}
         >
           <Phone size={16} className="text-white" fill="currentColor" stroke="currentColor" />
         </div>
-        <p className="text-white/30 text-xs font-medium">
+        <CallHeaderAvatar name={block.personName} avatarUrl={block.avatarUrl} />
+        <p className="flex-1 text-left text-white/30 text-xs font-medium">
           {block.personName}&apos;s Ember Call
+          <span className="ml-2 text-white/20">
+            ({segmentCount} {segmentCount === 1 ? 'segment' : 'segments'})
+          </span>
         </p>
-      </div>
+        <ChevronDown
+          size={14}
+          color="rgba(255,255,255,0.5)"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        />
+      </button>
       {block.recordingUrl ? (
         <audio
           ref={audioRef}
@@ -125,7 +145,8 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
           onEnded={handlePauseOrEnded}
         />
       ) : null}
-      <div className="flex flex-col gap-3">
+      {!collapsed ? (
+      <div className="flex flex-col gap-3 mt-3">
         {block.segments.map((segment) => {
           const isUser = segment.role === 'user';
           const canPlay = Boolean(block.recordingUrl) && segment.startMs != null;
@@ -188,6 +209,7 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
           );
         })}
       </div>
+      ) : null}
     </div>
   );
 }

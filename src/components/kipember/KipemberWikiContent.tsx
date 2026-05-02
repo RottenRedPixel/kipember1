@@ -455,32 +455,55 @@ function VoiceBlockCard({
 }: {
   block: NonNullable<KipemberWikiDetail['voiceBlocks']>[number];
 }) {
+  const [collapsed, setCollapsed] = useState(true);
   const messages: VoiceMessage[] = block.messages.map((m) => ({
     role: m.role === 'user' ? 'user' : 'assistant',
     content: m.content,
     audioUrl: m.audioUrl,
     createdAt: m.createdAt,
   }));
+  const messageCount = messages.length;
   return (
     <WikiCard>
-      <div className="flex items-center gap-2 mb-3">
-        <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-2 cursor-pointer"
+        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
+      >
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
           style={{ width: 29, height: 29, background: '#22c55e' }}
         >
           <Mic size={16} className="text-white" />
         </div>
-        <p className="text-white/30 text-xs font-medium">
+        <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
+        <p className="flex-1 text-left text-white/30 text-xs font-medium">
           {block.personName}&apos;s Ember Voice
+          <span className="ml-2 text-white/20">
+            ({messageCount} {messageCount === 1 ? 'message' : 'messages'})
+          </span>
         </p>
-      </div>
-      <VoiceMessageList
-        messages={messages}
-        isUploading={false}
-        emptyHint=""
-        selfLabel={block.personName.split(' ')[0] || block.personName}
-      />
+        <ChevronDown
+          size={14}
+          color="rgba(255,255,255,0.5)"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        />
+      </button>
+      {!collapsed ? (
+        <div className="mt-3">
+          <VoiceMessageList
+            messages={messages}
+            isUploading={false}
+            emptyHint=""
+            selfLabel={block.personName.split(' ')[0] || block.personName}
+          />
+        </div>
+      ) : null}
     </WikiCard>
   );
 }
@@ -1053,6 +1076,75 @@ function WikiCard({ children }: { children: React.ReactNode }) {
     >
       {children}
     </div>
+  );
+}
+
+type ChatBlock = {
+  personName: string;
+  avatarUrl?: string | null;
+  isOwner?: boolean;
+  messages: Array<{
+    role: string;
+    content: string;
+    source: string;
+    imageFilename?: string | null;
+    audioUrl?: string | null;
+    createdAt: string;
+  }>;
+};
+
+// Story Circle entries default to collapsed so the wiki opens compact.
+// Click the header row to expand and read the messages.
+function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
+  const [collapsed, setCollapsed] = useState(true);
+  const messageCount = block.messages.length;
+  return (
+    <WikiCard>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-2 cursor-pointer"
+        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
+      >
+        <div
+          className="rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ width: 29, height: 29, background: '#2563eb' }}
+        >
+          <MessageCircle size={16} className="text-white" fill="currentColor" stroke="currentColor" />
+        </div>
+        <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
+        <p className="flex-1 text-left text-white/30 text-xs font-medium">
+          {block.personName}&apos;s Ember Chat
+          <span className="ml-2 text-white/20">
+            ({messageCount} {messageCount === 1 ? 'message' : 'messages'})
+          </span>
+        </p>
+        <ChevronDown
+          size={14}
+          color="rgba(255,255,255,0.5)"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        />
+      </button>
+      {!collapsed ? (
+        <div className="mt-3">
+          <EmberChatMessages
+            messages={block.messages.map((msg) => ({
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+              source: (msg.source as 'web' | 'voice' | 'sms') ?? 'web',
+              imageFilename: msg.imageFilename ?? null,
+              audioUrl: msg.audioUrl ?? null,
+              createdAt: msg.createdAt,
+            }))}
+            selfLabel={block.personName.split(' ')[0] || block.personName}
+          />
+        </div>
+      ) : null}
+    </WikiCard>
   );
 }
 
@@ -1710,9 +1802,9 @@ export default function KipemberWikiContent({
           </div>
         </WikiCard>
 
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-2">Supporting Media</p>
-          {visualAttachments.length > 0 ? (
+        {visualAttachments.length > 0 ? (
+          <WikiCard>
+            <p className="text-white/30 text-xs font-medium mb-2">Supporting Media</p>
             <div className="flex flex-col gap-3">
               {visualAttachments.map((attachment) => (
                 <div key={attachment.id} className="flex items-start gap-3">
@@ -1745,10 +1837,8 @@ export default function KipemberWikiContent({
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-white/30 text-sm">No supporting media added yet.</p>
-          )}
-        </WikiCard>
+          </WikiCard>
+        ) : null}
       </WikiSection>
 
       <WikiSection
@@ -1761,6 +1851,7 @@ export default function KipemberWikiContent({
             detail?.analysis?.metadataSummary
         )}
         collapsible
+        defaultCollapsed
       >
         <WikiCard>
           {detail ? (
@@ -1875,6 +1966,7 @@ export default function KipemberWikiContent({
           )
         }
         collapsible
+        defaultCollapsed
       >
         <div className="flex flex-col gap-4">
           {(detail?.chatBlocks && detail.chatBlocks.length > 0) ||
@@ -1890,29 +1982,7 @@ export default function KipemberWikiContent({
                 );
                 return (
                   <Fragment key={`person-${block.personName}`}>
-                    <WikiCard>
-                  <div className="flex items-center gap-2 mb-3">
-                    <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
-                    <div
-                      className="rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ width: 29, height: 29, background: '#2563eb' }}
-                    >
-                      <MessageCircle size={16} className="text-white" fill="currentColor" stroke="currentColor" />
-                    </div>
-                    <p className="text-white/30 text-xs font-medium">{block.personName}&apos;s Ember Chat</p>
-                  </div>
-                  <EmberChatMessages
-                    messages={block.messages.map((msg) => ({
-                      role: msg.role === 'user' ? 'user' : 'assistant',
-                      content: msg.content,
-                      source: (msg.source as 'web' | 'voice' | 'sms') ?? 'web',
-                      imageFilename: msg.imageFilename ?? null,
-                      audioUrl: msg.audioUrl ?? null,
-                      createdAt: msg.createdAt,
-                    }))}
-                    selfLabel={block.personName.split(' ')[0] || block.personName}
-                  />
-                </WikiCard>
+                    <CollapsibleChatBlock block={block} />
                     {voiceForPerson ? (
                       <VoiceBlockCard block={voiceForPerson} />
                     ) : null}
