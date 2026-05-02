@@ -3,7 +3,11 @@ import { renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { getEmberTitle } from '@/lib/ember-title';
 import { INTERVIEW_QUESTION_TYPES } from '@/lib/interview-flow';
-import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
+import {
+  parseConfirmedLocationContext,
+  parseLocationSuggestionsCache,
+  type LocationSuggestion,
+} from '@/lib/location-suggestions';
 import { getUserDisplayName } from '@/lib/user-name';
 
 export type EmberChatTrigger =
@@ -48,10 +52,40 @@ function extractEmotionalContext(json: string | null | undefined): string {
   }
 }
 
-function formatLocation(metadataJson: string | null | undefined): string {
-  const parsed = parseConfirmedLocationContext(metadataJson);
-  if (!parsed) return '';
-  return [parsed.label, parsed.detail].filter(Boolean).join(', ');
+function formatSuggestionsLocation(suggestions: LocationSuggestion[]): string {
+  if (!suggestions.length) return '';
+  // The reverse-geocoded address suggestion stores the actual formatted
+  // address in `label` (and a metadata blurb in `detail` we want to skip).
+  const place = suggestions.find((s) => s.kind === 'place')
+    || suggestions.find((s) => s.kind === 'neighborhood')
+    || suggestions.find((s) => s.kind === 'city');
+  const address = suggestions.find((s) => s.kind === 'address');
+  const parts = [place?.label, address?.label].filter(
+    (value): value is string => Boolean(value && value.trim())
+  );
+  if (parts.length > 0) return parts.join(', ');
+  return suggestions[0].label || '';
+}
+
+function formatLocation(
+  metadataJson: string | null | undefined,
+  latitude: number | null | undefined,
+  longitude: number | null | undefined
+): string {
+  const confirmed = parseConfirmedLocationContext(metadataJson);
+  if (confirmed) {
+    return [confirmed.label, confirmed.detail].filter(Boolean).join(', ');
+  }
+  // Fall back to the cached reverse-geocoded suggestions so chat can answer
+  // location questions for embers where the user never opened the Edit Place
+  // slider — the wiki UI already shows the same data.
+  if (latitude != null && longitude != null) {
+    const cached = parseLocationSuggestionsCache(metadataJson, latitude, longitude);
+    if (cached && cached.length > 0) {
+      return formatSuggestionsLocation(cached);
+    }
+  }
+  return '';
 }
 
 function describePosition(leftPct: number | null, topPct: number | null, widthPct: number | null, heightPct: number | null): string | null {
@@ -141,6 +175,8 @@ export async function loadPromptVariables(imageId: string) {
           capturedAt: true,
           metadataJson: true,
           sceneInsightsJson: true,
+          latitude: true,
+          longitude: true,
         },
       },
       snapshot: { select: { script: true } },
@@ -182,7 +218,11 @@ export async function loadPromptVariables(imageId: string) {
   }
 
   const capturedAt = image.analysis?.capturedAt ? image.analysis.capturedAt.toISOString() : '';
-  const location = formatLocation(image.analysis?.metadataJson);
+  const location = formatLocation(
+    image.analysis?.metadataJson,
+    image.analysis?.latitude ?? null,
+    image.analysis?.longitude ?? null
+  );
   const taggedPeople = formatTaggedPeople(image.tags);
   const claimTypes = new Set(image.memoryClaims.map((c) => c.claimType));
   const coverage = computeInterviewCoverage({ capturedAt, location, taggedPeople, claimTypes });
