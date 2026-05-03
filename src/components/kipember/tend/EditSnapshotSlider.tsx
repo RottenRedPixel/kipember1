@@ -115,6 +115,10 @@ export default function EditSnapshotSlider({
     setDurationSeconds(detail?.snapshot?.durationSeconds ?? 10);
     setStyle(detail?.snapshot?.style || 'documentary');
     setVoiceId(detail?.snapshot?.emberVoiceId || '');
+    // Default the people checklist to "all selected" so the regenerated
+    // snapshot already names everyone tagged. The Title slider follows the
+    // same pattern.
+    setRequiredPeopleIds(new Set((detail?.tags || []).map((tag) => tag.id)));
   }, [detail]);
 
   // Auto-resize textarea to fit content
