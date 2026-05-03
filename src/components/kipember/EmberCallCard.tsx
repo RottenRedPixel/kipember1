@@ -2,6 +2,7 @@
 
 import { ChevronDown, Phone, Play } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { pastelForContributor } from '@/lib/contributor-color';
 
 export type EmberCallSegment = {
   index: number;
@@ -53,11 +54,12 @@ function CallHeaderAvatar({
   }
   return (
     <div
-      className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+      className="rounded-full flex items-center justify-center flex-shrink-0"
       style={{
         width: 29,
         height: 29,
-        background: 'rgba(255,255,255,0.15)',
+        background: pastelForContributor(name),
+        color: '#1f2937',
         fontSize: 11,
         fontWeight: 600,
       }}

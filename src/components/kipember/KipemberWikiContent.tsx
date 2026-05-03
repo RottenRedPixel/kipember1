@@ -35,6 +35,7 @@ import EmberChatMessages from '@/components/kipember/EmberChatMessages';
 import VoiceMessageList, { type VoiceMessage } from '@/components/kipember/workflows/VoiceMessageList';
 import MediaPreview from '@/components/MediaPreview';
 import { usePlaceResolution } from '@/components/kipember/usePlaceResolution';
+import { pastelForContributor } from '@/lib/contributor-color';
 import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -756,13 +757,17 @@ function AvatarCircle({
   name,
   avatarUrl,
   size = 29,
-  bgColor = 'rgba(255,255,255,0.15)',
+  bgColor,
 }: {
   name: string;
   avatarUrl?: string | null;
   size?: number;
   bgColor?: string;
 }) {
+  // No explicit color → deterministic pastel keyed on the person's name so
+  // their bubble looks the same everywhere (chat blocks, claim rows, tag
+  // chips, etc.).
+  const fallbackBg = bgColor ?? pastelForContributor(name);
   return avatarUrl ? (
     <img
       src={avatarUrl}
@@ -772,8 +777,8 @@ function AvatarCircle({
     />
   ) : (
     <div
-      className="rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
-      style={{ width: size, height: size, background: bgColor }}
+      className="rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
+      style={{ width: size, height: size, background: fallbackBg, color: '#1f2937' }}
     >
       {initials(name)}
     </div>
@@ -1843,7 +1848,6 @@ export default function KipemberWikiContent({
                 <div key={contributor.id} className="flex items-center gap-3">
                   <AvatarCircle
                     name={contributor.name || contributor.email || contributor.phoneNumber || '?'}
-                    bgColor="rgba(255,255,255,0.08)"
                   />
                   <span className="text-white/60 text-sm">{contributor.name || contributor.email || contributor.phoneNumber || 'Pending'}</span>
                   <span className="ml-auto text-white/30 text-xs">Invited</span>

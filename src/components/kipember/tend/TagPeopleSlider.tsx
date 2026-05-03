@@ -2,6 +2,7 @@
 
 import { Pencil, Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { pastelForContributor } from '@/lib/contributor-color';
 
 type ImageTagShape = {
   id: string;
@@ -674,8 +675,13 @@ export default function TagPeopleSlider({
                             style={{ minHeight: 36, cursor: p.alreadyTagged ? 'default' : 'pointer' }}
                           >
                             <div
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-medium overflow-hidden"
-                              style={{ background: 'rgba(255,255,255,0.1)' }}
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-medium overflow-hidden"
+                              style={{
+                                background: p.avatarUrl
+                                  ? 'rgba(255,255,255,0.1)'
+                                  : pastelForContributor(p.name),
+                                color: p.avatarUrl ? '#ffffff' : '#1f2937',
+                              }}
                             >
                               {p.avatarUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element

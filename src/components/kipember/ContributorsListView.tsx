@@ -11,6 +11,7 @@ import {
   UserCheck,
   UserPlus,
 } from 'lucide-react';
+import { pastelForContributor } from '@/lib/contributor-color';
 import type { TaggedPhoto, UnifiedContributor } from '@/lib/contributors-pool';
 import { getPreviewMediaUrl } from '@/lib/media';
 
@@ -307,7 +308,13 @@ export default function ContributorsListView({
                 {facePhoto ? (
                   <FaceCrop photo={facePhoto} size={40} />
                 ) : (
-                  <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-white text-sm font-medium" style={{ background: 'rgba(100,116,139,0.6)' }}>
+                  <div
+                    className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-medium"
+                    style={{
+                      background: pastelForContributor(c.key),
+                      color: '#1f2937',
+                    }}
+                  >
                     {c.avatarUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={c.avatarUrl} alt={c.name} className="w-full h-full object-cover" />

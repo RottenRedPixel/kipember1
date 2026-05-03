@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
 import type { KipemberContributor } from '@/components/kipember/KipemberWikiContent';
+import { pastelForContributor } from '@/lib/contributor-color';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -558,7 +559,13 @@ export default function ContributorsSlider({
           <div className="flex flex-col items-center gap-3">
             <div
               className="rounded-full overflow-hidden flex items-center justify-center"
-              style={{ width: 80, height: 80, background: 'rgba(249,115,22,0.85)' }}
+              style={{
+                width: 80,
+                height: 80,
+                background: contributorAvatarFilename
+                  ? 'rgba(249,115,22,0.85)'
+                  : pastelForContributor(contributor?.id ?? contributorName),
+              }}
             >
               {contributorAvatarFilename ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -568,7 +575,7 @@ export default function ContributorsSlider({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-white text-2xl font-medium">
+                <span className="text-2xl font-medium" style={{ color: '#1f2937' }}>
                   {initials(contributorName)}
                 </span>
               )}
