@@ -1003,6 +1003,52 @@ function buildStructuredAnalysisText(
   return sections.join('\n');
 }
 
+// Per-block collapsible card for the Image Analysis section. Header shows
+// the thumbnail + filename and toggles open/closed independently of the
+// parent section; body is rendered only when expanded. Each block keeps
+// its own state so users can inspect one photo at a time.
+function CollapsibleAnalysisCard({
+  thumbnail,
+  filename,
+  defaultCollapsed = true,
+  children,
+}: {
+  thumbnail: React.ReactNode;
+  filename: string | null;
+  defaultCollapsed?: boolean;
+  children: React.ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  return (
+    <WikiCard>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-3 cursor-pointer text-left"
+        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
+      >
+        <div
+          className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
+          style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+        >
+          {thumbnail}
+        </div>
+        <p className="flex-1 text-white/50 text-xs font-medium break-words">{filename}</p>
+        <ChevronDown
+          size={14}
+          color="rgba(255,255,255,0.5)"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        />
+      </button>
+      {collapsed ? null : <div className="mt-3">{children}</div>}
+    </WikiCard>
+  );
+}
+
 function WikiBadge({ complete, label }: { complete: boolean; label?: React.ReactNode }) {
   // Three palettes:
   //   complete           → green
@@ -2033,54 +2079,50 @@ export default function KipemberWikiContent({
         collapsible
         defaultCollapsed
       >
-        <WikiCard>
-          {detail ? (
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
-                style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-              >
-                <MediaPreview
-                  mediaType={detail.mediaType}
-                  filename={detail.filename}
-                  posterFilename={detail.posterFilename}
-                  originalName={detail.originalName}
-                  usePosterForVideo
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <p className="text-white/50 text-xs font-medium break-words">{detail.originalName}</p>
+        {detail ? (
+          <CollapsibleAnalysisCard
+            thumbnail={
+              <MediaPreview
+                mediaType={detail.mediaType}
+                filename={detail.filename}
+                posterFilename={detail.posterFilename}
+                originalName={detail.originalName}
+                usePosterForVideo
+                className="h-full w-full object-cover"
+              />
+            }
+            filename={detail.originalName}
+          >
+            <div className="flex flex-col gap-1">
+              {buildStructuredAnalysisText(detail?.analysis || null)
+                .split('\n')
+                .map((line, index) => {
+                  const cleaned = line.replace(/\*\*/g, '').trim();
+
+                  if (!cleaned) {
+                    return <div key={`analysis-gap-${index}`} className="h-2" />;
+                  }
+
+                  const isBold = line.startsWith('**') && line.endsWith('**');
+                  return (
+                    <p
+                      key={`analysis-line-${index}`}
+                      className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
+                    >
+                      {cleaned}
+                    </p>
+                  );
+                })}
             </div>
-          ) : null}
-          <div className="flex flex-col gap-1">
-            {buildStructuredAnalysisText(detail?.analysis || null)
-              .split('\n')
-              .map((line, index) => {
-                const cleaned = line.replace(/\*\*/g, '').trim();
-
-                if (!cleaned) {
-                  return <div key={`analysis-gap-${index}`} className="h-2" />;
-                }
-
-                const isBold = line.startsWith('**') && line.endsWith('**');
-                return (
-                  <p
-                    key={`analysis-line-${index}`}
-                    className={isBold ? 'text-white text-sm font-medium mt-2' : 'text-white/70 text-sm leading-relaxed'}
-                  >
-                    {cleaned}
-                  </p>
-                );
-              })}
-          </div>
-          <p className="text-white/30 text-xs mt-4">
-            Source: GPT-4o
-            {formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)
-              ? ` · Analyzed: ${formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)}`
-              : ''}
-            {' · Prompt: image_analysis.initial_photo'}
-          </p>
-        </WikiCard>
+            <p className="text-white/30 text-xs mt-4">
+              Source: GPT-4o
+              {formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)
+                ? ` · Analyzed: ${formatAnalysisFooterDate(detail?.analysis?.updatedAt || null)}`
+                : ''}
+              {' · Prompt: image_analysis.initial_photo'}
+            </p>
+          </CollapsibleAnalysisCard>
+        ) : null}
 
         {visualAttachments
           .filter((a) => a.analysisText)
@@ -2094,23 +2136,20 @@ export default function KipemberWikiContent({
             const analysisText = buildStructuredAnalysisText(parsedAnalysis);
 
             return (
-              <WikiCard key={`analysis-${attachment.id}`}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0"
-                    style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
-                  >
-                    <MediaPreview
-                      mediaType={attachment.mediaType}
-                      filename={attachment.filename}
-                      posterFilename={attachment.posterFilename}
-                      originalName={attachment.originalName}
-                      usePosterForVideo
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <p className="text-white/50 text-xs font-medium break-words">{attachment.originalName}</p>
-                </div>
+              <CollapsibleAnalysisCard
+                key={`analysis-${attachment.id}`}
+                thumbnail={
+                  <MediaPreview
+                    mediaType={attachment.mediaType}
+                    filename={attachment.filename}
+                    posterFilename={attachment.posterFilename}
+                    originalName={attachment.originalName}
+                    usePosterForVideo
+                    className="h-full w-full object-cover"
+                  />
+                }
+                filename={attachment.originalName}
+              >
                 <div className="flex flex-col gap-1">
                   {analysisText.split('\n').map((line, index) => {
                     const cleaned = line.replace(/\*\*/g, '').trim();
@@ -2127,7 +2166,7 @@ export default function KipemberWikiContent({
                   })}
                 </div>
                 <p className="text-white/30 text-xs mt-4">Source: GPT-4o · Prompt: image_analysis.uploaded_photo</p>
-              </WikiCard>
+              </CollapsibleAnalysisCard>
             );
           })}
       </WikiSection>
