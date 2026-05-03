@@ -14,12 +14,27 @@ type Quota = {
 type ProviderCheck = {
   key: string;
   label: string;
+  usedFor: string;
   configured: boolean;
   ok: boolean;
   status: number | null;
   latencyMs: number;
   message: string;
   quota: Quota | null;
+};
+
+const USED_FOR: Record<string, string> = {
+  anthropic:
+    'Powers every Claude call — chat + voice replies, wiki structure & rewrite, snapshot scripts, title ideas, captions, and the housekeeping extractors (why / emotion / extra story / place).',
+  openai:
+    'Image analysis on upload, audio transcription for voice messages, and the OpenAI-side suggestion calls (smart titles, people detection, location ranking).',
+  elevenlabs:
+    'Text-to-speech for the play-button snapshot audio and the per-block voice clips. Character usage drains fast — keep an eye on the quota here.',
+  retell: 'Backbone for the live phone-call experience — outbound dials, in-call agent, and post-call recording / transcript ingest.',
+  google_maps:
+    'Reverse-geocoding the photo EXIF GPS into a place candidate (paired with Claude in location-suggestions.ts).',
+  voipms:
+    'Sends the SMS invitations and share-link texts (contributor invites, guest links). Account balance shown is real spendable credit.',
 };
 
 const TIMEOUT_MS = 7000;
@@ -48,7 +63,7 @@ function unixToIso(value: string | number | null | undefined): string | null {
   return new Date(n * 1000).toISOString();
 }
 
-async function checkAnthropic(): Promise<ProviderCheck> {
+async function checkAnthropic(): Promise<Omit<ProviderCheck, 'usedFor'>> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) {
     return { key: 'anthropic', label: 'Anthropic (Claude)', configured: false, ok: false, status: null, latencyMs: 0, message: 'ANTHROPIC_API_KEY not set', quota: null };
@@ -81,7 +96,7 @@ async function checkAnthropic(): Promise<ProviderCheck> {
   };
 }
 
-async function checkOpenAI(): Promise<ProviderCheck> {
+async function checkOpenAI(): Promise<Omit<ProviderCheck, 'usedFor'>> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) {
     return { key: 'openai', label: 'OpenAI', configured: false, ok: false, status: null, latencyMs: 0, message: 'OPENAI_API_KEY not set', quota: null };
@@ -109,7 +124,7 @@ async function checkOpenAI(): Promise<ProviderCheck> {
   };
 }
 
-async function checkElevenLabs(): Promise<ProviderCheck> {
+async function checkElevenLabs(): Promise<Omit<ProviderCheck, 'usedFor'>> {
   const key = process.env.ELEVENLABS_API_KEY || process.env.ELEVENLABS;
   if (!key) {
     return { key: 'elevenlabs', label: 'ElevenLabs', configured: false, ok: false, status: null, latencyMs: 0, message: 'ELEVENLABS_API_KEY not set', quota: null };
@@ -156,7 +171,7 @@ async function checkElevenLabs(): Promise<ProviderCheck> {
   };
 }
 
-async function checkRetell(): Promise<ProviderCheck> {
+async function checkRetell(): Promise<Omit<ProviderCheck, 'usedFor'>> {
   const key = process.env.RETELL_API_KEY;
   if (!key) {
     return { key: 'retell', label: 'Retell (voice calls)', configured: false, ok: false, status: null, latencyMs: 0, message: 'RETELL_API_KEY not set', quota: null };
@@ -181,7 +196,7 @@ async function checkRetell(): Promise<ProviderCheck> {
   };
 }
 
-async function checkGoogleMaps(): Promise<ProviderCheck> {
+async function checkGoogleMaps(): Promise<Omit<ProviderCheck, 'usedFor'>> {
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key) {
     return { key: 'google_maps', label: 'Google Maps', configured: false, ok: false, status: null, latencyMs: 0, message: 'GOOGLE_MAPS_API_KEY not set', quota: null };
@@ -221,7 +236,7 @@ async function checkGoogleMaps(): Promise<ProviderCheck> {
   };
 }
 
-async function checkVoipMs(): Promise<ProviderCheck> {
+async function checkVoipMs(): Promise<Omit<ProviderCheck, 'usedFor'>> {
   const user = process.env.VOIPMS_API_USERNAME;
   const pass = process.env.VOIPMS_API_PASSWORD;
   if (!user || !pass) {
@@ -288,14 +303,14 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const providers = await Promise.all([
+  const providers = (await Promise.all([
     checkAnthropic(),
     checkOpenAI(),
     checkElevenLabs(),
     checkRetell(),
     checkGoogleMaps(),
     checkVoipMs(),
-  ]);
+  ])).map((p) => ({ ...p, usedFor: USED_FOR[p.key] ?? '' }));
 
   return NextResponse.json({
     checkedAt: new Date().toISOString(),

@@ -13,6 +13,7 @@ type Quota = {
 type ProviderCheck = {
   key: string;
   label: string;
+  usedFor: string;
   configured: boolean;
   ok: boolean;
   status: number | null;
@@ -119,7 +120,10 @@ export default function AdminTestApisPage() {
                 <span className="text-xs font-mono text-gray-500">{p.status}</span>
               ) : null}
             </div>
-            <p className="text-xs text-gray-600">{p.message}</p>
+            {p.usedFor ? (
+              <p className="text-xs text-gray-300 leading-relaxed">{p.usedFor}</p>
+            ) : null}
+            <p className="text-xs text-gray-700 font-medium">{p.message}</p>
             <div className="flex items-center gap-3 text-xs text-gray-500">
               {p.configured ? <span>{p.latencyMs} ms</span> : <span>not configured</span>}
               {p.quota ? (
@@ -137,6 +141,26 @@ export default function AdminTestApisPage() {
       {!data && !loading && !error ? (
         <p className="text-sm text-gray-500">No data yet.</p>
       ) : null}
+
+      <div className="mt-8 border-t border-gray-200 pt-4">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          Status code key
+        </h3>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
+          {[
+            { code: '200', label: 'OK — call succeeded, auth valid, provider reachable.' },
+            { code: '401 / 403', label: 'Bad or expired credentials — API key wrong, revoked, or unauthorized.' },
+            { code: '429', label: 'Rate-limited or quota exhausted — too many calls or token cap hit.' },
+            { code: '402', label: 'Payment required — billing issue (some providers signal hard caps this way).' },
+            { code: '5xx', label: 'Provider outage — their service is down or degraded.' },
+          ].map(({ code, label }) => (
+            <div key={code} className="flex gap-3">
+              <span className="font-mono text-gray-700 w-20 flex-shrink-0">{code}</span>
+              <span className="text-gray-500">{label}</span>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }
