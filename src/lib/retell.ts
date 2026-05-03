@@ -50,7 +50,15 @@ function normalizeBaseUrl(url: string): string {
   return url.replace(/\/$/, '');
 }
 
-async function getConfiguredRetellAgentId(): Promise<string> {
+async function getConfiguredRetellAgentId(opts?: { useBetaAgent?: boolean }): Promise<string> {
+  // Beta path: when the caller opts in, use the custom-LLM agent that
+  // routes turns to /api/retell/llm. Lets us test the new pipeline
+  // without touching production calls.
+  if (opts?.useBetaAgent) {
+    const beta = process.env.RETELL_AGENT_ID_BETA?.trim();
+    if (beta) return beta;
+    // Fall through to production agent if beta isn't configured.
+  }
   const configuredAgent = await getRemoteAgentConfig('retell.memory_interviewer');
   return configuredAgent?.remoteIdentifier?.trim() || requiredEnv('RETELL_AGENT_ID');
 }
@@ -89,10 +97,12 @@ export async function createRetellPhoneCall({
   toNumber,
   metadata,
   dynamicVariables,
+  useBetaAgent,
 }: {
   toNumber: string;
   metadata: Record<string, string>;
   dynamicVariables: Record<string, string>;
+  useBetaAgent?: boolean;
 }): Promise<Retell.PhoneCallResponse> {
   if (!(await isFeatureEnabled('voice_calls', true))) {
     throw new Error('Voice calls are disabled');
@@ -100,7 +110,7 @@ export async function createRetellPhoneCall({
 
   const client = getRetellClient();
   const [agentId, webhookUrl] = await Promise.all([
-    getConfiguredRetellAgentId(),
+    getConfiguredRetellAgentId({ useBetaAgent }),
     getRetellWebhookUrl(),
   ]);
 
@@ -123,9 +133,11 @@ export async function createRetellPhoneCall({
 export async function createRetellWebCall({
   metadata,
   dynamicVariables,
+  useBetaAgent,
 }: {
   metadata: Record<string, string>;
   dynamicVariables: Record<string, string>;
+  useBetaAgent?: boolean;
 }): Promise<Retell.WebCallResponse> {
   if (!(await isFeatureEnabled('voice_calls', true))) {
     throw new Error('Voice calls are disabled');
@@ -133,7 +145,7 @@ export async function createRetellWebCall({
 
   const client = getRetellClient();
   const [agentId, webhookUrl] = await Promise.all([
-    getConfiguredRetellAgentId(),
+    getConfiguredRetellAgentId({ useBetaAgent }),
     getRetellWebhookUrl(),
   ]);
 

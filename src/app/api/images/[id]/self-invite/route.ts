@@ -58,9 +58,15 @@ export async function POST(
     }
 
     if (mode === 'call') {
+      // Opt-in: pass ?beta=1 in the request URL to route through the
+      // custom-LLM Retell agent (RETELL_AGENT_ID_BETA). Lets us test the
+      // new pipeline against real owner phone numbers without affecting
+      // contributor / guest production calls.
+      const useBetaAgent = request.nextUrl.searchParams.get('beta') === '1';
       const result = await startVoiceCallForContributor({
         emberContributorId: emberContributor.id,
         initiatedBy: 'owner',
+        useBetaAgent,
       });
       return NextResponse.json({ success: true, ...result });
     }
