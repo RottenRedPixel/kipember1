@@ -35,7 +35,7 @@ import EmberChatMessages from '@/components/kipember/EmberChatMessages';
 import VoiceMessageList, { type VoiceMessage } from '@/components/kipember/workflows/VoiceMessageList';
 import MediaPreview from '@/components/MediaPreview';
 import { usePlaceResolution } from '@/components/kipember/usePlaceResolution';
-import { pastelForContributor } from '@/lib/contributor-color';
+import { pastelForContributor, pastelForContributorIdentity } from '@/lib/contributor-color';
 import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -217,6 +217,9 @@ export type KipemberWikiDetail = {
     personName: string;
     avatarUrl?: string | null;
     isOwner?: boolean;
+    personUserId?: string | null;
+    personEmail?: string | null;
+    personPhoneNumber?: string | null;
     messages: Array<{
       role: string;
       content: string;
@@ -230,6 +233,9 @@ export type KipemberWikiDetail = {
     personName: string;
     avatarUrl: string | null;
     isOwner: boolean;
+    personUserId?: string | null;
+    personEmail?: string | null;
+    personPhoneNumber?: string | null;
     messages: Array<{
       role: string;
       content: string;
@@ -240,6 +246,9 @@ export type KipemberWikiDetail = {
   callBlocks?: Array<{
     personName: string;
     avatarUrl: string | null;
+    personUserId?: string | null;
+    personEmail?: string | null;
+    personPhoneNumber?: string | null;
     voiceCallId: string;
     recordingUrl: string | null;
     startedAt: string | null;
@@ -491,7 +500,17 @@ function VoiceBlockCard({
         >
           <Mic size={16} className="text-white" />
         </div>
-        <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
+        <AvatarCircle
+          name={block.personName}
+          avatarUrl={block.avatarUrl}
+          size={29}
+          bgColor={pastelForContributorIdentity({
+            userId: block.personUserId ?? null,
+            email: block.personEmail ?? null,
+            phoneNumber: block.personPhoneNumber ?? null,
+            id: block.personName,
+          })}
+        />
         <p className="flex-1 text-left text-white/30 text-xs font-medium">
           {block.personName}&apos;s Ember Voice
           <span className="ml-2 text-white/20">
@@ -1195,6 +1214,9 @@ type ChatBlock = {
   personName: string;
   avatarUrl?: string | null;
   isOwner?: boolean;
+  personUserId?: string | null;
+  personEmail?: string | null;
+  personPhoneNumber?: string | null;
   messages: Array<{
     role: string;
     content: string;
@@ -1225,7 +1247,17 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
         >
           <MessageCircle size={16} className="text-white" fill="currentColor" stroke="currentColor" />
         </div>
-        <AvatarCircle name={block.personName} avatarUrl={block.avatarUrl} size={29} />
+        <AvatarCircle
+          name={block.personName}
+          avatarUrl={block.avatarUrl}
+          size={29}
+          bgColor={pastelForContributorIdentity({
+            userId: block.personUserId ?? null,
+            email: block.personEmail ?? null,
+            phoneNumber: block.personPhoneNumber ?? null,
+            id: block.personName,
+          })}
+        />
         <p className="flex-1 text-left text-white/30 text-xs font-medium">
           {block.personName}&apos;s Ember Chat
           <span className="ml-2 text-white/20">
@@ -1838,6 +1870,12 @@ export default function KipemberWikiContent({
                     <AvatarCircle
                       name={contributorName}
                       avatarUrl={contributor.user?.avatarFilename ? `/api/uploads/${contributor.user.avatarFilename}` : null}
+                      bgColor={pastelForContributorIdentity({
+                        userId: contributor.user?.id ?? contributor.userId ?? null,
+                        email: contributor.email ?? contributor.user?.email ?? null,
+                        phoneNumber: contributor.phoneNumber ?? contributor.user?.phoneNumber ?? null,
+                        id: contributor.id,
+                      })}
                     />
                     <span className="text-white text-sm font-medium">{contributorName}</span>
                     <span className="ml-auto text-white/30 text-xs">Viewer</span>
@@ -1848,6 +1886,12 @@ export default function KipemberWikiContent({
                 <div key={contributor.id} className="flex items-center gap-3">
                   <AvatarCircle
                     name={contributor.name || contributor.email || contributor.phoneNumber || '?'}
+                    bgColor={pastelForContributorIdentity({
+                      userId: contributor.userId ?? null,
+                      email: contributor.email ?? null,
+                      phoneNumber: contributor.phoneNumber ?? null,
+                      id: contributor.id,
+                    })}
                   />
                   <span className="text-white/60 text-sm">{contributor.name || contributor.email || contributor.phoneNumber || 'Pending'}</span>
                   <span className="ml-auto text-white/30 text-xs">Invited</span>

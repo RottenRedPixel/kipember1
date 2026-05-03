@@ -654,10 +654,18 @@ export async function GET(
     // Build chatBlocks: one block per person, merging their chat + call sessions.
     // Only authentic messages (typed or transcribed); synthetic AI-extracted rows
     // (questionType !== null) are excluded.
+    type PersonIdentity = {
+      userId: string | null;
+      email: string | null;
+      phoneNumber: string | null;
+    };
     let chatBlocks: Array<{
       personName: string;
       avatarUrl: string | null;
       isOwner: boolean;
+      personUserId: string | null;
+      personEmail: string | null;
+      personPhoneNumber: string | null;
       messages: Array<{
         role: string;
         content: string;
@@ -671,6 +679,9 @@ export async function GET(
       personName: string;
       avatarUrl: string | null;
       isOwner: boolean;
+      personUserId: string | null;
+      personEmail: string | null;
+      personPhoneNumber: string | null;
       messages: Array<{
         role: string;
         content: string;
@@ -695,7 +706,7 @@ export async function GET(
           emberContributor: {
             select: {
               id: true,
-              contributor: { select: { id: true, name: true, email: true } },
+              contributor: { select: { id: true, userId: true, name: true, email: true, phoneNumber: true } },
             },
           },
           messages: { orderBy: { createdAt: 'asc' } },
@@ -720,6 +731,7 @@ export async function GET(
         personName: string;
         avatarUrl: string | null;
         isOwner: boolean;
+        identity: PersonIdentity;
         chatMessages: ChatMessage[];
         voiceMessages: VoiceTurn[];
       };
@@ -760,11 +772,17 @@ export async function GET(
           personName;
         const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
         const isOwner = session.userId === image.ownerId;
+        const identity: PersonIdentity = {
+          userId: session.user?.id ?? sessionContributor?.userId ?? null,
+          email: session.user?.email ?? sessionContributor?.email ?? null,
+          phoneNumber: sessionContributor?.phoneNumber ?? null,
+        };
         const bucket =
           byPerson.get(personKey) || {
             personName,
             avatarUrl,
             isOwner,
+            identity,
             chatMessages: [],
             voiceMessages: [],
           };
@@ -808,6 +826,9 @@ export async function GET(
             personName: bucket.personName,
             avatarUrl: bucket.avatarUrl,
             isOwner: bucket.isOwner,
+            personUserId: bucket.identity.userId,
+            personEmail: bucket.identity.email,
+            personPhoneNumber: bucket.identity.phoneNumber,
             messages: deduped,
           };
         })
@@ -818,6 +839,9 @@ export async function GET(
           personName: bucket.personName,
           avatarUrl: bucket.avatarUrl,
           isOwner: bucket.isOwner,
+          personUserId: bucket.identity.userId,
+          personEmail: bucket.identity.email,
+          personPhoneNumber: bucket.identity.phoneNumber,
           messages: bucket.voiceMessages.sort(
             (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           ),
@@ -836,6 +860,9 @@ export async function GET(
     let callBlocks: Array<{
       personName: string;
       avatarUrl: string | null;
+      personUserId: string | null;
+      personEmail: string | null;
+      personPhoneNumber: string | null;
       voiceCallId: string;
       recordingUrl: string | null;
       startedAt: string | null;
@@ -871,6 +898,9 @@ export async function GET(
           callBlocks.push({
             personName,
             avatarUrl,
+            personUserId: ec.contributor.user?.id ?? ec.contributor.userId ?? null,
+            personEmail: ec.contributor.email ?? ec.contributor.user?.email ?? null,
+            personPhoneNumber: ec.contributor.phoneNumber ?? null,
             voiceCallId: voiceCall.id,
             recordingUrl: voiceCall.recordingUrl ?? null,
             startedAt: voiceCall.startedAt ? voiceCall.startedAt.toISOString() : null,
