@@ -181,13 +181,13 @@ function formatTaggedPeople(
     widthPct: number | null;
     heightPct: number | null;
     user: { firstName: string | null; lastName: string | null } | null;
-    contributor: { name: string | null } | null;
+    emberContributor: { contributor: { name: string | null } } | null;
   }>
 ): string {
   const lines: string[] = [];
   const seen = new Set<string>();
   for (const tag of tags) {
-    const name = (getUserDisplayName(tag.user) || tag.contributor?.name || tag.label || '').trim();
+    const name = (getUserDisplayName(tag.user) || tag.emberContributor?.contributor.name || tag.label || '').trim();
     if (!name || seen.has(name)) continue;
     seen.add(name);
     const position = describePosition(tag.leftPct, tag.topPct, tag.widthPct, tag.heightPct);
@@ -245,7 +245,7 @@ export async function loadEmberContext(imageId: string): Promise<EmberContext> {
           widthPct: true,
           heightPct: true,
           user: { select: { firstName: true, lastName: true } },
-          contributor: { select: { name: true } },
+          emberContributor: { select: { contributor: { select: { name: true } } } },
         },
       },
       memoryClaims: {

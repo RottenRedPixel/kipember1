@@ -51,7 +51,7 @@ export function invalidateAccessibleEmbersForUser(userId: string) {
 
 export async function getTotalContributorsForUser(userId: string) {
   const contributors = await prisma.contributor.findMany({
-    where: { image: { ownerId: userId }, ...realContributorWhere },
+    where: { ownerId: userId, ...realContributorWhere },
     select: { id: true, userId: true, email: true, phoneNumber: true },
   });
 
@@ -75,7 +75,7 @@ export type ContributorSummary = {
 
 export async function getContributorsListForUser(userId: string): Promise<ContributorSummary[]> {
   const rows = await prisma.contributor.findMany({
-    where: { image: { ownerId: userId }, ...realContributorWhere },
+    where: { ownerId: userId, ...realContributorWhere },
     orderBy: { createdAt: 'asc' },
     select: {
       id: true,
@@ -84,8 +84,12 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
       email: true,
       phoneNumber: true,
       createdAt: true,
-      imageId: true,
       user: { select: { firstName: true, lastName: true, email: true, avatarFilename: true } },
+      emberContributors: {
+        orderBy: { createdAt: 'asc' },
+        take: 1,
+        select: { id: true, imageId: true },
+      },
     },
   });
 
@@ -94,6 +98,8 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
     if (r.userId === userId) continue;
     const key = r.userId ?? r.email?.toLowerCase() ?? r.phoneNumber ?? `row:${r.id}`;
     if (byKey.has(key)) continue;
+    const firstEc = r.emberContributors[0];
+    if (!firstEc) continue;
     const name =
       getUserDisplayName(r.user) ??
       r.name ??
@@ -102,7 +108,14 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
       r.phoneNumber ??
       'Contributor';
     const avatarUrl = r.user?.avatarFilename ? `/api/uploads/${r.user.avatarFilename}` : null;
-    byKey.set(key, { key, contributorId: r.id, emberId: r.imageId, name, avatarUrl, joinedAt: r.createdAt });
+    byKey.set(key, {
+      key,
+      contributorId: firstEc.id,
+      emberId: firstEc.imageId,
+      name,
+      avatarUrl,
+      joinedAt: r.createdAt,
+    });
   }
 
   return Array.from(byKey.values()).sort(
@@ -122,7 +135,7 @@ export async function getAccessibleEmbersForUser(userId: string) {
     where: {
       OR: [
         { ownerId: userId },
-        { contributors: { some: { userId } } },
+        { emberContributors: { some: { contributor: { userId } } } },
         ...(friendIds.length > 0
           ? [{ shareToNetwork: true, ownerId: { in: friendIds } }]
           : []),
@@ -145,11 +158,11 @@ export async function getAccessibleEmbersForUser(userId: string) {
       cropY: true,
       cropWidth: true,
       cropHeight: true,
-      contributors: {
-        where: realContributorWhere,
+      emberContributors: {
+        where: { contributor: realContributorWhere },
         select: {
           id: true,
-          userId: true,
+          contributor: { select: { userId: true } },
           voiceCalls: { select: { id: true }, take: 1 },
         },
       },
@@ -167,8 +180,8 @@ export async function getAccessibleEmbersForUser(userId: string) {
   });
 
   const value = images.map<EmberSummary>((image) => {
-    const nonOwnerContributors = image.contributors.filter(
-      (c) => c.userId !== image.ownerId
+    const nonOwnerContributors = image.emberContributors.filter(
+      (c) => c.contributor.userId !== image.ownerId
     );
     return {
       id: image.id,
@@ -186,11 +199,11 @@ export async function getAccessibleEmbersForUser(userId: string) {
       contributorCount: nonOwnerContributors.length,
       hasWiki: image.wiki != null,
       hasLocation: image.analysis?.latitude != null,
-      hasVoiceCall: image.contributors.some((c) => c.voiceCalls.length > 0),
+      hasVoiceCall: image.emberContributors.some((c) => c.voiceCalls.length > 0),
       accessType:
         image.ownerId === userId
           ? 'owner'
-          : image.contributors.some((c) => c.userId === userId)
+          : image.emberContributors.some((c) => c.contributor.userId === userId)
             ? 'contributor'
             : 'network',
       cropX: image.cropX ?? null,

@@ -23,7 +23,7 @@ type EnsureEmberSessionInput = EmberSessionIdentity & {
   status?: string;
   currentStep?: string | null;
   userId?: string | null;
-  contributorId?: string | null;
+  emberContributorId?: string | null;
   browserId?: string | null;
 };
 
@@ -86,12 +86,12 @@ export async function ensureEmberSession(input: EnsureEmberSessionInput) {
   if (existing) {
     const updateData: {
       userId?: string;
-      contributorId?: string;
+      emberContributorId?: string;
       browserId?: string;
     } = {};
 
     if (input.userId && !existing.userId) updateData.userId = input.userId;
-    if (input.contributorId && !existing.contributorId) updateData.contributorId = input.contributorId;
+    if (input.emberContributorId && !existing.emberContributorId) updateData.emberContributorId = input.emberContributorId;
     if (input.browserId && !existing.browserId) updateData.browserId = input.browserId;
 
     if (Object.keys(updateData).length === 0) return existing;
@@ -115,7 +115,7 @@ export async function ensureEmberSession(input: EnsureEmberSessionInput) {
     status: input.status ?? 'active',
     currentStep: input.currentStep,
     userId: input.userId,
-    contributorId: input.contributorId,
+    emberContributorId: input.emberContributorId,
     browserId: input.browserId,
   };
 

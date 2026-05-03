@@ -22,20 +22,17 @@ async function getOwnerProfile(userId: string): Promise<OwnerProfile | null> {
   });
 }
 
-export async function ensureUserContributorForImage(imageId: string, userId: string) {
-  const user = await getOwnerProfile(userId);
-
-  if (!user) {
-    return null;
-  }
-
+async function ensureContributorPoolEntry(
+  ownerId: string,
+  user: OwnerProfile
+) {
   const displayName = getUserDisplayName(user);
 
   return prisma.contributor.upsert({
     where: {
-      imageId_userId: {
-        imageId,
-        userId,
+      ownerId_userId: {
+        ownerId,
+        userId: user.id,
       },
     },
     update: {
@@ -44,11 +41,38 @@ export async function ensureUserContributorForImage(imageId: string, userId: str
       phoneNumber: user.phoneNumber,
     },
     create: {
-      imageId,
-      userId,
+      ownerId,
+      userId: user.id,
       name: displayName,
       email: user.email,
       phoneNumber: user.phoneNumber,
+    },
+  });
+}
+
+export async function ensureUserContributorForImage(imageId: string, userId: string) {
+  const image = await prisma.image.findUnique({
+    where: { id: imageId },
+    select: { ownerId: true },
+  });
+  if (!image) return null;
+
+  const user = await getOwnerProfile(userId);
+  if (!user) return null;
+
+  const contributor = await ensureContributorPoolEntry(image.ownerId, user);
+
+  return prisma.emberContributor.upsert({
+    where: {
+      contributorId_imageId: {
+        contributorId: contributor.id,
+        imageId,
+      },
+    },
+    update: {},
+    create: {
+      contributorId: contributor.id,
+      imageId,
     },
   });
 }
@@ -73,21 +97,19 @@ export async function ensureOwnerContributorsForOwnedImages(userId: string) {
     return;
   }
 
-  const existingContributorRecords = await prisma.contributor.findMany({
+  const contributor = await ensureContributorPoolEntry(userId, owner);
+
+  const existingEmberContributors = await prisma.emberContributor.findMany({
     where: {
-      userId,
+      contributorId: contributor.id,
       imageId: {
         in: ownedImages.map((image) => image.id),
       },
     },
-    select: {
-      imageId: true,
-    },
+    select: { imageId: true },
   });
 
-  const existingImageIds = new Set(
-    existingContributorRecords.map((contributor) => contributor.imageId)
-  );
+  const existingImageIds = new Set(existingEmberContributors.map((ec) => ec.imageId));
   const missingImageIds = ownedImages
     .map((image) => image.id)
     .filter((imageId) => !existingImageIds.has(imageId));
@@ -96,17 +118,12 @@ export async function ensureOwnerContributorsForOwnedImages(userId: string) {
     return;
   }
 
-  const ownerDisplayName = getUserDisplayName(owner);
-
   await prisma.$transaction(
     missingImageIds.map((imageId) =>
-      prisma.contributor.create({
+      prisma.emberContributor.create({
         data: {
+          contributorId: contributor.id,
           imageId,
-          userId,
-          name: ownerDisplayName,
-          email: owner.email,
-          phoneNumber: owner.phoneNumber,
         },
       })
     )

@@ -38,7 +38,7 @@ export async function loadEmberSetupContext(imageId: string) {
         orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
         select: {
           id: true,
-          contributorId: true,
+          emberContributorId: true,
           voiceCallId: true,
           title: true,
           quote: true,
@@ -49,19 +49,24 @@ export async function loadEmberSetupContext(imageId: string) {
           endMs: true,
           canUseForTitle: true,
           createdAt: true,
-          contributor: {
+          emberContributor: {
             select: {
               id: true,
-              userId: true,
-              name: true,
-              email: true,
-              phoneNumber: true,
-              user: {
+              contributor: {
                 select: {
                   id: true,
-                  firstName: true,
-                  lastName: true,
+                  userId: true,
+                  name: true,
                   email: true,
+                  phoneNumber: true,
+                  user: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                    },
+                  },
                 },
               },
             },
@@ -90,23 +95,31 @@ export async function loadEmberSetupContext(imageId: string) {
               email: true,
             },
           },
-          contributor: {
+          emberContributor: {
             select: {
-              name: true,
-              email: true,
+              contributor: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
             },
           },
         },
       },
-      contributors: {
+      emberContributors: {
         orderBy: { createdAt: 'asc' },
         include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
+          contributor: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
             },
           },
           emberSession: {
@@ -168,25 +181,25 @@ export async function loadEmberSetupContext(imageId: string) {
   const confirmedPeople = Array.from(
     new Set(
       image.tags
-        .map((tag) => getUserDisplayName(tag.user) || tag.contributor?.name || tag.label)
+        .map((tag) => getUserDisplayName(tag.user) || tag.emberContributor?.contributor.name || tag.label)
         .map((label) => label?.trim())
         .filter((label): label is string => Boolean(label))
     )
   );
   const confirmedLocation = parseConfirmedLocationContext(image.analysis?.metadataJson);
-  const contributorMemories = image.contributors.flatMap((contributor) =>
+  const contributorMemories = image.emberContributors.flatMap((ec) =>
     [
-      ...(contributor.emberSession?.messages || []),
-      ...contributor.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
+      ...(ec.emberSession?.messages || []),
+      ...ec.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
     ].map((message) => ({
       id: message.id,
-      contributorId: contributor.id,
-      contributorUserId: contributor.user?.id || contributor.userId || null,
+      contributorId: ec.id,
+      contributorUserId: ec.contributor.user?.id || ec.contributor.userId || null,
       contributorName:
-        contributor.name ||
-        getUserDisplayName(contributor.user) ||
-        contributor.email ||
-        contributor.phoneNumber ||
+        ec.contributor.name ||
+        getUserDisplayName(ec.contributor.user) ||
+        ec.contributor.email ||
+        ec.contributor.phoneNumber ||
         'Contributor',
       questionType: message.questionType!,
       question: message.question || '',
@@ -195,18 +208,18 @@ export async function loadEmberSetupContext(imageId: string) {
       createdAt: toIsoString(message.createdAt),
     }))
   );
-  const callSummaries = image.contributors.flatMap((contributor) =>
-    contributor.voiceCalls
+  const callSummaries = image.emberContributors.flatMap((ec) =>
+    ec.voiceCalls
       .map((voiceCall) => voiceCall.callSummary?.trim())
       .filter((summary): summary is string => Boolean(summary))
       .map((summary) => ({
-        contributorId: contributor.id,
-        contributorUserId: contributor.user?.id || contributor.userId || null,
+        contributorId: ec.id,
+        contributorUserId: ec.contributor.user?.id || ec.contributor.userId || null,
         contributorName:
-          contributor.name ||
-          getUserDisplayName(contributor.user) ||
-          contributor.email ||
-          contributor.phoneNumber ||
+          ec.contributor.name ||
+          getUserDisplayName(ec.contributor.user) ||
+          ec.contributor.email ||
+          ec.contributor.phoneNumber ||
           'Contributor',
         summary,
       }))
@@ -214,14 +227,14 @@ export async function loadEmberSetupContext(imageId: string) {
   const callHighlights = image.voiceCallClips.map((clip) => ({
     id: clip.id,
     voiceCallId: clip.voiceCallId,
-    contributorId: clip.contributorId,
+    contributorId: clip.emberContributorId,
     contributorUserId:
-      clip.contributor.user?.id || clip.contributor.userId || null,
+      clip.emberContributor.contributor.user?.id || clip.emberContributor.contributor.userId || null,
     contributorName:
-      clip.contributor.name ||
-      getUserDisplayName(clip.contributor.user) ||
-      clip.contributor.email ||
-      clip.contributor.phoneNumber ||
+      clip.emberContributor.contributor.name ||
+      getUserDisplayName(clip.emberContributor.contributor.user) ||
+      clip.emberContributor.contributor.email ||
+      clip.emberContributor.contributor.phoneNumber ||
       'Contributor',
     title: clip.title,
     quote: clip.quote,

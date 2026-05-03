@@ -21,16 +21,24 @@ function formatPhoneNumber(phoneNumber: string): string {
   return `+${phoneNumber}`;
 }
 
+/**
+ * Send a contributor invite SMS for a specific EmberContributor (per-ember
+ * attachment). The id is the EmberContributor.id, not the pool Contributor.id.
+ */
 export async function sendContributorSmsInvite(
-  contributorId: string
+  emberContributorId: string
 ): Promise<{ success: boolean; inviteUrl: string; error?: string }> {
-  const contributor = await prisma.contributor.findUnique({
-    where: { id: contributorId },
+  const emberContributor = await prisma.emberContributor.findUnique({
+    where: { id: emberContributorId },
     select: {
       id: true,
-      name: true,
-      phoneNumber: true,
       token: true,
+      contributor: {
+        select: {
+          name: true,
+          phoneNumber: true,
+        },
+      },
       image: {
         select: {
           owner: {
@@ -44,22 +52,22 @@ export async function sendContributorSmsInvite(
     },
   });
 
-  if (!contributor) {
+  if (!emberContributor) {
     throw new Error('Contributor not found');
   }
 
-  if (!contributor.phoneNumber) {
+  if (!emberContributor.contributor.phoneNumber) {
     throw new Error('Contributor does not have a phone number for SMS invites');
   }
 
-  const inviteUrl = buildContributorInviteUrl(contributor.token);
-  const ownerName = getUserDisplayName(contributor.image.owner) || 'Someone';
+  const inviteUrl = buildContributorInviteUrl(emberContributor.token);
+  const ownerName = getUserDisplayName(emberContributor.image.owner) || 'Someone';
   const intro = `${ownerName} needs your help to complete a memory shared with you.`;
   const linkMessage = `Go to ${inviteUrl} to start!`;
   const emberMessage =
     'Ember is a memory app that helps preserve moments through guided conversations.';
   const combinedMessage = `${intro} ${linkMessage} ${emberMessage}`;
-  const phone = formatPhoneNumber(contributor.phoneNumber);
+  const phone = formatPhoneNumber(emberContributor.contributor.phoneNumber);
 
   try {
     if (combinedMessage.length <= 160) {
@@ -70,8 +78,8 @@ export async function sendContributorSmsInvite(
       await sendSMS(phone, emberMessage);
     }
 
-    await prisma.contributor.update({
-      where: { id: contributorId },
+    await prisma.emberContributor.update({
+      where: { id: emberContributorId },
       data: { inviteSent: true },
     });
 

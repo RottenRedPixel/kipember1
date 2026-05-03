@@ -283,8 +283,9 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
   const voiceCall = await prisma.voiceCall.findUnique({
     where: { id: voiceCallId },
     include: {
-      contributor: {
+      emberContributor: {
         include: {
+          contributor: true,
           image: {
             include: {
               owner: true,
@@ -328,19 +329,20 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
     return;
   }
 
-  const { contributor } = voiceCall;
-  const owner = contributor.image.owner;
-  const emberTitle = getEmberTitle(contributor.image);
+  const { emberContributor } = voiceCall;
+  const contributor = emberContributor.contributor;
+  const owner = emberContributor.image.owner;
+  const emberTitle = getEmberTitle(emberContributor.image);
   const ownerFirstName = getFirstName(owner.firstName, 'Someone');
   const contributorName =
     contributor.name?.trim() || contributor.email?.trim() || 'there';
-  const targetUrl = `/contribute/${contributor.token}`;
+  const targetUrl = `/contribute/${emberContributor.token}`;
   const inviteUrl = buildAbsoluteUrl(targetUrl);
   const thumbnailUrl = buildAbsoluteUrl(
     getPreviewUploadUrl({
-      mediaType: contributor.image.mediaType,
-      filename: contributor.image.filename,
-      posterFilename: contributor.image.posterFilename,
+      mediaType: emberContributor.image.mediaType,
+      filename: emberContributor.image.filename,
+      posterFilename: emberContributor.image.posterFilename,
     })
   );
   const isCreator = contributor.userId === owner.id;

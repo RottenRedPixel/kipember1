@@ -4,15 +4,13 @@ import { getUserDisplayName } from '@/lib/user-name';
 /**
  * One row per unique person across all the user's owned embers.
  *
- * The dedupe key is `userId` if set, else lowercased email, else phone, else
- * the contributor row id (as a last-resort uniqueness fallback).
+ * Now backed directly by the owner-scoped Contributor pool (one row per
+ * (owner, person)). Each pool entry has zero or more EmberContributor join
+ * rows for the embers they're attached to.
  *
  * When `currentEmberId` is provided, each row carries:
- * - `onThisEmber` — true if this person is already a contributor on that ember
- * - `currentEmberContributorId` — the Contributor.id on that ember (or null)
- *
- * This is the source of truth for both the /tend/contributors list (with the
- * "This Ember | All" filter) and the /account contributors roster.
+ * - `onThisEmber` — true if this person has an EmberContributor on that ember
+ * - `currentEmberContributorId` — the EmberContributor.id on that ember (or null)
  */
 export type UnifiedContributor = {
   /** Stable dedupe key — also used as `sourceKey` when adding to an ember. */
@@ -70,8 +68,9 @@ export async function getUnifiedContributorsForUser(
 ): Promise<UnifiedContributor[]> {
   const rows = await prisma.contributor.findMany({
     where: {
-      image: { ownerId: userId },
-      // Skip the owner's own row if they happen to also be a contributor on their own ember.
+      ownerId: userId,
+      // Skip the owner's own pool row (the contributor record that points
+      // back at the owner's user account).
       AND: [
         { OR: [{ userId: null }, { NOT: { userId } }] },
         realContributorWhere,
@@ -84,24 +83,27 @@ export async function getUnifiedContributorsForUser(
       email: true,
       phoneNumber: true,
       userId: true,
-      imageId: true,
       user: { select: { firstName: true, lastName: true, email: true, avatarFilename: true } },
-      image: { select: { id: true, title: true, originalName: true } },
+      emberContributors: {
+        select: {
+          id: true,
+          imageId: true,
+          image: { select: { id: true, title: true, originalName: true } },
+        },
+      },
     },
   });
 
   const byKey = new Map<string, UnifiedContributor>();
-  const contributorIdToKey = new Map<string, string>();
+  const poolIdToKey = new Map<string, string>();
+  const emberContribIdToKey = new Map<string, string>();
   const userIdToKey = new Map<string, string>();
   const emberTitles = new Map<string, string>();
 
   for (const r of rows) {
     const key = pickKey(r);
-    const title = r.image.title || r.image.originalName.replace(/\.[^.]+$/, '');
-    emberTitles.set(r.image.id, title);
-    contributorIdToKey.set(r.id, key);
+    poolIdToKey.set(r.id, key);
     if (r.userId) userIdToKey.set(r.userId, key);
-    const isOnCurrent = currentEmberId ? r.imageId === currentEmberId : false;
 
     let entry = byKey.get(key);
     if (!entry) {
@@ -123,22 +125,29 @@ export async function getUnifiedContributorsForUser(
       byKey.set(key, entry);
     }
 
-    entry.embers.push({ id: r.image.id, title, contributorId: r.id });
-    entry.emberCount += 1;
-    if (isOnCurrent) {
-      entry.onThisEmber = true;
-      entry.currentEmberContributorId = r.id;
+    for (const ec of r.emberContributors) {
+      const title = ec.image.title || ec.image.originalName.replace(/\.[^.]+$/, '');
+      emberTitles.set(ec.image.id, title);
+      emberContribIdToKey.set(ec.id, key);
+      const isOnCurrent = currentEmberId ? ec.imageId === currentEmberId : false;
+      entry.embers.push({ id: ec.image.id, title, contributorId: ec.id });
+      entry.emberCount += 1;
+      if (isOnCurrent) {
+        entry.onThisEmber = true;
+        entry.currentEmberContributorId = ec.id;
+      }
     }
   }
 
-  // Pull positioned tags that link (via contributorId or userId) to anyone in
-  // the pool, so each unified entry knows which face crops to display.
-  const allContributorIds = Array.from(contributorIdToKey.keys());
+  // Pull positioned tags that link (via emberContributorId or userId) to
+  // anyone in the pool, so each unified entry knows which face crops to
+  // display.
+  const allEmberContribIds = Array.from(emberContribIdToKey.keys());
   const allUserIds = Array.from(userIdToKey.keys());
 
-  if (allContributorIds.length > 0 || allUserIds.length > 0) {
+  if (allEmberContribIds.length > 0 || allUserIds.length > 0) {
     const tagFilters: Array<Record<string, unknown>> = [];
-    if (allContributorIds.length > 0) tagFilters.push({ contributorId: { in: allContributorIds } });
+    if (allEmberContribIds.length > 0) tagFilters.push({ emberContributorId: { in: allEmberContribIds } });
     if (allUserIds.length > 0) tagFilters.push({ userId: { in: allUserIds } });
 
     const tags = await prisma.imageTag.findMany({
@@ -152,7 +161,7 @@ export async function getUnifiedContributorsForUser(
       },
       select: {
         id: true,
-        contributorId: true,
+        emberContributorId: true,
         userId: true,
         imageId: true,
         leftPct: true,
@@ -172,7 +181,7 @@ export async function getUnifiedContributorsForUser(
     const seenTagPerKey = new Map<string, Set<string>>();
     for (const t of tags) {
       const key =
-        (t.contributorId && contributorIdToKey.get(t.contributorId)) ||
+        (t.emberContributorId && emberContribIdToKey.get(t.emberContributorId)) ||
         (t.userId && userIdToKey.get(t.userId)) ||
         null;
       if (!key) continue;

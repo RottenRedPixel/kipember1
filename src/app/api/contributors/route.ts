@@ -66,14 +66,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existing = await prisma.contributor.findFirst({
+    const ownerId = image.ownerId;
+
+    // Find or create the pool Contributor for this owner.
+    let poolContributor = await prisma.contributor.findFirst({
       where: {
-        imageId,
+        ownerId,
         OR: [
           ...(linkedUser ? [{ userId: linkedUser.id }] : []),
           ...(normalizedPhone ? [{ phoneNumber: normalizedPhone }] : []),
           ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
         ],
+      },
+    });
+
+    if (poolContributor) {
+      // Refresh display fields if we have new ones.
+      poolContributor = await prisma.contributor.update({
+        where: { id: poolContributor.id },
+        data: {
+          name: contributorName ?? poolContributor.name,
+          email: normalizedEmail ?? poolContributor.email,
+          phoneNumber: normalizedPhone ?? poolContributor.phoneNumber,
+          userId: linkedUser?.id ?? poolContributor.userId,
+        },
+      });
+    } else {
+      poolContributor = await prisma.contributor.create({
+        data: {
+          ownerId,
+          userId: linkedUser?.id || null,
+          phoneNumber: normalizedPhone,
+          email: normalizedEmail,
+          name: contributorName,
+        },
+      });
+    }
+
+    // Check if they're already attached to this ember.
+    const existing = await prisma.emberContributor.findUnique({
+      where: {
+        contributorId_imageId: {
+          contributorId: poolContributor.id,
+          imageId,
+        },
       },
     });
 
@@ -84,29 +120,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const contributor = await prisma.contributor.create({
+    const emberContributor = await prisma.emberContributor.create({
       data: {
+        contributorId: poolContributor.id,
         imageId,
-        userId: linkedUser?.id || null,
-        phoneNumber: normalizedPhone,
-        email: normalizedEmail,
-        name: contributorName,
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phoneNumber: true,
+        contributor: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phoneNumber: true,
+              },
+            },
           },
         },
         emberSession: true,
       },
     });
 
-    return NextResponse.json(contributor);
+    // Maintain the legacy response shape: contributor fields hoisted to top
+    // level so existing callers don't break.
+    return NextResponse.json({
+      id: emberContributor.id,
+      imageId: emberContributor.imageId,
+      token: emberContributor.token,
+      inviteSent: emberContributor.inviteSent,
+      createdAt: emberContributor.createdAt,
+      name: emberContributor.contributor.name,
+      email: emberContributor.contributor.email,
+      phoneNumber: emberContributor.contributor.phoneNumber,
+      userId: emberContributor.contributor.userId,
+      user: emberContributor.contributor.user,
+      emberSession: emberContributor.emberSession,
+    });
   } catch (error) {
     console.error('Error adding contributor:', error);
     return NextResponse.json(
@@ -140,17 +191,20 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    const { contributor, removalMode } = removalAccess;
+    const { contributor: emberContributor, removalMode } = removalAccess;
 
-    if (contributor.userId && contributor.userId === contributor.image.ownerId) {
+    if (
+      emberContributor.contributor.userId &&
+      emberContributor.contributor.userId === emberContributor.image.ownerId
+    ) {
       return NextResponse.json(
         { error: 'The Ember creator is automatically kept as a contributor' },
         { status: 400 }
       );
     }
 
-    await prisma.contributor.delete({
-      where: { id: contributor.id },
+    await prisma.emberContributor.delete({
+      where: { id: emberContributor.id },
     });
 
     return NextResponse.json({

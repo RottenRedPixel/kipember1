@@ -64,38 +64,44 @@ export async function GET(
       return NextResponse.json({ error: 'Wiki not found' }, { status: 404 });
     }
 
+    const ownerEcInclude = {
+      id: true,
+      token: true,
+      contributor: {
+        select: {
+          phoneNumber: true,
+          user: {
+            select: {
+              phoneNumber: true,
+            },
+          },
+        },
+      },
+      voiceCalls: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          startedAt: true,
+          endedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          analyzedAt: true,
+          callSummary: true,
+          memorySyncedAt: true,
+        },
+      },
+    };
+
     let ownerConversationTarget =
       accessType === 'owner'
-        ? await prisma.contributor.findFirst({
+        ? await prisma.emberContributor.findFirst({
             where: {
               imageId,
-              userId: auth.user.id,
+              contributor: { userId: auth.user.id },
             },
-            select: {
-              id: true,
-              token: true,
-              phoneNumber: true,
-              user: {
-                select: {
-                  phoneNumber: true,
-                },
-              },
-              voiceCalls: {
-                orderBy: { createdAt: 'desc' },
-                take: 1,
-                select: {
-                  id: true,
-                  status: true,
-                  startedAt: true,
-                  endedAt: true,
-                  createdAt: true,
-                  updatedAt: true,
-                  analyzedAt: true,
-                  callSummary: true,
-                  memorySyncedAt: true,
-                },
-              },
-            },
+            select: ownerEcInclude,
           })
         : null;
 
@@ -103,36 +109,12 @@ export async function GET(
     if (latestVoiceCall && shouldRefreshVoiceCallStatus(latestVoiceCall)) {
       try {
         await refreshVoiceCallFromProvider(latestVoiceCall.id);
-        ownerConversationTarget = await prisma.contributor.findFirst({
+        ownerConversationTarget = await prisma.emberContributor.findFirst({
           where: {
             imageId,
-            userId: auth.user.id,
+            contributor: { userId: auth.user.id },
           },
-          select: {
-            id: true,
-            token: true,
-            phoneNumber: true,
-            user: {
-              select: {
-                phoneNumber: true,
-              },
-            },
-            voiceCalls: {
-              orderBy: { createdAt: 'desc' },
-              take: 1,
-              select: {
-                id: true,
-                status: true,
-                startedAt: true,
-                endedAt: true,
-                createdAt: true,
-                updatedAt: true,
-                analyzedAt: true,
-                callSummary: true,
-                memorySyncedAt: true,
-              },
-            },
-          },
+          select: ownerEcInclude,
         });
       } catch (refreshError) {
         console.error('Failed to refresh owner wiki voice call from provider:', refreshError);
@@ -164,16 +146,20 @@ export async function GET(
           startMs: true,
           endMs: true,
           createdAt: true,
-          contributor: {
+          emberContributor: {
             select: {
-              name: true,
-              email: true,
-              phoneNumber: true,
-              user: {
+              contributor: {
                 select: {
-                  firstName: true,
-                  lastName: true,
+                  name: true,
                   email: true,
+                  phoneNumber: true,
+                  user: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                    },
+                  },
                 },
               },
             },
@@ -181,23 +167,26 @@ export async function GET(
         },
       });
 
-      voiceCallClips = clips.map((clip) => ({
-        id: clip.id,
-        title: clip.title,
-        quote: clip.quote,
-        significance: clip.significance,
-        audioUrl: clip.audioUrl,
-        startMs: clip.startMs,
-        endMs: clip.endMs,
-        createdAt: clip.createdAt,
-        contributorName:
-          clip.contributor.name ||
-          getUserDisplayName(clip.contributor.user) ||
-          clip.contributor.email ||
-          clip.contributor.user?.email ||
-          clip.contributor.phoneNumber ||
-          'Contributor',
-      }));
+      voiceCallClips = clips.map((clip) => {
+        const c = clip.emberContributor.contributor;
+        return {
+          id: clip.id,
+          title: clip.title,
+          quote: clip.quote,
+          significance: clip.significance,
+          audioUrl: clip.audioUrl,
+          startMs: clip.startMs,
+          endMs: clip.endMs,
+          createdAt: clip.createdAt,
+          contributorName:
+            c.name ||
+            getUserDisplayName(c.user) ||
+            c.email ||
+            c.user?.email ||
+            c.phoneNumber ||
+            'Contributor',
+        };
+      });
     } catch (voiceClipError) {
       console.error('Error loading wiki voice call clips:', voiceClipError);
     }
@@ -210,9 +199,10 @@ export async function GET(
         ? {
             id: ownerConversationTarget.id,
             token: ownerConversationTarget.token,
-            phoneNumber: ownerConversationTarget.phoneNumber,
+            phoneNumber: ownerConversationTarget.contributor.phoneNumber,
             phoneAvailable: Boolean(
-              ownerConversationTarget.phoneNumber || ownerConversationTarget.user?.phoneNumber
+              ownerConversationTarget.contributor.phoneNumber ||
+                ownerConversationTarget.contributor.user?.phoneNumber
             ),
             latestVoiceCall: ownerConversationTarget.voiceCalls[0] || null,
           }

@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await startVoiceCallForContributor({
-      contributorId,
+      emberContributorId: contributorId,
       initiatedBy: 'owner',
     });
 

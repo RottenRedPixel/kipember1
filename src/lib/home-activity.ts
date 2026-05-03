@@ -104,12 +104,17 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
           participantType: true,
           participantId: true,
           personaName: true,
-          contributor: {
+          emberContributor: {
             select: {
               id: true,
-              name: true,
-              email: true,
-              user: { select: { id: true, firstName: true, lastName: true, email: true, avatarFilename: true } },
+              contributor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  user: { select: { id: true, firstName: true, lastName: true, email: true, avatarFilename: true } },
+                },
+              },
             },
           },
           user: { select: { id: true, firstName: true, lastName: true, email: true, avatarFilename: true } },
@@ -156,7 +161,8 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
     // Record the participant's face if we don't already have MAX_FACES_PER_EMBER.
     if (bucket.facesByKey.size < MAX_FACES_PER_EMBER) {
       const s = m.session;
-      const linkedUser = s.user ?? s.contributor?.user ?? null;
+      const sessionContributor = s.emberContributor?.contributor ?? null;
+      const linkedUser = s.user ?? sessionContributor?.user ?? null;
       let key: string;
       let name: string;
       let avatarUrl: string | null = null;
@@ -164,9 +170,9 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
         key = `u:${linkedUser.id}`;
         name = getUserDisplayName(linkedUser) || linkedUser.email || 'Contributor';
         avatarUrl = linkedUser.avatarFilename ? `/api/uploads/${linkedUser.avatarFilename}` : null;
-      } else if (s.contributor) {
-        key = `c:${s.contributor.id}`;
-        name = s.contributor.name || s.contributor.email || 'Contributor';
+      } else if (sessionContributor) {
+        key = `c:${sessionContributor.id}`;
+        name = sessionContributor.name || sessionContributor.email || 'Contributor';
       } else {
         key = `g:${s.participantType}:${s.participantId}`;
         name = s.personaName || 'Guest';
@@ -221,10 +227,12 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
     at: w.updatedAt,
   }));
 
-  // --- Guest views: GuestView rows on contributors whose ember the user owns ---
+  // --- Guest views: GuestView rows on contributors whose owner is this user.
+  // Pool contributors no longer have a direct ember, so we resolve each guest
+  // view's "ember" via the contributor's most recent EmberContributor row.
   const guestViews = await prisma.guestView.findMany({
     where: {
-      contributor: { image: { ownerId: userId } },
+      contributor: { ownerId: userId },
       ...(sinceGuestViews ? { viewedAt: { gt: sinceGuestViews } } : {}),
     },
     orderBy: { viewedAt: 'desc' },
@@ -233,8 +241,14 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
       viewedAt: true,
       contributor: {
         select: {
-          image: {
-            select: { id: true, title: true, mediaType: true, filename: true, posterFilename: true },
+          emberContributors: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: {
+              image: {
+                select: { id: true, title: true, mediaType: true, filename: true, posterFilename: true },
+              },
+            },
           },
         },
       },
@@ -244,7 +258,9 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
   type GuestBucket = { emberId: string; emberTitle: string | null; thumb: HomeActivityThumb; count: number; at: Date };
   const guestBuckets = new Map<string, GuestBucket>();
   for (const gv of guestViews) {
-    const img = gv.contributor.image;
+    const ec = gv.contributor.emberContributors[0];
+    if (!ec) continue;
+    const img = ec.image;
     let bucket = guestBuckets.get(img.id);
     if (!bucket) {
       bucket = {

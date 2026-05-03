@@ -33,7 +33,7 @@ model Image {
   createdAt    DateTime      @default(now())
   owner        User          @relation("OwnedImages", fields: [ownerId], references: [id], onDelete: Cascade)
   analysis     ImageAnalysis?
-  contributors Contributor[]
+  emberContributors EmberContributor[]
   wiki         Wiki?
   snapshot     Snapshot?
   emberSessions EmberSession[]
@@ -93,28 +93,52 @@ model ImageAnalysis {
   updatedAt         DateTime @updatedAt
 }
 
+// A person in an owner's contributor pool. One row per (owner, person) —
+// the same person invited to two embers is still ONE row here, with two
+// EmberContributor join rows for the per-ember relationships.
 model Contributor {
   id           String        @id @default(cuid())
+  ownerId      String
+  owner        User          @relation("OwnedContributors", fields: [ownerId], references: [id], onDelete: Cascade)
   phoneNumber  String?
   email        String?
   name         String?
-  token        String        @unique @default(cuid()) // Secure token for web access
-  inviteSent   Boolean       @default(false)
-  imageId      String
   userId       String?
-  image        Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  emberSession EmberSession?
-  voiceCalls   VoiceCall[]
-  voiceCallClips VoiceCallClip[]
-  tags         ImageTag[]
-  memoryClaims MemoryClaim[]
+  emberContributors EmberContributor[]
   guestViews   GuestView[]
   createdAt    DateTime      @default(now())
 
-  @@index([imageId, createdAt])
+  // Pool dedup: one entry per (owner, person). Each identity dimension
+  // (account, email, phone) is unique within the owner's pool.
+  @@unique([ownerId, userId])
+  @@unique([ownerId, email])
+  @@unique([ownerId, phoneNumber])
+  @@index([ownerId, createdAt])
   @@index([userId, createdAt])
-  @@unique([imageId, userId])
+}
+
+// Per-ember attachment of a Contributor to an Image. Holds the share
+// token (per-ember access link) and per-ember invite state, and is the
+// FK target for everything that's scoped to (this contributor, this
+// ember): the chat session, voice calls, tags, and memory claims.
+model EmberContributor {
+  id            String        @id @default(cuid())
+  contributorId String
+  contributor   Contributor   @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  imageId       String
+  image         Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  token         String        @unique @default(cuid())
+  inviteSent    Boolean       @default(false)
+  emberSession  EmberSession?
+  voiceCalls    VoiceCall[]
+  voiceCallClips VoiceCallClip[]
+  tags          ImageTag[]
+  memoryClaims  MemoryClaim[]
+  createdAt     DateTime      @default(now())
+
+  @@unique([contributorId, imageId])
+  @@index([imageId, createdAt])
 }
 
 model GuestView {
@@ -132,8 +156,8 @@ model EmberSession {
   image            Image          @relation(fields: [imageId], references: [id], onDelete: Cascade)
   userId           String?
   user             User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contributorId    String?        @unique
-  contributor      Contributor?   @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  emberContributorId String?       @unique
+  emberContributor EmberContributor? @relation(fields: [emberContributorId], references: [id], onDelete: Cascade)
   browserId        String?
   participantType  String                             // owner | contributor | guest
   participantId    String                             // user, contributor, or browser identifier for session grouping
@@ -182,8 +206,8 @@ model MemoryClaim {
   image           Image                 @relation(fields: [imageId], references: [id], onDelete: Cascade)
   emberMessageId  String?
   emberMessage    EmberMessage?         @relation(fields: [emberMessageId], references: [id], onDelete: SetNull)
-  contributorId   String?
-  contributor     Contributor?          @relation(fields: [contributorId], references: [id], onDelete: SetNull)
+  emberContributorId String?
+  emberContributor EmberContributor?    @relation(fields: [emberContributorId], references: [id], onDelete: SetNull)
   userId          String?
   user            User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
   sourceSessionId String?
@@ -208,7 +232,7 @@ model MemoryClaim {
   @@index([imageId, status])
   @@index([emberMessageId])
   @@index([sourceSessionId, createdAt])
-  @@index([contributorId, createdAt])
+  @@index([emberContributorId, createdAt])
   @@index([userId, createdAt])
 }
 
@@ -326,6 +350,11 @@ model User {
   sessions             UserSession[]
   authChallenges       AuthChallenge[]
   ownedImages          Image[]      @relation("OwnedImages")
+  // Contributors I've added to my pool (people I might invite to one or
+  // more of my embers). One row per (owner, person), not per ember.
+  ownedContributors    Contributor[] @relation("OwnedContributors")
+  // Contributor pool entries that point AT me (when someone else added me
+  // to their pool because my account email/phone matched theirs).
   contributorRecords   Contributor[]
   sentFriendships      Friendship[] @relation("FriendshipRequester")
   receivedFriendships  Friendship[] @relation("FriendshipAddressee")
@@ -399,34 +428,34 @@ model Friendship {
 }
 
 model ImageTag {
-  id              String       @id @default(cuid())
-  imageId         String
-  userId          String?
-  contributorId   String?
-  createdByUserId String
-  label           String
-  email           String?
-  phoneNumber     String?
-  leftPct         Float?
-  topPct          Float?
-  widthPct        Float?
-  heightPct       Float?
-  createdAt       DateTime     @default(now())
-  image           Image        @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  user            User?        @relation("TaggedUserImages", fields: [userId], references: [id], onDelete: SetNull)
-  contributor     Contributor? @relation(fields: [contributorId], references: [id], onDelete: SetNull)
-  createdByUser   User         @relation("CreatedImageTags", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  id                 String            @id @default(cuid())
+  imageId            String
+  userId             String?
+  emberContributorId String?
+  createdByUserId    String
+  label              String
+  email              String?
+  phoneNumber        String?
+  leftPct            Float?
+  topPct             Float?
+  widthPct           Float?
+  heightPct          Float?
+  createdAt          DateTime          @default(now())
+  image              Image             @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  user               User?             @relation("TaggedUserImages", fields: [userId], references: [id], onDelete: SetNull)
+  emberContributor   EmberContributor? @relation(fields: [emberContributorId], references: [id], onDelete: SetNull)
+  createdByUser      User              @relation("CreatedImageTags", fields: [createdByUserId], references: [id], onDelete: Cascade)
 
   @@index([imageId, createdAt])
   @@index([userId, createdAt])
-  @@index([contributorId, createdAt])
+  @@index([emberContributorId, createdAt])
 }
 
 
 model VoiceCall {
   id                         String           @id @default(cuid())
-  contributorId              String
-  contributor                Contributor      @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  emberContributorId         String
+  emberContributor           EmberContributor @relation(fields: [emberContributorId], references: [id], onDelete: Cascade)
   emberSessionId             String?
   emberSession               EmberSession?    @relation(fields: [emberSessionId], references: [id], onDelete: SetNull)
   retellCallId               String           @unique
@@ -461,15 +490,15 @@ model VoiceCall {
   clips                      VoiceCallClip[]
   events                     VoiceCallEvent[]
 
-  @@index([contributorId, createdAt])
+  @@index([emberContributorId, createdAt])
   @@index([emberSessionId, createdAt])
 }
 
 model VoiceCallClip {
-  id            String      @id @default(cuid())
-  imageId       String
-  contributorId String
-  voiceCallId   String
+  id                 String      @id @default(cuid())
+  imageId            String
+  emberContributorId String
+  voiceCallId        String
   sortOrder     Int         @default(0)
   title         String
   quote         String
@@ -481,12 +510,12 @@ model VoiceCallClip {
   canUseForTitle Boolean    @default(false)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-  image         Image       @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  contributor   Contributor @relation(fields: [contributorId], references: [id], onDelete: Cascade)
-  voiceCall     VoiceCall   @relation(fields: [voiceCallId], references: [id], onDelete: Cascade)
+  image            Image            @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberContributor EmberContributor @relation(fields: [emberContributorId], references: [id], onDelete: Cascade)
+  voiceCall        VoiceCall        @relation(fields: [voiceCallId], references: [id], onDelete: Cascade)
 
   @@index([imageId, createdAt])
-  @@index([contributorId, createdAt])
+  @@index([emberContributorId, createdAt])
   @@index([voiceCallId, createdAt])
 }
 

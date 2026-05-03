@@ -178,8 +178,10 @@ const ENDED_REFRESH_MS = 8 * 1000;
 const ENDED_REFRESH_WINDOW_MS = 90 * 1000;
 
 type CallSessionContributor = {
+  /** EmberContributor.id (per-ember row). */
   id: string;
   imageId: string;
+  /** Pool contributor's userId (the User account this contributor maps to). */
   userId: string | null;
   image: {
     ownerId: string;
@@ -258,19 +260,19 @@ function truncateDynamicValue(value: string | null, maxLength: number): string |
 }
 
 async function buildPriorMemoryContext({
-  contributorId,
+  emberContributorId,
   emberSessionId,
 }: {
-  contributorId: string;
+  emberContributorId: string;
   emberSessionId?: string | null;
 }): Promise<PriorMemoryContext> {
   const sessionFilters = [
-    { contributorId },
+    { emberContributorId },
     ...(emberSessionId ? [{ id: emberSessionId }] : []),
     {
       voiceCalls: {
         some: {
-          contributorId,
+          emberContributorId,
         },
       },
     },
@@ -291,7 +293,7 @@ async function buildPriorMemoryContext({
     }),
     prisma.voiceCall.findMany({
       where: {
-        contributorId,
+        emberContributorId,
         memorySyncedAt: {
           not: null,
         },
@@ -387,6 +389,7 @@ async function ensureCallEmberSession({
     sessionType: 'call',
     ...participant,
     userId: participant.participantType === 'owner' ? contributor.userId : null,
+    emberContributorId: contributor.id,
     status: 'active',
     currentStep: 'context',
   });
@@ -415,13 +418,18 @@ async function upsertVoiceCallRecord(
   rawPayload: unknown
 ) {
   const metadata = getStringMetadata(call);
-  const contributorId = metadata.contributorId;
+  // Accept both the new key (emberContributorId) and the legacy key
+  // (contributorId — historically pointed at Contributor.id, now expected
+  // to be EmberContributor.id since callers were updated alongside the
+  // schema migration).
+  const emberContributorId =
+    metadata.emberContributorId || metadata.contributorId;
   // Support both new (emberSessionId) and legacy (conversationId) metadata keys
   const emberSessionId = metadata.emberSessionId || metadata.conversationId || null;
   const initiatedBy = metadata.initiatedBy ?? 'system';
 
-  if (!contributorId) {
-    throw new Error('Voice call metadata is missing contributorId');
+  if (!emberContributorId) {
+    throw new Error('Voice call metadata is missing emberContributorId');
   }
 
   const existing = await prisma.voiceCall.findUnique({
@@ -430,7 +438,7 @@ async function upsertVoiceCallRecord(
 
   const callRecord = call as unknown as Record<string, unknown>;
   const baseData = {
-    contributorId,
+    emberContributorId,
     emberSessionId: emberSessionId || null,
     initiatedBy,
     retellCallId: call.call_id,
@@ -494,8 +502,9 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
   const voiceCall = await prisma.voiceCall.findUnique({
     where: { id: voiceCallId },
     include: {
-      contributor: {
+      emberContributor: {
         include: {
+          contributor: true,
           image: true,
         },
       },
@@ -508,11 +517,11 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
 
   const session = await ensureCallEmberSession({
     contributor: {
-      id: voiceCall.contributorId,
-      imageId: voiceCall.contributor.imageId,
-      userId: voiceCall.contributor.userId,
+      id: voiceCall.emberContributorId,
+      imageId: voiceCall.emberContributor.imageId,
+      userId: voiceCall.emberContributor.contributor.userId,
       image: {
-        ownerId: voiceCall.contributor.image.ownerId,
+        ownerId: voiceCall.emberContributor.image.ownerId,
       },
     },
     emberSessionId: voiceCall.emberSessionId,
@@ -520,9 +529,9 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
 
   const extracted = await extractInterviewFromTranscript(voiceCall.transcript);
   const contributorLabel =
-    voiceCall.contributor.name?.trim() ||
-    voiceCall.contributor.email?.trim() ||
-    voiceCall.contributor.phoneNumber?.trim() ||
+    voiceCall.emberContributor.contributor.name?.trim() ||
+    voiceCall.emberContributor.contributor.email?.trim() ||
+    voiceCall.emberContributor.contributor.phoneNumber?.trim() ||
     'Contributor';
   const transcriptSegments = parseVoiceCallTranscriptSegments({
     transcript: voiceCall.transcript,
@@ -530,7 +539,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     contributorName: contributorLabel,
   });
   const extractedClips = await extractImportantVoiceCallClips({
-    imageTitle: getEmberTitle(voiceCall.contributor.image),
+    imageTitle: getEmberTitle(voiceCall.emberContributor.image),
     contributorName: contributorLabel,
     transcript: voiceCall.transcript,
     segments: transcriptSegments,
@@ -570,10 +579,10 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
   if (userTurnsText) {
     await extractAllClaimsFromContent(
       {
-        imageId: voiceCall.contributor.imageId,
+        imageId: voiceCall.emberContributor.imageId,
         sessionId: session.id,
-        contributorId: voiceCall.contributorId,
-        userId: voiceCall.contributor.userId,
+        emberContributorId: voiceCall.emberContributorId,
+        userId: voiceCall.emberContributor.contributor.userId,
         emberMessageId: null,
         source: 'voice_call',
         questionType: 'context',
@@ -609,8 +618,8 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
   if (extractedClips.length > 0) {
     await prisma.voiceCallClip.createMany({
       data: extractedClips.map((clip) => ({
-        imageId: voiceCall.contributor.imageId,
-        contributorId: voiceCall.contributorId,
+        imageId: voiceCall.emberContributor.imageId,
+        emberContributorId: voiceCall.emberContributorId,
         voiceCallId: voiceCall.id,
         sortOrder: clip.sortOrder,
         title: clip.title,
@@ -627,7 +636,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
 
   if (hasInterviewResponses || hasInterviewSummary) {
     try {
-      await generateWikiForImage(voiceCall.contributor.imageId);
+      await generateWikiForImage(voiceCall.emberContributor.imageId);
     } catch (error) {
       console.error('Failed to auto-generate wiki after voice sync:', error);
     }
@@ -677,10 +686,11 @@ export async function refreshVoiceCallFromProvider(voiceCallId: string) {
   });
 }
 
-async function prepareVoiceCallContext(contributorId: string) {
-  const contributor = await prisma.contributor.findUnique({
-    where: { id: contributorId },
+async function prepareVoiceCallContext(emberContributorId: string) {
+  const emberContributor = await prisma.emberContributor.findUnique({
+    where: { id: emberContributorId },
     include: {
+      contributor: true,
       image: true,
       voiceCalls: {
         orderBy: { createdAt: 'desc' },
@@ -689,15 +699,17 @@ async function prepareVoiceCallContext(contributorId: string) {
     },
   });
 
-  if (!contributor) {
+  if (!emberContributor) {
     throw new Error('Contributor not found');
   }
+
+  const { contributor, image } = emberContributor;
 
   if (!contributor.phoneNumber) {
     throw new Error('Contributor does not have a phone number for voice calls');
   }
 
-  const latestCall = contributor.voiceCalls[0];
+  const latestCall = emberContributor.voiceCalls[0];
   if (
     latestCall &&
     ACTIVE_CALL_STATUSES.has(latestCall.status) &&
@@ -708,27 +720,27 @@ async function prepareVoiceCallContext(contributorId: string) {
 
   const session = await ensureCallEmberSession({
     contributor: {
-      id: contributor.id,
-      imageId: contributor.imageId,
+      id: emberContributor.id,
+      imageId: emberContributor.imageId,
       userId: contributor.userId,
       image: {
-        ownerId: contributor.image.ownerId,
+        ownerId: image.ownerId,
       },
     },
   });
 
   const [priorMemoryContext, emberContext] = await Promise.all([
     buildPriorMemoryContext({
-      contributorId: contributor.id,
+      emberContributorId: emberContributor.id,
       emberSessionId: session.id,
     }),
-    loadEmberContext(contributor.imageId),
+    loadEmberContext(emberContributor.imageId),
   ]);
 
   const dynamicVariables = pickDynamicVariables({
     contributor_name: contributor.name,
-    image_title: getEmberTitle(contributor.image),
-    image_description: contributor.image.description,
+    image_title: getEmberTitle(image),
+    image_description: image.description,
     prior_interview_count:
       priorMemoryContext.priorInterviewCount > 0
         ? String(priorMemoryContext.priorInterviewCount)
@@ -746,21 +758,23 @@ async function prepareVoiceCallContext(contributorId: string) {
   });
 
   return {
+    emberContributor,
     contributor,
+    image,
     session,
     dynamicVariables,
   };
 }
 
 export async function startVoiceCallForContributor({
-  contributorId,
+  emberContributorId,
   initiatedBy,
 }: {
-  contributorId: string;
+  emberContributorId: string;
   initiatedBy: 'owner' | 'contributor';
 }) {
-  const { contributor, session, dynamicVariables } =
-    await prepareVoiceCallContext(contributorId);
+  const { emberContributor, contributor, session, dynamicVariables } =
+    await prepareVoiceCallContext(emberContributorId);
 
   if (!contributor.phoneNumber) {
     throw new Error('Contributor does not have a phone number for voice calls');
@@ -769,9 +783,9 @@ export async function startVoiceCallForContributor({
   const call = await createRetellPhoneCall({
     toNumber: contributor.phoneNumber,
     metadata: {
-      contributorId: contributor.id,
+      emberContributorId: emberContributor.id,
       emberSessionId: session.id,
-      imageId: contributor.imageId,
+      imageId: emberContributor.imageId,
       initiatedBy,
     },
     dynamicVariables,
@@ -779,7 +793,7 @@ export async function startVoiceCallForContributor({
 
   const voiceCall = await prisma.voiceCall.create({
     data: {
-      contributorId: contributor.id,
+      emberContributorId: emberContributor.id,
       emberSessionId: session.id,
       initiatedBy,
       retellCallId: call.call_id,
@@ -804,20 +818,20 @@ export async function startVoiceCallForContributor({
 }
 
 export async function startWebVoiceCallForContributor({
-  contributorId,
+  emberContributorId,
   initiatedBy,
 }: {
-  contributorId: string;
+  emberContributorId: string;
   initiatedBy: 'owner' | 'contributor';
 }) {
-  const { contributor, session, dynamicVariables } =
-    await prepareVoiceCallContext(contributorId);
+  const { emberContributor, session, dynamicVariables } =
+    await prepareVoiceCallContext(emberContributorId);
 
   const call = await createRetellWebCall({
     metadata: {
-      contributorId: contributor.id,
+      emberContributorId: emberContributor.id,
       emberSessionId: session.id,
-      imageId: contributor.imageId,
+      imageId: emberContributor.imageId,
       initiatedBy,
     },
     dynamicVariables,
@@ -825,7 +839,7 @@ export async function startWebVoiceCallForContributor({
 
   const voiceCall = await prisma.voiceCall.create({
     data: {
-      contributorId: contributor.id,
+      emberContributorId: emberContributor.id,
       emberSessionId: session.id,
       initiatedBy,
       retellCallId: call.call_id,

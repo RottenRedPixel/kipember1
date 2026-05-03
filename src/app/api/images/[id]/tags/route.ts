@@ -75,29 +75,33 @@ export async function POST(
     }
 
     if (typeof contributorId === 'string' && contributorId) {
-      const contributor = await prisma.contributor.findFirst({
+      const ec = await prisma.emberContributor.findFirst({
         where: {
           id: contributorId,
           imageId: id,
         },
         select: {
           id: true,
-          name: true,
-          email: true,
-          phoneNumber: true,
-          userId: true,
+          contributor: {
+            select: {
+              name: true,
+              email: true,
+              phoneNumber: true,
+              userId: true,
+            },
+          },
         },
       });
 
-      if (!contributor) {
+      if (!ec) {
         return NextResponse.json({ error: 'Contributor not found' }, { status: 404 });
       }
 
-      linkedContributorId = contributor.id;
-      linkedUserId = linkedUserId || contributor.userId || null;
-      tagLabel = contributor.name || contributor.email || tagLabel;
-      tagEmail = contributor.email || tagEmail;
-      tagPhoneNumber = normalizePhone(contributor.phoneNumber) || tagPhoneNumber;
+      linkedContributorId = ec.id;
+      linkedUserId = linkedUserId || ec.contributor.userId || null;
+      tagLabel = ec.contributor.name || ec.contributor.email || tagLabel;
+      tagEmail = ec.contributor.email || tagEmail;
+      tagPhoneNumber = normalizePhone(ec.contributor.phoneNumber) || tagPhoneNumber;
     }
 
     if (!tagLabel) {
@@ -108,7 +112,7 @@ export async function POST(
       data: {
         imageId: id,
         userId: linkedUserId,
-        contributorId: linkedContributorId,
+        emberContributorId: linkedContributorId,
         createdByUserId: auth.user.id,
         label: tagLabel,
         email: tagEmail,
@@ -128,13 +132,18 @@ export async function POST(
             phoneNumber: true,
           },
         },
-        contributor: {
+        emberContributor: {
           select: {
             id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
             inviteSent: true,
+            contributor: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+              },
+            },
           },
         },
       },

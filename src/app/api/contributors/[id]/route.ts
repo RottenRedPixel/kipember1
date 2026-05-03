@@ -15,31 +15,32 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const contributor = await ensureOwnedContributorAccess(auth.user.id, id);
+    const emberContributor = await ensureOwnedContributorAccess(auth.user.id, id);
 
-    if (!contributor) {
+    if (!emberContributor) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
+    const pool = emberContributor.contributor;
     const body = await request.json();
     const name =
       body?.name === null
         ? null
         : typeof body?.name === 'string'
         ? body.name.trim() || null
-        : contributor.name;
+        : pool.name;
     const phoneNumber =
       body?.phoneNumber === null
         ? null
         : typeof body?.phoneNumber === 'string'
         ? normalizePhone(body.phoneNumber)
-        : contributor.phoneNumber;
+        : pool.phoneNumber;
     const email =
       body?.email === null
         ? null
         : typeof body?.email === 'string'
         ? normalizeEmail(body.email)
-        : contributor.email;
+        : pool.email;
 
     if (!phoneNumber && !email) {
       return NextResponse.json(
@@ -48,10 +49,11 @@ export async function PATCH(
       );
     }
 
+    // Within the owner's pool, identity (phone/email) must remain unique.
     const existing = await prisma.contributor.findFirst({
       where: {
-        imageId: contributor.image.id,
-        id: { not: contributor.id },
+        ownerId: pool.ownerId,
+        id: { not: pool.id },
         OR: [
           ...(phoneNumber ? [{ phoneNumber }] : []),
           ...(email ? [{ email }] : []),
@@ -61,13 +63,13 @@ export async function PATCH(
 
     if (existing) {
       return NextResponse.json(
-        { error: 'That contributor is already attached to this Ember' },
+        { error: 'That contributor is already in your pool' },
         { status: 400 }
       );
     }
 
-    const updatedContributor = await prisma.contributor.update({
-      where: { id: contributor.id },
+    const updatedPool = await prisma.contributor.update({
+      where: { id: pool.id },
       data: {
         name,
         phoneNumber,
@@ -83,6 +85,12 @@ export async function PATCH(
             phoneNumber: true,
           },
         },
+      },
+    });
+
+    const refreshed = await prisma.emberContributor.findUnique({
+      where: { id: emberContributor.id },
+      include: {
         emberSession: {
           select: {
             status: true,
@@ -105,7 +113,19 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json(updatedContributor);
+    return NextResponse.json({
+      id: emberContributor.id,
+      imageId: emberContributor.imageId,
+      token: emberContributor.token,
+      inviteSent: emberContributor.inviteSent,
+      name: updatedPool.name,
+      email: updatedPool.email,
+      phoneNumber: updatedPool.phoneNumber,
+      userId: updatedPool.userId,
+      user: updatedPool.user,
+      emberSession: refreshed?.emberSession ?? null,
+      voiceCalls: refreshed?.voiceCalls ?? [],
+    });
   } catch (error) {
     console.error('Error updating contributor:', error);
     return NextResponse.json(

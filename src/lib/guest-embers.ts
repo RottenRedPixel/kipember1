@@ -107,16 +107,18 @@ export async function claimGuestMemoriesForUser({
       },
     });
 
+    // Reassign every contributor pool row that was linked to a guest user
+    // (either as the owner of the pool entry or as the user account it
+    // points at) to the now-claimed real user.
     await tx.contributor.updateMany({
       where: {
-        imageId: {
-          in: imageIds,
-        },
-        userId: {
-          in: guestOwnerIds,
-        },
+        OR: [
+          { ownerId: { in: guestOwnerIds } },
+          { userId: { in: guestOwnerIds } },
+        ],
       },
       data: {
+        ownerId: userId,
         userId,
         name: displayName,
         email,

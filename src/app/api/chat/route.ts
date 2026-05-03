@@ -27,8 +27,8 @@ async function resolveUserChatParticipant({
     where: { id: imageId },
     select: {
       ownerId: true,
-      contributors: {
-        where: { userId },
+      emberContributors: {
+        where: { contributor: { userId } },
         select: { id: true },
         take: 1,
       },
@@ -38,7 +38,7 @@ async function resolveUserChatParticipant({
   const participantType: EmberParticipantType =
     image?.ownerId === userId
       ? 'owner'
-      : image?.contributors.length
+      : image?.emberContributors.length
         ? 'contributor'
         : 'guest';
 

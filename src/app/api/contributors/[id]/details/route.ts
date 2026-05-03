@@ -22,22 +22,28 @@ export async function GET(
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    const detail = await prisma.contributor.findUnique({
+    const detail = await prisma.emberContributor.findUnique({
       where: { id: contributor.id },
       select: {
         id: true,
-        name: true,
-        email: true,
-        phoneNumber: true,
         inviteSent: true,
         createdAt: true,
-        user: {
+        contributor: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            name: true,
             email: true,
             phoneNumber: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phoneNumber: true,
+              },
+            },
           },
         },
         emberSession: {
@@ -78,7 +84,17 @@ export async function GET(
       return NextResponse.json({ error: 'Contributor not found' }, { status: 404 });
     }
 
-    return NextResponse.json(detail);
+    return NextResponse.json({
+      id: detail.id,
+      inviteSent: detail.inviteSent,
+      createdAt: detail.createdAt,
+      name: detail.contributor.name,
+      email: detail.contributor.email,
+      phoneNumber: detail.contributor.phoneNumber,
+      user: detail.contributor.user,
+      emberSession: detail.emberSession,
+      voiceCalls: detail.voiceCalls,
+    });
   } catch (error) {
     console.error('Error loading contributor details:', error);
     return NextResponse.json(

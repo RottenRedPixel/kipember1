@@ -34,8 +34,8 @@ async function resolveUserVoiceParticipant({
     where: { id: imageId },
     select: {
       ownerId: true,
-      contributors: {
-        where: { userId },
+      emberContributors: {
+        where: { contributor: { userId } },
         select: { id: true },
         take: 1,
       },
@@ -45,7 +45,7 @@ async function resolveUserVoiceParticipant({
   const participantType: EmberParticipantType =
     image?.ownerId === userId
       ? 'owner'
-      : image?.contributors.length
+      : image?.emberContributors.length
         ? 'contributor'
         : 'guest';
 

@@ -41,20 +41,19 @@ export async function POST(request: NextRequest) {
   }
 
   // Decode the dedupe key to a lookup filter scoped to this owner's pool.
-  // Source contributor must already exist on at least one of this owner's embers.
   const colonIdx = sourceKey.indexOf(':');
   const kind = colonIdx === -1 ? '' : sourceKey.slice(0, colonIdx);
   const value = colonIdx === -1 ? '' : sourceKey.slice(colonIdx + 1);
 
   let sourceWhere;
   if (kind === 'u' && value) {
-    sourceWhere = { userId: value, image: { ownerId: auth.user.id } };
+    sourceWhere = { ownerId: auth.user.id, userId: value };
   } else if (kind === 'e' && value) {
-    sourceWhere = { email: { equals: value, mode: 'insensitive' as const }, image: { ownerId: auth.user.id } };
+    sourceWhere = { ownerId: auth.user.id, email: { equals: value, mode: 'insensitive' as const } };
   } else if (kind === 'p' && value) {
-    sourceWhere = { phoneNumber: value, image: { ownerId: auth.user.id } };
+    sourceWhere = { ownerId: auth.user.id, phoneNumber: value };
   } else if (kind === 'r' && value) {
-    sourceWhere = { id: value, image: { ownerId: auth.user.id } };
+    sourceWhere = { ownerId: auth.user.id, id: value };
   } else {
     return NextResponse.json({ error: 'Invalid sourceKey' }, { status: 400 });
   }
@@ -63,6 +62,7 @@ export async function POST(request: NextRequest) {
     where: sourceWhere,
     orderBy: { createdAt: 'asc' },
     select: {
+      id: true,
       name: true,
       email: true,
       phoneNumber: true,
@@ -73,18 +73,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Source contributor not found in your pool' }, { status: 404 });
   }
 
-  // Idempotency: if a row already exists on this ember matching the same identity, return it.
-  // The Contributor model has a @@unique([imageId, userId]); we only enforce idempotency
-  // for linked-account contributors here. For email/phone-only entries the unique constraint
-  // doesn't apply, so we do an explicit findFirst.
-  const existing = await prisma.contributor.findFirst({
+  // Idempotent: if an EmberContributor row already exists for (pool, image), return it.
+  const existing = await prisma.emberContributor.findUnique({
     where: {
-      imageId,
-      OR: [
-        source.userId ? { userId: source.userId } : { userId: '__never_match__' },
-        source.email ? { email: { equals: source.email, mode: 'insensitive' as const } } : { id: '__never_match__' },
-        source.phoneNumber ? { phoneNumber: source.phoneNumber } : { id: '__never_match__' },
-      ],
+      contributorId_imageId: {
+        contributorId: source.id,
+        imageId,
+      },
     },
     select: { id: true },
   });
@@ -92,13 +87,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, contributorId: existing.id, alreadyOnEmber: true });
   }
 
-  const created = await prisma.contributor.create({
+  const created = await prisma.emberContributor.create({
     data: {
+      contributorId: source.id,
       imageId,
-      userId: source.userId,
-      name: source.name,
-      email: source.email,
-      phoneNumber: source.phoneNumber,
       // inviteSent stays false — they haven't been re-invited specifically for this ember yet.
     },
     select: { id: true },

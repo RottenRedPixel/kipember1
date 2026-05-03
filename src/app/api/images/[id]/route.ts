@@ -142,16 +142,20 @@ export async function GET(
                 createdAt: true,
               },
             },
-            contributors: {
+            emberContributors: {
               orderBy: { createdAt: 'asc' },
               include: {
-                user: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    email: true,
-                    phoneNumber: true,
+                contributor: {
+                  include: {
+                    user: {
+                      select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                        phoneNumber: true,
+                      },
+                    },
                   },
                 },
                 emberSession: {
@@ -200,8 +204,8 @@ export async function GET(
       }
 
       if (accessType === 'owner') {
-        const ownerContributorExists = image.contributors.some(
-          (contributor) => contributor.userId === auth.user.id
+        const ownerContributorExists = image.emberContributors.some(
+          (ec) => ec.contributor.userId === auth.user.id
         );
 
         if (!ownerContributorExists) {
@@ -215,7 +219,25 @@ export async function GET(
       }
 
       const viewerContributor =
-        image.contributors.find((contributor) => contributor.userId === auth.user.id) || null;
+        image.emberContributors.find((ec) => ec.contributor.userId === auth.user.id) || null;
+
+      // Flatten EmberContributors into the legacy contributor shape for the
+      // client. `id` is the EmberContributor.id (per-ember row), pool fields
+      // hoisted to the top level.
+      const flattenedContributors = image.emberContributors.map((ec) => ({
+        id: ec.id,
+        token: ec.token,
+        inviteSent: ec.inviteSent,
+        createdAt: ec.createdAt,
+        imageId: ec.imageId,
+        userId: ec.contributor.userId,
+        name: ec.contributor.name,
+        email: ec.contributor.email,
+        phoneNumber: ec.contributor.phoneNumber,
+        user: ec.contributor.user,
+        emberSession: ec.emberSession,
+        voiceCalls: ec.voiceCalls,
+      }));
 
       return NextResponse.json({
         id: image.id,
@@ -235,10 +257,10 @@ export async function GET(
         currentUserId: auth.user.id,
         viewerContributorId: viewerContributor?.id || null,
         viewerCanLeave: accessType === 'contributor' && Boolean(viewerContributor),
-        contributors: image.contributors,
+        contributors: flattenedContributors,
         ownerConversationTarget:
           accessType === 'owner'
-            ? image.contributors.find((contributor) => contributor.userId === auth.user.id) || null
+            ? flattenedContributors.find((c) => c.userId === auth.user.id) || null
             : null,
         attachments: [],
         tags: [],
@@ -265,17 +287,21 @@ export async function GET(
               createdAt: true,
             },
           },
-          contributors: {
+          emberContributors: {
             orderBy: { createdAt: 'asc' },
             include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  phoneNumber: true,
-                  avatarFilename: true,
+              contributor: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                      phoneNumber: true,
+                      avatarFilename: true,
+                    },
+                  },
                 },
               },
               emberSession: {
@@ -369,13 +395,18 @@ export async function GET(
                   phoneNumber: true,
                 },
               },
-              contributor: {
+              emberContributor: {
                 select: {
                   id: true,
-                  name: true,
-                  email: true,
-                  phoneNumber: true,
                   inviteSent: true,
+                  contributor: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                      phoneNumber: true,
+                    },
+                  },
                 },
               },
               createdByUser: {
@@ -446,7 +477,7 @@ export async function GET(
           select: {
             id: true,
             voiceCallId: true,
-            contributorId: true,
+            emberContributorId: true,
             title: true,
             quote: true,
             significance: true,
@@ -456,19 +487,24 @@ export async function GET(
             endMs: true,
             canUseForTitle: true,
             createdAt: true,
-            contributor: {
+            emberContributor: {
               select: {
                 id: true,
-                userId: true,
-                name: true,
-                email: true,
-                phoneNumber: true,
-                user: {
+                contributor: {
                   select: {
                     id: true,
-                    firstName: true,
-                    lastName: true,
+                    userId: true,
+                    name: true,
                     email: true,
+                    phoneNumber: true,
+                    user: {
+                      select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                      },
+                    },
                   },
                 },
               },
@@ -488,8 +524,8 @@ export async function GET(
     }
 
     if (accessType === 'owner') {
-      const ownerContributorExists = image.contributors.some(
-        (contributor) => contributor.userId === auth.user.id
+      const ownerContributorExists = image.emberContributors.some(
+        (ec) => ec.contributor.userId === auth.user.id
       );
 
       if (!ownerContributorExists) {
@@ -501,8 +537,8 @@ export async function GET(
         return NextResponse.json({ error: 'Image not found' }, { status: 404 });
       }
 
-      const ownerContributor = image.contributors.find(
-        (contributor) => contributor.userId === auth.user.id
+      const ownerContributor = image.emberContributors.find(
+        (ec) => ec.contributor.userId === auth.user.id
       );
       const latestVoiceCall = ownerContributor?.voiceCalls[0] || null;
 
@@ -522,7 +558,7 @@ export async function GET(
 
     const friends = accessType === 'owner' ? await getAcceptedFriends(auth.user.id) : [];
     const viewerContributor =
-      image.contributors.find((contributor) => contributor.userId === auth.user.id) || null;
+      image.emberContributors.find((ec) => ec.contributor.userId === auth.user.id) || null;
     const tagIdentityMap = new Map<
       string,
       {
@@ -554,21 +590,27 @@ export async function GET(
               phoneNumber: true,
             },
           },
-          contributor: {
+          emberContributor: {
             select: {
               id: true,
-              name: true,
-              email: true,
-              phoneNumber: true,
+              contributor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phoneNumber: true,
+                },
+              },
             },
           },
         },
       });
 
       for (const tag of priorTagIdentities) {
+        const tagContributor = tag.emberContributor?.contributor ?? null;
         const label =
           getUserDisplayName(tag.user) ||
-          tag.contributor?.name ||
+          tagContributor?.name ||
           tag.label.trim();
 
         if (!label) {
@@ -577,17 +619,17 @@ export async function GET(
 
         const email =
           tag.user?.email ||
-          tag.contributor?.email ||
+          tagContributor?.email ||
           tag.email ||
           '';
         const phoneNumber =
           tag.user?.phoneNumber ||
-          tag.contributor?.phoneNumber ||
+          tagContributor?.phoneNumber ||
           tag.phoneNumber ||
           '';
         const key =
           (tag.userId ? `user:${tag.userId}` : null) ||
-          (tag.contributorId ? `contributor:${tag.contributorId}` : null) ||
+          (tag.emberContributorId ? `contributor:${tag.emberContributorId}` : null) ||
           (email ? `email:${normalizeEmail(email)}` : null) ||
           (phoneNumber ? `phone:${normalizePhone(phoneNumber)}` : null) ||
           `label:${normalizeLabelKey(label)}`;
@@ -602,7 +644,7 @@ export async function GET(
           email,
           phoneNumber,
           userId: tag.userId,
-          contributorId: tag.contributorId,
+          contributorId: tag.emberContributorId,
         });
       }
     }
@@ -636,12 +678,26 @@ export async function GET(
         createdAt: string;
       }>;
     }> = [];
+    let guestChatMessages: Array<{
+      role: string;
+      content: string;
+      source: string;
+      imageFilename?: string | null;
+      audioUrl?: string | null;
+      createdAt: string;
+    }> = [];
+    const guestSessionIds = new Set<string>();
     try {
       const emberSessions = await prisma.emberSession.findMany({
         where: { imageId: id, sessionType: { in: ['chat', 'call', 'voice'] } },
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true, avatarFilename: true } },
-          contributor: { select: { id: true, name: true, email: true } },
+          emberContributor: {
+            select: {
+              id: true,
+              contributor: { select: { id: true, name: true, email: true } },
+            },
+          },
           messages: { orderBy: { createdAt: 'asc' } },
         },
       });
@@ -668,16 +724,38 @@ export async function GET(
         voiceMessages: VoiceTurn[];
       };
       const byPerson = new Map<string, PersonBucket>();
+      // Guest sessions are pooled into one aggregated block — different
+      // browsers can't be told apart by name, and the wiki shows them as a
+      // single "Guest Chat" card distinct from named contributor chats.
       for (const session of emberSessions) {
+        if (session.participantType === 'guest') {
+          for (const msg of session.messages) {
+            if (msg.questionType) continue;
+            // Voice/call don't currently happen for guests, but if they ever
+            // do, route to the regular bucket so they render with audio.
+            if (msg.source === 'voice' || session.sessionType === 'voice') continue;
+            guestChatMessages.push({
+              role: msg.role,
+              content: msg.content,
+              source: msg.source || 'web',
+              imageFilename: msg.imageFilename ?? null,
+              audioUrl: null as string | null,
+              createdAt: msg.createdAt.toISOString(),
+            });
+          }
+          if (session.messages.length > 0) guestSessionIds.add(session.id);
+          continue;
+        }
+        const sessionContributor = session.emberContributor?.contributor ?? null;
         const personName =
           getUserDisplayName(session.user) ||
-          session.contributor?.name ||
+          sessionContributor?.name ||
           session.user?.email ||
-          session.contributor?.email ||
-          (session.participantType === 'guest' ? 'Guest' : 'Contributor');
+          sessionContributor?.email ||
+          'Contributor';
         const personKey =
           session.userId ||
-          session.contributorId ||
+          session.emberContributorId ||
           session.participantId ||
           personName;
         const avatarUrl = session.user?.avatarFilename ? `/api/uploads/${session.user.avatarFilename}` : null;
@@ -749,6 +827,8 @@ export async function GET(
       console.error('Failed to load chatBlocks:', chatBlocksError);
       chatBlocks = [];
       voiceBlocks = [];
+      guestChatMessages = [];
+      guestSessionIds.clear();
     }
 
     // Build callBlocks: one block per Retell voice call, with parsed per-turn segments.
@@ -771,17 +851,17 @@ export async function GET(
       }>;
     }> = [];
     try {
-      for (const contributor of image.contributors) {
+      for (const ec of image.emberContributors) {
         const personName =
-          contributor.name ||
-          getUserDisplayName(contributor.user) ||
-          contributor.email ||
-          contributor.phoneNumber ||
+          ec.contributor.name ||
+          getUserDisplayName(ec.contributor.user) ||
+          ec.contributor.email ||
+          ec.contributor.phoneNumber ||
           'Contributor';
-        const avatarUrl = contributor.user?.avatarFilename
-          ? `/api/uploads/${contributor.user.avatarFilename}`
+        const avatarUrl = ec.contributor.user?.avatarFilename
+          ? `/api/uploads/${ec.contributor.user.avatarFilename}`
           : null;
-        for (const voiceCall of contributor.voiceCalls) {
+        for (const voiceCall of ec.voiceCalls) {
           const segments = parseVoiceCallTranscriptSegments({
             transcript: voiceCall.transcript ?? null,
             transcriptObjectJson: voiceCall.transcriptObjectJson ?? null,
@@ -835,10 +915,42 @@ export async function GET(
       currentUserId: auth.user.id,
       viewerContributorId: viewerContributor?.id || null,
       viewerCanLeave: accessType === 'contributor' && Boolean(viewerContributor),
-      contributors: image.contributors,
+      contributors: image.emberContributors.map((ec) => ({
+        id: ec.id,
+        token: ec.token,
+        inviteSent: ec.inviteSent,
+        createdAt: ec.createdAt,
+        imageId: ec.imageId,
+        userId: ec.contributor.userId,
+        name: ec.contributor.name,
+        email: ec.contributor.email,
+        phoneNumber: ec.contributor.phoneNumber,
+        user: ec.contributor.user,
+        emberSession: ec.emberSession,
+        voiceCalls: ec.voiceCalls,
+      })),
       ownerConversationTarget:
         accessType === 'owner'
-          ? image.contributors.find((contributor) => contributor.userId === auth.user.id) || null
+          ? (() => {
+              const ec = image.emberContributors.find(
+                (e) => e.contributor.userId === auth.user.id
+              );
+              if (!ec) return null;
+              return {
+                id: ec.id,
+                token: ec.token,
+                inviteSent: ec.inviteSent,
+                createdAt: ec.createdAt,
+                imageId: ec.imageId,
+                userId: ec.contributor.userId,
+                name: ec.contributor.name,
+                email: ec.contributor.email,
+                phoneNumber: ec.contributor.phoneNumber,
+                user: ec.contributor.user,
+                emberSession: ec.emberSession,
+                voiceCalls: ec.voiceCalls,
+              };
+            })()
           : null,
       attachments: image.attachments,
       tags: image.tags.map((tag) => ({
@@ -873,13 +985,16 @@ export async function GET(
       voiceCallClips: voiceCallClips.map((clip) => ({
         id: clip.id,
         voiceCallId: clip.voiceCallId,
-        contributorId: clip.contributorId,
-        contributorUserId: clip.contributor.user?.id || clip.contributor.userId || null,
+        contributorId: clip.emberContributorId,
+        contributorUserId:
+          clip.emberContributor.contributor.user?.id ||
+          clip.emberContributor.contributor.userId ||
+          null,
         contributorName:
-          clip.contributor.name ||
-          getUserDisplayName(clip.contributor.user) ||
-          clip.contributor.email ||
-          clip.contributor.phoneNumber ||
+          clip.emberContributor.contributor.name ||
+          getUserDisplayName(clip.emberContributor.contributor.user) ||
+          clip.emberContributor.contributor.email ||
+          clip.emberContributor.contributor.phoneNumber ||
           'Contributor',
         title: clip.title,
         quote: clip.quote,
@@ -904,6 +1019,15 @@ export async function GET(
       chatBlocks,
       voiceBlocks,
       callBlocks,
+      guestChatBlock:
+        guestChatMessages.length > 0
+          ? {
+              messages: guestChatMessages.sort(
+                (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              ),
+              sessionCount: guestSessionIds.size,
+            }
+          : null,
     });
   } catch (error) {
     console.error('Error fetching image:', error);

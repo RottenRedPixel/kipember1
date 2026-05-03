@@ -32,7 +32,7 @@ export async function POST(
     }
 
     const result = await startWebVoiceCallForContributor({
-      contributorId: contributor.id,
+      emberContributorId: contributor.id,
       initiatedBy: 'owner',
     });
 

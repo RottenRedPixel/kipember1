@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
+import { prisma } from '@/lib/db';
 import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { startVoiceCallForContributor } from '@/lib/voice-calls';
@@ -33,18 +34,23 @@ export async function POST(
     // Owner is automatically a contributor on their own memory. This
     // upsert also syncs name/phone/email from the user profile so the
     // call/text goes to whatever's currently on file.
-    const contributor = await ensureOwnerContributorForImage(
+    const emberContributor = await ensureOwnerContributorForImage(
       imageId,
       auth.user.id
     );
-    if (!contributor) {
+    if (!emberContributor) {
       return NextResponse.json(
         { error: 'Could not prepare contributor record' },
         { status: 500 }
       );
     }
 
-    if (!contributor.phoneNumber) {
+    const pool = await prisma.contributor.findUnique({
+      where: { id: emberContributor.contributorId },
+      select: { phoneNumber: true },
+    });
+
+    if (!pool?.phoneNumber) {
       return NextResponse.json(
         { error: 'Add a phone number to your profile first.' },
         { status: 400 }
@@ -53,13 +59,13 @@ export async function POST(
 
     if (mode === 'call') {
       const result = await startVoiceCallForContributor({
-        contributorId: contributor.id,
+        emberContributorId: emberContributor.id,
         initiatedBy: 'owner',
       });
       return NextResponse.json({ success: true, ...result });
     }
 
-    const smsResult = await sendOwnerSelfSms(contributor.id);
+    const smsResult = await sendOwnerSelfSms(emberContributor.id);
     if (!smsResult.success) {
       return NextResponse.json(
         { error: smsResult.error || 'Failed to send text' },

@@ -20,9 +20,10 @@ export async function POST(
       );
     }
 
-    const contributor = await prisma.contributor.findUnique({
+    const emberContributor = await prisma.emberContributor.findUnique({
       where: { token },
       include: {
+        contributor: true,
         image: {
           include: {
             owner: {
@@ -36,23 +37,23 @@ export async function POST(
       },
     });
 
-    if (!contributor || !isGuestUserEmail(contributor.image.owner.email)) {
+    if (!emberContributor || !isGuestUserEmail(emberContributor.image.owner.email)) {
       return NextResponse.json({ error: 'Guest memory not found' }, { status: 404 });
     }
 
     await prisma.$transaction([
       prisma.user.update({
-        where: { id: contributor.image.owner.id },
+        where: { id: emberContributor.image.owner.id },
         data: { phoneNumber: normalizedPhone },
       }),
       prisma.contributor.update({
-        where: { id: contributor.id },
+        where: { id: emberContributor.contributor.id },
         data: { phoneNumber: normalizedPhone },
       }),
     ]);
 
     const result = await startVoiceCallForContributor({
-      contributorId: contributor.id,
+      emberContributorId: emberContributor.id,
       initiatedBy: 'contributor',
     });
 

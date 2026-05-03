@@ -328,17 +328,34 @@ async function fetchImageForWiki(imageId: string) {
               email: true,
             },
           },
-          contributor: {
+          emberContributor: {
             select: {
               id: true,
-              name: true,
-              email: true,
+              contributor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
             },
           },
         },
       },
-      contributors: {
+      emberContributors: {
         include: {
+          contributor: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
           emberSession: {
             include: {
               messages: {
@@ -378,14 +395,6 @@ async function fetchImageForWiki(imageId: string) {
               },
             },
           },
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-            },
-          },
         },
       },
     },
@@ -403,19 +412,20 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     throw new Error('Image not found');
   }
 
-  const getContributorLabel = (contributor: (typeof image.contributors)[number]) =>
-    cleanInlineText(contributor.name) ||
-    cleanInlineText(getUserDisplayName(contributor.user)) ||
-    cleanInlineText(contributor.email) ||
-    cleanInlineText(contributor.phoneNumber) ||
+  type EmberContributorWithRels = (typeof image.emberContributors)[number];
+  const getContributorLabel = (ec: EmberContributorWithRels) =>
+    cleanInlineText(ec.contributor.name) ||
+    cleanInlineText(getUserDisplayName(ec.contributor.user)) ||
+    cleanInlineText(ec.contributor.email) ||
+    cleanInlineText(ec.contributor.phoneNumber) ||
     'Contributor';
 
-  const getContributorKind = (contributor: (typeof image.contributors)[number]) => {
-    if (contributor.userId && contributor.userId === image.ownerId) {
+  const getContributorKind = (ec: EmberContributorWithRels) => {
+    if (ec.contributor.userId && ec.contributor.userId === image.ownerId) {
       return 'owner' as const;
     }
 
-    if (contributor.userId) {
+    if (ec.contributor.userId) {
       return 'contributor' as const;
     }
 
@@ -424,8 +434,8 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   const renderSection = (title: string, body: string) => `## ${title}\n\n${body}`;
 
-  const voiceCallIds = image.contributors.flatMap((contributor) =>
-    contributor.voiceCalls.map((voiceCall) => voiceCall.id)
+  const voiceCallIds = image.emberContributors.flatMap((ec) =>
+    ec.voiceCalls.map((voiceCall) => voiceCall.id)
   );
   const voiceCallClipsByVoiceCallId = new Map<
     string,
@@ -524,11 +534,11 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   }> = [];
   const ownerStoryLabel = cleanInlineText(getUserDisplayName(image.owner)) || image.owner.email || 'Owner';
 
-  for (const contributor of image.contributors) {
-    const contributorLabel = getContributorLabel(contributor);
+  for (const ec of image.emberContributors) {
+    const contributorLabel = getContributorLabel(ec);
     const contributorSessionMessages = [
-      ...(contributor.emberSession?.messages || []),
-      ...contributor.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
+      ...(ec.emberSession?.messages || []),
+      ...ec.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
     ];
     const conversationResponses = contributorSessionMessages.filter(
       (m) => m.role === 'user' && m.questionType
@@ -546,22 +556,22 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       }
     }
 
-    for (const voiceCall of contributor.voiceCalls) {
+    for (const voiceCall of ec.voiceCalls) {
       const summary = cleanInlineText(voiceCall.callSummary);
       const transcript = cleanInlineText(voiceCall.transcript);
       const voiceCallClips = voiceCallClipsByVoiceCallId.get(voiceCall.id) || [];
 
       storyCircleEntries.push({
         contributorLabel,
-        kind: getContributorKind(contributor),
+        kind: getContributorKind(ec),
         createdAt: voiceCall.createdAt,
         summary,
         transcript,
         recordingUrl: voiceCall.recordingUrl,
         sourceLabel:
-          getContributorKind(contributor) === 'owner'
+          getContributorKind(ec) === 'owner'
             ? 'Owner voice interview'
-            : getContributorKind(contributor) === 'guest'
+            : getContributorKind(ec) === 'guest'
               ? 'Guest voice interview'
               : 'Contributor voice interview',
         askConversationExcerpt: null,
@@ -655,12 +665,12 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     if (dedupedAskNotes.length > 0 || askConversationMessages) {
       storyCircleEntries.push({
         contributorLabel,
-        kind: getContributorKind(contributor),
+        kind: getContributorKind(ec),
         createdAt:
           dedupedAskNotes[dedupedAskNotes.length - 1]?.createdAt ||
-          contributor.voiceCalls.find((voiceCall) => voiceCall.emberSession)?.emberSession?.updatedAt ||
-          contributor.emberSession?.updatedAt ||
-          contributor.createdAt,
+          ec.voiceCalls.find((voiceCall) => voiceCall.emberSession)?.emberSession?.updatedAt ||
+          ec.emberSession?.updatedAt ||
+          ec.createdAt,
         summary: null,
         transcript: null,
         recordingUrl: null,
@@ -763,16 +773,16 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   const confirmedPeople = Array.from(
     new Set(
       image.tags
-        .map((tag) => getUserDisplayName(tag.user) || tag.contributor?.name || tag.label)
+        .map((tag) => getUserDisplayName(tag.user) || tag.emberContributor?.contributor.name || tag.label)
         .map((label) => label?.trim())
         .filter((label): label is string => Boolean(label))
     )
   );
   const confirmedTags = image.tags
     .map((tag) => ({
-      label: (getUserDisplayName(tag.user) || tag.contributor?.name || tag.label || '').trim(),
+      label: (getUserDisplayName(tag.user) || tag.emberContributor?.contributor.name || tag.label || '').trim(),
       userId: tag.userId,
-      contributorId: tag.contributorId,
+      contributorId: tag.emberContributorId,
       leftPct: tag.leftPct,
       topPct: tag.topPct,
       widthPct: tag.widthPct,
@@ -830,11 +840,11 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   }
 
   const ownerLabel = cleanInlineText(getUserDisplayName(image.owner)) || image.owner.email;
-  const linkedContributors = image.contributors.filter(
-    (contributor) => getContributorKind(contributor) === 'contributor'
+  const linkedContributors = image.emberContributors.filter(
+    (ec) => getContributorKind(ec) === 'contributor'
   );
-  const guestContributors = image.contributors.filter(
-    (contributor) => getContributorKind(contributor) === 'guest'
+  const guestContributors = image.emberContributors.filter(
+    (ec) => getContributorKind(ec) === 'guest'
   );
 
   const contributorsSection =
@@ -842,12 +852,12 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       `Owner: ${ownerLabel}`,
       `Contributors: ${
         linkedContributors.length > 0
-          ? linkedContributors.map((contributor) => getContributorLabel(contributor)).join(', ')
+          ? linkedContributors.map((ec) => getContributorLabel(ec)).join(', ')
           : 'None yet'
       }`,
       `Guests: ${
         guestContributors.length > 0
-          ? guestContributors.map((contributor) => getContributorLabel(contributor)).join(', ')
+          ? guestContributors.map((ec) => getContributorLabel(ec)).join(', ')
           : 'None yet'
       }`,
     ]) || 'No contributors have been added yet.';
@@ -891,14 +901,14 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       : 'No voice recording or transcript has been added to the story circle yet.';
 
   const renderConversationSection = (
-    contributors: (typeof image.contributors),
+    contributors: (typeof image.emberContributors),
     emptyMessage: string
   ) => {
-    const blocks = contributors.flatMap((contributor) => {
-      const label = getContributorLabel(contributor);
+    const blocks = contributors.flatMap((ec) => {
+      const label = getContributorLabel(ec);
       const allMessages = [
-        ...(contributor.emberSession?.messages || []),
-        ...contributor.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
+        ...(ec.emberSession?.messages || []),
+        ...ec.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
       ];
       const conversationMessages = allMessages
         .map((message) => ({
@@ -942,7 +952,9 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       ? image.tags
           .map((tag) => {
             const details: string[] = [];
-            const contact = cleanInlineText(tag.user?.email || tag.contributor?.email || tag.email);
+            const contact = cleanInlineText(
+              tag.user?.email || tag.emberContributor?.contributor.email || tag.email
+            );
             if (contact) {
               details.push(contact);
             }
@@ -1024,7 +1036,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     renderSection(
       'Convos Between Owner & Ember',
       renderConversationSection(
-        image.contributors.filter((contributor) => getContributorKind(contributor) === 'owner'),
+        image.emberContributors.filter((ec) => getContributorKind(ec) === 'owner'),
         'No owner conversation with Ember has been recorded yet.'
       )
     ),

@@ -229,11 +229,11 @@ export async function GET(
     // Allow guest access via contributor token
     const guestToken = request.nextUrl.searchParams.get('token');
     if (guestToken) {
-      const contributor = await prisma.contributor.findUnique({
+      const emberContributor = await prisma.emberContributor.findUnique({
         where: { token: guestToken },
         select: { imageId: true },
       });
-      if (!contributor || contributor.imageId !== id) {
+      if (!emberContributor || emberContributor.imageId !== id) {
         return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
       }
     } else {

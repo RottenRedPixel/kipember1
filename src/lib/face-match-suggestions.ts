@@ -666,7 +666,7 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
       personKey,
       label: buildCandidateLabel(tag),
       userId: tag.userId,
-      contributorId: tag.contributorId,
+      contributorId: tag.emberContributorId,
       email: tag.email,
       phoneNumber: tag.phoneNumber,
       references: [

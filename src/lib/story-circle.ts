@@ -61,9 +61,10 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
   const image = await prisma.image.findUnique({
     where: { id: imageId },
     include: {
-      contributors: {
+      emberContributors: {
         orderBy: { createdAt: 'asc' },
         include: {
+          contributor: true,
           emberSession: {
             include: {
               messages: {
@@ -98,17 +99,17 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
 
   const entries: StoryCircleInternalEntry[] = [];
 
-  image.contributors.forEach((contributor, contributorIndex) => {
-    const contributorLabel = getContributorLabel(contributor.name, contributorIndex);
+  image.emberContributors.forEach((ec, contributorIndex) => {
+    const contributorLabel = getContributorLabel(ec.contributor.name, contributorIndex);
     const existingConversationKeys = new Set<string>();
 
-    for (const voiceCall of contributor.voiceCalls) {
+    for (const voiceCall of ec.voiceCalls) {
       const summary = voiceCall.callSummary?.trim();
       entries.push({
         id: `voice-call-${voiceCall.id}`,
         actor: 'system',
         source: 'voice',
-        contributorName: contributor.name,
+        contributorName: ec.contributor.name,
         participantLabel: contributorLabel,
         content: summary
           ? `Voice call with ${contributorLabel}. ${summary}`
@@ -119,8 +120,8 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
     }
 
     const conversationMessages = [
-      ...(contributor.emberSession?.messages || []),
-      ...contributor.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
+      ...(ec.emberSession?.messages || []),
+      ...ec.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
     ];
 
     for (const message of conversationMessages) {
@@ -135,7 +136,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
         id: `message-${message.id}`,
         actor: message.role === 'assistant' ? 'ember' : 'contributor',
         source: normalizeSource(message.source),
-        contributorName: contributor.name,
+        contributorName: ec.contributor.name,
         participantLabel: message.role === 'assistant' ? 'Ember' : contributorLabel,
         content: message.content,
         timestamp: message.createdAt,
@@ -159,7 +160,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
             id: `voice-question-${response.id}`,
             actor: 'ember',
             source: 'voice',
-            contributorName: contributor.name,
+            contributorName: ec.contributor.name,
             participantLabel: 'Ember',
             content: response.question,
             timestamp: response.createdAt,
@@ -175,7 +176,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
           id: `voice-answer-${response.id}`,
           actor: 'contributor',
           source: 'voice',
-          contributorName: contributor.name,
+          contributorName: ec.contributor.name,
           participantLabel: contributorLabel,
           content: response.content,
           timestamp: response.createdAt,
@@ -207,7 +208,7 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
       originalName: image.originalName,
       description: image.description,
     },
-    contributorCount: image.contributors.length,
+    contributorCount: image.emberContributors.length,
     entryCount: entries.length,
     entries: entries.map((entry) => ({
       id: entry.id,

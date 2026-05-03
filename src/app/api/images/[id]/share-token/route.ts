@@ -20,28 +20,52 @@ export async function POST(
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    // Find or create the anonymous share-link contributor for this image
-    // (identified by having no userId, phoneNumber, or email)
-    const existing = await prisma.contributor.findFirst({
+    // Find or create the anonymous share-link pool entry for this owner
+    // (identified by having no userId, phoneNumber, or email — share-link
+    // placeholders are owned by the image owner). The same anonymous pool
+    // entry is reused per ember via its EmberContributor join row.
+    const existingEmberContributor = await prisma.emberContributor.findFirst({
       where: {
         imageId,
-        userId: null,
-        phoneNumber: null,
-        email: null,
+        contributor: {
+          ownerId: image.ownerId,
+          userId: null,
+          phoneNumber: null,
+          email: null,
+        },
       },
       select: { token: true },
     });
 
-    if (existing) {
-      return NextResponse.json({ token: existing.token });
+    if (existingEmberContributor) {
+      return NextResponse.json({ token: existingEmberContributor.token });
     }
 
-    const contributor = await prisma.contributor.create({
-      data: { imageId },
+    // No share-link EC for this ember yet. Find or create the anonymous pool
+    // entry first, then attach.
+    let anonymousPool = await prisma.contributor.findFirst({
+      where: {
+        ownerId: image.ownerId,
+        userId: null,
+        phoneNumber: null,
+        email: null,
+        name: null,
+      },
+      select: { id: true },
+    });
+    if (!anonymousPool) {
+      anonymousPool = await prisma.contributor.create({
+        data: { ownerId: image.ownerId },
+        select: { id: true },
+      });
+    }
+
+    const created = await prisma.emberContributor.create({
+      data: { imageId, contributorId: anonymousPool.id },
       select: { token: true },
     });
 
-    return NextResponse.json({ token: contributor.token });
+    return NextResponse.json({ token: created.token });
   } catch (error) {
     console.error('Error getting share token:', error);
     return NextResponse.json({ error: 'Failed to get share token' }, { status: 500 });

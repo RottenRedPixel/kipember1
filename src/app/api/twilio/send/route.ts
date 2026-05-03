@@ -37,19 +37,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
       }
 
-      // Send to all contributors for an image who haven't been invited yet
-      const contributors = await prisma.contributor.findMany({
+      // Send to all ember-contributors who haven't been invited yet for this image
+      const emberContributors = await prisma.emberContributor.findMany({
         where: {
           imageId,
           inviteSent: false,
-          phoneNumber: {
-            not: null,
+          contributor: {
+            phoneNumber: {
+              not: null,
+            },
           },
         },
       });
 
       const results = await Promise.allSettled(
-        contributors.map((c) => sendInvite(c.id))
+        emberContributors.map((c) => sendInvite(c.id))
       );
 
       const sent = results.filter((r) => r.status === 'fulfilled' && r.value.success).length;

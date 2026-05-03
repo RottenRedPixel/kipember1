@@ -41,59 +41,67 @@ export async function GET(
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    const [contributors, taggedContributorRows] = await Promise.all([
-      prisma.contributor.findMany({
+    const [emberContributors, taggedContributorRows] = await Promise.all([
+      prisma.emberContributor.findMany({
         where: {
           imageId: id,
-          AND: [
-            realContributorWhere,
-            // Skip the owner's own contributor row.
-            { OR: [{ userId: null }, { NOT: { userId: auth.user.id } }] },
-          ],
+          contributor: {
+            AND: [
+              realContributorWhere,
+              // Skip the owner's own contributor row.
+              { OR: [{ userId: null }, { NOT: { userId: auth.user.id } }] },
+            ],
+          },
         },
         orderBy: { createdAt: 'asc' },
         select: {
           id: true,
-          userId: true,
-          name: true,
-          email: true,
-          phoneNumber: true,
-          user: {
+          contributor: {
             select: {
-              firstName: true,
-              lastName: true,
+              userId: true,
+              name: true,
               email: true,
-              avatarFilename: true,
+              phoneNumber: true,
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  avatarFilename: true,
+                },
+              },
             },
           },
         },
       }),
       prisma.imageTag.findMany({
-        where: { imageId: id, contributorId: { not: null } },
-        select: { contributorId: true },
+        where: { imageId: id, emberContributorId: { not: null } },
+        select: { emberContributorId: true },
       }),
     ]);
 
     const taggedContributorIds = new Set(
       taggedContributorRows
-        .map((t) => t.contributorId)
+        .map((t) => t.emberContributorId)
         .filter((cid): cid is string => Boolean(cid))
     );
 
-    const result: PeopleSuggestionContributor[] = contributors.map((c) => ({
-      contributorId: c.id,
-      userId: c.userId,
+    const result: PeopleSuggestionContributor[] = emberContributors.map((ec) => ({
+      contributorId: ec.id,
+      userId: ec.contributor.userId,
       name:
-        getUserDisplayName(c.user) ??
-        c.name ??
-        c.user?.email ??
-        c.email ??
-        c.phoneNumber ??
+        getUserDisplayName(ec.contributor.user) ??
+        ec.contributor.name ??
+        ec.contributor.user?.email ??
+        ec.contributor.email ??
+        ec.contributor.phoneNumber ??
         'Contributor',
-      email: c.email ?? c.user?.email ?? null,
-      phoneNumber: c.phoneNumber,
-      avatarUrl: c.user?.avatarFilename ? `/api/uploads/${c.user.avatarFilename}` : null,
-      alreadyTagged: taggedContributorIds.has(c.id),
+      email: ec.contributor.email ?? ec.contributor.user?.email ?? null,
+      phoneNumber: ec.contributor.phoneNumber,
+      avatarUrl: ec.contributor.user?.avatarFilename
+        ? `/api/uploads/${ec.contributor.user.avatarFilename}`
+        : null,
+      alreadyTagged: taggedContributorIds.has(ec.id),
     }));
 
     return NextResponse.json({ contributors: result });

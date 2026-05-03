@@ -43,15 +43,21 @@ export async function POST(
             phoneNumber: true,
           },
         },
-        contributor: {
+        emberContributor: {
           select: {
             id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
             inviteSent: true,
             token: true,
-            userId: true,
+            contributor: {
+              select: {
+                id: true,
+                ownerId: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+                userId: true,
+              },
+            },
           },
         },
       },
@@ -63,22 +69,29 @@ export async function POST(
 
     const tagEmail = tag.user?.email || (tag.email ? normalizeEmail(tag.email) : null);
     const tagPhoneNumber = normalizePhone(tag.user?.phoneNumber || tag.phoneNumber);
-    const tagName = getUserDisplayName(tag.user) || tag.contributor?.name || tag.label;
+    const tagName = getUserDisplayName(tag.user) || tag.emberContributor?.contributor.name || tag.label;
 
-    let contributor = tag.contributor
-      ? await prisma.contributor.findUnique({
-          where: { id: tag.contributor.id },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
-            inviteSent: true,
-            token: true,
-            userId: true,
-          },
-        })
-      : null;
+    type FlatContributor = {
+      id: string;
+      name: string | null;
+      email: string | null;
+      phoneNumber: string | null;
+      inviteSent: boolean;
+      token: string;
+      userId: string | null;
+    };
+
+    const flattenEC = (ec: NonNullable<typeof tag.emberContributor>): FlatContributor => ({
+      id: ec.id,
+      name: ec.contributor.name,
+      email: ec.contributor.email,
+      phoneNumber: ec.contributor.phoneNumber,
+      inviteSent: ec.inviteSent,
+      token: ec.token,
+      userId: ec.contributor.userId,
+    });
+
+    let contributor: FlatContributor | null = tag.emberContributor ? flattenEC(tag.emberContributor) : null;
 
     if (!contributor) {
       if (!tag.userId && !tagEmail && !tagPhoneNumber) {
@@ -88,52 +101,85 @@ export async function POST(
         );
       }
 
-      contributor =
-        (await prisma.contributor.findFirst({
-          where: {
-            imageId: id,
-            OR: [
-              ...(tag.userId ? [{ userId: tag.userId }] : []),
-              ...(tagPhoneNumber ? [{ phoneNumber: tagPhoneNumber }] : []),
-              ...(tagEmail ? [{ email: tagEmail }] : []),
-            ],
-          },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
-            inviteSent: true,
-            token: true,
-            userId: true,
-          },
-        })) || null;
+      // Find or create the pool entry for the owner.
+      let poolEntry = await prisma.contributor.findFirst({
+        where: {
+          ownerId: image.ownerId,
+          OR: [
+            ...(tag.userId ? [{ userId: tag.userId }] : []),
+            ...(tagPhoneNumber ? [{ phoneNumber: tagPhoneNumber }] : []),
+            ...(tagEmail ? [{ email: tagEmail }] : []),
+          ],
+        },
+      });
 
-      if (!contributor) {
-        contributor = await prisma.contributor.create({
+      if (!poolEntry) {
+        poolEntry = await prisma.contributor.create({
           data: {
-            imageId: id,
+            ownerId: image.ownerId,
             userId: tag.userId,
             name: tagName,
             email: tagEmail,
             phoneNumber: tagPhoneNumber,
           },
+        });
+      }
+
+      // Find or create the ember-contributor join row.
+      let createdEc = await prisma.emberContributor.findUnique({
+        where: {
+          contributorId_imageId: {
+            contributorId: poolEntry.id,
+            imageId: id,
+          },
+        },
+        select: {
+          id: true,
+          inviteSent: true,
+          token: true,
+          contributor: {
+            select: {
+              id: true,
+              ownerId: true,
+              name: true,
+              email: true,
+              phoneNumber: true,
+              userId: true,
+            },
+          },
+        },
+      });
+
+      if (!createdEc) {
+        createdEc = await prisma.emberContributor.create({
+          data: {
+            contributorId: poolEntry.id,
+            imageId: id,
+          },
           select: {
             id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
             inviteSent: true,
             token: true,
-            userId: true,
+            contributor: {
+              select: {
+                id: true,
+                ownerId: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+                userId: true,
+              },
+            },
           },
         });
       }
 
+      contributor = flattenEC(createdEc);
+
       await prisma.imageTag.update({
         where: { id: tag.id },
         data: {
-          contributorId: contributor.id,
+          emberContributorId: contributor.id,
           email: tagEmail,
           phoneNumber: tagPhoneNumber,
           label: tagName,

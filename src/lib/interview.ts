@@ -43,20 +43,26 @@ function getNextStep(currentStep: InterviewStep): InterviewStep | null {
   return INTERVIEW_STEPS[currentIndex + 1];
 }
 
-export async function startConversation(contributorId: string): Promise<string> {
-  const contributor = await prisma.contributor.findUnique({
-    where: { id: contributorId },
-    include: { image: true },
+export async function startConversation(emberContributorId: string): Promise<string> {
+  const emberContributor = await prisma.emberContributor.findUnique({
+    where: { id: emberContributorId },
+    include: { contributor: true, image: true },
   });
 
-  if (!contributor) throw new Error('Contributor not found');
-  if (!contributor.phoneNumber) throw new Error('Contributor does not have a phone number');
+  if (!emberContributor) throw new Error('Contributor not found');
+  if (!emberContributor.contributor.phoneNumber) throw new Error('Contributor does not have a phone number');
 
-  const identity = contributorChatSessionIdentity(contributor);
+  const participantInput = {
+    id: emberContributor.id,
+    userId: emberContributor.contributor.userId,
+    imageId: emberContributor.imageId,
+    image: { ownerId: emberContributor.image.ownerId },
+  };
+  const identity = contributorChatSessionIdentity(participantInput);
   const session = await ensureEmberSession({
     ...identity,
-    contributorId,
-    userId: identity.participantType === 'owner' ? contributor.userId : null,
+    emberContributorId,
+    userId: identity.participantType === 'owner' ? emberContributor.contributor.userId : null,
     status: 'pending',
     currentStep: 'greeting',
   });
@@ -67,9 +73,9 @@ export async function startConversation(contributorId: string): Promise<string> 
     data: { sessionId: session.id, role: 'assistant', content: greeting, source: 'sms' },
   });
 
-  const formattedPhone = contributor.phoneNumber.startsWith('+')
-    ? contributor.phoneNumber
-    : `+1${contributor.phoneNumber}`;
+  const formattedPhone = emberContributor.contributor.phoneNumber.startsWith('+')
+    ? emberContributor.contributor.phoneNumber
+    : `+1${emberContributor.contributor.phoneNumber}`;
 
   await sendSMS(formattedPhone, greeting);
   return greeting;
@@ -81,18 +87,30 @@ export async function handleIncomingMessage(
 ): Promise<string> {
   const normalizedPhone = phoneNumber.replace(/\D/g, '').replace(/^1/, '');
 
-  const contributor = await prisma.contributor.findFirst({
-    where: { phoneNumber: { contains: normalizedPhone } },
+  // Resolve the contributor pool entry by phone, then pick their most recent
+  // ember attachment as the conversation target.
+  const emberContributor = await prisma.emberContributor.findFirst({
+    where: {
+      contributor: { phoneNumber: { contains: normalizedPhone } },
+    },
+    orderBy: { createdAt: 'desc' },
     include: {
+      contributor: true,
       image: true,
     },
   });
 
-  if (!contributor) {
+  if (!emberContributor) {
     return "Sorry, I couldn't find your conversation. Please contact the person who invited you.";
   }
 
-  const identity = contributorChatSessionIdentity(contributor);
+  const participantInput = {
+    id: emberContributor.id,
+    userId: emberContributor.contributor.userId,
+    imageId: emberContributor.imageId,
+    image: { ownerId: emberContributor.image.ownerId },
+  };
+  const identity = contributorChatSessionIdentity(participantInput);
   let session = await prisma.emberSession.findUnique({
     where: emberSessionParticipantWhere(identity),
     include: {
@@ -103,8 +121,8 @@ export async function handleIncomingMessage(
   if (!session) {
     const created = await ensureEmberSession({
       ...identity,
-      contributorId: contributor.id,
-      userId: identity.participantType === 'owner' ? contributor.userId : null,
+      emberContributorId: emberContributor.id,
+      userId: identity.participantType === 'owner' ? emberContributor.contributor.userId : null,
       status: 'pending',
       currentStep: 'greeting',
     });
@@ -160,7 +178,7 @@ export async function handleIncomingMessage(
     }));
 
     const followUp = await generateFollowUpQuestion(conversationHistory, structuredResponses, {
-      imageId: contributor.imageId,
+      imageId: emberContributor.imageId,
     });
 
     if (followUp) {
@@ -199,7 +217,7 @@ export async function handleIncomingMessage(
       }));
 
       const followUp = await generateFollowUpQuestion(conversationHistory, structuredResponses, {
-        imageId: contributor.imageId,
+        imageId: emberContributor.imageId,
       });
 
       if (followUp) {

@@ -77,8 +77,8 @@ export async function getEmberAccessType(
     select: {
       ownerId: true,
       shareToNetwork: true,
-      contributors: {
-        where: { userId },
+      emberContributors: {
+        where: { contributor: { userId } },
         select: { id: true },
         take: 1,
       },
@@ -93,7 +93,7 @@ export async function getEmberAccessType(
     return 'owner';
   }
 
-  if (image.contributors.length > 0) {
+  if (image.emberContributors.length > 0) {
     return 'contributor';
   }
 
@@ -117,9 +117,13 @@ export async function ensureEmberOwnerAccess(userId: string, imageId: string) {
   return image;
 }
 
-export async function ensureOwnedContributorAccess(userId: string, contributorId: string) {
-  const contributor = await prisma.contributor.findUnique({
-    where: { id: contributorId },
+/**
+ * `emberContributorId` is the EmberContributor.id (per-ember row), which is
+ * what every API surface still calls "contributor id" externally.
+ */
+export async function ensureOwnedContributorAccess(userId: string, emberContributorId: string) {
+  const emberContributor = await prisma.emberContributor.findUnique({
+    where: { id: emberContributorId },
     include: {
       image: {
         select: {
@@ -127,28 +131,32 @@ export async function ensureOwnedContributorAccess(userId: string, contributorId
           ownerId: true,
         },
       },
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phoneNumber: true,
+      contributor: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phoneNumber: true,
+            },
+          },
         },
       },
     },
   });
 
-  if (!contributor || contributor.image.ownerId !== userId) {
+  if (!emberContributor || emberContributor.image.ownerId !== userId) {
     return null;
   }
 
-  return contributor;
+  return emberContributor;
 }
 
-export async function ensureContributorRemovalAccess(userId: string, contributorId: string) {
-  const contributor = await prisma.contributor.findUnique({
-    where: { id: contributorId },
+export async function ensureContributorRemovalAccess(userId: string, emberContributorId: string) {
+  const emberContributor = await prisma.emberContributor.findUnique({
+    where: { id: emberContributorId },
     include: {
       image: {
         select: {
@@ -156,31 +164,35 @@ export async function ensureContributorRemovalAccess(userId: string, contributor
           ownerId: true,
         },
       },
-      user: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phoneNumber: true,
+      contributor: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phoneNumber: true,
+            },
+          },
         },
       },
     },
   });
 
-  if (!contributor) {
+  if (!emberContributor) {
     return null;
   }
 
-  const canManageAsOwner = contributor.image.ownerId === userId;
-  const canRemoveSelf = contributor.userId === userId;
+  const canManageAsOwner = emberContributor.image.ownerId === userId;
+  const canRemoveSelf = emberContributor.contributor.userId === userId;
 
   if (!canManageAsOwner && !canRemoveSelf) {
     return null;
   }
 
   return {
-    contributor,
+    contributor: emberContributor,
     removalMode: canManageAsOwner ? 'owner' : 'self' as const,
   };
 }

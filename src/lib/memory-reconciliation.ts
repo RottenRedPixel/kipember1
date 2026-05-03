@@ -17,7 +17,7 @@ type ExtractedClaim = {
 
 type ReconciliationClaimSource = {
   sourceLabel: string;
-  contributorId: string | null;
+  emberContributorId: string | null;
   userId: string | null;
   sessionId: string;
   source: string;
@@ -168,7 +168,7 @@ function claimSourceLabel(claim: { metadataJson: string | null }) {
 }
 
 function claimSourceKey(claim: {
-  contributorId: string | null;
+  emberContributorId: string | null;
   userId: string | null;
   sourceSessionId: string | null;
   metadataJson: string | null;
@@ -177,8 +177,8 @@ function claimSourceKey(claim: {
     return `user:${claim.userId}`;
   }
 
-  if (claim.contributorId) {
-    return `contributor:${claim.contributorId}`;
+  if (claim.emberContributorId) {
+    return `contributor:${claim.emberContributorId}`;
   }
 
   if (claim.sourceSessionId) {
@@ -399,12 +399,17 @@ export async function reconcileEmberMessage(messageId: string) {
               email: true,
             },
           },
-          contributor: {
+          emberContributor: {
             select: {
               id: true,
-              name: true,
-              email: true,
-              phoneNumber: true,
+              contributor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phoneNumber: true,
+                },
+              },
             },
           },
           image: {
@@ -430,15 +435,16 @@ export async function reconcileEmberMessage(messageId: string) {
     };
   }
 
+  const sessionContributor = message.session.emberContributor?.contributor ?? null;
   const source: ReconciliationClaimSource = {
     sourceLabel:
       getUserDisplayName(message.session.user) ||
-      message.session.contributor?.name ||
+      sessionContributor?.name ||
       message.session.user?.email ||
-      message.session.contributor?.email ||
-      message.session.contributor?.phoneNumber ||
+      sessionContributor?.email ||
+      sessionContributor?.phoneNumber ||
       'Contributor',
-    contributorId: message.session.contributorId,
+    emberContributorId: message.session.emberContributorId,
     userId: message.session.userId,
     sessionId: message.sessionId,
     source: message.source,
@@ -502,7 +508,7 @@ export async function reconcileEmberMessage(messageId: string) {
         data: {
           imageId: image.id,
           emberMessageId: message.id,
-          contributorId: source.contributorId,
+          emberContributorId: source.emberContributorId,
           userId: source.userId,
           sourceSessionId: source.sessionId,
           source: source.source || 'human_memory',
@@ -578,7 +584,7 @@ type ClassificationClaimType = 'why' | 'emotion' | 'extra_story' | 'place';
 export type ClassificationContext = {
   imageId: string;
   sessionId: string;
-  contributorId: string | null;
+  emberContributorId: string | null;
   userId: string | null;
   emberMessageId: string | null;
   source: string;
@@ -611,7 +617,7 @@ async function runClassificationFromContext({
         select: {
           label: true,
           user: { select: { firstName: true, lastName: true } },
-          contributor: { select: { name: true } },
+          emberContributor: { select: { contributor: { select: { name: true } } } },
         },
       },
     },
@@ -624,7 +630,7 @@ async function runClassificationFromContext({
   const taggedPeople = Array.from(
     new Set(
       image.tags
-        .map((t) => (getUserDisplayName(t.user) || t.contributor?.name || t.label || '').trim())
+        .map((t) => (getUserDisplayName(t.user) || t.emberContributor?.contributor.name || t.label || '').trim())
         .filter(Boolean)
     )
   ).join(', ');
@@ -655,7 +661,7 @@ async function runClassificationFromContext({
         data: {
           imageId: context.imageId,
           emberMessageId: context.emberMessageId,
-          contributorId: context.contributorId,
+          emberContributorId: context.emberContributorId,
           userId: context.userId,
           sourceSessionId: context.sessionId,
           source: context.source || 'human_memory',
@@ -699,8 +705,13 @@ async function runClassificationExtractor({
       session: {
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true } },
-          contributor: {
-            select: { id: true, name: true, email: true, phoneNumber: true },
+          emberContributor: {
+            select: {
+              id: true,
+              contributor: {
+                select: { id: true, name: true, email: true, phoneNumber: true },
+              },
+            },
           },
           image: { select: { id: true } },
         },
@@ -717,19 +728,20 @@ async function runClassificationExtractor({
     return { claimsCreated: 0 };
   }
 
+  const sessionContributor = message.session.emberContributor?.contributor ?? null;
   const sourceLabel =
     getUserDisplayName(message.session.user) ||
-    message.session.contributor?.name ||
+    sessionContributor?.name ||
     message.session.user?.email ||
-    message.session.contributor?.email ||
-    message.session.contributor?.phoneNumber ||
+    sessionContributor?.email ||
+    sessionContributor?.phoneNumber ||
     'Contributor';
 
   return runClassificationFromContext({
     context: {
       imageId: message.session.image.id,
       sessionId: message.sessionId,
-      contributorId: message.session.contributorId,
+      emberContributorId: message.session.emberContributorId,
       userId: message.session.userId,
       emberMessageId: message.id,
       source: message.source || 'human_memory',

@@ -17,6 +17,7 @@ import {
   Map as MapIcon,
   MapPin,
   MessageCircle,
+  MessagesSquare,
   Mic,
   PencilLine,
   Phone,
@@ -252,6 +253,17 @@ export type KipemberWikiDetail = {
       endMs: number | null;
     }>;
   }>;
+  guestChatBlock?: {
+    messages: Array<{
+      role: string;
+      content: string;
+      source: string;
+      imageFilename?: string | null;
+      audioUrl?: string | null;
+      createdAt: string;
+    }>;
+    sessionCount: number;
+  } | null;
 };
 
 type ReconciliationClaim = {
@@ -1148,6 +1160,64 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
   );
 }
 
+type GuestChatBlock = NonNullable<KipemberWikiDetail['guestChatBlock']>;
+
+// Aggregated card for all share-link guest interactions. Different visitors
+// can't be told apart by name, so they're pooled here behind a single grey
+// chat icon — visually distinct from the named contributor chat blocks.
+function CollapsibleGuestChatBlock({ block }: { block: GuestChatBlock }) {
+  const [collapsed, setCollapsed] = useState(true);
+  const userMessageCount = block.messages.filter((m) => m.role === 'user').length;
+  return (
+    <WikiCard>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-2 cursor-pointer"
+        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
+      >
+        <div
+          className="rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ width: 29, height: 29, background: '#6b7280' }}
+        >
+          <MessagesSquare size={16} className="text-white" strokeWidth={2} />
+        </div>
+        <p className="flex-1 text-left text-white/30 text-xs font-medium">
+          Guest Chat
+          <span className="ml-2 text-white/20">
+            ({userMessageCount} {userMessageCount === 1 ? 'question' : 'questions'}
+            {block.sessionCount > 1 ? ` · ${block.sessionCount} visitors` : ''})
+          </span>
+        </p>
+        <ChevronDown
+          size={14}
+          color="rgba(255,255,255,0.5)"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        />
+      </button>
+      {!collapsed ? (
+        <div className="mt-3">
+          <EmberChatMessages
+            messages={block.messages.map((msg) => ({
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content,
+              source: (msg.source as 'web' | 'voice' | 'sms') ?? 'web',
+              imageFilename: msg.imageFilename ?? null,
+              audioUrl: msg.audioUrl ?? null,
+              createdAt: msg.createdAt,
+            }))}
+            selfLabel="Guest"
+          />
+        </div>
+      ) : null}
+    </WikiCard>
+  );
+}
+
 function getSourceName(claim: ReconciliationClaim) {
   const metadata = claim.metadata;
   if (
@@ -1975,7 +2045,8 @@ export default function KipemberWikiContent({
         <div className="flex flex-col gap-4">
           {(detail?.chatBlocks && detail.chatBlocks.length > 0) ||
           (detail?.voiceBlocks && detail.voiceBlocks.length > 0) ||
-          (detail?.callBlocks && detail.callBlocks.length > 0) ? (
+          (detail?.callBlocks && detail.callBlocks.length > 0) ||
+          (detail?.guestChatBlock && detail.guestChatBlock.messages.length > 0) ? (
             <>
               {(detail?.chatBlocks ?? []).map((block) => {
                 const voiceForPerson = (detail?.voiceBlocks ?? []).find(
@@ -2018,6 +2089,9 @@ export default function KipemberWikiContent({
                 .map((call) => (
                   <EmberCallCard key={call.voiceCallId} block={call} />
                 ))}
+              {detail?.guestChatBlock && detail.guestChatBlock.messages.length > 0 ? (
+                <CollapsibleGuestChatBlock block={detail.guestChatBlock} />
+              ) : null}
             </>
           ) : (
             <WikiCard>

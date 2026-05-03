@@ -43,16 +43,22 @@ export async function PATCH(
     // fields onto the tag (POST does the same on create — keep PATCH in sync).
     if (body.contributorId !== undefined) {
       if (body.contributorId === null) {
-        updates.contributorId = null;
+        updates.emberContributorId = null;
       } else if (typeof body.contributorId === 'string' && body.contributorId) {
-        const contributor = await prisma.contributor.findFirst({
+        const ec = await prisma.emberContributor.findFirst({
           where: { id: body.contributorId, imageId: id },
-          select: { id: true, name: true, email: true, phoneNumber: true, userId: true },
+          select: {
+            id: true,
+            contributor: {
+              select: { id: true, name: true, email: true, phoneNumber: true, userId: true },
+            },
+          },
         });
-        if (!contributor) {
+        if (!ec) {
           return NextResponse.json({ error: 'Contributor not found' }, { status: 404 });
         }
-        updates.contributorId = contributor.id;
+        const contributor = ec.contributor;
+        updates.emberContributorId = ec.id;
         // If userId wasn't explicitly set in this request, inherit from the contributor.
         if (body.userId === undefined && contributor.userId) {
           updates.userId = contributor.userId;
@@ -135,13 +141,18 @@ export async function PATCH(
             phoneNumber: true,
           },
         },
-        contributor: {
+        emberContributor: {
           select: {
             id: true,
-            name: true,
-            email: true,
-            phoneNumber: true,
             inviteSent: true,
+            contributor: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phoneNumber: true,
+              },
+            },
           },
         },
       },

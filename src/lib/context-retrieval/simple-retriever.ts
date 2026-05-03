@@ -29,8 +29,9 @@ export class SimpleRetriever implements ContextRetriever {
     const image = await prisma.image.findUnique({
       where: { id: imageId },
       include: {
-        contributors: {
+        emberContributors: {
           include: {
+            contributor: true,
             emberSession: {
               include: {
                 messages: {
@@ -62,15 +63,17 @@ export class SimpleRetriever implements ContextRetriever {
       title: string;
       quote: string;
       significance: string | null;
-      contributor: {
-        name: string | null;
-        email: string | null;
-        phoneNumber: string | null;
-        user: {
-          firstName: string | null;
-          lastName: string | null;
-          email: string;
-        } | null;
+      emberContributor: {
+        contributor: {
+          name: string | null;
+          email: string | null;
+          phoneNumber: string | null;
+          user: {
+            firstName: string | null;
+            lastName: string | null;
+            email: string;
+          } | null;
+        };
       };
     }> = [];
 
@@ -82,16 +85,20 @@ export class SimpleRetriever implements ContextRetriever {
           title: true,
           quote: true,
           significance: true,
-          contributor: {
+          emberContributor: {
             select: {
-              name: true,
-              email: true,
-              phoneNumber: true,
-              user: {
+              contributor: {
                 select: {
-                  firstName: true,
-                  lastName: true,
+                  name: true,
                   email: true,
+                  phoneNumber: true,
+                  user: {
+                    select: {
+                      firstName: true,
+                      lastName: true,
+                      email: true,
+                    },
+                  },
                 },
               },
             },
@@ -112,15 +119,15 @@ export class SimpleRetriever implements ContextRetriever {
 
     // Add raw responses
     const responses: string[] = [];
-    for (const contributor of image.contributors) {
+    for (const ec of image.emberContributors) {
       const contributorMessages = [
-        ...(contributor.emberSession?.messages || []),
-        ...contributor.voiceCalls.flatMap((call) => call.emberSession?.messages || []),
+        ...(ec.emberSession?.messages || []),
+        ...ec.voiceCalls.flatMap((call) => call.emberSession?.messages || []),
       ];
 
       for (const message of contributorMessages) {
         responses.push(
-          `[${contributor.name || 'Anonymous'}] ${(message.questionType || '').toUpperCase()}\n` +
+          `[${ec.contributor.name || 'Anonymous'}] ${(message.questionType || '').toUpperCase()}\n` +
             `Q: ${message.question || message.questionType || ''}\n` +
             `A: ${message.content}`
         );
@@ -133,11 +140,12 @@ export class SimpleRetriever implements ContextRetriever {
 
     const voiceClips: string[] = [];
     for (const clip of voiceCallClips) {
+      const c = clip.emberContributor.contributor;
       const contributorName =
-        clip.contributor.name ||
-        getUserDisplayName(clip.contributor.user) ||
-        clip.contributor.email ||
-        clip.contributor.phoneNumber ||
+        c.name ||
+        getUserDisplayName(c.user) ||
+        c.email ||
+        c.phoneNumber ||
         'Contributor';
 
       voiceClips.push(

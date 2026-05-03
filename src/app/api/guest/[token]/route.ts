@@ -10,76 +10,81 @@ export async function GET(
     void request;
     const { token } = await params;
 
-    const contributor = await prisma.contributor.findUnique({
-      where: { token },
-      include: {
-        emberSession: {
-          include: {
-            messages: {
-              orderBy: { createdAt: 'asc' },
-            },
+    const tokenInclude = {
+      contributor: true,
+      emberSession: {
+        include: {
+          messages: {
+            orderBy: { createdAt: 'asc' as const },
           },
         },
-        voiceCalls: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: {
-            id: true,
-            status: true,
-            startedAt: true,
-            endedAt: true,
-            createdAt: true,
-            updatedAt: true,
-            analyzedAt: true,
-            callSummary: true,
-            memorySyncedAt: true,
-          },
+      },
+      voiceCalls: {
+        orderBy: { createdAt: 'desc' as const },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          startedAt: true,
+          endedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          analyzedAt: true,
+          callSummary: true,
+          memorySyncedAt: true,
         },
-        image: {
-          include: {
-            analysis: {
-              select: {
-                status: true,
-                summary: true,
-                visualDescription: true,
-                mood: true,
-                errorMessage: true,
-              },
+      },
+      image: {
+        include: {
+          analysis: {
+            select: {
+              status: true,
+              summary: true,
+              visualDescription: true,
+              mood: true,
+              errorMessage: true,
             },
-            wiki: {
-              select: {
-                id: true,
-                content: true,
-                version: true,
-                updatedAt: true,
-              },
+          },
+          wiki: {
+            select: {
+              id: true,
+              content: true,
+              version: true,
+              updatedAt: true,
             },
           },
         },
       },
+    };
+
+    const emberContributor = await prisma.emberContributor.findUnique({
+      where: { token },
+      include: tokenInclude,
     });
 
-    if (!contributor) {
+    if (!emberContributor) {
       return NextResponse.json(
         { error: 'Guest memory not found' },
         { status: 404, headers: { 'Cache-Control': 'no-store' } }
       );
     }
 
-    if (contributor.image.keepPrivate) {
+    if (emberContributor.image.keepPrivate) {
       return NextResponse.json(
         { error: 'This ember is private.' },
         { status: 403, headers: { 'Cache-Control': 'no-store' } }
       );
     }
 
-    // Log a guest view for the owner's home-activity counter. Fire-and-forget;
-    // a DB hiccup here must not block the guest's page load.
-    prisma.guestView.create({ data: { contributorId: contributor.id } }).catch((err) => {
-      console.error('Failed to log guest view:', err);
-    });
+    // Log a guest view against the pool contributor for the owner's home-activity
+    // counter. Fire-and-forget; a DB hiccup here must not block the guest's page load.
+    prisma.guestView
+      .create({ data: { contributorId: emberContributor.contributor.id } })
+      .catch((err) => {
+        console.error('Failed to log guest view:', err);
+      });
 
-    const latestVoiceCall = contributor.voiceCalls[0] ?? null;
+    const latestVoiceCall = emberContributor.voiceCalls[0] ?? null;
     if (shouldRefreshVoiceCallStatus(latestVoiceCall)) {
       try {
         await refreshVoiceCallFromProvider(latestVoiceCall.id);
@@ -88,53 +93,9 @@ export async function GET(
       }
     }
 
-    const refreshedContributor = await prisma.contributor.findUnique({
+    const refreshedContributor = await prisma.emberContributor.findUnique({
       where: { token },
-      include: {
-        emberSession: {
-          include: {
-            messages: {
-              orderBy: { createdAt: 'asc' },
-            },
-          },
-        },
-        voiceCalls: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: {
-            id: true,
-            status: true,
-            startedAt: true,
-            endedAt: true,
-            createdAt: true,
-            updatedAt: true,
-            analyzedAt: true,
-            callSummary: true,
-            memorySyncedAt: true,
-          },
-        },
-        image: {
-          include: {
-            analysis: {
-              select: {
-                status: true,
-                summary: true,
-                visualDescription: true,
-                mood: true,
-                errorMessage: true,
-              },
-            },
-            wiki: {
-              select: {
-                id: true,
-                content: true,
-                version: true,
-                updatedAt: true,
-              },
-            },
-          },
-        },
-      },
+      include: tokenInclude,
     });
 
     if (!refreshedContributor) {
@@ -154,8 +115,8 @@ export async function GET(
         guestFlow: true,
         contributor: {
           id: refreshedContributor.id,
-          name: refreshedContributor.name,
-          phoneNumber: refreshedContributor.phoneNumber,
+          name: refreshedContributor.contributor.name,
+          phoneNumber: refreshedContributor.contributor.phoneNumber,
         },
         image: {
           id: refreshedContributor.image.id,

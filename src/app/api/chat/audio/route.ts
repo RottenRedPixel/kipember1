@@ -52,10 +52,11 @@ async function transcribeUploadedAudio(file: File) {
   }
 }
 
-async function ensureContributorSession(contributorId: string, imageId: string) {
-  const contributor = await prisma.contributor.findUnique({
-    where: { id: contributorId },
+async function ensureContributorSession(emberContributorId: string, imageId: string) {
+  const emberContributor = await prisma.emberContributor.findUnique({
+    where: { id: emberContributorId },
     include: {
+      contributor: true,
       image: {
         select: {
           ownerId: true,
@@ -64,19 +65,25 @@ async function ensureContributorSession(contributorId: string, imageId: string) 
     },
   });
 
-  if (!contributor) {
+  if (!emberContributor) {
     throw new Error('Contributor not found');
   }
-  if (contributor.imageId !== imageId) {
+  if (emberContributor.imageId !== imageId) {
     throw new Error('Contributor does not belong to this image');
   }
 
-  const identity = contributorChatSessionIdentity(contributor);
+  const participantInput = {
+    id: emberContributor.id,
+    userId: emberContributor.contributor.userId,
+    imageId: emberContributor.imageId,
+    image: { ownerId: emberContributor.image.ownerId },
+  };
+  const identity = contributorChatSessionIdentity(participantInput);
 
   return ensureEmberSession({
     ...identity,
-    contributorId,
-    userId: identity.participantType === 'owner' ? contributor.userId : null,
+    emberContributorId,
+    userId: identity.participantType === 'owner' ? emberContributor.contributor.userId : null,
     status: 'active',
     currentStep: 'followup',
   });
