@@ -3,17 +3,7 @@
 import { Lightbulb, TicketSlash, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-type TitleQuoteSuggestion = {
-  title: string;
-  contributorName: string;
-  quote: string;
-  source: 'voice' | 'text';
-};
-
 type TitleSuggestionResponse = {
-  analysisSuggestions: string[];
-  contextSuggestions: string[];
-  contributorQuotes: TitleQuoteSuggestion[];
   suggestions: string[];
 };
 
@@ -58,15 +48,20 @@ export default function EditTitleSlider({
   const [error, setError] = useState('');
   const [preferredPeopleIds, setPreferredPeopleIds] = useState<Set<string>>(new Set());
 
-  // Sync the input value from the loaded detail.
+  // Sync the input value from the loaded detail. Also default the people
+  // checklist to "all selected" so the first batch of ideas already follows
+  // everyone tagged in the photo.
   useEffect(() => {
     if (!detail) return;
     setTitleValue(detail.title || stripExtension(detail.originalName) || '');
+    setPreferredPeopleIds(new Set((detail.tags || []).map((tag) => tag.id)));
   }, [detail]);
 
-  // Load suggestions whenever the slider opens for a new ember.
+  // Load suggestions whenever the slider opens for a new ember. Pass the
+  // currently-checked people so the cache key matches and the initial ideas
+  // already feature everyone tagged.
   useEffect(() => {
-    if (!imageId) {
+    if (!imageId || !detail) {
       setSuggestions(null);
       setLoading(false);
       setRefreshing(false);
@@ -80,8 +75,15 @@ export default function EditTitleSlider({
       setLoading(true);
       setError('');
       try {
+        const params = new URLSearchParams();
+        const preferredNames = (detail?.tags || [])
+          .filter((tag) => preferredPeopleIds.has(tag.id))
+          .map((tag) => tag.label)
+          .filter(Boolean);
+        if (preferredNames.length > 0) params.set('preferredPeople', preferredNames.join(','));
+        const query = params.toString();
         const response = await fetch(
-          `/api/images/${imageId}/title-suggestions`,
+          `/api/images/${imageId}/title-suggestions${query ? `?${query}` : ''}`,
           { cache: 'no-store' }
         );
         const payload = (await response.json().catch(() => null)) as
@@ -119,7 +121,11 @@ export default function EditTitleSlider({
     return () => {
       cancelled = true;
     };
-  }, [imageId]);
+    // We deliberately do NOT depend on preferredPeopleIds — the initial load
+    // uses whatever the slider was opened with (defaults to all). After the
+    // user toggles people they re-fetch via the Regen Ideas button.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imageId, detail]);
 
   async function handleRegenIdeas() {
     if (!imageId) return;
@@ -236,34 +242,28 @@ export default function EditTitleSlider({
 
           {error ? <p className="text-white/45 text-sm">{error}</p> : null}
 
-          {!loading && !error && suggestions ? (
-            <div className="flex flex-col gap-4">
-              {[...suggestions.analysisSuggestions, ...suggestions.contextSuggestions].length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {[...suggestions.analysisSuggestions, ...suggestions.contextSuggestions].slice(0, 3).map(
-                    (suggestion) => (
-                      <button
-                        key={suggestion}
-                        type="button"
-                        onClick={() => setTitleValue(suggestion)}
-                        className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
-                        style={{
-                          background:
-                            titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
-                              ? 'rgba(249,115,22,0.22)'
-                              : 'rgba(255,255,255,0.05)',
-                          border:
-                            titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
-                              ? '1px solid rgba(249,115,22,0.7)'
-                              : '1px solid rgba(255,255,255,0.08)',
-                        }}
-                      >
-                        {suggestion}
-                      </button>
-                    )
-                  )}
-                </div>
-              ) : null}
+          {!loading && !error && suggestions && suggestions.suggestions.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {suggestions.suggestions.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  onClick={() => setTitleValue(suggestion)}
+                  className="rounded-full px-3 py-2 text-sm text-white text-left can-hover"
+                  style={{
+                    background:
+                      titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                        ? 'rgba(249,115,22,0.22)'
+                        : 'rgba(255,255,255,0.05)',
+                    border:
+                      titleValue.trim().toLowerCase() === suggestion.trim().toLowerCase()
+                        ? '1px solid rgba(249,115,22,0.7)'
+                        : '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  {suggestion}
+                </button>
+              ))}
             </div>
           ) : null}
         </WikiCard>

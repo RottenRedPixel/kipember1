@@ -15,7 +15,6 @@ const APPROVED_KEYS = new Set([
   'image_analysis.initial_photo',
   'image_analysis.uploaded_photo',
   'image_analysis.location_resolution',
-  'title_generation.initial',
   'title_generation.regenerate',
   'snapshot_generation.initial',
   'snapshot_generation.regenerate',

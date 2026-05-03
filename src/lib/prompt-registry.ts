@@ -80,35 +80,19 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   },
 
   {
-    key: 'title_generation.initial',
-    label: 'Title Generation - Initial',
-    group: 'Title Generation',
-    description: 'Generates one polished title for an ember at creation time. Receives `mode` (always "single" here), `analysisContext`, `humanContext`, `quoteEntries`, `fullContext`, `peopleInstruction` (everyone tagged in the photo), `preferredPeopleInstruction` (always empty on initial — the user has not picked yet), and `optionalTaggedPeopleInstruction` (everyone tagged, since none are preferred yet).',
-    variables: ['mode', 'analysisContext', 'humanContext', 'quoteEntries', 'fullContext', 'peopleInstruction', 'preferredPeopleInstruction', 'optionalTaggedPeopleInstruction'],
-    whatItDoes:
-      'Generates the initial title that auto-fills when an ember is first created. Reads the photo analysis, any contributor memories collected so far, and tagged people, and returns one short title (typically 3-7 words). The user can keep it or open the Title slider to regenerate.',
-    whenItFires: [
-      'An ember is just created and needs a starting title before the wiki renders',
-    ],
-    affects: [
-      { label: 'The default title shown after upload (and stored on Image.title)', on: true },
-      { label: 'Regenerated title ideas after the user clicks Regen Ideas (uses title_generation.regenerate)', on: false },
-    ],
-  },
-  {
     key: 'title_generation.regenerate',
-    label: 'Title Generation - Regenerate',
+    label: 'Title Generation',
     group: 'Title Generation',
-    description: 'Fires when the user opens the Title slider in Tend, checks people to prefer, and presses Regen Ideas. Generates three alternative titles per mode (analysis, context, quoted). Receives `mode`, `analysisContext`, `humanContext`, `quoteEntries`, `fullContext`, `peopleInstruction` (everyone tagged in the photo), `preferredPeopleInstruction` (the subset of tagged people the user explicitly checked — should be favored when natural), and `optionalTaggedPeopleInstruction` (tagged people the user did not check — may inform context but should not be forced).',
-    variables: ['mode', 'analysisContext', 'humanContext', 'quoteEntries', 'fullContext', 'peopleInstruction', 'preferredPeopleInstruction', 'optionalTaggedPeopleInstruction'],
+    description: 'The single prompt that powers the Title Ideas in the Edit Title slider. Receives `fullContext` (the merged ember context — analysis, location, people, memories, calls, wiki), `peopleInstruction` (everyone tagged in the photo), `preferredPeopleInstruction` (the subset of tagged people the user explicitly checked — should be favored when natural), and `optionalTaggedPeopleInstruction` (tagged people the user did not check — may inform context but should not be forced).',
+    variables: ['fullContext', 'peopleInstruction', 'preferredPeopleInstruction', 'optionalTaggedPeopleInstruction'],
     whatItDoes:
-      'Generates a batch of alternate title ideas when the user opens the Title slider in Tend and presses Regen Ideas. Returns three flavors: analysis-driven, context-driven, and quote-driven. Honors which tagged people the user has explicitly preferred so the suggestions feature them.',
+      'Generates three short alternate title ideas for an ember. Honors which tagged people the user has explicitly preferred so the suggestions feature them. The slider defaults the people checklist to "all selected" so the first batch already follows everyone tagged.',
     whenItFires: [
-      'User opens the Edit Title slider, optionally checks people to prefer, and presses Regen Ideas',
+      'User opens the Edit Title slider (initial fetch)',
+      'User toggles people and presses Regen Ideas',
     ],
     affects: [
       { label: 'The list of title suggestions shown in the Title slider', on: true },
-      { label: 'The first auto-generated title at creation time (uses title_generation.initial)', on: false },
     ],
   },
 
