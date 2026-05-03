@@ -577,9 +577,10 @@ type ClassificationPromptKey =
   | 'housekeeping.why_extraction'
   | 'housekeeping.emotion_extraction'
   | 'housekeeping.extra_story_extraction'
-  | 'housekeeping.place_extraction';
+  | 'housekeeping.place_extraction'
+  | 'housekeeping.person_extraction';
 
-type ClassificationClaimType = 'why' | 'emotion' | 'extra_story' | 'place';
+type ClassificationClaimType = 'why' | 'emotion' | 'extra_story' | 'place' | 'person';
 
 export type ClassificationContext = {
   imageId: string;
@@ -788,6 +789,14 @@ export async function extractPlacesForMessage(messageId: string) {
   });
 }
 
+export async function extractPeopleForMessage(messageId: string) {
+  return runClassificationExtractor({
+    messageId,
+    claimType: 'person',
+    promptKey: 'housekeeping.person_extraction',
+  });
+}
+
 async function safeRun<T>(fn: () => Promise<T>, label: string): Promise<T | null> {
   try {
     return await fn();
@@ -802,6 +811,7 @@ export async function reconcileEmberMessageSafely(messageId: string, context = '
   await safeRun(() => extractEmotionsForMessage(messageId), `${context}: emotions`);
   await safeRun(() => extractStoriesForMessage(messageId), `${context}: extra stories`);
   await safeRun(() => extractPlacesForMessage(messageId), `${context}: places`);
+  await safeRun(() => extractPeopleForMessage(messageId), `${context}: people`);
   return { claimsCreated: 0, conflictsCreated: 0 };
 }
 
@@ -844,6 +854,15 @@ export async function extractAllClaimsFromContent(
         promptKey: 'housekeeping.place_extraction',
       }),
     `${logContext}: places`
+  );
+  await safeRun(
+    () =>
+      runClassificationFromContext({
+        context,
+        claimType: 'person',
+        promptKey: 'housekeeping.person_extraction',
+      }),
+    `${logContext}: people`
   );
 }
 

@@ -34,6 +34,7 @@ const APPROVED_KEYS = new Set([
   'housekeeping.emotion_extraction',
   'housekeeping.extra_story_extraction',
   'housekeeping.place_extraction',
+  'housekeeping.person_extraction',
 ]);
 
 function parseArgs(argv: string[]) {

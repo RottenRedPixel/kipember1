@@ -552,6 +552,25 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
       { label: 'The user-facing reply (different prompt)', on: false },
     ],
   },
+
+  {
+    key: 'housekeeping.person_extraction',
+    label: 'Person Extraction',
+    group: 'Housekeeping',
+    description: 'Background parser. After any chat / SMS / voice / call message, pulls out people mentions — anyone the contributor names by first name, nickname, or relationship — so the call/chat agents can know "Aunt Sue was there" even when Sue was never tagged on the photo. Stored as MemoryClaim rows with claimType="person".',
+    variables: ['title', 'wiki', 'taggedPeople', 'contributorName', 'question', 'answer'],
+    whatItDoes:
+      'Background AI parser that scans chat / voice / call answers for people-mentions and stores each as a MemoryClaim of type "person". Surfaces in loadEmberContext as a "People mentioned (not necessarily tagged on the photo)" block — bridges the gap between "named in the Story Circle" and "tagged on the photo" so the call agent can reference people without seeing a photo position.',
+    whenItFires: [
+      'After any chat / voice / SMS / call answer',
+      'Currently gated by the ENABLE_HOUSEKEEPING_EXTRACTORS env var',
+    ],
+    affects: [
+      { label: 'Stored MemoryClaim rows of type "person" — surfaced in the call/chat agent prompt context', on: true },
+      { label: 'The Photo Tagging UI — tagged faces are a separate KipemberTag flow', on: false },
+      { label: 'The user-facing reply (different prompt)', on: false },
+    ],
+  },
 ];
 
 export const PROMPT_REGISTRY_MAP = new Map<string, PromptDefinition>(

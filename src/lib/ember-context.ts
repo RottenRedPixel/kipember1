@@ -126,6 +126,7 @@ const CLAIM_TYPE_HEADINGS: Record<string, string> = {
   emotion: 'Emotional states',
   extra_story: 'Extra stories',
   place: 'Places mentioned',
+  person: 'People mentioned (not necessarily tagged on the photo)',
 };
 
 function formatClaims(claims: RawClaim[]): string {

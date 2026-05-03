@@ -31,6 +31,7 @@ const SHORT_PROMPT_LABEL_OVERRIDES: Record<string, string> = {
   'housekeeping.emotion_extraction': 'Emotion',
   'housekeeping.extra_story_extraction': 'Extra Story',
   'housekeeping.place_extraction': 'Place',
+  'housekeeping.person_extraction': 'Person',
 };
 
 export function shortPromptLabel(key: string): string {
