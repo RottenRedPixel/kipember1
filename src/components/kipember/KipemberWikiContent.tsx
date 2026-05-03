@@ -774,8 +774,10 @@ function PlacesMentionedCard({
 
 // People mentioned by contributors but not necessarily tagged on the photo —
 // surfaced from MemoryClaim rows of type "person" produced by the
-// housekeeping.person_extraction extractor. Same row shape as the other
-// claim cards.
+// housekeeping.person_extraction extractor. Unlike the other claim cards,
+// the headline here is the SUBJECT (the mentioned person), with the
+// speaker shown as attribution underneath — because for person claims the
+// subject IS the point of the row.
 function PeopleMentionedCard({
   claims,
   findAvatar,
@@ -794,16 +796,53 @@ function PeopleMentionedCard({
   return (
     <div className="flex flex-col gap-2">
       {claims.map((claim) => {
-        const name = claimSourceLabelFromMetadata(claim.metadata);
+        const speaker = claimSourceLabelFromMetadata(claim.metadata);
+        const subject = claim.subject?.trim() || speaker;
+        const subjectAvatar = findAvatar(subject);
+        const isVoice = claim.source === 'voice';
         return (
-          <ClaimRow
+          <div
             key={claim.id}
-            name={name}
-            value={claim.value}
-            source={claim.source}
-            createdAt={claim.createdAt}
-            avatarUrl={findAvatar(name)}
-          />
+            className="rounded-lg px-3 py-2 flex items-center gap-2.5"
+            style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+          >
+            {subjectAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={subjectAvatar}
+                alt={subject}
+                className="rounded-full object-cover flex-shrink-0"
+                style={{ width: 29, height: 29 }}
+              />
+            ) : (
+              <div
+                className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+                style={{
+                  width: 29,
+                  height: 29,
+                  background: colorForName(subject),
+                  fontSize: 11,
+                  fontWeight: 600,
+                }}
+              >
+                {initials(subject)}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-xs font-medium">{subject}</p>
+              <p className="text-white/60 text-[11px] mt-0.5">
+                {speaker} said: &ldquo;{claim.value}&rdquo;
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
+              {isVoice ? (
+                <Phone size={10} fill="currentColor" stroke="currentColor" />
+              ) : (
+                <MessageCircle size={10} fill="currentColor" stroke="currentColor" />
+              )}
+              <span>{relativeAt(claim.createdAt)}</span>
+            </div>
+          </div>
         );
       })}
     </div>
