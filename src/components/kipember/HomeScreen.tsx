@@ -327,7 +327,12 @@ export default function HomeScreen({
   const chatTab: 'chats' | 'voice' | 'calls' =
     rawChatParam === 'voice' ? 'voice' : rawChatParam === 'calls' ? 'calls' : 'chats';
   const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
-  const swipeEnabled = !firstEmber && !emberOpen && !modal && !step && embers.length > 1;
+  // Enable the swipe wrapper when either axis is usable: vertical needs more
+  // than one ember in the carousel, horizontal needs at least one attachment
+  // beyond the cover photo. The per-axis handlers below still gate on the
+  // right condition, so the wrapper only needs to be live for one to work.
+  const swipeEnabled =
+    !firstEmber && !emberOpen && !modal && !step && (embers.length > 1 || attachments.length > 0);
   const title = displayEmber ? getEmberTitle({ title: displayEmber.title, originalName: stripExtension(displayEmber.originalName) }) : 'Beach Day';
   const capturedAt = selectedEmber?.analysis?.capturedAt ?? displayEmber?.capturedAt ?? null;
   const subtitle = displayEmber
