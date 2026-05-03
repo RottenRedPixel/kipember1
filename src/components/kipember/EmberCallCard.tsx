@@ -72,7 +72,10 @@ function CallHeaderAvatar({
 export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [collapsed, setCollapsed] = useState(true);
+  // Match Ember Chat / Ember Voice — calls expand by default in the
+  // Ember Chat workflow so segments are visible immediately. The header
+  // toggle still collapses them on click for users who want to focus.
+  const [collapsed, setCollapsed] = useState(false);
   const stopAtMsRef = useRef<number | null>(null);
 
   const playSegment = (segment: EmberCallSegment) => {

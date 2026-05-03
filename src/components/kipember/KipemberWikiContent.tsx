@@ -772,6 +772,44 @@ function PlacesMentionedCard({
   );
 }
 
+// People mentioned by contributors but not necessarily tagged on the photo —
+// surfaced from MemoryClaim rows of type "person" produced by the
+// housekeeping.person_extraction extractor. Same row shape as the other
+// claim cards.
+function PeopleMentionedCard({
+  claims,
+  findAvatar,
+}: {
+  claims: ReconciliationClaim[] | null;
+  findAvatar: FindAvatar;
+}) {
+  if (claims === null || claims.length === 0) {
+    return (
+      <WikiCard>
+        <p className="text-white/30 text-sm">Nothing captured yet.</p>
+      </WikiCard>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {claims.map((claim) => {
+        const name = claimSourceLabelFromMetadata(claim.metadata);
+        return (
+          <ClaimRow
+            key={claim.id}
+            name={name}
+            value={claim.value}
+            source={claim.source}
+            createdAt={claim.createdAt}
+            avatarUrl={findAvatar(name)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function AvatarCircle({
   name,
   avatarUrl,
@@ -1755,6 +1793,10 @@ export default function KipemberWikiContent({
     () => (wikiClaims ? wikiClaims.filter((c) => c.claimType === 'place') : null),
     [wikiClaims]
   );
+  const personClaims = useMemo(
+    () => (wikiClaims ? wikiClaims.filter((c) => c.claimType === 'person') : null),
+    [wikiClaims]
+  );
   const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
   // A real pending contributor has at least one identifier (name / email /
   // phoneNumber). Rows with all identity fields null are share-link
@@ -2333,6 +2375,14 @@ export default function KipemberWikiContent({
         complete={Boolean(placeClaims && placeClaims.length > 0)}
       >
         <PlacesMentionedCard claims={placeClaims} findAvatar={findAvatar} />
+      </WikiSection>
+
+      <WikiSection
+        icon={<Users size={17} />}
+        title="People Mentioned"
+        complete={Boolean(personClaims && personClaims.length > 0)}
+      >
+        <PeopleMentionedCard claims={personClaims} findAvatar={findAvatar} />
       </WikiSection>
 
     </div>
