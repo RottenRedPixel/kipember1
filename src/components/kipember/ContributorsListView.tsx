@@ -39,10 +39,16 @@ type EmberContext = {
   filterHrefs: { ember: string; all: string };
 };
 
+export type AccountFilter = 'with-ember' | 'without-ember';
+
 type AccountContext = {
   kind: 'account';
   /** Builder for the row's drill-down link — for /account this points at /tend/contributors with from=account. */
   rowDetailHref: (params: { contributor: UnifiedContributor }) => string;
+  /** Current filter state for the With/Without Ember toggle. */
+  filter: AccountFilter;
+  /** Called when the user clicks a different filter pill. */
+  onFilterChange: (filter: AccountFilter) => void;
 };
 
 export type ContributorsListContext = EmberContext | AccountContext;
@@ -127,8 +133,16 @@ export default function ContributorsListView({
   const [sort, setSort] = useState<SortOption>('Name');
   const [sortOpen, setSortOpen] = useState(false);
 
-  // Apply sort once. (Filter happens at the call site via URL `?filter=` so back-nav preserves it.)
-  const sorted = [...contributors].sort((a, b) => compareContributors(a, b, sort));
+  // For /account: split the pool by whether the contributor has any
+  // EmberContributor join rows yet. "With Ember" = on at least one ember;
+  // "Without Ember" = pool entries that haven't been attached to anything.
+  const filtered = (() => {
+    if (context.kind !== 'account') return contributors;
+    if (context.filter === 'with-ember') return contributors.filter((c) => c.emberCount > 0);
+    return contributors.filter((c) => c.emberCount === 0);
+  })();
+
+  const sorted = [...filtered].sort((a, b) => compareContributors(a, b, sort));
 
   async function handleAddExisting(sourceKey: string) {
     if (context.kind !== 'ember') return;
@@ -154,62 +168,67 @@ export default function ContributorsListView({
     }
   }
 
-  // The pill toggle is always rendered so /account and /tend look identical.
-  // In account context, "This Ember" is shown disabled (no ember to scope against).
+  // The pill toggle: ember context = This Ember | All; account context =
+  // With Ember | Without Ember (both filter the owner's pool).
   const isEmber = context.kind === 'ember';
-  const filterValue = isEmber ? context.filter : 'all';
 
-  // What to render for each row depends on context + filter + onThisEmber state.
   return (
     <div className="flex flex-col gap-3">
-      {/* Toolbar — mirrors MyEmbersScreen: pill toggle (left) + sort dropdown (right) */}
+      {/* Toolbar — pill toggle (left) + sort dropdown (right) */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'var(--bg-surface)' }}>
           {isEmber ? (
-            <Link
-              href={context.filterHrefs.ember}
-              replace
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={{
-                background: filterValue === 'ember' ? 'var(--bg-screen)' : 'transparent',
-                color: filterValue === 'ember' ? '#ffffff' : 'var(--text-secondary)',
-              }}
-            >
-              This Ember
-            </Link>
+            <>
+              <Link
+                href={context.filterHrefs.ember}
+                replace
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{
+                  background: context.filter === 'ember' ? 'var(--bg-screen)' : 'transparent',
+                  color: context.filter === 'ember' ? '#ffffff' : 'var(--text-secondary)',
+                }}
+              >
+                This Ember
+              </Link>
+              <Link
+                href={context.filterHrefs.all}
+                replace
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                style={{
+                  background: context.filter === 'all' ? 'var(--bg-screen)' : 'transparent',
+                  color: context.filter === 'all' ? '#ffffff' : 'var(--text-secondary)',
+                }}
+              >
+                All
+              </Link>
+            </>
           ) : (
-            <span
-              aria-disabled="true"
-              className="px-3 py-1.5 rounded-lg text-xs font-medium select-none"
-              style={{
-                background: 'transparent',
-                color: 'var(--text-secondary)',
-                opacity: 0.4,
-                cursor: 'not-allowed',
-              }}
-            >
-              This Ember
-            </span>
-          )}
-          {isEmber ? (
-            <Link
-              href={context.filterHrefs.all}
-              replace
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-              style={{
-                background: filterValue === 'all' ? 'var(--bg-screen)' : 'transparent',
-                color: filterValue === 'all' ? '#ffffff' : 'var(--text-secondary)',
-              }}
-            >
-              All
-            </Link>
-          ) : (
-            <span
-              className="px-3 py-1.5 rounded-lg text-xs font-medium"
-              style={{ background: 'var(--bg-screen)', color: '#ffffff' }}
-            >
-              All
-            </span>
+            <>
+              <button
+                type="button"
+                onClick={() => context.onFilterChange('with-ember')}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                style={{
+                  background: context.filter === 'with-ember' ? 'var(--bg-screen)' : 'transparent',
+                  color: context.filter === 'with-ember' ? '#ffffff' : 'var(--text-secondary)',
+                  border: 'none',
+                }}
+              >
+                With Ember
+              </button>
+              <button
+                type="button"
+                onClick={() => context.onFilterChange('without-ember')}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                style={{
+                  background: context.filter === 'without-ember' ? 'var(--bg-screen)' : 'transparent',
+                  color: context.filter === 'without-ember' ? '#ffffff' : 'var(--text-secondary)',
+                  border: 'none',
+                }}
+              >
+                Without Ember
+              </button>
+            </>
           )}
         </div>
 

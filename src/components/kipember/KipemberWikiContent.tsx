@@ -2039,6 +2039,7 @@ export default function KipemberWikiContent({
             </>
           )
         }
+        editHref={detail?.id ? `/tend/contributors?id=${detail.id}` : undefined}
         collapsible
         defaultCollapsed
       >

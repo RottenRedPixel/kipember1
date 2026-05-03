@@ -17,15 +17,19 @@ export async function POST(request: NextRequest) {
 
     const { imageId, phoneNumber, email, name, userId } = await request.json();
 
-    if (!imageId || typeof imageId !== 'string') {
-      return NextResponse.json({ error: 'imageId is required' }, { status: 400 });
+    // imageId is optional now: when present, we create the pool entry AND
+    // attach it to that ember; when omitted, we create a pool-only entry
+    // (used by the /account contributors view to grow the owner's pool
+    // without picking an ember yet).
+    const hasImageId = typeof imageId === 'string' && imageId.length > 0;
+    let image: { ownerId: string } | null = null;
+    if (hasImageId) {
+      image = await ensureEmberOwnerAccess(auth.user.id, imageId);
+      if (!image) {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
     }
-
-    const image = await ensureEmberOwnerAccess(auth.user.id, imageId);
-
-    if (!image) {
-      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
-    }
+    const ownerId = image?.ownerId ?? auth.user.id;
 
     let linkedUser:
       | {
@@ -59,14 +63,12 @@ export async function POST(request: NextRequest) {
     const contributorName =
       getUserDisplayName(linkedUser) || (typeof name === 'string' && name.trim() ? name.trim() : null);
 
-    if (!normalizedPhone && !normalizedEmail && !linkedUser) {
+    if (!normalizedPhone && !normalizedEmail && !linkedUser && !contributorName) {
       return NextResponse.json(
-        { error: 'Provide a phone number, email, or select a friend' },
+        { error: 'Provide a name, phone number, email, or select a friend' },
         { status: 400 }
       );
     }
-
-    const ownerId = image.ownerId;
 
     // Find or create the pool Contributor for this owner.
     let poolContributor = await prisma.contributor.findFirst({
@@ -100,6 +102,24 @@ export async function POST(request: NextRequest) {
           email: normalizedEmail,
           name: contributorName,
         },
+      });
+    }
+
+    // Pool-only path: no ember to attach to. Return the bare pool fields.
+    if (!hasImageId) {
+      return NextResponse.json({
+        id: null,
+        imageId: null,
+        token: null,
+        inviteSent: false,
+        createdAt: poolContributor.createdAt,
+        name: poolContributor.name,
+        email: poolContributor.email,
+        phoneNumber: poolContributor.phoneNumber,
+        userId: poolContributor.userId,
+        user: null,
+        emberSession: null,
+        poolContributorId: poolContributor.id,
       });
     }
 

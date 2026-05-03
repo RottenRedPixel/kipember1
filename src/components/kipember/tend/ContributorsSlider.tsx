@@ -331,7 +331,11 @@ export default function ContributorsSlider({
     let cancelled = false;
     async function loadPool() {
       try {
-        const qs = imageId ? `?excludeImageId=${imageId}` : '';
+        // Pass the current ember so the helper marks each pool entry's
+        // onThisEmber + currentEmberContributorId. The "This Ember" filter
+        // in the list view filters by that flag — we WANT people already on
+        // this ember to appear under "This Ember".
+        const qs = imageId ? `?emberId=${imageId}` : '';
         const res = await fetch(`/api/contributors/pool${qs}`, { cache: 'no-store' });
         if (!res.ok) return;
         const payload = (await res.json()) as { contributors?: UnifiedContributor[] };
