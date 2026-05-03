@@ -1091,6 +1091,101 @@ function WikiCard({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Place card with a collapse toggle. Collapsed (default) shows just the
+// place name; expanded shows exact address, coordinates, and source.
+function PlaceCard({
+  placeName,
+  placeConfirmedAt,
+  showExactAddress,
+  addressLines,
+  placeCountry,
+  coordinateLine,
+  locationLookupPending,
+  placeSource,
+}: {
+  placeName: string | null;
+  placeConfirmedAt: string | null;
+  showExactAddress: boolean;
+  addressLines: string[];
+  placeCountry: string | null;
+  coordinateLine: string | null;
+  locationLookupPending: boolean;
+  placeSource: 'manual' | 'gps' | 'none';
+}) {
+  const [collapsed, setCollapsed] = useState(true);
+  return (
+    <WikiCard>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-2 cursor-pointer"
+        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 36 }}
+      >
+        <div className="flex-1 text-left">
+          <p className="text-white/30 text-xs font-medium mb-1.5">Place</p>
+          <p className="text-white font-medium text-sm">
+            {placeName || 'No location data available.'}
+          </p>
+        </div>
+        <ChevronDown
+          size={14}
+          color="rgba(255,255,255,0.5)"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        />
+      </button>
+      {!collapsed ? (
+        <>
+          {placeConfirmedAt ? (
+            <p className="text-white/30 text-xs mt-1">
+              (edited on {new Date(placeConfirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
+            </p>
+          ) : null}
+          {showExactAddress ? (
+            <>
+              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Exact Address</p>
+              {addressLines.map((line, index) => (
+                <p key={index} className="text-white/70 text-sm">
+                  {line}
+                </p>
+              ))}
+              {placeCountry ? (
+                <p className="text-white/70 text-sm">{placeCountry}</p>
+              ) : null}
+            </>
+          ) : placeCountry ? (
+            <>
+              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Country</p>
+              <p className="text-white/70 text-sm">{placeCountry}</p>
+            </>
+          ) : null}
+          {coordinateLine ? (
+            <>
+              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Coordinates</p>
+              <p className="text-white/70 text-sm">{coordinateLine}</p>
+            </>
+          ) : null}
+          {locationLookupPending && addressLines.length === 0 ? (
+            <p className="text-white/30 text-xs mt-3">
+              Looking up an address from the photo GPS metadata...
+            </p>
+          ) : null}
+          <p className="text-white/30 text-xs mt-3">
+            Source: {placeSource === 'manual'
+              ? 'Manual entry'
+              : placeSource === 'gps'
+                ? 'Photo GPS metadata & Reverse Geocoded'
+                : 'Not set'}
+          </p>
+        </>
+      ) : null}
+    </WikiCard>
+  );
+}
+
 type ChatBlock = {
   personName: string;
   avatarUrl?: string | null;
@@ -1702,53 +1797,16 @@ export default function KipemberWikiContent({
         complete={Boolean(placeName || addressLines.length > 0 || coordinateLine)}
         editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
       >
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-1.5">Place</p>
-          <p className="text-white font-medium text-sm">
-            {placeName || 'No location data available.'}
-          </p>
-          {placeConfirmedAt ? (
-            <p className="text-white/30 text-xs mt-1">
-              (edited on {new Date(placeConfirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
-            </p>
-          ) : null}
-          {showExactAddress ? (
-            <>
-              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Exact Address</p>
-              {addressLines.map((line, index) => (
-                <p key={index} className="text-white/70 text-sm">
-                  {line}
-                </p>
-              ))}
-              {placeCountry ? (
-                <p className="text-white/70 text-sm">{placeCountry}</p>
-              ) : null}
-            </>
-          ) : placeCountry ? (
-            <>
-              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Country</p>
-              <p className="text-white/70 text-sm">{placeCountry}</p>
-            </>
-          ) : null}
-          {coordinateLine ? (
-            <>
-              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Coordinates</p>
-              <p className="text-white/70 text-sm">{coordinateLine}</p>
-            </>
-          ) : null}
-          {locationLookupPending && addressLines.length === 0 ? (
-            <p className="text-white/30 text-xs mt-3">
-              Looking up an address from the photo GPS metadata...
-            </p>
-          ) : null}
-          <p className="text-white/30 text-xs mt-3">
-            Source: {placeSource === 'manual'
-              ? 'Manual entry'
-              : placeSource === 'gps'
-                ? 'Photo GPS metadata & Reverse Geocoded'
-                : 'Not set'}
-          </p>
-        </WikiCard>
+        <PlaceCard
+          placeName={placeName}
+          placeConfirmedAt={placeConfirmedAt}
+          showExactAddress={showExactAddress}
+          addressLines={addressLines}
+          placeCountry={placeCountry}
+          coordinateLine={coordinateLine}
+          locationLookupPending={locationLookupPending}
+          placeSource={placeSource}
+        />
       </WikiSection>
 
       <WikiSection
@@ -2147,6 +2205,16 @@ export default function KipemberWikiContent({
           ))}
         </WikiSection>
       ) : null}
+
+      {/* Visual divider — everything below this is auto-extracted from
+          the Story Circle conversations, not directly authored. */}
+      <div className="flex items-center gap-3 px-1 pt-2">
+        <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+        <span className="text-white/30 text-xs uppercase tracking-wider font-medium">
+          Extracted Details
+        </span>
+        <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+      </div>
 
       <WikiSection
         icon={<Lightbulb size={17} />}
