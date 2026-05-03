@@ -1,7 +1,8 @@
 'use client';
 
-import { Mic, SendHorizontal } from 'lucide-react';
+import { Mic, SendHorizontal, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -35,10 +36,21 @@ export default function GuestFlow({ token }: { token: string }) {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState('');
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const transcriptRef = useRef('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  function releaseMicStream() {
+    const current = streamRef.current;
+    if (current) {
+      current.getTracks().forEach((track) => track.stop());
+    }
+    streamRef.current = null;
+    setStream(null);
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -47,9 +59,10 @@ export default function GuestFlow({ token }: { token: string }) {
   useEffect(() => {
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try { recognitionRef.current.stop(); } catch { /* noop */ }
         recognitionRef.current = null;
       }
+      releaseMicStream();
     };
   }, []);
 
@@ -111,7 +124,7 @@ export default function GuestFlow({ token }: { token: string }) {
     await sendMessage(input);
   }
 
-  function startVoiceRecording() {
+  async function startVoiceRecording() {
     setError('');
 
     const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -122,9 +135,20 @@ export default function GuestFlow({ token }: { token: string }) {
 
     transcriptRef.current = '';
 
+    // Grab a real audio stream so the visualizer has something to draw —
+    // mirrors the owner / contributor flow that uses MicLevelMeter.
+    try {
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = micStream;
+      setStream(micStream);
+    } catch (micError) {
+      setError(micError instanceof Error ? micError.message : 'Microphone permission denied.');
+      return;
+    }
+
     try {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try { recognitionRef.current.stop(); } catch { /* noop */ }
         recognitionRef.current = null;
       }
 
@@ -146,11 +170,13 @@ export default function GuestFlow({ token }: { token: string }) {
         setError(event.error || 'Voice chat failed.');
         setIsRecording(false);
         recognitionRef.current = null;
+        releaseMicStream();
       };
 
       recognition.onend = () => {
         setIsRecording(false);
         recognitionRef.current = null;
+        releaseMicStream();
         const transcript = transcriptRef.current.trim();
         transcriptRef.current = '';
         if (transcript) {
@@ -165,14 +191,16 @@ export default function GuestFlow({ token }: { token: string }) {
       setError(voiceError instanceof Error ? voiceError.message : 'Unable to start voice chat.');
       setIsRecording(false);
       recognitionRef.current = null;
+      releaseMicStream();
     }
   }
 
   function stopVoiceRecording() {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try { recognitionRef.current.stop(); } catch { /* noop */ }
     }
     setIsRecording(false);
+    releaseMicStream();
   }
 
   return (
@@ -225,27 +253,38 @@ export default function GuestFlow({ token }: { token: string }) {
         </div>
       </div>
 
-      {/* Input bar */}
+      {/* Input bar — mirrors the owner / contributor flow so the visualizer
+          fills the input area while recording. */}
       <form onSubmit={handleSubmit} className="flex items-end gap-2">
-        <button
-          type="button"
-          onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-          disabled={isSending}
-          className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
-          style={{ background: isRecording ? 'rgba(249,115,22,0.95)' : 'rgba(255,255,255,0.08)' }}
-          aria-label={isRecording ? 'Stop voice chat' : 'Start voice chat'}
-        >
-          <Mic size={18} />
-        </button>
-
-        <input
-          type="text"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          placeholder="Ask Ember about this memory..."
-          className="min-w-0 flex-1 rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]"
-          disabled={isSending}
-        />
+        <div className="relative min-w-0 flex-1">
+          {isRecording ? (
+            <div className="flex h-11 w-full items-center rounded-full border border-transparent bg-white/8 px-4 pr-11">
+              <MicLevelMeter stream={stream} className="h-5 w-full" />
+            </div>
+          ) : (
+            <input
+              type="text"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Ask Ember about this memory..."
+              className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]"
+              disabled={isSending}
+            />
+          )}
+          <button
+            type="button"
+            onClick={isRecording ? stopVoiceRecording : () => void startVoiceRecording()}
+            disabled={isSending}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
+            style={{
+              color: isRecording ? 'white' : 'rgba(255,255,255,0.5)',
+              background: isRecording ? 'rgba(249,115,22,0.95)' : 'transparent',
+            }}
+            aria-label={isRecording ? 'Stop recording' : 'Start voice chat'}
+          >
+            {isRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
+          </button>
+        </div>
 
         <button
           type="submit"
@@ -263,7 +302,7 @@ export default function GuestFlow({ token }: { token: string }) {
           {error ? (
             <p className="text-[rgba(255,180,180,0.92)]">{error}</p>
           ) : (
-            <p className="text-white/48">Listening...</p>
+            <p className="text-white/48">Recording — tap the square to stop.</p>
           )}
         </div>
       ) : null}

@@ -125,6 +125,17 @@ export default function GuestEmberScreen({ token }: { token: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+
+  const copyShareLink = useCallback(async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      /* clipboard API unavailable; visual feedback still fires below */
+    }
+    setCopyStatus('copied');
+    setTimeout(() => setCopyStatus('idle'), 2000);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -286,7 +297,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="p-5 grid grid-cols-3 gap-1">
-            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => void navigator.clipboard.writeText(shareUrl)}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
+            <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => void copyShareLink(shareUrl)}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
             <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => window.location.assign(`sms:?&body=${encodeURIComponent(shareUrl)}`)}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
             <a href={`mailto:?body=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
             <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><Share2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
@@ -296,8 +307,20 @@ export default function GuestEmberScreen({ token }: { token: string }) {
           <div className="mx-5 mb-5">
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
               <span className="flex-1 text-xs text-white/50 truncate">{shareUrl}</span>
-              <button type="button" onClick={() => void navigator.clipboard.writeText(shareUrl)} className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-md cursor-pointer" style={{ color: '#f97316' }}>Copy</button>
+              <button
+                type="button"
+                onClick={() => void copyShareLink(shareUrl)}
+                className="flex-shrink-0 text-xs font-medium px-2 py-1 rounded-md cursor-pointer"
+                style={{ color: copyStatus === 'copied' ? '#4ade80' : '#f97316' }}
+              >
+                {copyStatus === 'copied' ? 'Copied!' : 'Copy'}
+              </button>
             </div>
+            {copyStatus === 'copied' ? (
+              <p className="text-xs text-center mt-2" style={{ color: '#4ade80' }}>
+                Link copied to clipboard
+              </p>
+            ) : null}
           </div>
         </Modal>
       ) : null}
