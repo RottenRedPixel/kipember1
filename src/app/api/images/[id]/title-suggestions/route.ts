@@ -113,6 +113,7 @@ export async function GET(
     }
 
     const forceRefresh = request.nextUrl.searchParams.get('refresh') === '1';
+    const cachedOnly = request.nextUrl.searchParams.get('cachedOnly') === '1';
     const preferredPeopleParam = request.nextUrl.searchParams.get('preferredPeople');
     const preferredPeople = preferredPeopleParam
       ? preferredPeopleParam.split(',').map((s) => s.trim()).filter(Boolean)
@@ -123,6 +124,15 @@ export async function GET(
       where: { id },
       select: { smartTitleSuggestionsJson: true },
     });
+
+    // Cache-only mode: return whatever is in the DB without ever generating.
+    // The Edit Title slider uses this on Edit-mode entry so the user sees
+    // the last set of ideas instantly; Regen Ideas is the only path that
+    // triggers a new generation.
+    if (cachedOnly) {
+      const cached = parseCache(cachedImage?.smartTitleSuggestionsJson);
+      return NextResponse.json({ suggestions: cached?.suggestions ?? [] });
+    }
 
     if (!forceRefresh) {
       const cached = parseCache(cachedImage?.smartTitleSuggestionsJson);

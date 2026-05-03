@@ -317,40 +317,42 @@ export default function EditSnapshotSlider({
 
       {/* Actions */}
       <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={() => void handleRegenerate()}
-          disabled={mode === 'view' || !detail.canManage || regenerating}
-          className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
-          style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-        >
-          {regenerating ? 'Regenerating...' : 'Regen Snapshot'}
-        </button>
         {mode === 'view' ? (
           <button
             type="button"
             onClick={() => setMode('edit')}
             disabled={!detail.canManage}
-            className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
             style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: detail.canManage ? 'pointer' : 'default' }}
           >
             Edit
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={!detail.canManage || saving || !isDirty}
-            className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-            style={{
-              background: isDirty ? '#f97316' : 'var(--bg-surface)',
-              border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-              minHeight: 44,
-              cursor: isDirty ? 'pointer' : 'default',
-            }}
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => void handleRegenerate()}
+              disabled={!detail.canManage || regenerating}
+              className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+              style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+            >
+              {regenerating ? 'Regenerating...' : 'Regen Snapshot'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={!detail.canManage || saving || !isDirty}
+              className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+              style={{
+                background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                minHeight: 44,
+                cursor: isDirty ? 'pointer' : 'default',
+              }}
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          </>
         )}
       </div>
     </div>

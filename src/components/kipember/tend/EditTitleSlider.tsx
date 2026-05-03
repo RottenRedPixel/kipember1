@@ -63,75 +63,46 @@ export default function EditTitleSlider({
     setMode('view');
   }, [detail]);
 
-  // Load suggestions whenever the slider opens for a new ember. Pass the
-  // currently-checked people so the cache key matches and the initial ideas
-  // already feature everyone tagged.
+  // Reset transient state when the ember changes. We deliberately do NOT
+  // pre-fetch suggestions here — that used to spin up a Claude call on every
+  // slider open even though the user hadn't asked for ideas yet. Now we
+  // only read from the DB cache when the user actually enters Edit mode
+  // (loadCachedSuggestions below), and only generate on Regen Ideas.
   useEffect(() => {
     if (!imageId || !detail) {
       setSuggestions(null);
       setLoading(false);
       setRefreshing(false);
       setError('');
-      return;
     }
-
-    let cancelled = false;
-
-    async function loadSuggestions() {
-      setLoading(true);
-      setError('');
-      try {
-        const params = new URLSearchParams();
-        const preferredNames = (detail?.tags || [])
-          .filter((tag) => preferredPeopleIds.has(tag.id))
-          .map((tag) => tag.label)
-          .filter(Boolean);
-        if (preferredNames.length > 0) params.set('preferredPeople', preferredNames.join(','));
-        const query = params.toString();
-        const response = await fetch(
-          `/api/images/${imageId}/title-suggestions${query ? `?${query}` : ''}`,
-          { cache: 'no-store' }
-        );
-        const payload = (await response.json().catch(() => null)) as
-          | TitleSuggestionResponse
-          | { error?: string }
-          | null;
-
-        if (cancelled) return;
-
-        if (!response.ok || !payload || !('suggestions' in payload)) {
-          setSuggestions(null);
-          setError(
-            payload && 'error' in payload
-              ? payload.error || 'Failed to load title suggestions.'
-              : 'Failed to load title suggestions.'
-          );
-          return;
-        }
-
-        setSuggestions(payload);
-      } catch (loadError) {
-        if (!cancelled) {
-          setSuggestions(null);
-          setError(
-            loadError instanceof Error ? loadError.message : 'Failed to load title suggestions.'
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void loadSuggestions();
-
-    return () => {
-      cancelled = true;
-    };
-    // We deliberately do NOT depend on preferredPeopleIds — the initial load
-    // uses whatever the slider was opened with (defaults to all). After the
-    // user toggles people they re-fetch via the Regen Ideas button.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageId, detail]);
+
+  // One-shot read of any cached title ideas already in the DB. Never
+  // triggers a generation. Called when the user enters Edit mode.
+  async function loadCachedSuggestions() {
+    if (!imageId) return;
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch(
+        `/api/images/${imageId}/title-suggestions?cachedOnly=1`,
+        { cache: 'no-store' }
+      );
+      const payload = (await response.json().catch(() => null)) as
+        | TitleSuggestionResponse
+        | { error?: string }
+        | null;
+      if (!response.ok || !payload || !('suggestions' in payload)) {
+        setSuggestions(null);
+        return;
+      }
+      setSuggestions(payload);
+    } catch {
+      setSuggestions(null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleRegenIdeas() {
     if (!imageId) return;
@@ -251,6 +222,10 @@ export default function EditTitleSlider({
 
           {error ? <p className="text-white/45 text-sm">{error}</p> : null}
 
+          {!loading && !error && (!suggestions || suggestions.suggestions.length === 0) ? (
+            <p className="text-white/45 text-sm">Click Regen Ideas to generate suggestions.</p>
+          ) : null}
+
           {!loading && !error && suggestions && suggestions.suggestions.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {suggestions.suggestions.map((suggestion) => (
@@ -333,39 +308,44 @@ export default function EditTitleSlider({
       ) : null}
 
       <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={() => void handleRegenIdeas()}
-          disabled={mode === 'view' || refreshing || loading}
-          className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
-          style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-        >
-          {refreshing ? 'Regenerating...' : 'Regen Ideas'}
-        </button>
         {mode === 'view' ? (
           <button
             type="button"
-            onClick={() => setMode('edit')}
-            className="flex-1 rounded-full px-5 text-white text-sm font-medium"
+            onClick={() => {
+              setMode('edit');
+              void loadCachedSuggestions();
+            }}
+            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium"
             style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: 'pointer' }}
           >
             Edit
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={!isDirty}
-            className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-            style={{
-              background: isDirty ? '#f97316' : 'var(--bg-surface)',
-              border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-              minHeight: 44,
-              cursor: isDirty ? 'pointer' : 'default',
-            }}
-          >
-            Save
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => void handleRegenIdeas()}
+              disabled={refreshing || loading}
+              className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+              style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+            >
+              {refreshing ? 'Regenerating...' : 'Regen Ideas'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={!isDirty}
+              className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+              style={{
+                background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                minHeight: 44,
+                cursor: isDirty ? 'pointer' : 'default',
+              }}
+            >
+              Save
+            </button>
+          </>
         )}
       </div>
     </>
