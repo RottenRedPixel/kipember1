@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BarChart3, ChevronDown, Menu, MessageSquareText, Users, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, ChevronDown, FlaskConical, Menu, MessageSquareText, Settings, Users, X } from 'lucide-react';
 import { PROMPT_GROUPS, PROMPT_REGISTRY } from '@/lib/prompt-registry';
 import { groupSlug, shortPromptLabel } from '@/lib/admin-prompt-groups';
 
@@ -63,6 +63,13 @@ const NAV_SECTIONS: NavSection[] = [
         href: `/admin/prompts/${groupSlug(group)}/${encodeURIComponent(p.key)}`,
       })),
     })),
+  },
+  {
+    title: 'System',
+    icon: Settings,
+    items: [
+      { label: 'Test APIs', href: '/admin/system/test-apis', icon: FlaskConical },
+    ],
   },
 ];
 
