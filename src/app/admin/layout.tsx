@@ -5,7 +5,7 @@ import AdminShell from '@/components/admin/AdminShell';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const auth = await getCurrentAuth();
-  if (!auth) redirect('/signin?from=/admin/users');
+  if (!auth) redirect('/signin?from=/admin/analytics');
   if (!isAdmin(auth.user)) redirect('/');
 
   return (

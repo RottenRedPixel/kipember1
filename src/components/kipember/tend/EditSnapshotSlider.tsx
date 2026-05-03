@@ -97,6 +97,10 @@ export default function EditSnapshotSlider({
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState('');
   const [requiredPeopleIds, setRequiredPeopleIds] = useState<Set<string>>(new Set());
+  // Slider opens in 'view' mode showing only the snapshot block. Clicking
+  // Edit reveals Length + People and unlocks the textarea. After a
+  // successful save we snap back to 'view'.
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const emberTitle = detail?.title || (detail ? stripExtension(detail.originalName) : 'Ember');
@@ -117,8 +121,9 @@ export default function EditSnapshotSlider({
     setVoiceId(detail?.snapshot?.emberVoiceId || '');
     // Default the people checklist to "all selected" so the regenerated
     // snapshot already names everyone tagged. The Title slider follows the
-    // same pattern.
+    // same pattern. Re-opening the slider always lands back in view mode.
     setRequiredPeopleIds(new Set((detail?.tags || []).map((tag) => tag.id)));
+    setMode('view');
   }, [detail]);
 
   // Auto-resize textarea to fit content
@@ -161,6 +166,7 @@ export default function EditSnapshotSlider({
       const updated = payload?.snapshot;
       if (updated?.script) setScriptDraft(updated.script);
       onStatus?.('Snapshot saved.');
+      setMode('view');
       await refreshDetail();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save snapshot';
@@ -221,7 +227,8 @@ export default function EditSnapshotSlider({
           value={scriptDraft}
           onChange={(event) => setScriptDraft(event.target.value)}
           disabled={!detail.canManage}
-          className="w-full px-0 py-2 text-base font-medium text-white outline-none disabled:opacity-70 bg-transparent resize-none overflow-hidden"
+          readOnly={mode === 'view'}
+          className="w-full px-0 py-2 text-base font-medium text-white outline-none disabled:opacity-70 bg-transparent resize-none overflow-hidden read-only:cursor-default"
           style={{ minHeight: '4rem' }}
           placeholder="Snapshot text will appear here..."
         />
@@ -234,7 +241,8 @@ export default function EditSnapshotSlider({
       </SnapshotCard>
       </SnapshotSection>
 
-      {/* Snapshot Length */}
+      {/* Snapshot Length — only visible in edit mode */}
+      {mode === 'edit' ? (
       <SnapshotSection icon={<Clock size={17} />} title="Length">
         <div className="px-1">
           <div className="flex items-center justify-between mb-1">
@@ -256,9 +264,10 @@ export default function EditSnapshotSlider({
           </div>
         </div>
       </SnapshotSection>
+      ) : null}
 
-      {/* Tagged People */}
-      {detail.tags && detail.tags.length > 0 && (
+      {/* Tagged People — only visible in edit mode */}
+      {mode === 'edit' && detail.tags && detail.tags.length > 0 && (
         <SnapshotSection icon={<Users size={17} />} title="People">
           <SnapshotCard>
             <p className="text-white/40 text-xs mb-2">Check names to require in the regenerated snapshot.</p>
@@ -311,26 +320,38 @@ export default function EditSnapshotSlider({
         <button
           type="button"
           onClick={() => void handleRegenerate()}
-          disabled={!detail.canManage || regenerating}
+          disabled={mode === 'view' || !detail.canManage || regenerating}
           className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
           style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
         >
           {regenerating ? 'Regenerating...' : 'Regen Snapshot'}
         </button>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={!detail.canManage || saving || !isDirty}
-          className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-          style={{
-            background: isDirty ? '#f97316' : 'var(--bg-surface)',
-            border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-            minHeight: 44,
-            cursor: isDirty ? 'pointer' : 'default',
-          }}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </button>
+        {mode === 'view' ? (
+          <button
+            type="button"
+            onClick={() => setMode('edit')}
+            disabled={!detail.canManage}
+            className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+            style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: detail.canManage ? 'pointer' : 'default' }}
+          >
+            Edit
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={!detail.canManage || saving || !isDirty}
+            className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+            style={{
+              background: isDirty ? '#f97316' : 'var(--bg-surface)',
+              border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+              minHeight: 44,
+              cursor: isDirty ? 'pointer' : 'default',
+            }}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -47,14 +47,20 @@ export default function EditTitleSlider({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [preferredPeopleIds, setPreferredPeopleIds] = useState<Set<string>>(new Set());
+  // The slider opens in 'view' mode showing only the title block. Clicking
+  // Edit reveals Title Ideas + People and unlocks the input. After a
+  // successful save we snap back to 'view'.
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
 
   // Sync the input value from the loaded detail. Also default the people
   // checklist to "all selected" so the first batch of ideas already follows
-  // everyone tagged in the photo.
+  // everyone tagged in the photo. Re-opening the slider always lands back
+  // in view mode.
   useEffect(() => {
     if (!detail) return;
     setTitleValue(detail.title || stripExtension(detail.originalName) || '');
     setPreferredPeopleIds(new Set((detail.tags || []).map((tag) => tag.id)));
+    setMode('view');
   }, [detail]);
 
   // Load suggestions whenever the slider opens for a new ember. Pass the
@@ -177,6 +183,7 @@ export default function EditTitleSlider({
       body: JSON.stringify({ title: titleValue }),
     });
     onStatus?.(response.ok ? 'Title saved.' : 'Failed to save title.');
+    if (response.ok) setMode('view');
     await refreshDetail();
   }
 
@@ -214,7 +221,8 @@ export default function EditTitleSlider({
             onChange={(event) => setTitleValue(event.target.value.slice(0, 40))}
             placeholder="Ember title"
             maxLength={40}
-            className="w-full px-0 py-2 text-base font-medium text-white placeholder-white/30 outline-none bg-transparent"
+            readOnly={mode === 'view'}
+            className="w-full px-0 py-2 text-base font-medium text-white placeholder-white/30 outline-none bg-transparent read-only:cursor-default"
           />
           {updatedAtLabel ? (
             <p className="text-white/30 text-xs mt-1 border-t border-white/10 pt-2">
@@ -229,7 +237,8 @@ export default function EditTitleSlider({
         </div>
       </div>
 
-      {/* Smart title suggestions */}
+      {/* Smart title suggestions — only visible in edit mode */}
+      {mode === 'edit' ? (
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <span style={{ color: 'var(--text-secondary)' }}>
@@ -268,9 +277,10 @@ export default function EditTitleSlider({
           ) : null}
         </WikiCard>
       </div>
+      ) : null}
 
-      {/* People hints */}
-      {detail?.tags && detail.tags.length > 0 ? (
+      {/* People hints — only visible in edit mode */}
+      {mode === 'edit' && detail?.tags && detail.tags.length > 0 ? (
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <span style={{ color: 'var(--text-secondary)' }}>
@@ -326,26 +336,37 @@ export default function EditTitleSlider({
         <button
           type="button"
           onClick={() => void handleRegenIdeas()}
-          disabled={refreshing || loading}
+          disabled={mode === 'view' || refreshing || loading}
           className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
           style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
         >
           {refreshing ? 'Regenerating...' : 'Regen Ideas'}
         </button>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={!isDirty}
-          className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-          style={{
-            background: isDirty ? '#f97316' : 'var(--bg-surface)',
-            border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-            minHeight: 44,
-            cursor: isDirty ? 'pointer' : 'default',
-          }}
-        >
-          Save
-        </button>
+        {mode === 'view' ? (
+          <button
+            type="button"
+            onClick={() => setMode('edit')}
+            className="flex-1 rounded-full px-5 text-white text-sm font-medium"
+            style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: 'pointer' }}
+          >
+            Edit
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={!isDirty}
+            className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+            style={{
+              background: isDirty ? '#f97316' : 'var(--bg-surface)',
+              border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+              minHeight: 44,
+              cursor: isDirty ? 'pointer' : 'default',
+            }}
+          >
+            Save
+          </button>
+        )}
       </div>
     </>
   );
