@@ -107,10 +107,7 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
   const segmentCount = block.segments.length;
 
   return (
-    <div
-      className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
-      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-    >
+    <div className="flex flex-col gap-1">
       <button
         type="button"
         onClick={() => setCollapsed((v) => !v)}
@@ -177,10 +174,8 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
                   isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
                 }`}
                 style={{
-                  background: isUser ? 'rgba(249,115,22,0.18)' : 'var(--bg-ember-bubble)',
-                  border: isUser
-                    ? '1px solid rgba(249,115,22,0.45)'
-                    : '1px solid var(--border-ember)',
+                  background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
+                  border: isUser ? 'none' : '1px solid var(--border-ember)',
                 }}
               >
                 {segment.content}
