@@ -65,25 +65,39 @@ export async function POST(request: NextRequest) {
       status: 'active',
     });
 
-    // Welcome is one-shot per session: if any assistant message already exists,
-    // return it as-is. Only generate a new welcome when the session is empty.
-    const existing = await prisma.emberMessage.findFirst({
-      where: { sessionId: session.id, role: 'assistant' },
-      orderBy: { createdAt: 'asc' },
+    // If the user has already replied in this session, just hand back the
+    // most recent assistant message — no need to regenerate a welcome on top
+    // of an in-progress conversation.
+    const userReplyCount = await prisma.emberMessage.count({
+      where: { sessionId: session.id, role: 'user' },
     });
-    if (existing) {
-      const response = NextResponse.json({ message: existing.content });
-      if (!existingBrowserId || session.browserId !== browserId) {
-        response.cookies.set(COOKIE_NAME, session.browserId ?? browserId, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: 60 * 60 * 24 * 365,
-          path: '/',
-        });
+    if (userReplyCount > 0) {
+      const latest = await prisma.emberMessage.findFirst({
+        where: { sessionId: session.id, role: 'assistant' },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (latest) {
+        const response = NextResponse.json({ message: latest.content });
+        if (!existingBrowserId || session.browserId !== browserId) {
+          response.cookies.set(COOKIE_NAME, session.browserId ?? browserId, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 60 * 60 * 24 * 365,
+            path: '/',
+          });
+        }
+        return response;
       }
-      return response;
     }
+
+    // Otherwise: drop any prior unanswered welcomes so the next one reads the
+    // current wiki / title / location, then regenerate. This avoids the
+    // "frozen first-ever welcome" problem where the model's opening sentence
+    // gets stuck on facts that have since changed.
+    await prisma.emberMessage.deleteMany({
+      where: { sessionId: session.id, role: 'assistant' },
+    });
 
     // Look up the user's first name and whether this is their first-ever owned ember.
     const [userRecord, ownedEmberCount] = await Promise.all([
