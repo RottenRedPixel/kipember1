@@ -33,3 +33,31 @@ export function pastelForContributor(key: string | null | undefined): string {
   }
   return PASTEL_PALETTE[Math.abs(hash) % PASTEL_PALETTE.length];
 }
+
+// Build the pool-stable key from a contributor's identity fields. Same
+// formula contributors-pool.ts uses for dedup, so a single person resolves
+// to the same key everywhere — and therefore the same color.
+//
+// Callers that have a flattened EmberContributor (with userId / email /
+// phoneNumber hoisted) should use this so the per-ember EmberContributor.id
+// doesn't accidentally drive a different color than the pool key.
+export function poolKeyForContributor(c: {
+  userId?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
+  id?: string | null;
+}): string {
+  if (c.userId) return `u:${c.userId}`;
+  if (c.email) return `e:${c.email.toLowerCase()}`;
+  if (c.phoneNumber) return `p:${c.phoneNumber}`;
+  return `r:${c.id ?? ''}`;
+}
+
+export function pastelForContributorIdentity(c: {
+  userId?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
+  id?: string | null;
+}): string {
+  return pastelForContributor(poolKeyForContributor(c));
+}

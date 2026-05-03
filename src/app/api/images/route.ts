@@ -4,6 +4,7 @@ import { requireApiUser } from '@/lib/auth-server';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { ensureImageAnalysisForImage } from '@/lib/image-analysis';
+import { cacheLocationSuggestionsForImage } from '@/lib/location-suggestions';
 import { persistUploadedMedia } from '@/lib/media-upload';
 import {
   getAccessibleEmbersForUser,
@@ -70,6 +71,15 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error('Image analysis at create time failed:', error);
         return;
+      }
+
+      // Resolve + cache the AI-ranked location ONCE here, right after image
+      // analysis populates the GPS coords. The wiki / Edit Place views read
+      // from this cache on every open instead of re-running Google + Claude.
+      try {
+        await cacheLocationSuggestionsForImage(image.id);
+      } catch (error) {
+        console.error('Location resolution at create time failed:', error);
       }
 
       try {

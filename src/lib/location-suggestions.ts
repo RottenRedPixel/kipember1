@@ -1,5 +1,6 @@
 import { chat } from '@/lib/claude';
 import { renderPromptTemplate } from '@/lib/control-plane';
+import { prisma } from '@/lib/db';
 
 export type ConfirmedLocationContext = {
   label: string;
@@ -881,4 +882,79 @@ export async function getLocationSuggestionsForCoordinates({
   }
 
   return deduped;
+}
+
+function safeParseJson<T>(value: string | null | undefined, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+// Idempotent: runs the geocode + Claude ranking once for an ember and writes
+// the result to ImageAnalysis.metadataJson under suggestionsCache. Subsequent
+// calls (same lat/lng) early-return without burning Google or Claude tokens.
+//
+// Called from the ember-creation background work so the Place card on the
+// wiki opens with data already resolved instead of triggering the lookup
+// lazily on first wiki view.
+export async function cacheLocationSuggestionsForImage(imageId: string) {
+  const analysis = await prisma.imageAnalysis.findUnique({
+    where: { imageId },
+    select: {
+      metadataJson: true,
+      metadataSummary: true,
+      visualDescription: true,
+      summary: true,
+      mood: true,
+      placesJson: true,
+      thingsJson: true,
+      activitiesJson: true,
+      visibleTextJson: true,
+      latitude: true,
+      longitude: true,
+    },
+  });
+
+  if (!analysis || analysis.latitude == null || analysis.longitude == null) {
+    return { cached: false, reason: 'no-coords' as const };
+  }
+
+  // Cache hit — nothing to do.
+  if (parseLocationSuggestionsCache(analysis.metadataJson, analysis.latitude, analysis.longitude)) {
+    return { cached: true, reason: 'already-cached' as const };
+  }
+
+  const suggestions = await getLocationSuggestionsForCoordinates({
+    latitude: analysis.latitude,
+    longitude: analysis.longitude,
+    context: {
+      metadataSummary: analysis.metadataSummary,
+      visualAnalysis: {
+        summary: analysis.summary,
+        visualDescription: analysis.visualDescription,
+        mood: analysis.mood,
+        placeSignals: safeParseJson(analysis.placesJson, []),
+        notableThings: safeParseJson(analysis.thingsJson, []),
+        activities: safeParseJson(analysis.activitiesJson, []),
+        visibleText: safeParseJson(analysis.visibleTextJson, []),
+      },
+    },
+  });
+
+  await prisma.imageAnalysis.update({
+    where: { imageId },
+    data: {
+      metadataJson: mergeLocationSuggestionsCache({
+        metadataJson: analysis.metadataJson,
+        latitude: analysis.latitude,
+        longitude: analysis.longitude,
+        suggestions,
+      }),
+    },
+  });
+
+  return { cached: true, reason: 'just-cached' as const, suggestions };
 }

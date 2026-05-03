@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
 import type { KipemberContributor } from '@/components/kipember/KipemberWikiContent';
-import { pastelForContributor } from '@/lib/contributor-color';
+import { pastelForContributorIdentity } from '@/lib/contributor-color';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -564,7 +564,12 @@ export default function ContributorsSlider({
                 height: 80,
                 background: contributorAvatarFilename
                   ? 'rgba(249,115,22,0.85)'
-                  : pastelForContributor(contributor?.id ?? contributorName),
+                  : pastelForContributorIdentity({
+                      userId: contributor?.user?.id ?? contributor?.userId ?? null,
+                      email: contributor?.email ?? null,
+                      phoneNumber: contributor?.phoneNumber ?? null,
+                      id: contributor?.id ?? null,
+                    }),
               }}
             >
               {contributorAvatarFilename ? (
