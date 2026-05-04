@@ -689,15 +689,23 @@ export async function GET(
         createdAt: string;
       }>;
     }> = [];
-    let guestChatMessages: Array<{
-      role: string;
-      content: string;
-      source: string;
-      imageFilename?: string | null;
-      audioUrl?: string | null;
-      createdAt: string;
-    }> = [];
-    const guestSessionIds = new Set<string>();
+    // Each EmberSession with participantType 'guest' is a single browser
+    // visitor (sessions are keyed by the kb-guest-browser cookie + imageId),
+    // so bucketing messages by session.id gives us one bucket per distinct
+    // visitor. firstMessageAt drives the visitor ordering on the wiki.
+    type GuestSessionBucket = {
+      sessionId: string;
+      firstMessageAt: string;
+      messages: Array<{
+        role: string;
+        content: string;
+        source: string;
+        imageFilename?: string | null;
+        audioUrl?: string | null;
+        createdAt: string;
+      }>;
+    };
+    let guestSessions = new Map<string, GuestSessionBucket>();
     try {
       const emberSessions = await prisma.emberSession.findMany({
         where: { imageId: id, sessionType: { in: ['chat', 'call', 'voice'] } },
@@ -736,17 +744,20 @@ export async function GET(
         voiceMessages: VoiceTurn[];
       };
       const byPerson = new Map<string, PersonBucket>();
-      // Guest sessions are pooled into one aggregated block — different
-      // browsers can't be told apart by name, and the wiki shows them as a
-      // single "Guest Chat" card distinct from named contributor chats.
+      // Guest sessions are bucketed per-session so each anonymous visitor
+      // gets its own collapsible card on the wiki. Different browsers
+      // still can't be told apart by name, but the per-session split
+      // keeps each conversation thread legible instead of interleaving
+      // turns from different people into one timeline.
       for (const session of emberSessions) {
         if (session.participantType === 'guest') {
+          const bucketMessages: GuestSessionBucket['messages'] = [];
           for (const msg of session.messages) {
             if (msg.questionType) continue;
             // Voice/call don't currently happen for guests, but if they ever
             // do, route to the regular bucket so they render with audio.
             if (msg.source === 'voice' || session.sessionType === 'voice') continue;
-            guestChatMessages.push({
+            bucketMessages.push({
               role: msg.role,
               content: msg.content,
               source: msg.source || 'web',
@@ -755,7 +766,16 @@ export async function GET(
               createdAt: msg.createdAt.toISOString(),
             });
           }
-          if (session.messages.length > 0) guestSessionIds.add(session.id);
+          if (bucketMessages.length > 0) {
+            bucketMessages.sort(
+              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
+            guestSessions.set(session.id, {
+              sessionId: session.id,
+              firstMessageAt: bucketMessages[0].createdAt,
+              messages: bucketMessages,
+            });
+          }
           continue;
         }
         const sessionContributor = session.emberContributor?.contributor ?? null;
@@ -851,8 +871,7 @@ export async function GET(
       console.error('Failed to load chatBlocks:', chatBlocksError);
       chatBlocks = [];
       voiceBlocks = [];
-      guestChatMessages = [];
-      guestSessionIds.clear();
+      guestSessions = new Map();
     }
 
     // Build callBlocks: one block per Retell voice call, with parsed per-turn segments.
@@ -1050,12 +1069,13 @@ export async function GET(
       voiceBlocks,
       callBlocks,
       guestChatBlock:
-        guestChatMessages.length > 0
+        guestSessions.size > 0
           ? {
-              messages: guestChatMessages.sort(
-                (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              sessions: Array.from(guestSessions.values()).sort(
+                (a, b) =>
+                  new Date(a.firstMessageAt).getTime() - new Date(b.firstMessageAt).getTime()
               ),
-              sessionCount: guestSessionIds.size,
+              sessionCount: guestSessions.size,
             }
           : null,
     });

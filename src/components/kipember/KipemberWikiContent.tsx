@@ -266,13 +266,20 @@ export type KipemberWikiDetail = {
     }>;
   }>;
   guestChatBlock?: {
-    messages: Array<{
-      role: string;
-      content: string;
-      source: string;
-      imageFilename?: string | null;
-      audioUrl?: string | null;
-      createdAt: string;
+    // One entry per anonymous share-link visitor. Each browser/cookie =
+    // its own session row in the DB, so each session = one visitor's
+    // conversation thread.
+    sessions: Array<{
+      sessionId: string;
+      firstMessageAt: string;
+      messages: Array<{
+        role: string;
+        content: string;
+        source: string;
+        imageFilename?: string | null;
+        audioUrl?: string | null;
+        createdAt: string;
+      }>;
     }>;
     sessionCount: number;
   } | null;
@@ -1756,13 +1763,27 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
 }
 
 type GuestChatBlock = NonNullable<KipemberWikiDetail['guestChatBlock']>;
+type GuestChatSession = GuestChatBlock['sessions'][number];
 
-// Aggregated card for all share-link guest interactions. Different visitors
-// can't be told apart by name, so they're pooled here behind a single grey
-// chat icon — visually distinct from the named contributor chat blocks.
-function CollapsibleGuestChatBlock({ block }: { block: GuestChatBlock }) {
+// One collapsible card per anonymous share-link visitor. Anonymous
+// browsers can't be told apart by name, so we label them ordinally
+// ("Visitor 1", "Visitor 2", …) with the first-message date as a
+// subtitle. Visual styling matches the named contributor chat blocks
+// in spirit, but uses a grey avatar to read as "anonymous".
+function CollapsibleGuestVisitorBlock({
+  session,
+  visitorNumber,
+}: {
+  session: GuestChatSession;
+  visitorNumber: number;
+}) {
   const [collapsed, setCollapsed] = useState(true);
-  const userMessageCount = block.messages.filter((m) => m.role === 'user').length;
+  const userMessageCount = session.messages.filter((m) => m.role === 'user').length;
+  const dateLabel = (() => {
+    const d = new Date(session.firstMessageAt);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  })();
   return (
     <WikiCard>
       <button
@@ -1779,10 +1800,10 @@ function CollapsibleGuestChatBlock({ block }: { block: GuestChatBlock }) {
           <MessagesSquare size={16} className="text-white" strokeWidth={2} />
         </div>
         <p className="flex-1 text-left text-white/30 text-xs font-medium">
-          Guest Chat
+          Visitor {visitorNumber}
           <span className="ml-2 text-white/20">
             ({userMessageCount} {userMessageCount === 1 ? 'question' : 'questions'}
-            {block.sessionCount > 1 ? ` · ${block.sessionCount} visitors` : ''})
+            {dateLabel ? ` · ${dateLabel}` : ''})
           </span>
         </p>
         <ChevronDown
@@ -1797,7 +1818,7 @@ function CollapsibleGuestChatBlock({ block }: { block: GuestChatBlock }) {
       {!collapsed ? (
         <div className="mt-3">
           <EmberChatMessages
-            messages={block.messages.map((msg) => ({
+            messages={session.messages.map((msg) => ({
               role: msg.role === 'user' ? 'user' : 'assistant',
               content: msg.content,
               source: (msg.source as 'web' | 'voice' | 'sms') ?? 'web',
@@ -1805,7 +1826,7 @@ function CollapsibleGuestChatBlock({ block }: { block: GuestChatBlock }) {
               audioUrl: msg.audioUrl ?? null,
               createdAt: msg.createdAt,
             }))}
-            selfLabel="Guest"
+            selfLabel={`Visitor ${visitorNumber}`}
           />
         </div>
       ) : null}
@@ -2573,10 +2594,20 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<MessagesSquare size={17} />}
         title="Guest Talk"
-        complete={Boolean(detail?.guestChatBlock && detail.guestChatBlock.messages.length > 0)}
+        complete={Boolean(detail?.guestChatBlock && detail.guestChatBlock.sessions.length > 0)}
+        collapsible
+        defaultCollapsed
       >
-        {detail?.guestChatBlock && detail.guestChatBlock.messages.length > 0 ? (
-          <CollapsibleGuestChatBlock block={detail.guestChatBlock} />
+        {detail?.guestChatBlock && detail.guestChatBlock.sessions.length > 0 ? (
+          <div className="flex flex-col gap-4">
+            {detail.guestChatBlock.sessions.map((session, idx) => (
+              <CollapsibleGuestVisitorBlock
+                key={session.sessionId}
+                session={session}
+                visitorNumber={idx + 1}
+              />
+            ))}
+          </div>
         ) : (
           <WikiCard>
             <p className="text-white/30 text-sm">No guest conversations yet.</p>
