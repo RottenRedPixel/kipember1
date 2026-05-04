@@ -884,7 +884,7 @@ function PeopleMentionedCard({
             <div className="flex-1 min-w-0">
               <p className="text-white text-xs font-medium">{speaker}</p>
               <p className="text-white/60 text-[11px] mt-0.5">
-                Mentioned &ldquo;
+                &ldquo;
                 {subject ? (
                   <>
                     <span className="font-bold text-white">{subject}</span>
