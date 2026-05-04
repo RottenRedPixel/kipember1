@@ -32,14 +32,16 @@ declare global {
   }
 }
 
+type EmberModalSurface = 'chats' | 'voice' | 'calls';
+
 export default function OwnerFlow({
   emberId,
   onConversationStateChange,
-  chatTab = 'chats',
+  emberModalSurface = 'chats',
 }: {
   emberId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
-  chatTab?: 'chats' | 'voice' | 'calls';
+  emberModalSurface?: EmberModalSurface;
 }) {
   const voice = useVoiceRecording(emberId);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -52,6 +54,7 @@ export default function OwnerFlow({
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [hasPhoneNumber, setHasPhoneNumber] = useState<boolean | null>(null);
+  const [firstName, setFirstName] = useState<string>('you');
   const [isCalling, setIsCalling] = useState(false);
   const [callBlocks, setCallBlocks] = useState<EmberCallBlock[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -143,7 +146,12 @@ export default function OwnerFlow({
     let cancelled = false;
     fetch('/api/profile', { cache: 'no-store' })
       .then((res) => res.json())
-      .then((data) => { if (!cancelled) setHasPhoneNumber(Boolean(data?.user?.phoneNumber)); })
+      .then((data) => {
+        if (cancelled) return;
+        setHasPhoneNumber(Boolean(data?.user?.phoneNumber));
+        const fn = (data?.user?.firstName || '').trim();
+        if (fn) setFirstName(fn);
+      })
       .catch(() => { if (!cancelled) setHasPhoneNumber(false); });
     return () => { cancelled = true; };
   }, []);
@@ -272,11 +280,11 @@ export default function OwnerFlow({
         }}
       />
 
-      {chatTab === 'voice' ? (
+      {emberModalSurface === 'voice' ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
-          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} />
+          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} selfLabel={firstName} />
         </div>
-      ) : chatTab === 'calls' ? (
+      ) : emberModalSurface === 'calls' ? (
         callBlocks.length === 0 ? (
           <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar flex items-center justify-center">
             <p className="text-white/30 text-sm text-center px-6">Tap the phone icon on the bottom left to have ember call you.</p>
@@ -285,7 +293,7 @@ export default function OwnerFlow({
           <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
             <div className="flex flex-col gap-4">
               {callBlocks.map((block) => (
-                <EmberCallCard key={block.voiceCallId} block={block} />
+                <EmberCallCard key={block.voiceCallId} block={block} hideHeader />
               ))}
             </div>
           </div>
@@ -298,6 +306,7 @@ export default function OwnerFlow({
             messages={messages}
             isSending={isSending || isLoadingWelcome}
             endRef={messagesEndRef}
+            selfLabel={firstName}
           />
         </div>
       )}

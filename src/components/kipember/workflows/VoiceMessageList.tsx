@@ -1,6 +1,6 @@
 'use client';
 
-import { Phone, Play } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export type VoiceMessage = {
@@ -92,9 +92,8 @@ export default function VoiceMessageList({
             ) : null}
             <div className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}>
               <span
-                className={`flex items-center gap-1 text-xs font-bold ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}
+                className={`text-xs font-bold ${isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'}`}
               >
-                <Phone size={10} className={isUser ? 'text-white/30' : 'text-white/60'} />
                 {isUser ? selfLabel : emberLabel}
               </span>
               <div

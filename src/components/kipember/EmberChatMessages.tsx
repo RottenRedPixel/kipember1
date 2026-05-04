@@ -149,7 +149,7 @@ export default function EmberChatMessages({
                   }`}
                   style={{
                     background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
-                    border: isUser ? 'none' : '1px solid var(--border-ember)',
+                    border: '1px solid var(--border-ember)',
                   }}
                 >
                   <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">

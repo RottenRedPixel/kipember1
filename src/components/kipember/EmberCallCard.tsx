@@ -69,12 +69,24 @@ function CallHeaderAvatar({
   );
 }
 
-export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
+export default function EmberCallCard({
+  block,
+  hideHeader = false,
+}: {
+  block: EmberCallBlock;
+  // Inside the Ember Chat shell's Call tab the user already knows whose
+  // call they're viewing — the surrounding chat header carries that
+  // context — so we hide the per-card "<Name>'s Ember Call (N segments)"
+  // strip to avoid redundancy. The wiki Story Circle keeps it because
+  // the same surface lists multiple people's calls in one scroll.
+  hideHeader?: boolean;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   // Match Ember Chat / Ember Voice — calls expand by default in the
   // Ember Chat workflow so segments are visible immediately. The header
   // toggle still collapses them on click for users who want to focus.
+  // When hideHeader is true the toggle is gone and segments stay open.
   const [collapsed, setCollapsed] = useState(false);
   const stopAtMsRef = useRef<number | null>(null);
 
@@ -106,37 +118,52 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
 
   const segmentCount = block.segments.length;
 
+  const segmentsVisible = hideHeader || !collapsed;
+
+  // The wiki Story Circle wraps every call in its own surface card so the
+  // multiple calls in a long scroll feel like distinct chunks. Inside the
+  // Ember Chat shell's Call tab we suppress that wrapper so segments float
+  // on the chat background like Chat / Voice messages do.
+  const wrapperClass = hideHeader
+    ? 'flex flex-col gap-1'
+    : 'rounded-xl px-4 py-3.5 flex flex-col gap-1';
+  const wrapperStyle = hideHeader
+    ? undefined
+    : { background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' };
+
   return (
-    <div className="flex flex-col gap-1">
-      <button
-        type="button"
-        onClick={() => setCollapsed((v) => !v)}
-        aria-expanded={!collapsed}
-        className="w-full flex items-center gap-2 cursor-pointer"
-        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
-      >
-        <div
-          className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 29, height: 29, background: '#f97316' }}
+    <div className={wrapperClass} style={wrapperStyle}>
+      {hideHeader ? null : (
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-expanded={!collapsed}
+          className="w-full flex items-center gap-2 cursor-pointer"
+          style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
         >
-          <Phone size={16} className="text-white" fill="currentColor" stroke="currentColor" />
-        </div>
-        <CallHeaderAvatar name={block.personName} avatarUrl={block.avatarUrl} />
-        <p className="flex-1 text-left text-white/30 text-xs font-medium">
-          {block.personName}&apos;s Ember Call
-          <span className="ml-2 text-white/20">
-            ({segmentCount} {segmentCount === 1 ? 'segment' : 'segments'})
-          </span>
-        </p>
-        <ChevronDown
-          size={14}
-          color="rgba(255,255,255,0.5)"
-          style={{
-            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.15s ease',
-          }}
-        />
-      </button>
+          <div
+            className="rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ width: 29, height: 29, background: '#f97316' }}
+          >
+            <Phone size={16} className="text-white" fill="currentColor" stroke="currentColor" />
+          </div>
+          <CallHeaderAvatar name={block.personName} avatarUrl={block.avatarUrl} />
+          <p className="flex-1 text-left text-white/30 text-xs font-medium">
+            {block.personName}&apos;s Ember Call
+            <span className="ml-2 text-white/20">
+              ({segmentCount} {segmentCount === 1 ? 'segment' : 'segments'})
+            </span>
+          </p>
+          <ChevronDown
+            size={14}
+            color="rgba(255,255,255,0.5)"
+            style={{
+              transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.15s ease',
+            }}
+          />
+        </button>
+      )}
       {block.recordingUrl ? (
         <audio
           ref={audioRef}
@@ -147,26 +174,60 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
           onEnded={handlePauseOrEnded}
         />
       ) : null}
-      {!collapsed ? (
-      <div className="flex flex-col gap-3 mt-3">
-        {block.segments.map((segment) => {
+      {segmentsVisible ? (
+      <div className={`flex flex-col gap-3 ${hideHeader ? '' : 'mt-3'}`}>
+        {block.segments.map((segment, index) => {
           const isUser = segment.role === 'user';
           const canPlay = Boolean(block.recordingUrl) && segment.startMs != null;
           const isActive = activeIndex === segment.index;
-          const segmentTime =
+          const segmentDate =
             baseValid && segment.startMs != null
-              ? new Date(baseValid.getTime() + segment.startMs).toLocaleTimeString('en-US', {
+              ? new Date(baseValid.getTime() + segment.startMs)
+              : null;
+          const prevSegment = index > 0 ? block.segments[index - 1] : null;
+          const prevDate =
+            baseValid && prevSegment && prevSegment.startMs != null
+              ? new Date(baseValid.getTime() + prevSegment.startMs)
+              : null;
+          // Date divider only in the Ember Chat Call tab (hideHeader).
+          // The wiki Story Circle lists many calls back to back; adding a
+          // date stamp above each one would be noisy.
+          const showDateDivider =
+            hideHeader &&
+            segmentDate &&
+            !Number.isNaN(segmentDate.getTime()) &&
+            (!prevDate || segmentDate.toDateString() !== prevDate.toDateString());
+          const dateDividerLabel =
+            segmentDate && !Number.isNaN(segmentDate.getTime())
+              ? segmentDate.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : null;
+          const segmentTime =
+            segmentDate && !Number.isNaN(segmentDate.getTime())
+              ? segmentDate.toLocaleTimeString('en-US', {
                   hour: 'numeric',
                   minute: '2-digit',
                 })
               : null;
           return (
-            <div
-              key={segment.index}
-              className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}
-            >
-              <span className="flex items-center gap-1 text-white text-xs font-bold">
-                <Phone size={9} />
+            <div key={segment.index}>
+              {showDateDivider && dateDividerLabel ? (
+                <div className="flex justify-center my-2">
+                  <span className="text-white/25 text-[10px]">{dateDividerLabel}</span>
+                </div>
+              ) : null}
+              <div
+                className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}
+              >
+              <span
+                className={`flex items-center gap-1 text-xs font-bold ${
+                  isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'
+                }`}
+              >
+                {hideHeader ? null : <Phone size={9} />}
                 {isUser ? firstName : 'ember'}
               </span>
               <div
@@ -174,8 +235,10 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
                   isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
                 }`}
                 style={{
-                  background: isUser ? 'var(--bg-chat-user)' : 'var(--bg-ember-bubble)',
-                  border: isUser ? 'none' : '1px solid var(--border-ember)',
+                  background: isUser ? 'rgba(249,115,22,0.18)' : 'var(--bg-ember-bubble)',
+                  border: isUser
+                    ? '1px solid rgba(249,115,22,0.45)'
+                    : '1px solid var(--border-ember)',
                 }}
               >
                 {segment.content}
@@ -205,6 +268,7 @@ export default function EmberCallCard({ block }: { block: EmberCallBlock }) {
               {segmentTime ? (
                 <span className="text-white/25 text-[10px] mt-0.5">{segmentTime}</span>
               ) : null}
+              </div>
             </div>
           );
         })}

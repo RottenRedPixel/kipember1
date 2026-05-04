@@ -225,25 +225,33 @@ function RailBtn({
   );
 }
 
+// The Ember Modal is the expandable bottom sheet that overlays the ember
+// view. It has three positions (closed, position 1 = mini, position 2 =
+// full / expanded) and three surfaces inside it (Ember Chat, Ember Voice,
+// Ember Call). This file holds the shared types so HomeScreen and the
+// workflow components stay in sync.
+export type EmberModalPosition = 'closed' | 'position-1' | 'position-2';
+export type EmberModalSurface = 'chats' | 'voice' | 'calls';
+
 function WorkflowSlot({
   flow,
   emberId,
   onConversationStateChange,
-  chatTab,
+  emberModalSurface,
 }: {
   flow: HomeEmberFlow;
   emberId: string | null;
   onConversationStateChange: (hasConversation: boolean) => void;
-  chatTab: 'chats' | 'voice' | 'calls';
+  emberModalSurface: EmberModalSurface;
 }) {
   switch (flow) {
     case 'owner':
       return emberId ? (
-        <OwnerFlow emberId={emberId} onConversationStateChange={onConversationStateChange} chatTab={chatTab} />
+        <OwnerFlow emberId={emberId} onConversationStateChange={onConversationStateChange} emberModalSurface={emberModalSurface} />
       ) : null;
     case 'contributor':
       return emberId ? (
-        <ContributorFlow emberId={emberId} onConversationStateChange={onConversationStateChange} chatTab={chatTab} />
+        <ContributorFlow emberId={emberId} onConversationStateChange={onConversationStateChange} emberModalSurface={emberModalSurface} />
       ) : null;
     default:
       return null;
@@ -321,18 +329,27 @@ export default function HomeScreen({
   const displayEmber = selectedEmber || selectedSummary;
   const defaultChatFlow = getDefaultHomeEmberFlow(displayEmber?.accessType);
   const flow = parseHomeEmberFlow(rawFlow);
-  const emberOpen = flow !== null;
-  const chatExpanded = emberOpen && view === 'full';
+  // The Ember Modal is the expandable bottom sheet over the ember view.
+  // Position closed = no ?ember= flow; position 1 = sheet visible at ~65%
+  // (mini); position 2 = sheet expanded to ~25% (full). The two booleans
+  // are derived shortcuts callers reach for most often.
+  const emberModalPosition: EmberModalPosition = !flow
+    ? 'closed'
+    : view === 'full'
+      ? 'position-2'
+      : 'position-1';
+  const emberModalOpen = emberModalPosition !== 'closed';
+  const emberModalExpanded = emberModalPosition === 'position-2';
   const rawChatParam = params.get('chat');
-  const chatTab: 'chats' | 'voice' | 'calls' =
+  const emberModalSurface: EmberModalSurface =
     rawChatParam === 'voice' ? 'voice' : rawChatParam === 'calls' ? 'calls' : 'chats';
-  const railHidden = firstEmber || emberOpen || modal === 'share' || modal === 'tend' || modal === 'play';
+  const railHidden = firstEmber || emberModalOpen || modal === 'share' || modal === 'tend' || modal === 'play';
   // Enable the swipe wrapper when either axis is usable: vertical needs more
   // than one ember in the carousel, horizontal needs at least one attachment
   // beyond the cover photo. The per-axis handlers below still gate on the
   // right condition, so the wrapper only needs to be live for one to work.
   const swipeEnabled =
-    !firstEmber && !emberOpen && !modal && !step && (embers.length > 1 || attachments.length > 0);
+    !firstEmber && !emberModalOpen && !modal && !step && (embers.length > 1 || attachments.length > 0);
   const title = displayEmber ? getEmberTitle({ title: displayEmber.title, originalName: stripExtension(displayEmber.originalName) }) : 'Beach Day';
   const capturedAt = selectedEmber?.analysis?.capturedAt ?? displayEmber?.capturedAt ?? null;
   const subtitle = displayEmber
@@ -825,11 +842,11 @@ export default function HomeScreen({
                 const cy = displayEmber?.cropY;
                 const cw = displayEmber?.cropWidth;
                 const ch = displayEmber?.cropHeight;
-                const hasCrop = !chatExpanded && cx != null && cy != null && cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100;
+                const hasCrop = !emberModalExpanded && cx != null && cy != null && cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100;
                 const scale = hasCrop && cw != null && ch != null && cw > 0 && ch > 0
                   ? Math.min(100 / cw, 100 / ch)
                   : 1;
-                if (chatExpanded) return {
+                if (emberModalExpanded) return {
                   top: 56,
                   left: '50%',
                   transform: 'translateX(-50%)',
@@ -861,7 +878,7 @@ export default function HomeScreen({
             className="absolute inset-0 pointer-events-none"
             style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.55) 100%)' }}
           />
-          {allMedia.length > 1 && !chatExpanded ? (
+          {allMedia.length > 1 && !emberModalExpanded ? (
             <div
               className="absolute left-1/2 flex items-center gap-1.5 pointer-events-none"
               style={{ bottom: 88, transform: 'translateX(-50%)' }}
@@ -893,7 +910,7 @@ export default function HomeScreen({
         userModalHref={selectedEmberId ? `/account?imageId=${selectedEmberId}` : '/account'}
       />
 
-      {!firstEmber && displayEmber && !chatExpanded ? (
+      {!firstEmber && displayEmber && !emberModalExpanded ? (
         <div
           className="absolute left-4 z-20 pointer-events-none"
           style={{
@@ -1124,12 +1141,12 @@ export default function HomeScreen({
         <div
           className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
           style={{
-            top: chatExpanded ? '25%' : emberOpen ? '65%' : 'auto',
+            top: emberModalExpanded ? '25%' : emberModalOpen ? '65%' : 'auto',
             background: 'var(--bg-screen)',
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
             borderTop: '1px solid var(--border-subtle)',
-            borderRadius: emberOpen ? '20px 20px 0 0' : undefined,
+            borderRadius: emberModalOpen ? '20px 20px 0 0' : undefined,
             transition: 'top 200ms ease',
           }}
         >
@@ -1144,8 +1161,8 @@ export default function HomeScreen({
             >
               <span className="flex items-center gap-1">
                 <EmberMark />
-                <span className="text-base font-medium text-white">
-                  <span style={{ color: '#f97316' }}>Ember</span> Chat
+                <span className="text-base font-medium" style={{ color: '#f97316' }}>
+                  Ember
                 </span>
               </span>
             </Link>
@@ -1158,8 +1175,8 @@ export default function HomeScreen({
                   href={buildHomeHref({ chat: null })}
                   className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   style={{
-                    background: chatTab === 'chats' ? 'var(--bg-screen)' : 'transparent',
-                    color: chatTab === 'chats' ? '#ffffff' : 'var(--text-secondary)',
+                    background: emberModalSurface === 'chats' ? 'var(--bg-screen)' : 'transparent',
+                    color: emberModalSurface === 'chats' ? '#ffffff' : 'var(--text-secondary)',
                   }}
                 >
                   Chat
@@ -1168,8 +1185,8 @@ export default function HomeScreen({
                   href={buildHomeHref({ chat: 'voice' })}
                   className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   style={{
-                    background: chatTab === 'voice' ? 'var(--bg-screen)' : 'transparent',
-                    color: chatTab === 'voice' ? '#ffffff' : 'var(--text-secondary)',
+                    background: emberModalSurface === 'voice' ? 'var(--bg-screen)' : 'transparent',
+                    color: emberModalSurface === 'voice' ? '#ffffff' : 'var(--text-secondary)',
                   }}
                 >
                   Voice
@@ -1178,15 +1195,15 @@ export default function HomeScreen({
                   href={buildHomeHref({ chat: 'calls' })}
                   className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   style={{
-                    background: chatTab === 'calls' ? 'var(--bg-screen)' : 'transparent',
-                    color: chatTab === 'calls' ? '#ffffff' : 'var(--text-secondary)',
+                    background: emberModalSurface === 'calls' ? 'var(--bg-screen)' : 'transparent',
+                    color: emberModalSurface === 'calls' ? '#ffffff' : 'var(--text-secondary)',
                   }}
                 >
                   Call
                 </Link>
               </div>
             ) : null}
-            {flow && !chatExpanded ? (
+            {flow && !emberModalExpanded ? (
               <Link
                 href={buildHomeHref({ view: 'full' })}
                 className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
@@ -1196,7 +1213,7 @@ export default function HomeScreen({
                 <ChevronUp size={18} color="var(--text-secondary)" strokeWidth={1.8} />
               </Link>
             ) : null}
-            {flow && chatExpanded ? (
+            {flow && emberModalExpanded ? (
               <Link
                 href={buildHomeHref({ view: null })}
                 className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
@@ -1228,7 +1245,7 @@ export default function HomeScreen({
                 flow={flow}
                 emberId={selectedEmberId}
                 onConversationStateChange={setHasConversationHistory}
-                chatTab={chatTab}
+                emberModalSurface={emberModalSurface}
               />
             </div>
           ) : null}

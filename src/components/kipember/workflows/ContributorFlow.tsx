@@ -35,11 +35,11 @@ declare global {
 export default function ContributorFlow({
   emberId,
   onConversationStateChange,
-  chatTab = 'chats',
+  emberModalSurface = 'chats',
 }: {
   emberId: string;
   onConversationStateChange?: (hasConversation: boolean) => void;
-  chatTab?: 'chats' | 'voice' | 'calls';
+  emberModalSurface?: 'chats' | 'voice' | 'calls';
 }) {
   const voice = useVoiceRecording(emberId);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -51,6 +51,7 @@ export default function ContributorFlow({
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [callBlocks, setCallBlocks] = useState<EmberCallBlock[]>([]);
+  const [firstName, setFirstName] = useState<string>('you');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const transcriptRef = useRef('');
@@ -59,6 +60,19 @@ export default function ContributorFlow({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/profile', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const fn = (data?.user?.firstName || '').trim();
+        if (fn) setFirstName(fn);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,11 +248,11 @@ export default function ContributorFlow({
         }}
       />
 
-      {chatTab === 'voice' ? (
+      {emberModalSurface === 'voice' ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
-          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} />
+          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} selfLabel={firstName} />
         </div>
-      ) : chatTab === 'calls' ? (
+      ) : emberModalSurface === 'calls' ? (
         callBlocks.length === 0 ? (
           <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar flex items-center justify-center">
             <p className="text-white/30 text-sm">No calls yet.</p>
@@ -247,7 +261,7 @@ export default function ContributorFlow({
           <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
             <div className="flex flex-col gap-4">
               {callBlocks.map((block) => (
-                <EmberCallCard key={block.voiceCallId} block={block} />
+                <EmberCallCard key={block.voiceCallId} block={block} hideHeader />
               ))}
             </div>
           </div>
@@ -260,6 +274,7 @@ export default function ContributorFlow({
             messages={messages}
             isSending={isSending}
             endRef={messagesEndRef}
+            selfLabel={firstName}
           />
         </div>
       )}
@@ -274,21 +289,23 @@ export default function ContributorFlow({
               <MicLevelMeter stream={voice.stream} className="h-5 w-full" />
             </div>
           ) : (
-            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Share your memory with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Share your memory with ember..." className={`w-full rounded-full border border-transparent bg-white/8 px-4 py-3 ${emberModalSurface === 'chats' ? '' : 'pr-11'} text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]`} disabled={isSending} />
           )}
-          <button
-            type="button"
-            onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
-            disabled={voice.isUploading}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
-            style={{
-              color: voice.isRecording ? 'white' : 'rgba(255,255,255,0.5)',
-              background: voice.isRecording ? 'rgba(249,115,22,0.95)' : 'transparent',
-            }}
-            aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
-          >
-            {voice.isRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
-          </button>
+          {emberModalSurface !== 'chats' ? (
+            <button
+              type="button"
+              onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
+              disabled={voice.isUploading}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
+              style={{
+                color: voice.isRecording ? 'white' : 'rgba(255,255,255,0.5)',
+                background: voice.isRecording ? 'rgba(249,115,22,0.95)' : 'transparent',
+              }}
+              aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
+            >
+              {voice.isRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
+            </button>
+          ) : null}
         </div>
         <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
           <SendHorizontal size={18} />
