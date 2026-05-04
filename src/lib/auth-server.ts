@@ -156,6 +156,21 @@ export function applyUserSessionCookie(response: NextResponse, token: string) {
   });
 }
 
+// Same cookie shape as applyUserSessionCookie, but writes via cookies()
+// from next/headers so server components / server actions can call it
+// without holding a NextResponse. The /magic-link server page uses this
+// to sign the user in before redirect()-ing them home.
+export async function setUserSessionCookie(token: string) {
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: SESSION_MAX_AGE_SECONDS,
+    path: '/',
+  });
+}
+
 export function clearUserSessionCookie(response: NextResponse) {
   response.cookies.set(SESSION_COOKIE_NAME, '', {
     httpOnly: true,
