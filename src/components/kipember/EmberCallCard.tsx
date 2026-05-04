@@ -2,7 +2,7 @@
 
 import { ChevronDown, Phone, Play } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { pastelForContributor } from '@/lib/contributor-color';
+import { pastelForContributor, pastelForContributorIdentity } from '@/lib/contributor-color';
 
 export type EmberCallSegment = {
   index: number;
@@ -37,9 +37,17 @@ function initials(value: string) {
 function CallHeaderAvatar({
   name,
   avatarUrl,
+  userId,
+  email,
+  phoneNumber,
+  contributorId,
 }: {
   name: string;
   avatarUrl: string | null;
+  userId: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  contributorId: string | null;
 }) {
   if (avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element
@@ -52,13 +60,20 @@ function CallHeaderAvatar({
       />
     );
   }
+  // Pool-key pastel keeps the call avatar in lockstep with this person's
+  // avatar everywhere else (wiki contributors row, claim rows, story circle
+  // chat / voice blocks). pastelForContributor(name) here used to drift
+  // because it hashed the display name instead of the stable pool key.
+  const bg = userId || email || phoneNumber || contributorId
+    ? pastelForContributorIdentity({ userId, email, phoneNumber, id: contributorId })
+    : pastelForContributor(name);
   return (
     <div
       className="rounded-full flex items-center justify-center flex-shrink-0"
       style={{
         width: 29,
         height: 29,
-        background: pastelForContributor(name),
+        background: bg,
         color: '#1f2937',
         fontSize: 11,
         fontWeight: 600,
@@ -147,7 +162,14 @@ export default function EmberCallCard({
           >
             <Phone size={16} className="text-white" fill="currentColor" stroke="currentColor" />
           </div>
-          <CallHeaderAvatar name={block.personName} avatarUrl={block.avatarUrl} />
+          <CallHeaderAvatar
+            name={block.personName}
+            avatarUrl={block.avatarUrl}
+            userId={block.personUserId ?? null}
+            email={block.personEmail ?? null}
+            phoneNumber={block.personPhoneNumber ?? null}
+            contributorId={null}
+          />
           <p className="flex-1 text-left text-white/30 text-xs font-medium">
             {block.personName}&apos;s Ember Call
             <span className="ml-2 text-white/20">

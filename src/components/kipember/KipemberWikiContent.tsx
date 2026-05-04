@@ -356,13 +356,17 @@ function initials(value: string) {
     .toUpperCase();
 }
 
-const PERSON_AVATAR_COLORS = ['#2563eb', '#7c3aed', '#16a34a', '#b45309', '#db2777', '#0891b2'];
-
-function colorForName(name: string) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return PERSON_AVATAR_COLORS[h % PERSON_AVATAR_COLORS.length];
-}
+// Identity bundle a single resolver hands back to every avatar surface.
+// One person → one record, regardless of where they're being rendered.
+// userId / email / phoneNumber drive the pool-stable color via
+// pastelForContributorIdentity; avatarUrl wins over color when present.
+type PersonIdentity = {
+  userId: string | null;
+  email: string | null;
+  phoneNumber: string | null;
+  id: string | null;
+  avatarUrl: string | null;
+};
 
 function relativeAt(value: string) {
   const then = new Date(value).getTime();
@@ -383,16 +387,21 @@ function ClaimRow({
   value,
   source,
   createdAt,
-  avatarUrl,
+  person,
 }: {
   name: string;
   value: string;
   source: string;
   createdAt: string;
-  avatarUrl?: string | null;
+  // Full identity for the speaker — drives both avatar URL and the
+  // pool-key pastel so the same contributor lands on the same swatch
+  // everywhere the wiki shows them.
+  person: PersonIdentity | null;
 }) {
   const isVoice = source === 'voice';
   const displayName = name.trim() || 'Someone';
+  const avatarUrl = person?.avatarUrl ?? null;
+  const bg = person ? pastelForContributorIdentity(person) : pastelForContributor(displayName);
   return (
     <div
       className="rounded-lg px-3 py-2 flex items-center gap-2.5"
@@ -408,11 +417,12 @@ function ClaimRow({
         />
       ) : (
         <div
-          className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+          className="rounded-full flex items-center justify-center flex-shrink-0"
           style={{
             width: 29,
             height: 29,
-            background: colorForName(displayName),
+            background: bg,
+            color: '#1f2937',
             fontSize: 11,
             fontWeight: 600,
           }}
@@ -436,6 +446,12 @@ function ClaimRow({
   );
 }
 
+// Single resolver passed to every avatar surface. Returns the full
+// identity bundle (or null if we don't recognize the name). Callers use
+// person.avatarUrl when present, otherwise pastelForContributorIdentity
+// for the color so the same person always lands on the same swatch.
+type FindPerson = (name: string) => PersonIdentity | null;
+// Backwards-compat alias for older call sites that only need the URL.
 type FindAvatar = (name: string) => string | null;
 
 function useReconciliationClaims(imageId: string | null | undefined) {
@@ -542,10 +558,10 @@ function VoiceBlockCard({
 
 function WhyCard({
   claims,
-  findAvatar,
+  findPerson,
 }: {
   claims: ReconciliationClaim[] | null;
-  findAvatar: FindAvatar;
+  findPerson: FindPerson;
 }) {
   if (claims === null || claims.length === 0) {
     return (
@@ -566,7 +582,7 @@ function WhyCard({
             value={claim.value}
             source={claim.source}
             createdAt={claim.createdAt}
-            avatarUrl={findAvatar(name)}
+            person={findPerson(name)}
           />
         );
       })}
@@ -576,10 +592,10 @@ function WhyCard({
 
 function EmotionalStateCard({
   claims,
-  findAvatar,
+  findPerson,
 }: {
   claims: ReconciliationClaim[] | null;
-  findAvatar: FindAvatar;
+  findPerson: FindPerson;
 }) {
   if (claims === null || claims.length === 0) {
     return (
@@ -598,9 +614,9 @@ function EmotionalStateCard({
           <EmotionalClaimRow
             key={claim.id}
             sourceName={sourceName}
-            sourceAvatarUrl={findAvatar(sourceName)}
+            sourcePerson={findPerson(sourceName)}
             subjectName={subjectName}
-            subjectAvatarUrl={subjectName ? findAvatar(subjectName) : null}
+            subjectPerson={subjectName ? findPerson(subjectName) : null}
             value={claim.value}
             source={claim.source}
             createdAt={claim.createdAt}
@@ -613,17 +629,17 @@ function EmotionalStateCard({
 
 function EmotionalClaimRow({
   sourceName,
-  sourceAvatarUrl,
+  sourcePerson,
   subjectName,
-  subjectAvatarUrl,
+  subjectPerson,
   value,
   source,
   createdAt,
 }: {
   sourceName: string;
-  sourceAvatarUrl?: string | null;
+  sourcePerson: PersonIdentity | null;
   subjectName: string;
-  subjectAvatarUrl?: string | null;
+  subjectPerson: PersonIdentity | null;
   value: string;
   source: string;
   createdAt: string;
@@ -638,11 +654,11 @@ function EmotionalClaimRow({
       style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
     >
       <div className="flex items-center flex-shrink-0" style={{ gap: 2 }}>
-        <Avatar name={sourceDisplay} avatarUrl={sourceAvatarUrl} />
+        <Avatar name={sourceDisplay} person={sourcePerson} />
         {subjectDisplay ? (
           <>
             <ChevronRight size={11} className="text-white/40" strokeWidth={2.5} />
-            <Avatar name={subjectDisplay} avatarUrl={subjectAvatarUrl} />
+            <Avatar name={subjectDisplay} person={subjectPerson} />
           </>
         ) : null}
       </div>
@@ -672,11 +688,12 @@ function EmotionalClaimRow({
 
 function Avatar({
   name,
-  avatarUrl,
+  person,
 }: {
   name: string;
-  avatarUrl?: string | null;
+  person: PersonIdentity | null;
 }) {
+  const avatarUrl = person?.avatarUrl ?? null;
   if (avatarUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -688,13 +705,15 @@ function Avatar({
       />
     );
   }
+  const bg = person ? pastelForContributorIdentity(person) : pastelForContributor(name);
   return (
     <div
-      className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+      className="rounded-full flex items-center justify-center flex-shrink-0"
       style={{
         width: 24,
         height: 24,
-        background: colorForName(name),
+        background: bg,
+        color: '#1f2937',
         fontSize: 10,
         fontWeight: 600,
       }}
@@ -706,10 +725,10 @@ function Avatar({
 
 function ExtraStoriesCard({
   claims,
-  findAvatar,
+  findPerson,
 }: {
   claims: ReconciliationClaim[] | null;
-  findAvatar: FindAvatar;
+  findPerson: FindPerson;
 }) {
   if (claims === null || claims.length === 0) {
     return (
@@ -730,7 +749,7 @@ function ExtraStoriesCard({
             value={claim.value}
             source={claim.source}
             createdAt={claim.createdAt}
-            avatarUrl={findAvatar(name)}
+            person={findPerson(name)}
           />
         );
       })}
@@ -740,10 +759,10 @@ function ExtraStoriesCard({
 
 function PlacesMentionedCard({
   claims,
-  findAvatar,
+  findPerson,
 }: {
   claims: ReconciliationClaim[] | null;
-  findAvatar: FindAvatar;
+  findPerson: FindPerson;
 }) {
   if (claims === null || claims.length === 0) {
     return (
@@ -764,7 +783,7 @@ function PlacesMentionedCard({
             value={claim.value}
             source={claim.source}
             createdAt={claim.createdAt}
-            avatarUrl={findAvatar(name)}
+            person={findPerson(name)}
           />
         );
       })}
@@ -780,10 +799,10 @@ function PlacesMentionedCard({
 // subject IS the point of the row.
 function PeopleMentionedCard({
   claims,
-  findAvatar,
+  findPerson,
 }: {
   claims: ReconciliationClaim[] | null;
-  findAvatar: FindAvatar;
+  findPerson: FindPerson;
 }) {
   if (claims === null || claims.length === 0) {
     return (
@@ -798,7 +817,11 @@ function PeopleMentionedCard({
       {claims.map((claim) => {
         const speaker = claimSourceLabelFromMetadata(claim.metadata);
         const subject = claim.subject?.trim() || speaker;
-        const subjectAvatar = findAvatar(subject);
+        const subjectPerson = findPerson(subject);
+        const subjectAvatar = subjectPerson?.avatarUrl ?? null;
+        const subjectBg = subjectPerson
+          ? pastelForContributorIdentity(subjectPerson)
+          : pastelForContributor(subject);
         const isVoice = claim.source === 'voice';
         return (
           <div
@@ -816,11 +839,12 @@ function PeopleMentionedCard({
               />
             ) : (
               <div
-                className="rounded-full flex items-center justify-center text-white flex-shrink-0"
+                className="rounded-full flex items-center justify-center flex-shrink-0"
                 style={{
                   width: 29,
                   height: 29,
-                  background: colorForName(subject),
+                  background: subjectBg,
+                  color: '#1f2937',
                   fontSize: 11,
                   fontWeight: 600,
                 }}
@@ -1776,43 +1800,89 @@ export default function KipemberWikiContent({
   const ownerName = getUserDisplayName(detail?.owner) || detail?.owner?.email || null;
   const ownerUserId = detail?.owner?.id;
 
-  const avatarLookup = useMemo(() => {
-    const map = new Map<string, string>();
-    const add = (name: string | null | undefined, url: string | null | undefined) => {
+  // Single source of truth: name → person identity bundle. Every avatar
+  // surface in the wiki resolves through this so the same contributor
+  // gets the same avatar URL (when they have one) and the same pool-key
+  // pastel color (when they don't), no matter which card renders them.
+  const personLookup = useMemo(() => {
+    const map = new Map<string, PersonIdentity>();
+    const add = (name: string | null | undefined, identity: PersonIdentity) => {
       const key = name?.trim().toLowerCase();
-      if (!key || !url) return;
-      if (!map.has(key)) map.set(key, url);
+      if (!key) return;
+      if (!map.has(key)) map.set(key, identity);
+    };
+    // Map both the full name and the first name to the same identity so
+    // surfaces like Story Circle (which addresses "Amado") and the
+    // contributors row (which uses "Amado Batour") land on the same
+    // pastel + avatar URL.
+    const addAllNameForms = (name: string | null | undefined, identity: PersonIdentity) => {
+      const trimmed = name?.trim();
+      if (!trimmed) return;
+      add(trimmed, identity);
+      const firstName = trimmed.split(/\s+/)[0];
+      if (firstName && firstName.toLowerCase() !== trimmed.toLowerCase()) {
+        add(firstName, identity);
+      }
     };
 
     if (detail?.owner) {
       const name = getUserDisplayName(detail.owner) || detail.owner.email;
-      if (detail.owner.avatarFilename) {
-        add(name, `/api/uploads/${detail.owner.avatarFilename}`);
-        // Also map the literal "Owner" since claims sometimes attribute to "Owner"
-        add('Owner', `/api/uploads/${detail.owner.avatarFilename}`);
-      }
+      const identity: PersonIdentity = {
+        userId: detail.owner.id ?? null,
+        email: detail.owner.email ?? null,
+        phoneNumber: null,
+        id: detail.owner.id ?? null,
+        avatarUrl: detail.owner.avatarFilename
+          ? `/api/uploads/${detail.owner.avatarFilename}`
+          : null,
+      };
+      addAllNameForms(name, identity);
+      // Claims sometimes attribute to the literal label "Owner".
+      add('Owner', identity);
     }
     for (const contributor of detail?.contributors ?? []) {
       const name = getUserDisplayName(contributor.user) || contributor.name;
-      const filename = contributor.user?.avatarFilename;
-      if (name && filename) {
-        add(name, `/api/uploads/${filename}`);
-      }
+      const identity: PersonIdentity = {
+        userId: contributor.user?.id ?? contributor.userId ?? null,
+        email: contributor.email ?? contributor.user?.email ?? null,
+        phoneNumber: contributor.phoneNumber ?? contributor.user?.phoneNumber ?? null,
+        id: contributor.id ?? null,
+        avatarUrl: contributor.user?.avatarFilename
+          ? `/api/uploads/${contributor.user.avatarFilename}`
+          : null,
+      };
+      addAllNameForms(name, identity);
     }
     for (const tag of detail?.tags ?? []) {
-      // Map the tag's *creator* to their own avatar (e.g. "Amado" → Amado's photo).
-      // Don't map the tag *label* to the creator's avatar — that paints the tagged
-      // person ("Zia") with the creator's face. If the tagged person is also a
-      // contributor with a real account, their avatar is already in the lookup
-      // above; otherwise findAvatar returns null and we fall back to initials.
-      add(getUserDisplayName(tag.createdBy), tag.createdBy?.avatarUrl);
+      // Map the tag's *creator* to their own identity (e.g. "Amado" → Amado).
+      // Don't map the tag *label* — that would paint the tagged person with
+      // the creator's photo. If the tagged person is a contributor with an
+      // account, they're already in the lookup; otherwise findPerson returns
+      // null and downstream callers fall back to a name-hashed pastel.
+      const creator = tag.createdBy;
+      if (creator) {
+        const creatorName = getUserDisplayName(creator);
+        addAllNameForms(creatorName, {
+          userId: creator.id ?? null,
+          email: creator.email ?? null,
+          phoneNumber: null,
+          id: creator.id ?? null,
+          avatarUrl: creator.avatarUrl ?? null,
+        });
+      }
     }
     return map;
   }, [detail]);
 
+  const findPerson = useCallback<FindPerson>(
+    (name: string) => personLookup.get(name.trim().toLowerCase()) ?? null,
+    [personLookup]
+  );
+  // Kept for surfaces that only consume the avatar URL (legacy call sites).
+  // Prefer findPerson everywhere going forward.
   const findAvatar = useCallback<FindAvatar>(
-    (name: string) => avatarLookup.get(name.trim().toLowerCase()) ?? null,
-    [avatarLookup]
+    (name: string) => findPerson(name)?.avatarUrl ?? null,
+    [findPerson]
   );
 
   const wikiClaims = useReconciliationClaims(imageId);
@@ -2389,7 +2459,7 @@ export default function KipemberWikiContent({
         title="Why"
         complete={Boolean(whyClaims && whyClaims.length > 0)}
       >
-        <WhyCard claims={whyClaims} findAvatar={findAvatar} />
+        <WhyCard claims={whyClaims} findPerson={findPerson} />
       </WikiSection>
 
       <WikiSection
@@ -2397,7 +2467,7 @@ export default function KipemberWikiContent({
         title="Emotional States"
         complete={Boolean(emotionClaims && emotionClaims.length > 0)}
       >
-        <EmotionalStateCard claims={emotionClaims} findAvatar={findAvatar} />
+        <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
       </WikiSection>
 
       <WikiSection
@@ -2405,7 +2475,7 @@ export default function KipemberWikiContent({
         title="Extra Stories"
         complete={Boolean(extraStoryClaims && extraStoryClaims.length > 0)}
       >
-        <ExtraStoriesCard claims={extraStoryClaims} findAvatar={findAvatar} />
+        <ExtraStoriesCard claims={extraStoryClaims} findPerson={findPerson} />
       </WikiSection>
 
       <WikiSection
@@ -2413,7 +2483,7 @@ export default function KipemberWikiContent({
         title="Places Mentioned"
         complete={Boolean(placeClaims && placeClaims.length > 0)}
       >
-        <PlacesMentionedCard claims={placeClaims} findAvatar={findAvatar} />
+        <PlacesMentionedCard claims={placeClaims} findPerson={findPerson} />
       </WikiSection>
 
       <WikiSection
@@ -2421,7 +2491,7 @@ export default function KipemberWikiContent({
         title="People Mentioned"
         complete={Boolean(personClaims && personClaims.length > 0)}
       >
-        <PeopleMentionedCard claims={personClaims} findAvatar={findAvatar} />
+        <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
       </WikiSection>
 
     </div>
