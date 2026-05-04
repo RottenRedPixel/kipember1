@@ -366,7 +366,22 @@ type PersonIdentity = {
   phoneNumber: string | null;
   id: string | null;
   avatarUrl: string | null;
+  // Owner gets a dedicated orange swatch so their avatar stays consistent
+  // with the AppHeader, /account, and the wiki Owner card. Without this
+  // flag the owner falls into the pool-key pastel and breaks the visual
+  // continuity their other surfaces establish.
+  isOwner?: boolean;
 };
+
+// Single source for the owner's bubble color. Matches AppHeader and the
+// Account avatar so the owner reads as the same person on every surface.
+const OWNER_AVATAR_BG = 'rgba(249,115,22,0.6)';
+
+function colorForPerson(person: PersonIdentity | null, fallbackName: string) {
+  if (person?.isOwner) return OWNER_AVATAR_BG;
+  if (person) return pastelForContributorIdentity(person);
+  return pastelForContributor(fallbackName);
+}
 
 function relativeAt(value: string) {
   const then = new Date(value).getTime();
@@ -401,7 +416,7 @@ function ClaimRow({
   const isVoice = source === 'voice';
   const displayName = name.trim() || 'Someone';
   const avatarUrl = person?.avatarUrl ?? null;
-  const bg = person ? pastelForContributorIdentity(person) : pastelForContributor(displayName);
+  const bg = colorForPerson(person, displayName);
   return (
     <div
       className="rounded-lg px-3 py-2 flex items-center gap-2.5"
@@ -520,12 +535,16 @@ function VoiceBlockCard({
           name={block.personName}
           avatarUrl={block.avatarUrl}
           size={29}
-          bgColor={pastelForContributorIdentity({
-            userId: block.personUserId ?? null,
-            email: block.personEmail ?? null,
-            phoneNumber: block.personPhoneNumber ?? null,
-            id: block.personName,
-          })}
+          bgColor={
+            block.isOwner
+              ? OWNER_AVATAR_BG
+              : pastelForContributorIdentity({
+                  userId: block.personUserId ?? null,
+                  email: block.personEmail ?? null,
+                  phoneNumber: block.personPhoneNumber ?? null,
+                  id: block.personName,
+                })
+          }
         />
         <p className="flex-1 text-left text-white/30 text-xs font-medium">
           {block.personName}&apos;s Ember Voice
@@ -705,7 +724,7 @@ function Avatar({
       />
     );
   }
-  const bg = person ? pastelForContributorIdentity(person) : pastelForContributor(name);
+  const bg = colorForPerson(person, name);
   return (
     <div
       className="rounded-full flex items-center justify-center flex-shrink-0"
@@ -822,9 +841,7 @@ function PeopleMentionedCard({
         const speaker = claimSourceLabelFromMetadata(claim.metadata);
         const speakerPerson = findPerson(speaker);
         const speakerAvatar = speakerPerson?.avatarUrl ?? null;
-        const speakerBg = speakerPerson
-          ? pastelForContributorIdentity(speakerPerson)
-          : pastelForContributor(speaker);
+        const speakerBg = colorForPerson(speakerPerson, speaker);
         const subject = claim.subject?.trim() || '';
         const isVoice = claim.source === 'voice';
         return (
@@ -1411,12 +1428,16 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
           name={block.personName}
           avatarUrl={block.avatarUrl}
           size={29}
-          bgColor={pastelForContributorIdentity({
-            userId: block.personUserId ?? null,
-            email: block.personEmail ?? null,
-            phoneNumber: block.personPhoneNumber ?? null,
-            id: block.personName,
-          })}
+          bgColor={
+            block.isOwner
+              ? OWNER_AVATAR_BG
+              : pastelForContributorIdentity({
+                  userId: block.personUserId ?? null,
+                  email: block.personEmail ?? null,
+                  phoneNumber: block.personPhoneNumber ?? null,
+                  id: block.personName,
+                })
+          }
         />
         <p className="flex-1 text-left text-white/30 text-xs font-medium">
           {block.personName}&apos;s Ember Chat
@@ -1848,6 +1869,7 @@ export default function KipemberWikiContent({
         avatarUrl: detail.owner.avatarFilename
           ? `/api/uploads/${detail.owner.avatarFilename}`
           : null,
+        isOwner: true,
       };
       addAllNameForms(name, identity);
       // Claims sometimes attribute to the literal label "Owner".
