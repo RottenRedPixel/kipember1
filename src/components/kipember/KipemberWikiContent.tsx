@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   Lightbulb,
   Lock,
+  LockKeyhole,
   Map as MapIcon,
   MessageCircle,
   MessagesSquare,
@@ -2597,6 +2598,21 @@ export default function KipemberWikiContent({
             Export this ember as a single archive — photos, wiki text, voice
             clips, call transcripts, and contributor history. Not yet
             available.
+          </p>
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
+        icon={<LockKeyhole size={17} />}
+        title="Lock Ember"
+        complete={false}
+        hideBadge
+      >
+        <WikiCard>
+          <p className="text-white/60 text-sm">
+            Freeze the wiki. Owner, contributor, and guest conversations keep
+            recording into the archive, but new messages stop feeding the
+            model — the wiki you see today is what stays. Not yet available.
           </p>
         </WikiCard>
       </WikiSection>
