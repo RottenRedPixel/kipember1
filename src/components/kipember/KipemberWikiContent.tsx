@@ -1313,6 +1313,18 @@ function PrivacyToggles({
             void patch({ shareToNetwork: networkValue, keepPrivate: v });
           }}
         />
+        {/* Live status string under the Keep Private toggle so the user
+            sees the consequence of the flip without having to interpret
+            the toggle position. Green when private (matches the
+            "completed/safe" semantic used elsewhere), orange when public
+            (matches the brand action color, signaling "active to the
+            world"). */}
+        <p
+          className="text-xs"
+          style={{ color: keepPrivateValue ? '#4ade80' : '#f97316' }}
+        >
+          {keepPrivateValue ? 'This ember is now private' : 'This ember is now public'}
+        </p>
       </div>
     </WikiCard>
   );
