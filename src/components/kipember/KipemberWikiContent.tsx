@@ -2473,8 +2473,7 @@ export default function KipemberWikiContent({
         <div className="flex flex-col gap-4">
           {(detail?.chatBlocks && detail.chatBlocks.length > 0) ||
           (detail?.voiceBlocks && detail.voiceBlocks.length > 0) ||
-          (detail?.callBlocks && detail.callBlocks.length > 0) ||
-          (detail?.guestChatBlock && detail.guestChatBlock.messages.length > 0) ? (
+          (detail?.callBlocks && detail.callBlocks.length > 0) ? (
             <>
               {(detail?.chatBlocks ?? []).map((block) => {
                 const voiceForPerson = (detail?.voiceBlocks ?? []).find(
@@ -2517,9 +2516,6 @@ export default function KipemberWikiContent({
                 .map((call) => (
                   <EmberCallCard key={call.voiceCallId} block={call} />
                 ))}
-              {detail?.guestChatBlock && detail.guestChatBlock.messages.length > 0 ? (
-                <CollapsibleGuestChatBlock block={detail.guestChatBlock} />
-              ) : null}
             </>
           ) : (
             <WikiCard>
@@ -2567,6 +2563,25 @@ export default function KipemberWikiContent({
         complete={Boolean(personClaims && personClaims.length > 0)}
       >
         <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
+      </WikiSection>
+
+      {/* Guest Talk — share-link visitor conversations live here as their
+          own block, separate from Story Circle (which is about
+          owner/contributor/voice/call). Lifted out so the wiki keeps a
+          clear line between people-on-the-account and anonymous viewers
+          dropped into the memory by a link. */}
+      <WikiSection
+        icon={<MessagesSquare size={17} />}
+        title="Guest Talk"
+        complete={Boolean(detail?.guestChatBlock && detail.guestChatBlock.messages.length > 0)}
+      >
+        {detail?.guestChatBlock && detail.guestChatBlock.messages.length > 0 ? (
+          <CollapsibleGuestChatBlock block={detail.guestChatBlock} />
+        ) : (
+          <WikiCard>
+            <p className="text-white/30 text-sm">No guest conversations yet.</p>
+          </WikiCard>
+        )}
       </WikiSection>
 
       </WikiGroup>
