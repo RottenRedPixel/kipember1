@@ -1207,6 +1207,7 @@ function PrivacyToggle({
   hint,
   value,
   onChange,
+  disabled = false,
 }: {
   // ReactNode (not just string) so callers can append muted status
   // suffixes like "(Not yet available)" without restyling the label.
@@ -1214,11 +1215,15 @@ function PrivacyToggle({
   hint?: string;
   value: boolean;
   onChange: (next: boolean) => void;
+  // Disabled toggles drop to 50% opacity and lose the pointer cursor
+  // so they read clearly as inert. Used today by Share to Network
+  // while the public-network feature is still off.
+  disabled?: boolean;
 }) {
   return (
     <label
-      className="flex items-center justify-between gap-4 cursor-pointer"
-      style={{ minHeight: 44 }}
+      className={`flex items-center justify-between gap-4 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      style={{ minHeight: 44, opacity: disabled ? 0.5 : 1 }}
     >
       <span className="flex flex-col gap-0.5">
         <span className="text-white text-sm font-medium">{label}</span>
@@ -1229,6 +1234,7 @@ function PrivacyToggle({
           type="checkbox"
           checked={value}
           onChange={(e) => onChange(e.target.checked)}
+          disabled={disabled}
           className="sr-only"
         />
         <span
@@ -1302,6 +1308,7 @@ function PrivacyToggles({
             setNetworkValue(v);
             void patch({ shareToNetwork: v, keepPrivate: keepPrivateValue });
           }}
+          disabled
         />
         <div className="h-px" style={{ background: 'var(--border-subtle)' }} />
         <PrivacyToggle
