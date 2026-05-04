@@ -377,10 +377,18 @@ type PersonIdentity = {
 // Account avatar so the owner reads as the same person on every surface.
 const OWNER_AVATAR_BG = 'rgba(249,115,22,0.6)';
 
+// Pastels are pale enough that dark text reads cleanly. The owner's
+// orange tint is dark enough that white text reads better — same
+// treatment AppHeader and the /account avatar use.
+function avatarStylesForPerson(person: PersonIdentity | null, fallbackName: string) {
+  if (person?.isOwner) return { background: OWNER_AVATAR_BG, color: '#ffffff' };
+  if (person) return { background: pastelForContributorIdentity(person), color: '#1f2937' };
+  return { background: pastelForContributor(fallbackName), color: '#1f2937' };
+}
+
+// Backwards-compat alias for sites that only need the bg.
 function colorForPerson(person: PersonIdentity | null, fallbackName: string) {
-  if (person?.isOwner) return OWNER_AVATAR_BG;
-  if (person) return pastelForContributorIdentity(person);
-  return pastelForContributor(fallbackName);
+  return avatarStylesForPerson(person, fallbackName).background;
 }
 
 function relativeAt(value: string) {
@@ -416,7 +424,7 @@ function ClaimRow({
   const isVoice = source === 'voice';
   const displayName = name.trim() || 'Someone';
   const avatarUrl = person?.avatarUrl ?? null;
-  const bg = colorForPerson(person, displayName);
+  const styles = avatarStylesForPerson(person, displayName);
   return (
     <div
       className="rounded-lg px-3 py-2 flex items-center gap-2.5"
@@ -436,8 +444,8 @@ function ClaimRow({
           style={{
             width: 29,
             height: 29,
-            background: bg,
-            color: '#1f2937',
+            background: styles.background,
+            color: styles.color,
             fontSize: 11,
             fontWeight: 600,
           }}
@@ -724,15 +732,15 @@ function Avatar({
       />
     );
   }
-  const bg = colorForPerson(person, name);
+  const styles = avatarStylesForPerson(person, name);
   return (
     <div
       className="rounded-full flex items-center justify-center flex-shrink-0"
       style={{
         width: 24,
         height: 24,
-        background: bg,
-        color: '#1f2937',
+        background: styles.background,
+        color: styles.color,
         fontSize: 10,
         fontWeight: 600,
       }}
@@ -841,7 +849,7 @@ function PeopleMentionedCard({
         const speaker = claimSourceLabelFromMetadata(claim.metadata);
         const speakerPerson = findPerson(speaker);
         const speakerAvatar = speakerPerson?.avatarUrl ?? null;
-        const speakerBg = colorForPerson(speakerPerson, speaker);
+        const speakerStyles = avatarStylesForPerson(speakerPerson, speaker);
         const subject = claim.subject?.trim() || '';
         const isVoice = claim.source === 'voice';
         return (
@@ -864,8 +872,8 @@ function PeopleMentionedCard({
                 style={{
                   width: 29,
                   height: 29,
-                  background: speakerBg,
-                  color: '#1f2937',
+                  background: speakerStyles.background,
+                  color: speakerStyles.color,
                   fontSize: 11,
                   fontWeight: 600,
                 }}
@@ -916,8 +924,10 @@ function AvatarCircle({
 }) {
   // No explicit color → deterministic pastel keyed on the person's name so
   // their bubble looks the same everywhere (chat blocks, claim rows, tag
-  // chips, etc.).
+  // chips, etc.). Initials read in white when the bg matches the orange
+  // owner swatch and in dark grey on the lighter pastel palette.
   const fallbackBg = bgColor ?? pastelForContributor(name);
+  const initialsColor = fallbackBg === OWNER_AVATAR_BG ? '#ffffff' : '#1f2937';
   return avatarUrl ? (
     <img
       src={avatarUrl}
@@ -928,7 +938,7 @@ function AvatarCircle({
   ) : (
     <div
       className="rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
-      style={{ width: size, height: size, background: fallbackBg, color: '#1f2937' }}
+      style={{ width: size, height: size, background: fallbackBg, color: initialsColor }}
     >
       {initials(name)}
     </div>
