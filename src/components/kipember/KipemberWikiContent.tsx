@@ -2576,6 +2576,16 @@ export default function KipemberWikiContent({
           destructive controls aren't right under the user's thumb. */}
       <WikiGroup label="Control" defaultCollapsed>
 
+      <WikiSection icon={<Lock size={17} />} title="Privacy Setting" complete={false} hideBadge>
+        <PrivacyToggles
+          imageId={imageId}
+          shareToNetwork={Boolean(detail?.shareToNetwork)}
+          keepPrivate={Boolean(detail?.keepPrivate)}
+          refreshDetail={refreshDetail}
+          onStatus={onStatus}
+        />
+      </WikiSection>
+
       <WikiSection
         icon={<Download size={17} />}
         title="Download Ember"
@@ -2589,16 +2599,6 @@ export default function KipemberWikiContent({
             available.
           </p>
         </WikiCard>
-      </WikiSection>
-
-      <WikiSection icon={<Lock size={17} />} title="Privacy Setting" complete={false} hideBadge>
-        <PrivacyToggles
-          imageId={imageId}
-          shareToNetwork={Boolean(detail?.shareToNetwork)}
-          keepPrivate={Boolean(detail?.keepPrivate)}
-          refreshDetail={refreshDetail}
-          onStatus={onStatus}
-        />
       </WikiSection>
 
       <WikiSection icon={<Trash2 size={17} />} title="Delete Ember" complete={false} hideBadge>
