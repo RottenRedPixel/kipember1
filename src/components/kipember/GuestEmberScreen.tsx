@@ -344,8 +344,8 @@ export default function GuestEmberScreen({ token }: { token: string }) {
           <Link href={flowOpen ? closeHref : openHref} className="flex-1 text-left">
             <span className="flex items-center gap-2">
               <EmberMark />
-              <span className="text-base font-medium text-white">
-                <span style={{ color: '#f97316' }}>Ember</span> Chat
+              <span className="text-base font-medium" style={{ color: '#f97316' }}>
+                Ember
               </span>
             </span>
           </Link>
