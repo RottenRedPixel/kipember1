@@ -1208,7 +1208,9 @@ function PrivacyToggle({
   value,
   onChange,
 }: {
-  label: string;
+  // ReactNode (not just string) so callers can append muted status
+  // suffixes like "(Not yet available)" without restyling the label.
+  label: React.ReactNode;
   hint?: string;
   value: boolean;
   onChange: (next: boolean) => void;
@@ -1288,7 +1290,12 @@ function PrivacyToggles({
     <WikiCard>
       <div className="flex flex-col gap-2">
         <PrivacyToggle
-          label="Share to Network"
+          label={
+            <>
+              Share to Network{' '}
+              <span className="text-white/40 font-normal">(Not yet available)</span>
+            </>
+          }
           hint="Show this ember in the public Ember network."
           value={networkValue}
           onChange={(v) => {
