@@ -16,6 +16,14 @@ export type EmberCallSegment = {
 export type EmberCallBlock = {
   personName: string;
   avatarUrl: string | null;
+  // Identity fields the API populates so the call card can compute the
+  // pool-key pastel for the avatar (mirrors how chat / voice blocks work).
+  personUserId?: string | null;
+  personEmail?: string | null;
+  personPhoneNumber?: string | null;
+  // True when the call's contributor is the ember owner — drives the
+  // orange owner swatch instead of the pastel.
+  isOwner?: boolean;
   voiceCallId: string;
   recordingUrl: string | null;
   startedAt: string | null;
@@ -245,11 +253,10 @@ export default function EmberCallCard({
                 className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}
               >
               <span
-                className={`flex items-center gap-1 text-xs font-bold ${
+                className={`text-xs font-bold ${
                   isUser ? 'pr-1 text-white/30' : 'pl-1 text-white'
                 }`}
               >
-                {hideHeader ? null : <Phone size={9} />}
                 {isUser ? firstName : 'ember'}
               </span>
               <div
