@@ -815,13 +815,17 @@ function PeopleMentionedCard({
   return (
     <div className="flex flex-col gap-2">
       {claims.map((claim) => {
+        // The avatar belongs to the speaker (the contributor who DID the
+        // mentioning), not the subject — so this card mirrors how Why /
+        // Place / Story claim rows attribute their content. The subject's
+        // name is bolded inside the quoted text instead.
         const speaker = claimSourceLabelFromMetadata(claim.metadata);
-        const subject = claim.subject?.trim() || speaker;
-        const subjectPerson = findPerson(subject);
-        const subjectAvatar = subjectPerson?.avatarUrl ?? null;
-        const subjectBg = subjectPerson
-          ? pastelForContributorIdentity(subjectPerson)
-          : pastelForContributor(subject);
+        const speakerPerson = findPerson(speaker);
+        const speakerAvatar = speakerPerson?.avatarUrl ?? null;
+        const speakerBg = speakerPerson
+          ? pastelForContributorIdentity(speakerPerson)
+          : pastelForContributor(speaker);
+        const subject = claim.subject?.trim() || '';
         const isVoice = claim.source === 'voice';
         return (
           <div
@@ -829,11 +833,11 @@ function PeopleMentionedCard({
             className="rounded-lg px-3 py-2 flex items-center gap-2.5"
             style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
           >
-            {subjectAvatar ? (
+            {speakerAvatar ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={subjectAvatar}
-                alt={subject}
+                src={speakerAvatar}
+                alt={speaker}
                 className="rounded-full object-cover flex-shrink-0"
                 style={{ width: 29, height: 29 }}
               />
@@ -843,19 +847,28 @@ function PeopleMentionedCard({
                 style={{
                   width: 29,
                   height: 29,
-                  background: subjectBg,
+                  background: speakerBg,
                   color: '#1f2937',
                   fontSize: 11,
                   fontWeight: 600,
                 }}
               >
-                {initials(subject)}
+                {initials(speaker)}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-medium">{subject}</p>
+              <p className="text-white text-xs font-medium">{speaker}</p>
               <p className="text-white/60 text-[11px] mt-0.5">
-                {speaker} said: &ldquo;{claim.value}&rdquo;
+                Mentioned &ldquo;
+                {subject ? (
+                  <>
+                    <span className="font-bold text-white">{subject}</span>
+                    {claim.value ? ` ${claim.value}` : ''}
+                  </>
+                ) : (
+                  claim.value
+                )}
+                &rdquo;
               </p>
             </div>
             <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
