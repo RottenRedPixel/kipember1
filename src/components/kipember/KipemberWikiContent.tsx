@@ -1,18 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Download,
   FileText,
   Heart,
   History,
   Image as ImageIcon,
   Lightbulb,
+  Lock,
   Map as MapIcon,
-  MapPin,
   MessageCircle,
   MessagesSquare,
   Mic,
@@ -21,6 +23,7 @@ import {
   ScanEye,
   ShieldUser,
   Sparkles,
+  Trash2,
   Users,
 } from 'lucide-react';
 import EmberCallCard from '@/components/kipember/EmberCallCard';
@@ -170,6 +173,11 @@ export type KipemberWikiDetail = {
   description: string | null;
   canManage?: boolean;
   createdAt: string;
+  // Per-ember privacy / sharing flags. Surfaced by the wiki's Control
+  // group as inline toggles — flipping either calls PATCH /api/images
+  // immediately and the parent refreshes detail.
+  shareToNetwork?: boolean;
+  keepPrivate?: boolean;
   snapshot?: {
     script: string;
   } | null;
@@ -1183,6 +1191,265 @@ function CollapsibleAnalysisCard({
   );
 }
 
+// Inline privacy toggles for the Control group. PATCH the ember on
+// every flip so the wire is the single source of truth — the local
+// state stays in sync with `detail` via the parent's refreshDetail.
+function PrivacyToggle({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label
+      className="flex items-center justify-between gap-4 cursor-pointer"
+      style={{ minHeight: 44 }}
+    >
+      <span className="flex flex-col gap-0.5">
+        <span className="text-white text-sm font-medium">{label}</span>
+        {hint ? <span className="text-white/40 text-xs">{hint}</span> : null}
+      </span>
+      <span className="relative flex-shrink-0" style={{ width: 48, height: 28 }}>
+        <input
+          type="checkbox"
+          checked={value}
+          onChange={(e) => onChange(e.target.checked)}
+          className="sr-only"
+        />
+        <span
+          className="absolute inset-0 rounded-full transition-colors duration-200"
+          style={{ background: value ? '#f97316' : 'rgba(255,255,255,0.15)' }}
+        />
+        <span
+          className="absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200"
+          style={{
+            width: 24,
+            height: 24,
+            transform: value ? 'translateX(20px)' : 'translateX(0)',
+          }}
+        />
+      </span>
+    </label>
+  );
+}
+
+function PrivacyToggles({
+  imageId,
+  shareToNetwork,
+  keepPrivate,
+  refreshDetail,
+  onStatus,
+}: {
+  imageId: string | null;
+  shareToNetwork: boolean;
+  keepPrivate: boolean;
+  refreshDetail?: () => Promise<unknown> | unknown;
+  onStatus?: (message: string) => void;
+}) {
+  const [networkValue, setNetworkValue] = useState(shareToNetwork);
+  const [keepPrivateValue, setKeepPrivateValue] = useState(keepPrivate);
+
+  useEffect(() => {
+    setNetworkValue(shareToNetwork);
+  }, [shareToNetwork]);
+  useEffect(() => {
+    setKeepPrivateValue(keepPrivate);
+  }, [keepPrivate]);
+
+  async function patch(next: { shareToNetwork: boolean; keepPrivate: boolean }) {
+    if (!imageId) return;
+    try {
+      const response = await fetch(`/api/images/${imageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(next),
+      });
+      onStatus?.(response.ok ? 'Privacy saved.' : 'Failed to save privacy.');
+      if (response.ok) await refreshDetail?.();
+    } catch (error) {
+      onStatus?.(error instanceof Error ? error.message : 'Failed to save privacy.');
+    }
+  }
+
+  return (
+    <WikiCard>
+      <div className="flex flex-col gap-2">
+        <PrivacyToggle
+          label="Share to Network"
+          hint="Show this ember in the public Ember network."
+          value={networkValue}
+          onChange={(v) => {
+            setNetworkValue(v);
+            void patch({ shareToNetwork: v, keepPrivate: keepPrivateValue });
+          }}
+        />
+        <div className="h-px" style={{ background: 'var(--border-subtle)' }} />
+        <PrivacyToggle
+          label="Keep Private"
+          hint="Hide this ember from contributors who haven't been invited."
+          value={keepPrivateValue}
+          onChange={(v) => {
+            setKeepPrivateValue(v);
+            void patch({ shareToNetwork: networkValue, keepPrivate: v });
+          }}
+        />
+      </div>
+    </WikiCard>
+  );
+}
+
+function DeleteEmberCard({
+  imageId,
+  canManage,
+  onStatus,
+}: {
+  imageId: string | null;
+  canManage: boolean;
+  onStatus?: (message: string) => void;
+}) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function performDelete() {
+    if (!imageId || !canManage || deleting) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/images/${imageId}`, { method: 'DELETE' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        onStatus?.(payload?.error || 'Failed to delete ember.');
+        return;
+      }
+      router.push('/home');
+      router.refresh();
+    } catch (error) {
+      onStatus?.(error instanceof Error ? error.message : 'Failed to delete ember.');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  // First press flips the whole card into a red confirmation state with a
+  // sharper warning + two-button row (Cancel / Yes, Delete). Second press
+  // on the confirm side actually fires the destructive call.
+  if (confirming) {
+    return (
+      <div
+        className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
+        style={{
+          background: 'rgba(239,68,68,0.12)',
+          border: '1px solid rgba(239,68,68,0.55)',
+        }}
+      >
+        <p className="text-white text-sm font-semibold mb-1">
+          Are you absolutely sure?
+        </p>
+        <p className="text-[rgba(255,180,180,0.85)] text-xs leading-relaxed mb-3">
+          This will permanently destroy every photo, the wiki, every voice
+          message, every call recording and transcript, every contributor
+          relationship, and every chat in this ember. None of it can be
+          recovered.
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            disabled={deleting}
+            className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-50"
+            style={{
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              minHeight: 44,
+              cursor: deleting ? 'default' : 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void performDelete()}
+            disabled={deleting}
+            className="flex-1 flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium disabled:opacity-50"
+            style={{
+              background: 'rgba(239,68,68,0.85)',
+              border: 'none',
+              minHeight: 44,
+              cursor: deleting ? 'default' : 'pointer',
+            }}
+          >
+            <Trash2 size={14} />
+            {deleting ? 'Deleting…' : 'Yes, Delete'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <WikiCard>
+      <p className="text-white/60 text-sm mb-3">
+        Permanently remove this ember and everything attached to it — photos,
+        wiki, voice / call recordings, contributors, and conversations. This
+        cannot be undone.
+      </p>
+      <button
+        type="button"
+        onClick={() => setConfirming(true)}
+        disabled={!canManage}
+        className="w-1/2 ml-auto flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium disabled:opacity-50"
+        style={{
+          background: 'rgba(239,68,68,0.85)',
+          border: 'none',
+          minHeight: 44,
+          cursor: !canManage ? 'default' : 'pointer',
+        }}
+      >
+        <Trash2 size={14} />
+        Delete Ember
+      </button>
+    </WikiCard>
+  );
+}
+
+// Collapsible cluster of wiki sections. Tapping the label toggles the
+// whole group, including all sections inside it. Used for the five
+// bands (Identity, Curation, Observed, Conversations, Control).
+function WikiGroup({
+  label,
+  defaultCollapsed = false,
+  children,
+}: {
+  label: string;
+  defaultCollapsed?: boolean;
+  children: React.ReactNode;
+}) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  return (
+    <div className="flex flex-col gap-7">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="flex items-center gap-3 px-1 py-2 cursor-pointer w-full"
+        style={{ background: 'transparent', border: 'none' }}
+      >
+        <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+        <span className="text-white/30 text-xs uppercase tracking-wider font-medium">
+          {label}
+        </span>
+        <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+      </button>
+      {collapsed ? null : children}
+    </div>
+  );
+}
+
 function WikiBadge({ complete, label }: { complete: boolean; label?: React.ReactNode }) {
   // Three palettes:
   //   complete           → green
@@ -1212,6 +1479,7 @@ function WikiSection({
   editHref,
   collapsible = false,
   defaultCollapsed = false,
+  hideBadge = false,
   children,
 }: {
   icon: React.ReactNode;
@@ -1221,6 +1489,10 @@ function WikiSection({
   editHref?: string;
   collapsible?: boolean;
   defaultCollapsed?: boolean;
+  // Sections under the Control group don't have a meaningful "complete"
+  // state — Download, Privacy, and Delete are actions, not progress
+  // milestones — so they suppress the green/red/orange badge entirely.
+  hideBadge?: boolean;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -1276,7 +1548,7 @@ function WikiSection({
               <PencilLine size={13} />
             </Link>
           ) : null}
-          <WikiBadge complete={complete} label={badgeLabel} />
+          {hideBadge ? null : <WikiBadge complete={complete} label={badgeLabel} />}
         </div>
       </div>
       {isHidden ? null : children}
@@ -1306,6 +1578,7 @@ function PlaceCard({
   coordinateLine,
   locationLookupPending,
   placeSource,
+  bare = false,
 }: {
   placeName: string | null;
   placeConfirmedAt: string | null;
@@ -1315,10 +1588,14 @@ function PlaceCard({
   coordinateLine: string | null;
   locationLookupPending: boolean;
   placeSource: 'manual' | 'gps' | 'none';
+  // When true, render the place content without the outer WikiCard
+  // wrapper so the caller can compose it into a larger card (e.g. the
+  // merged Time & Place section, where time + place share one card).
+  bare?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(true);
-  return (
-    <WikiCard>
+  const inner = (
+    <>
       <button
         type="button"
         onClick={() => setCollapsed((v) => !v)}
@@ -1386,8 +1663,9 @@ function PlaceCard({
           </p>
         </>
       ) : null}
-    </WikiCard>
+    </>
   );
+  return bare ? inner : <WikiCard>{inner}</WikiCard>;
 }
 
 type ChatBlock = {
@@ -1621,8 +1899,15 @@ const TAG_COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4
 
 export default function KipemberWikiContent({
   detail,
+  refreshDetail,
+  onStatus,
 }: {
   detail: KipemberWikiDetail | null;
+  // Optional callbacks the wiki uses for the inline Privacy and Delete
+  // controls in the Control group. When omitted (e.g. read-only render
+  // surfaces) those interactions silently no-op.
+  refreshDetail?: () => Promise<unknown> | unknown;
+  onStatus?: (message: string) => void;
 }) {
   const placeResolution = usePlaceResolution(detail);
   const contributors = detail?.contributors || [];
@@ -1774,7 +2059,10 @@ export default function KipemberWikiContent({
   } = placeResolution;
 
   return (
-    <div className="flex-1 overflow-y-auto no-scrollbar py-5 flex flex-col gap-7 pb-10">
+    <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-7 pb-10">
+      {/* IDENTITY — who is involved with this ember. */}
+      <WikiGroup label="Identity">
+
       <WikiSection
         icon={<ShieldUser size={17} />}
         title="Owner"
@@ -1799,75 +2087,6 @@ export default function KipemberWikiContent({
             <p className="text-white/30 text-sm">Owner data is not available.</p>
           )}
         </WikiCard>
-      </WikiSection>
-
-      <WikiSection
-        icon={<FileText size={17} />}
-        title="Title"
-        complete={Boolean(detail?.title || detail?.originalName)}
-        editHref={detail?.id ? `/tend/edit-title?id=${detail.id}` : undefined}
-      >
-        <WikiCard>
-          <p className="text-white font-medium text-base">
-            {detail?.title || detail?.originalName || 'Untitled Ember'}
-          </p>
-          <p className="text-white/30 text-xs">
-            Source: {detail?.title ? 'Manual entry' : 'Original upload'}
-          </p>
-        </WikiCard>
-      </WikiSection>
-
-      <WikiSection
-        icon={<ScanEye size={17} />}
-        title="Snapshot"
-        complete={Boolean(detail?.snapshot?.script)}
-        editHref={detail?.id ? `/tend/edit-snapshot?id=${detail.id}` : undefined}
-      >
-        <WikiCard>
-          {detail?.snapshot?.script ? (
-            <>
-              <p className="text-white/90 text-sm leading-relaxed">{detail.snapshot.script}</p>
-              <p className="text-white/30 text-xs">Source: AI generated</p>
-            </>
-          ) : (
-            <p className="text-white/30 text-sm">No snapshot yet.</p>
-          )}
-        </WikiCard>
-      </WikiSection>
-
-      <WikiSection
-        icon={<Clock size={17} />}
-        title="Time & Date"
-        complete={Boolean(detail?.analysis?.capturedAt || detail?.createdAt)}
-        editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
-      >
-        <WikiCard>
-          <p className="text-white/30 text-xs font-medium mb-1.5">Photo Timestamp</p>
-          <p className="text-white font-medium text-sm">
-            {formatLongDate(detail?.analysis?.capturedAt || detail?.createdAt)}
-          </p>
-          <p className="text-white/30 text-xs mt-3">
-            Source: {detail?.analysis?.capturedAt ? 'Photo EXIF metadata' : 'Upload timestamp'}
-          </p>
-        </WikiCard>
-      </WikiSection>
-
-      <WikiSection
-        icon={<MapPin size={17} />}
-        title="Place"
-        complete={Boolean(placeName || addressLines.length > 0 || coordinateLine)}
-        editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
-      >
-        <PlaceCard
-          placeName={placeName}
-          placeConfirmedAt={placeConfirmedAt}
-          showExactAddress={showExactAddress}
-          addressLines={addressLines}
-          placeCountry={placeCountry}
-          coordinateLine={coordinateLine}
-          locationLookupPending={locationLookupPending}
-          placeSource={placeSource}
-        />
       </WikiSection>
 
       <WikiSection
@@ -1971,6 +2190,84 @@ export default function KipemberWikiContent({
           </WikiSection>
         );
       })()}
+
+      </WikiGroup>
+
+      {/* CURATION — what the owner authored or curated. */}
+      <WikiGroup label="Curation">
+
+      <WikiSection
+        icon={<FileText size={17} />}
+        title="Title"
+        complete={Boolean(detail?.title || detail?.originalName)}
+        editHref={detail?.id ? `/tend/edit-title?id=${detail.id}` : undefined}
+      >
+        <WikiCard>
+          <p className="text-white font-medium text-base">
+            {detail?.title || detail?.originalName || 'Untitled Ember'}
+          </p>
+          <p className="text-white/30 text-xs">
+            Source: {detail?.title ? 'Manual entry' : 'Original upload'}
+          </p>
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
+        icon={<ScanEye size={17} />}
+        title="Snapshot"
+        complete={Boolean(detail?.snapshot?.script)}
+        editHref={detail?.id ? `/tend/edit-snapshot?id=${detail.id}` : undefined}
+      >
+        <WikiCard>
+          {detail?.snapshot?.script ? (
+            <>
+              <p className="text-white/90 text-sm leading-relaxed">{detail.snapshot.script}</p>
+              <p className="text-white/30 text-xs">Source: AI generated</p>
+            </>
+          ) : (
+            <p className="text-white/30 text-sm">No snapshot yet.</p>
+          )}
+        </WikiCard>
+      </WikiSection>
+
+      </WikiGroup>
+
+      {/* OBSERVED — what the camera, EXIF, GPS, and image-analysis AI saw. */}
+      <WikiGroup label="Observed">
+
+      {/* Time & Place — merged section mirroring the Edit Time & Place
+          slider. Photo Time on top, then a divider, then the
+          collapsible place block, all inside a single WikiCard. */}
+      <WikiSection
+        icon={<Clock size={17} />}
+        title="Time & Place"
+        complete={
+          Boolean(detail?.analysis?.capturedAt || detail?.createdAt) &&
+          Boolean(placeName || addressLines.length > 0 || coordinateLine)
+        }
+        editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
+      >
+        <WikiCard>
+          <p className="text-white font-medium text-sm">
+            {formatLongDate(detail?.analysis?.capturedAt || detail?.createdAt)}
+          </p>
+          <p className="text-white/30 text-xs">
+            Source: {detail?.analysis?.capturedAt ? 'Photo EXIF metadata' : 'Upload timestamp'}
+          </p>
+          <div className="my-3 h-px" style={{ background: 'var(--border-subtle)' }} />
+          <PlaceCard
+            placeName={placeName}
+            placeConfirmedAt={placeConfirmedAt}
+            showExactAddress={showExactAddress}
+            addressLines={addressLines}
+            placeCountry={placeCountry}
+            coordinateLine={coordinateLine}
+            locationLookupPending={locationLookupPending}
+            placeSource={placeSource}
+            bare
+          />
+        </WikiCard>
+      </WikiSection>
 
       <WikiSection
         icon={<ImageIcon size={17} />}
@@ -2149,6 +2446,12 @@ export default function KipemberWikiContent({
           })}
       </WikiSection>
 
+      </WikiGroup>
+
+      {/* CONVERSATIONS — Story Circle conversations + everything the
+          housekeeping extractors pulled out of them. */}
+      <WikiGroup label="Conversations">
+
       <WikiSection
         icon={<History size={17} />}
         title="Story Circle"
@@ -2225,16 +2528,6 @@ export default function KipemberWikiContent({
         </div>
       </WikiSection>
 
-      {/* Visual divider — everything below this is auto-extracted from
-          the Story Circle conversations, not directly authored. */}
-      <div className="flex items-center gap-3 px-1 pt-2">
-        <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
-        <span className="text-white/30 text-xs uppercase tracking-wider font-medium">
-          Extracted Details
-        </span>
-        <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
-      </div>
-
       <WikiSection
         icon={<Lightbulb size={17} />}
         title="Why"
@@ -2274,6 +2567,44 @@ export default function KipemberWikiContent({
       >
         <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
       </WikiSection>
+
+      </WikiGroup>
+
+      {/* CONTROL — owner-only ember controls. Privacy toggles and the
+          delete action live inline here; Download is a placeholder until
+          we ship the export pipeline. Defaults to collapsed so the
+          destructive controls aren't right under the user's thumb. */}
+      <WikiGroup label="Control" defaultCollapsed>
+
+      <WikiSection
+        icon={<Download size={17} />}
+        title="Download Ember"
+        complete={false}
+        hideBadge
+      >
+        <WikiCard>
+          <p className="text-white/60 text-sm">
+            Export this ember as a single archive — photos, wiki text, voice
+            clips, call transcripts, and contributor history. Not yet
+            available.
+          </p>
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection icon={<Lock size={17} />} title="Privacy Setting" complete={false} hideBadge>
+        <PrivacyToggles
+          imageId={imageId}
+          shareToNetwork={Boolean(detail?.shareToNetwork)}
+          keepPrivate={Boolean(detail?.keepPrivate)}
+          refreshDetail={refreshDetail}
+          onStatus={onStatus}
+        />
+      </WikiSection>
+
+      <WikiSection icon={<Trash2 size={17} />} title="Delete Ember" complete={false} hideBadge>
+        <DeleteEmberCard imageId={imageId} canManage={Boolean(detail?.canManage)} onStatus={onStatus} />
+      </WikiSection>
+      </WikiGroup>
 
     </div>
   );

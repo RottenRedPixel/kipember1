@@ -2,31 +2,23 @@
 
 import Link from 'next/link';
 import {
-  BookOpen,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
-  Clock,
   Copy,
   LogOut,
   MapPin,
   Moon,
   MoreHorizontal,
-  PencilLine,
   Plus,
-  PlusCircle,
   ScanEye,
-  ScanLine,
-  Settings,
   Leaf,
   Link2,
   Mail,
   MessageCircle,
   Share2,
   Sun,
-  UserStar,
   User,
-  Users,
   X,
 } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
@@ -343,7 +335,7 @@ export default function HomeScreen({
   const rawChatParam = params.get('chat');
   const emberModalSurface: EmberModalSurface =
     rawChatParam === 'voice' ? 'voice' : rawChatParam === 'calls' ? 'calls' : 'chats';
-  const railHidden = firstEmber || emberModalOpen || modal === 'share' || modal === 'tend' || modal === 'play';
+  const railHidden = firstEmber || emberModalOpen || modal === 'share' || modal === 'play';
   // Enable the swipe wrapper when either axis is usable: vertical needs more
   // than one ember in the carousel, horizontal needs at least one attachment
   // beyond the cover photo. The per-axis handlers below still gate on the
@@ -1046,7 +1038,12 @@ export default function HomeScreen({
           </button>
         ) : null}
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
-        <RailBtn icon={Leaf} label="tend" href={buildHomeHref({ m: 'tend' })} active={modal === 'tend'} />
+        <RailBtn
+          icon={Leaf}
+          label="tend"
+          href={selectedEmberId ? `/tend/view-wiki?id=${selectedEmberId}` : '/tend/view-wiki'}
+          active={false}
+        />
         <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
 
@@ -1096,37 +1093,10 @@ export default function HomeScreen({
         </Modal>
       ) : null}
 
-      {modal === 'tend' ? (
-        <Modal closeHref={buildHomeHref({ m: null })}>
-          <div className="flex flex-col items-center pt-6 pb-4 gap-2">
-            <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#6a7c5c' }}>
-              <Leaf size={28} color="#d4e8c2" strokeWidth={1.6} />
-            </div>
-            <span className="text-white text-base font-medium">Tend &amp; grow this ember</span>
-          </div>
-          <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-          <div className="px-5 py-6 grid grid-cols-3" style={{ gap: '36px 8px' }}>
-            {displayEmber?.accessType === 'contributor' ? (
-              <>
-                <SvgItem label="Add Content" href={selectedEmberId ? `/ember/${selectedEmberId}?ember=contributor` : '/home'} icon={PlusCircle} />
-                <SvgItem label="Tag People" href={selectedEmberId ? `/tend/tag-people?id=${selectedEmberId}` : '/tend/tag-people'} icon={UserStar} />
-              </>
-            ) : (
-              <>
-                <SvgItem label="Add Content" href={selectedEmberId ? `/ember/${selectedEmberId}?ember=owner` : '/home'} icon={PlusCircle} />
-                <SvgItem label="Edit Title" href={selectedEmberId ? `/tend/edit-title?id=${selectedEmberId}` : '/tend/edit-title'} icon={PencilLine} />
-                <SvgItem label="Edit Time & Place" href={selectedEmberId ? `/tend/edit-time-place?id=${selectedEmberId}` : '/tend/edit-time-place'} icon={Clock} />
-                <SvgItem label="Edit Snapshot" href={selectedEmberId ? `/tend/edit-snapshot?id=${selectedEmberId}` : '/tend/edit-snapshot'} icon={ScanEye} />
-                <SvgItem label="Frame" href={selectedEmberId ? `/tend/frame?id=${selectedEmberId}` : '/tend/frame'} icon={ScanLine} />
-                <SvgItem label="View Wiki" href={selectedEmberId ? `/tend/view-wiki?id=${selectedEmberId}` : '/tend/view-wiki'} icon={BookOpen} />
-                <SvgItem label="Tag People" href={selectedEmberId ? `/tend/tag-people?id=${selectedEmberId}` : '/tend/tag-people'} icon={UserStar} />
-                <SvgItem label="Settings" href={selectedEmberId ? `/tend/settings?id=${selectedEmberId}` : '/tend/settings'} icon={Settings} />
-                <SvgItem label="Contributors" href={selectedEmberId ? `/tend/contributors?id=${selectedEmberId}` : '/tend/contributors'} icon={Users} />
-              </>
-            )}
-          </div>
-        </Modal>
-      ) : null}
+      {/* The Tend modal was archived once every entry it surfaced got
+          a wiki section pencil. The Tend rail button now jumps straight
+          to /tend/view-wiki. We can resurrect this block from git
+          history if we ever want a multi-action launcher again. */}
 
       {modal === 'play' ? (
         <KipemberPlayOverlay

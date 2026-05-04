@@ -21,7 +21,6 @@ import KipemberWikiContent, {
 import EditSnapshotSlider from '@/components/kipember/tend/EditSnapshotSlider';
 import EditTitleSlider from '@/components/kipember/tend/EditTitleSlider';
 import EditTimePlaceSlider from '@/components/kipember/tend/EditTimePlaceSlider';
-import SettingsSlider from '@/components/kipember/tend/SettingsSlider';
 import FrameSlider from '@/components/kipember/tend/FrameSlider';
 import TagPeopleSlider from '@/components/kipember/tend/TagPeopleSlider';
 import ContributorsSlider, {
@@ -138,7 +137,6 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [status, setStatus] = useState('');
   // Slider state moved to component files:
   //   edit-title       -> EditTitleSlider
-  //   settings         -> SettingsSlider
   //   edit-time-place  -> EditTimePlaceSlider
   //   frame            -> FrameSlider
   //   tag-people       -> TagPeopleSlider
@@ -176,8 +174,8 @@ export default function TendActionScreen({ action }: { action: string }) {
       sessionStorage.setItem(`cover-${resolvedImageId}`, url);
       setCachedCoverUrl(url);
     }
-    // Settings toggles now live in SettingsSlider; it syncs from `detail`
-    // via its own useEffect.
+    // Privacy toggles + Delete now live inline in the wiki Control group
+    // (KipemberWikiContent), which calls PATCH/DELETE /api/images directly.
     // Time/date and location/GPS state lives in EditTimePlaceSlider now;
     // it syncs from `detail` via its own useEffect.
     // Frame crop state lives in FrameSlider now; it syncs from `detail`
@@ -432,7 +430,13 @@ export default function TendActionScreen({ action }: { action: string }) {
             />
           ) : null}
 
-          {action === 'view-wiki' ? <KipemberWikiContent detail={detail} /> : null}
+          {action === 'view-wiki' ? (
+            <KipemberWikiContent
+              detail={detail}
+              refreshDetail={refreshDetail}
+              onStatus={setStatus}
+            />
+          ) : null}
 
           {action === 'edit-title' ? (
             <EditTitleSlider
@@ -452,15 +456,6 @@ export default function TendActionScreen({ action }: { action: string }) {
             />
           ) : null}
 
-
-          {action === 'settings' ? (
-            <SettingsSlider
-              detail={detail}
-              imageId={resolvedImageId}
-              refreshDetail={refreshDetail}
-              onStatus={setStatus}
-            />
-          ) : null}
 
           {action === 'edit-time-place' ? (
             <EditTimePlaceSlider
