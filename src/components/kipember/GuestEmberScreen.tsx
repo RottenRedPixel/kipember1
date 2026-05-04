@@ -255,7 +255,13 @@ export default function GuestEmberScreen({ token }: { token: string }) {
 
   return (
     <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
-      <div className="relative w-full max-w-xl h-full overflow-hidden">
+      {/* No overflow-hidden on this wrapper: the background blur layer
+          uses transform: scale(1.08), which makes its visual bounding box
+          larger than the wrapper. Combined with overflow-hidden, that
+          fakes scrollable content and lets browser focus-into-view scroll
+          the wrapper internally — yanking every absolute child (header,
+          title, modal) up. HomeScreen omits it for the same reason. */}
+      <div className="relative w-full max-w-xl h-full">
         {/* Background blur layer + photo, sized into the band between the
             56px header and the 72px Ember bar. When expanded, the photo
             letterboxes into the top 25% to make room for the larger modal. */}
