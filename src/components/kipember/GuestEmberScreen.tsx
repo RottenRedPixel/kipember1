@@ -425,6 +425,14 @@ export default function GuestEmberScreen({ token }: { token: string }) {
               <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => navigator.share?.({ title, url: shareUrl })}><div className="w-11 h-11 flex items-center justify-center"><MoreHorizontal size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">More</span></button>
             </div>
             <div className="mx-5 mb-5">
+              {/* Confirmation lives above the URL row so the user sees
+                  feedback right after tapping Copy Link or the inline
+                  Copy button. Auto-clears after 2s via copyShareLink. */}
+              {copyStatus === 'copied' ? (
+                <p className="text-xs text-center mb-2" style={{ color: '#4ade80' }}>
+                  Link copied to clipboard
+                </p>
+              ) : null}
               <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <span className="flex-1 text-xs text-white/50 truncate">{shareUrl}</span>
                 <button
@@ -436,11 +444,6 @@ export default function GuestEmberScreen({ token }: { token: string }) {
                   {copyStatus === 'copied' ? 'Copied!' : 'Copy'}
                 </button>
               </div>
-              {copyStatus === 'copied' ? (
-                <p className="text-xs text-center mt-2" style={{ color: '#4ade80' }}>
-                  Link copied to clipboard
-                </p>
-              ) : null}
             </div>
           </Modal>
         ) : null}

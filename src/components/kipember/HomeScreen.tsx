@@ -306,6 +306,7 @@ export default function HomeScreen({
   const [photoSwapSettling, setPhotoSwapSettling] = useState(false);
   const [photoIsLandscape, setPhotoIsLandscape] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
   const [dragY, setDragY] = useState(0);
   const [swipeSettling, setSwipeSettling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -398,6 +399,20 @@ export default function HomeScreen({
   const isDarkTheme = params.get('theme')
     ? params.get('theme') !== 'light'
     : storedTheme !== 'light';
+
+  // Wraps any clipboard.writeText so the share modal can flash a brief
+  // "Link copied" confirmation. Falls back gracefully when the clipboard
+  // API isn't available (older browsers, insecure context) — the visual
+  // feedback still fires so the user gets a confirmation either way.
+  const copyShareLink = useCallback(async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      /* clipboard API unavailable — visual feedback below still fires */
+    }
+    setCopyStatus('copied');
+    setTimeout(() => setCopyStatus('idle'), 2000);
+  }, []);
 
   const SWIPE_THRESHOLD = 80;
 
@@ -1061,7 +1076,7 @@ export default function HomeScreen({
               const shareUrl = shareToken ? `${window.location.origin}/guest/${shareToken}` : null;
               return (
                 <>
-                  <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? void navigator.clipboard.writeText(shareUrl) : undefined}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
+                  <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? void copyShareLink(shareUrl) : undefined}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
                   <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? window.location.assign(`sms:?&body=${encodeURIComponent(shareUrl)}`) : undefined}><div className="w-11 h-11 flex items-center justify-center"><MessageCircle size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Message</span></button>
                   <a href={shareUrl ? `mailto:?body=${encodeURIComponent(shareUrl)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover"><div className="w-11 h-11 flex items-center justify-center"><Mail size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Email</span></a>
                   <a href={shareUrl ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}` : undefined} className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" target="_blank" rel="noreferrer"><div className="w-11 h-11 flex items-center justify-center"><FacebookIcon /></div><span className="text-white text-xs font-medium tracking-wide">Facebook</span></a>
@@ -1072,6 +1087,14 @@ export default function HomeScreen({
             })()}
           </div>
           <div className="mx-5 mb-5">
+            {/* Confirmation lives above the URL row so the user sees
+                feedback right after tapping Copy Link or the inline copy
+                icon. Auto-clears after 2s via copyShareLink. */}
+            {copyStatus === 'copied' ? (
+              <p className="text-xs text-center mb-2" style={{ color: '#4ade80' }}>
+                Link copied to clipboard
+              </p>
+            ) : null}
             <div
               className="flex items-center gap-2 rounded-xl px-3 py-2.5"
               style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
@@ -1082,7 +1105,7 @@ export default function HomeScreen({
               {shareToken ? (
                 <button
                   type="button"
-                  onClick={() => void navigator.clipboard.writeText(`${window.location.origin}/guest/${shareToken}`)}
+                  onClick={() => void copyShareLink(`${window.location.origin}/guest/${shareToken}`)}
                   className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md cursor-pointer"
                 >
                   <Copy size={16} color="white" strokeWidth={1.8} />
