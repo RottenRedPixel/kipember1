@@ -335,12 +335,21 @@ export default function GuestEmberScreen({ token }: { token: string }) {
         />
       ) : null}
 
-      {/* Ember Chat bar */}
+      {/* Ember bar — anchored to the bottom. When closed it's just the
+          brand row. When open it caps at 65% from the top so the modal
+          can never grow tall enough to hide the AppHeader, with
+          GuestFlow scrolling inside the remaining space. */}
       <div
-        className="absolute bottom-0 left-0 right-0 z-30 flex flex-col"
-        style={{ background: 'var(--bg-screen)', borderTop: '1px solid var(--border-subtle)' }}
+        className="absolute left-0 right-0 z-30 flex flex-col overflow-hidden"
+        style={{
+          top: flowOpen ? '65%' : 'auto',
+          bottom: 0,
+          background: 'var(--bg-screen)',
+          borderTop: '1px solid var(--border-subtle)',
+          transition: 'top 200ms ease',
+        }}
       >
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0">
           <Link href={flowOpen ? closeHref : openHref} className="flex-1 text-left">
             <span className="flex items-center gap-2">
               <EmberMark />
@@ -361,7 +370,11 @@ export default function GuestEmberScreen({ token }: { token: string }) {
             )}
           </Link>
         </div>
-        {flowOpen ? <GuestFlow token={token} /> : null}
+        {flowOpen ? (
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <GuestFlow token={token} />
+          </div>
+        ) : null}
       </div>
       </div>
     </div>
