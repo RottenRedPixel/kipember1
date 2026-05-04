@@ -266,18 +266,25 @@ export type KipemberWikiDetail = {
     }>;
   }>;
   guestChatBlock?: {
-    // One entry per anonymous share-link visitor. Each browser/cookie =
-    // its own session row in the DB, so each session = one visitor's
-    // conversation thread.
-    sessions: Array<{
-      sessionId: string;
+    // One entry per anonymous share-link visitor (keyed by the
+    // kb-guest-browser cookie). Each visitor can have a chat timeline
+    // and a voice timeline; either may be empty but at least one is
+    // non-empty for the visitor to land here.
+    visitors: Array<{
+      visitorId: string;
       firstMessageAt: string;
-      messages: Array<{
+      chatMessages: Array<{
         role: string;
         content: string;
         source: string;
         imageFilename?: string | null;
         audioUrl?: string | null;
+        createdAt: string;
+      }>;
+      voiceMessages: Array<{
+        role: string;
+        content: string;
+        audioUrl: string | null;
         createdAt: string;
       }>;
     }>;
@@ -1789,24 +1796,25 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
 }
 
 type GuestChatBlock = NonNullable<KipemberWikiDetail['guestChatBlock']>;
-type GuestChatSession = GuestChatBlock['sessions'][number];
+type GuestVisitor = GuestChatBlock['visitors'][number];
 
-// One collapsible card per anonymous share-link visitor. Anonymous
-// browsers can't be told apart by name, so we label them ordinally
-// ("Visitor 1", "Visitor 2", …) with the first-message date as a
-// subtitle. Visual styling matches the named contributor chat blocks
-// in spirit, but uses a grey avatar to read as "anonymous".
-function CollapsibleGuestVisitorBlock({
-  session,
+// One collapsible chat card per anonymous share-link visitor.
+// Anonymous browsers can't be told apart by name, so we label them
+// ordinally ("Visitor 1", "Visitor 2", …) with the first-message date
+// as a subtitle. Grey avatar + chat-bubble icon distinguishes these
+// cards from the named contributor chat blocks in Story Circle.
+function CollapsibleGuestVisitorChatBlock({
+  visitor,
   visitorNumber,
 }: {
-  session: GuestChatSession;
+  visitor: GuestVisitor;
   visitorNumber: number;
 }) {
   const [collapsed, setCollapsed] = useState(true);
-  const userMessageCount = session.messages.filter((m) => m.role === 'user').length;
+  const userMessageCount = visitor.chatMessages.filter((m) => m.role === 'user').length;
   const dateLabel = (() => {
-    const d = new Date(session.firstMessageAt);
+    const first = visitor.chatMessages[0]?.createdAt ?? visitor.firstMessageAt;
+    const d = new Date(first);
     if (Number.isNaN(d.getTime())) return null;
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   })();
@@ -1844,7 +1852,7 @@ function CollapsibleGuestVisitorBlock({
       {!collapsed ? (
         <div className="mt-3">
           <EmberChatMessages
-            messages={session.messages.map((msg) => ({
+            messages={visitor.chatMessages.map((msg) => ({
               role: msg.role === 'user' ? 'user' : 'assistant',
               content: msg.content,
               source: (msg.source as 'web' | 'voice' | 'sms') ?? 'web',
@@ -1852,6 +1860,78 @@ function CollapsibleGuestVisitorBlock({
               audioUrl: msg.audioUrl ?? null,
               createdAt: msg.createdAt,
             }))}
+            selfLabel={`Visitor ${visitorNumber}`}
+          />
+        </div>
+      ) : null}
+    </WikiCard>
+  );
+}
+
+// Voice counterpart to CollapsibleGuestVisitorChatBlock. Mirrors the
+// VoiceBlockCard pattern in Story Circle (collapsible card, audio
+// playback list when expanded), but uses the same grey #6b7280 avatar
+// as the chat card with a Mic icon swap so guest voice stays visually
+// grouped with guest chat instead of with the green-mic owner/contributor
+// voice cards.
+function CollapsibleGuestVisitorVoiceBlock({
+  visitor,
+  visitorNumber,
+}: {
+  visitor: GuestVisitor;
+  visitorNumber: number;
+}) {
+  const [collapsed, setCollapsed] = useState(true);
+  const messageCount = visitor.voiceMessages.length;
+  const dateLabel = (() => {
+    const first = visitor.voiceMessages[0]?.createdAt ?? visitor.firstMessageAt;
+    const d = new Date(first);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  })();
+  const messages: VoiceMessage[] = visitor.voiceMessages.map((m) => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content,
+    audioUrl: m.audioUrl,
+    createdAt: m.createdAt,
+  }));
+  return (
+    <WikiCard>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-2 cursor-pointer"
+        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
+      >
+        <div
+          className="rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ width: 29, height: 29, background: '#6b7280' }}
+        >
+          <Mic size={16} className="text-white" />
+        </div>
+        <p className="flex-1 text-left text-white/30 text-xs font-medium">
+          Visitor {visitorNumber} Voice
+          <span className="ml-2 text-white/20">
+            ({messageCount} {messageCount === 1 ? 'message' : 'messages'}
+            {dateLabel ? ` · ${dateLabel}` : ''})
+          </span>
+        </p>
+        <ChevronDown
+          size={14}
+          color="rgba(255,255,255,0.5)"
+          style={{
+            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.15s ease',
+          }}
+        />
+      </button>
+      {!collapsed ? (
+        <div className="mt-3">
+          <VoiceMessageList
+            messages={messages}
+            isUploading={false}
+            emptyHint=""
             selfLabel={`Visitor ${visitorNumber}`}
           />
         </div>
@@ -2620,19 +2700,31 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<MessagesSquare size={17} />}
         title="Guest Talk"
-        complete={Boolean(detail?.guestChatBlock && detail.guestChatBlock.sessions.length > 0)}
+        complete={Boolean(detail?.guestChatBlock && detail.guestChatBlock.visitors.length > 0)}
         collapsible
         defaultCollapsed
       >
-        {detail?.guestChatBlock && detail.guestChatBlock.sessions.length > 0 ? (
+        {detail?.guestChatBlock && detail.guestChatBlock.visitors.length > 0 ? (
           <div className="flex flex-col gap-4">
-            {detail.guestChatBlock.sessions.map((session, idx) => (
-              <CollapsibleGuestVisitorBlock
-                key={session.sessionId}
-                session={session}
-                visitorNumber={idx + 1}
-              />
-            ))}
+            {detail.guestChatBlock.visitors.map((visitor, idx) => {
+              const visitorNumber = idx + 1;
+              return (
+                <Fragment key={visitor.visitorId}>
+                  {visitor.chatMessages.length > 0 ? (
+                    <CollapsibleGuestVisitorChatBlock
+                      visitor={visitor}
+                      visitorNumber={visitorNumber}
+                    />
+                  ) : null}
+                  {visitor.voiceMessages.length > 0 ? (
+                    <CollapsibleGuestVisitorVoiceBlock
+                      visitor={visitor}
+                      visitorNumber={visitorNumber}
+                    />
+                  ) : null}
+                </Fragment>
+              );
+            })}
           </div>
         ) : (
           <WikiCard>

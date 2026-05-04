@@ -689,14 +689,16 @@ export async function GET(
         createdAt: string;
       }>;
     }> = [];
-    // Each EmberSession with participantType 'guest' is a single browser
-    // visitor (sessions are keyed by the kb-guest-browser cookie + imageId),
-    // so bucketing messages by session.id gives us one bucket per distinct
-    // visitor. firstMessageAt drives the visitor ordering on the wiki.
-    type GuestSessionBucket = {
-      sessionId: string;
+    // Each anonymous share-link browser is identified by its
+    // kb-guest-browser cookie, which the chat + voice routes both write
+    // into EmberSession.participantId. A single visitor therefore has up
+    // to two rows (one chat session, one voice session) sharing the same
+    // participantId — so we bucket per participantId, not per session.id,
+    // to keep a visitor's chat and voice timelines together.
+    type GuestVisitorBucket = {
+      visitorId: string;
       firstMessageAt: string;
-      messages: Array<{
+      chatMessages: Array<{
         role: string;
         content: string;
         source: string;
@@ -704,8 +706,14 @@ export async function GET(
         audioUrl?: string | null;
         createdAt: string;
       }>;
+      voiceMessages: Array<{
+        role: string;
+        content: string;
+        audioUrl: string | null;
+        createdAt: string;
+      }>;
     };
-    let guestSessions = new Map<string, GuestSessionBucket>();
+    let guestVisitors = new Map<string, GuestVisitorBucket>();
     try {
       const emberSessions = await prisma.emberSession.findMany({
         where: { imageId: id, sessionType: { in: ['chat', 'call', 'voice'] } },
@@ -744,37 +752,48 @@ export async function GET(
         voiceMessages: VoiceTurn[];
       };
       const byPerson = new Map<string, PersonBucket>();
-      // Guest sessions are bucketed per-session so each anonymous visitor
-      // gets its own collapsible card on the wiki. Different browsers
-      // still can't be told apart by name, but the per-session split
-      // keeps each conversation thread legible instead of interleaving
-      // turns from different people into one timeline.
+      // Guest sessions are bucketed per-visitor (participantId =
+      // kb-guest-browser cookie) so each anonymous visitor's chat AND
+      // voice timelines collapse into a single visitor card on the
+      // wiki. Voice sessions are routed to bucket.voiceMessages with
+      // audioUrl resolved from EmberMessage.audioFilename, mirroring
+      // /api/voice's GET shape.
       for (const session of emberSessions) {
         if (session.participantType === 'guest') {
-          const bucketMessages: GuestSessionBucket['messages'] = [];
+          const visitorId = session.participantId;
+          let bucket = guestVisitors.get(visitorId);
+          if (!bucket) {
+            bucket = {
+              visitorId,
+              firstMessageAt: '',
+              chatMessages: [],
+              voiceMessages: [],
+            };
+            guestVisitors.set(visitorId, bucket);
+          }
+          const isVoice = session.sessionType === 'voice';
           for (const msg of session.messages) {
             if (msg.questionType) continue;
-            // Voice/call don't currently happen for guests, but if they ever
-            // do, route to the regular bucket so they render with audio.
-            if (msg.source === 'voice' || session.sessionType === 'voice') continue;
-            bucketMessages.push({
-              role: msg.role,
-              content: msg.content,
-              source: msg.source || 'web',
-              imageFilename: msg.imageFilename ?? null,
-              audioUrl: null as string | null,
-              createdAt: msg.createdAt.toISOString(),
-            });
-          }
-          if (bucketMessages.length > 0) {
-            bucketMessages.sort(
-              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            );
-            guestSessions.set(session.id, {
-              sessionId: session.id,
-              firstMessageAt: bucketMessages[0].createdAt,
-              messages: bucketMessages,
-            });
+            if (isVoice) {
+              bucket.voiceMessages.push({
+                role: msg.role,
+                content: msg.content,
+                audioUrl: msg.audioFilename ? `/api/uploads/${msg.audioFilename}` : null,
+                createdAt: msg.createdAt.toISOString(),
+              });
+            } else {
+              // Chat-session messages with source 'voice' are stray; skip
+              // them so they don't double up with the dedicated voice bucket.
+              if (msg.source === 'voice') continue;
+              bucket.chatMessages.push({
+                role: msg.role,
+                content: msg.content,
+                source: msg.source || 'web',
+                imageFilename: msg.imageFilename ?? null,
+                audioUrl: null as string | null,
+                createdAt: msg.createdAt.toISOString(),
+              });
+            }
           }
           continue;
         }
@@ -871,7 +890,7 @@ export async function GET(
       console.error('Failed to load chatBlocks:', chatBlocksError);
       chatBlocks = [];
       voiceBlocks = [];
-      guestSessions = new Map();
+      guestVisitors = new Map();
     }
 
     // Build callBlocks: one block per Retell voice call, with parsed per-turn segments.
@@ -1068,16 +1087,39 @@ export async function GET(
       chatBlocks,
       voiceBlocks,
       callBlocks,
-      guestChatBlock:
-        guestSessions.size > 0
-          ? {
-              sessions: Array.from(guestSessions.values()).sort(
-                (a, b) =>
-                  new Date(a.firstMessageAt).getTime() - new Date(b.firstMessageAt).getTime()
-              ),
-              sessionCount: guestSessions.size,
-            }
-          : null,
+      guestChatBlock: (() => {
+        // Drop empty buckets (a visitor row with both timelines empty
+        // can happen if a session was created but never wrote messages),
+        // sort each visitor's two timelines, then order visitors by their
+        // earliest message across either timeline.
+        const finalized = Array.from(guestVisitors.values())
+          .map((bucket) => {
+            bucket.chatMessages.sort(
+              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
+            bucket.voiceMessages.sort(
+              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
+            const candidates = [
+              bucket.chatMessages[0]?.createdAt,
+              bucket.voiceMessages[0]?.createdAt,
+            ].filter((value): value is string => Boolean(value));
+            bucket.firstMessageAt = candidates.length
+              ? candidates.reduce((earliest, current) =>
+                  new Date(current).getTime() < new Date(earliest).getTime() ? current : earliest
+                )
+              : '';
+            return bucket;
+          })
+          .filter((bucket) => bucket.chatMessages.length > 0 || bucket.voiceMessages.length > 0)
+          .sort(
+            (a, b) =>
+              new Date(a.firstMessageAt).getTime() - new Date(b.firstMessageAt).getTime()
+          );
+        return finalized.length > 0
+          ? { visitors: finalized, sessionCount: finalized.length }
+          : null;
+      })(),
     });
   } catch (error) {
     console.error('Error fetching image:', error);
