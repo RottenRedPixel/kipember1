@@ -16,7 +16,7 @@ type SnapshotDetail = {
   posterFilename: string | null;
   originalName: string;
   title: string | null;
-  canManage: boolean;
+  canManage?: boolean;
   owner?: {
     id: string;
     firstName: string | null;
@@ -32,7 +32,7 @@ type SnapshotDetail = {
     style?: string;
     durationSeconds?: number;
     emberVoiceId?: string | null;
-    updatedAt: string;
+    updatedAt?: string;
   } | null;
 };
 

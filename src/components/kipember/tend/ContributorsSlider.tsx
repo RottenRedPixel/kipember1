@@ -11,8 +11,11 @@ import { getUserDisplayName } from '@/lib/user-name';
 // ────────────────────────────────────────────────────────────
 
 export type TendContributor = KipemberContributor & {
-  token: string;
-  inviteSent: boolean;
+  // Optional because the wiki's KipemberContributor[] doesn't carry
+  // these fields — the inline accordion treats them as nice-to-have
+  // status (Invited / Not Invited) rather than required data.
+  token?: string;
+  inviteSent?: boolean;
 };
 
 type ContributorRecord = KipemberContributor | TendContributor;
