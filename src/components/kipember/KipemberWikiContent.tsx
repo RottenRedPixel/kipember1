@@ -1517,8 +1517,11 @@ function WikiGroup({
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  // Outer gap (label → first child) is intentionally tighter than the
+  // gap between the children themselves. Each child group keeps the
+  // original gap-7 (28px) spacing between its own WikiSections.
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-3">
       <button
         type="button"
         onClick={() => setCollapsed((v) => !v)}
@@ -1532,7 +1535,9 @@ function WikiGroup({
         </span>
         <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
       </button>
-      {collapsed ? null : children}
+      {collapsed ? null : (
+        <div className="flex flex-col gap-7">{children}</div>
+      )}
     </div>
   );
 }

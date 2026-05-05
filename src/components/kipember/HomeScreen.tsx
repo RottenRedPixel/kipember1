@@ -1139,29 +1139,33 @@ export default function HomeScreen({
         />
       ) : null}
 
-      {modal === 'wiki' ? (
-        <KipemberWikiOverlay
-          key={selectedEmberId || 'empty'}
-          closeHref={buildHomeHref({ m: null })}
-          imageId={selectedEmberId}
-        />
-      ) : null}
-
-      {modal === 'account' ? (
-        <KipemberAccountOverlay closeHref={buildHomeHref({ m: null })} />
-      ) : null}
-
       {!firstEmber ? (
         <div
           className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
           style={{
-            top: emberModalExpanded ? '25%' : emberModalOpen ? '65%' : 'auto',
+            // Bottom sheet with three detents (closed / peek / full).
+            // Animates transform: translateY between detents instead of
+            // top/height — the latter triggers layout on every frame and
+            // is what made the sheet jump and stutter. translateY is
+            // GPU-composited so the animation stays smooth.
+            //
+            // The element is sized to the "full" detent (75dvh) and the
+            // bottom edge is always pinned to the viewport bottom, so
+            // chat auto-scroll-to-bottom still lands the latest message
+            // right above the viewport bottom at every detent.
+            height: '75dvh',
+            transform: emberModalExpanded
+              ? 'translateY(0)'                       // full: top edge at 25dvh
+              : emberModalOpen
+                ? 'translateY(40dvh)'                 // peek: top edge at 65dvh
+                : 'translateY(calc(75dvh - 68px))',   // closed: only the 68px header bar peeks at the bottom
             background: 'var(--bg-screen)',
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
             borderTop: '1px solid var(--border-subtle)',
-            borderRadius: emberModalOpen ? '20px 20px 0 0' : undefined,
-            transition: 'top 200ms ease',
+            borderRadius: '20px 20px 0 0',
+            transition: 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+            willChange: 'transform',
           }}
         >
           <div className="relative flex items-center gap-3 pl-2 pr-4 py-3 flex-shrink-0">
@@ -1266,6 +1270,23 @@ export default function HomeScreen({
         </div>
       ) : null}
       </div>
+
+      {/* Wiki and Account modals are rendered as siblings of AppHeader at
+          the root level (outside the fade-in inner wrapper) so their z-40
+          beats the header's z-30. Inside the fade-in wrapper, the wrapper
+          would create a stacking context that traps these modals below
+          the header. */}
+      {modal === 'wiki' ? (
+        <KipemberWikiOverlay
+          key={selectedEmberId || 'empty'}
+          closeHref={buildHomeHref({ m: null })}
+          imageId={selectedEmberId}
+        />
+      ) : null}
+
+      {modal === 'account' ? (
+        <KipemberAccountOverlay closeHref={buildHomeHref({ m: null })} />
+      ) : null}
     </div>
   );
 }
