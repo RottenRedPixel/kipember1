@@ -8,7 +8,7 @@ export default async function LandingPage() {
 
   return (
     <div
-      className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4 slide-in-right"
+      className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4"
       style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
     >
       <AppHeader />

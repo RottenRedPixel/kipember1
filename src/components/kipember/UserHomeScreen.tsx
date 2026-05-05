@@ -357,7 +357,7 @@ export default function UserHomeScreen({
 
   return (
     <div
-      className="fixed inset-0 slide-in-right"
+      className="fixed inset-0"
       style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
     >
       <AppHeader
