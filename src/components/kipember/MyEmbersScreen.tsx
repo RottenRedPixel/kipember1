@@ -113,7 +113,7 @@ export default function MyEmbersScreen({
   }
 
   return (
-    <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
+    <div className="fixed inset-0 slide-in-left" style={{ background: 'var(--bg-screen)' }}>
       <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref={accountOpenHref} />
       <input
         ref={fileInputRef}
