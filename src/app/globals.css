@@ -9,11 +9,19 @@
   --bg-body: #0a0a0a;
   --bg-screen: #171515;
   --bg-modal: rgba(0, 0, 0, 0.75);
-  --bg-surface: rgba(255, 255, 255, 0.07);
+  /* Opaque pre-composite of 7% white over bg-screen — keeps the same
+     visual weight as the legacy translucent surface but doesn't let
+     anything bleed through. Required because the wiki overlay is now
+     partly transparent over the ember view; translucent surfaces
+     used to ride on the wiki's solid bg. */
+  --bg-surface: #272525;
   --bg-input: rgba(255, 255, 255, 0.06);
   --bg-rail-btn: rgba(0, 0, 0, 0.5);
   --bg-chat-user: #2e3a4e;
-  --bg-ember-bubble: rgba(255, 255, 255, 0.08);
+  /* Same rationale as --bg-surface — opaque pre-composite of 8% white
+     over bg-screen so chat/voice/call bubbles in the wiki's Story
+     Circle stay solid. */
+  --bg-ember-bubble: #2a2828;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-default: rgba(255, 255, 255, 0.12);
   --border-input: rgba(255, 255, 255, 0.1);
@@ -29,11 +37,12 @@
   --bg-body: #f0ebe4;
   --bg-screen: #faf7f3;
   --bg-modal: rgba(250, 247, 243, 0.92);
-  --bg-surface: rgba(0, 0, 0, 0.05);
+  /* Opaque pre-composite (5% black over bg-screen). */
+  --bg-surface: #ece9e5;
   --bg-input: rgba(0, 0, 0, 0.05);
   --bg-rail-btn: rgba(0, 0, 0, 0.1);
   --bg-chat-user: #3a5a7a;
-  --bg-ember-bubble: rgba(0, 0, 0, 0.05);
+  --bg-ember-bubble: #ece9e5;
   --border-subtle: rgba(28, 25, 23, 0.08);
   --border-default: rgba(28, 25, 23, 0.12);
   --border-input: rgba(28, 25, 23, 0.12);

@@ -1063,7 +1063,7 @@ export default function HomeScreen({
         <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
 
-      {modal === 'share' ? (
+      {modal === 'share' && shareToken ? (
         <Modal closeHref={buildHomeHref({ m: null })}>
           <div className="flex flex-col items-center pt-6 pb-4 gap-2">
             <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#4a6172' }}>

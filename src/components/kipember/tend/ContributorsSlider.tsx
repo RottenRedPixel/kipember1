@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, Plus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { KipemberContributor } from '@/components/kipember/KipemberWikiContent';
 import { pastelForContributorIdentity } from '@/lib/contributor-color';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
@@ -141,24 +141,25 @@ export default function ContributorsSlider({
   // the ember changes or the slider mounts; the wiki's refreshDetail
   // would be a useful invalidation hook but the slider closes after
   // adding so a stale list isn't a real concern.
-  useEffect(() => {
+  // Hoisted so addContributor can call it after a successful POST —
+  // the new entry needs to land in the unified pool before the list
+  // re-renders with it.
+  const refreshPool = useCallback(async () => {
     if (!imageId) return;
-    let cancelled = false;
-    fetch(`/api/contributors/pool?emberId=${imageId}`, { cache: 'no-store' })
-      .then(async (response) => {
-        if (!response.ok) return;
-        const payload = (await response.json()) as { contributors?: UnifiedContributor[] };
-        if (!cancelled && payload?.contributors) {
-          setPool(payload.contributors);
-        }
-      })
-      .catch(() => {
-        // Silently fall back to detail.contributors below.
-      });
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const response = await fetch(`/api/contributors/pool?emberId=${imageId}`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const payload = (await response.json()) as { contributors?: UnifiedContributor[] };
+      if (payload?.contributors) {
+        setPool(payload.contributors);
+      }
+    } catch {
+      // Silently fall back to existing pool data — better than flashing an error.
+    }
   }, [imageId]);
+  useEffect(() => {
+    void refreshPool();
+  }, [refreshPool]);
 
   // Quick lookup: pool key → invited flag from detail.contributors. The
   // pool API doesn't carry invite status, but detail.contributors does
@@ -213,7 +214,7 @@ export default function ContributorsSlider({
     onStatus?.('Contributor added.');
     setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
     setAdding(false);
-    await refreshDetail();
+    await Promise.all([refreshDetail(), refreshPool()]);
   }
 
   async function updateContributor(contributorId: string) {
@@ -235,7 +236,7 @@ export default function ContributorsSlider({
     }
     setSavedForm(editForm);
     onStatus?.('Saved.');
-    await refreshDetail();
+    await Promise.all([refreshDetail(), refreshPool()]);
   }
 
   return (

@@ -1615,6 +1615,11 @@ function EmberProgressBar({
   const total = steps.length;
   const percent = Math.round((completed / total) * 100);
   const missing = steps.filter((s) => !s.complete);
+  // Default to collapsed when there are missing chips so the wiki opens
+  // compact — user can expand to see what's left. Once everything is
+  // complete, missing list is empty and the chevron toggle is irrelevant.
+  const [collapsed, setCollapsed] = useState(missing.length > 0);
+  const showMissing = missing.length > 0 && !collapsed;
 
   const handleChipClick = (slug: string) => {
     const target = document.getElementById(`tracker-${slug}`);
@@ -1626,12 +1631,35 @@ function EmberProgressBar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span style={{ color: 'var(--text-secondary)' }}>
-            <ListChecks size={17} />
-          </span>
-          <h3 className="text-white font-medium text-base">Progress</h3>
-        </div>
+        {missing.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            aria-expanded={!collapsed}
+            className="flex items-center gap-2 cursor-pointer"
+            style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
+          >
+            <span style={{ color: 'var(--text-secondary)' }}>
+              <ListChecks size={17} />
+            </span>
+            <h3 className="text-white font-medium text-base">Progress</h3>
+            <ChevronDown
+              size={14}
+              color="rgba(255,255,255,0.5)"
+              style={{
+                transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.15s ease',
+              }}
+            />
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span style={{ color: 'var(--text-secondary)' }}>
+              <ListChecks size={17} />
+            </span>
+            <h3 className="text-white font-medium text-base">Progress</h3>
+          </div>
+        )}
         <span className="text-white/60 text-xs font-medium">
           <span className="text-white">{completed}</span> of {total}
         </span>
@@ -1653,7 +1681,7 @@ function EmberProgressBar({
           }}
         />
       </div>
-      {missing.length > 0 ? (
+      {showMissing ? (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-white/40 text-xs font-medium">Missing</span>
           {missing.map((step) => (
@@ -2280,8 +2308,17 @@ export default function KipemberWikiContent({
   }, [editingSlug]);
   const closeEditOverlay = useCallback(() => {
     setOverlayOpen(false);
-    setTimeout(() => setEditingSlug(null), 300);
-  }, []);
+    setTimeout(() => {
+      setEditingSlug(null);
+      // Always pull fresh detail on close — covers Tag People (which
+      // mutates tags via its own fetches without a refresh callback)
+      // and any other slider that saved data while open. Title /
+      // Snapshot / etc. also call refreshDetail directly on save, but
+      // a duplicate refresh here is cheap and guarantees the badges
+      // and progress bar reflect the latest state.
+      void refreshDetail?.();
+    }, 300);
+  }, [refreshDetail]);
 
   // Single source of truth: name → person identity bundle. Every avatar
   // surface in the wiki resolves through this so the same contributor
@@ -2951,8 +2988,6 @@ export default function KipemberWikiContent({
         icon={<Sparkles size={17} />}
         title="Image Analysis"
         complete={detail?.analysis?.status === 'ready'}
-        collapsible
-        defaultCollapsed
         tracksProgress
         id="tracker-image-analysis"
       >
