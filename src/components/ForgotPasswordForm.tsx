@@ -42,7 +42,7 @@ export default function ForgotPasswordForm() {
       style={{ minHeight: '100dvh', background: 'var(--bg-screen)', paddingTop: 56 }}
     >
       <AppHeader />
-      <div className="flex flex-col gap-8 w-full max-w-sm pt-6 pb-16">
+      <div className="flex flex-col gap-8 w-full max-w-sm pt-6 pb-16 fade-in">
         {success ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">

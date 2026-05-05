@@ -67,7 +67,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
       style={{ minHeight: '100dvh', background: 'var(--bg-screen)', paddingTop: 56 }}
     >
       <AppHeader />
-      <div className="flex flex-col gap-8 w-full max-w-sm pt-6 pb-16">
+      <div className="flex flex-col gap-8 w-full max-w-sm pt-6 pb-16 fade-in">
         <div className="flex flex-col gap-1">
           <h1 className="text-white text-2xl font-bold tracking-tight">
             {isSignup ? 'Create your account' : 'Welcome back'}
