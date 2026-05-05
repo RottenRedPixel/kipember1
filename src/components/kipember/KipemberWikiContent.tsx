@@ -496,6 +496,40 @@ type FindPerson = (name: string) => PersonIdentity | null;
 // Backwards-compat alias for older call sites that only need the URL.
 type FindAvatar = (name: string) => string | null;
 
+type TrackerStepConfig = {
+  slug: string;
+  ownerRequired: boolean;
+  contributorMin: number | null;
+};
+
+// Pulls the current admin tracker config (which slugs are enabled +
+// completion rule per step). Returns null while loading — caller treats
+// as "show all enabled steps with default rules" until we know better.
+function useTrackerConfig() {
+  const [config, setConfig] = useState<TrackerStepConfig[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/progress-tracker', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { steps?: TrackerStepConfig[] } | null) => {
+        if (cancelled) return;
+        if (data?.steps) {
+          setConfig(data.steps);
+        }
+      })
+      .catch(() => {
+        // Silently keep null — wiki falls back to showing all steps.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return config;
+}
+
 function useReconciliationClaims(imageId: string | null | undefined) {
   const [claims, setClaims] = useState<ReconciliationClaim[] | null>(null);
 
@@ -1556,7 +1590,12 @@ function WikiBadge({
 function EmberProgressBar({
   steps,
 }: {
-  steps: ReadonlyArray<{ slug: string; label: string; complete: boolean }>;
+  steps: ReadonlyArray<{
+    slug: string;
+    label: string;
+    complete: boolean;
+    missingLabel?: React.ReactNode | null;
+  }>;
 }) {
   if (steps.length === 0) return null;
   const completed = steps.filter((s) => s.complete).length;
@@ -1609,7 +1648,7 @@ function EmberProgressBar({
               key={step.slug}
               type="button"
               onClick={() => handleChipClick(step.slug)}
-              className="text-xs font-medium px-2.5 py-1 rounded-full can-hover cursor-pointer"
+              className="text-xs font-medium px-2.5 py-1 rounded-full can-hover cursor-pointer inline-flex items-center gap-1.5"
               style={{
                 background: 'rgba(148,163,184,0.15)',
                 color: '#94a3b8',
@@ -1617,7 +1656,10 @@ function EmberProgressBar({
                 border: 'none',
               }}
             >
-              {step.label}
+              <span>{step.label}</span>
+              {step.missingLabel ? (
+                <span className="opacity-80">· {step.missingLabel}</span>
+              ) : null}
             </button>
           ))}
         </div>
@@ -2308,7 +2350,6 @@ export default function KipemberWikiContent({
     0
   );
   const totalStoryMessages = ownerUserMessages + contributorUserMessages;
-  const storyCircleComplete = ownerUserMessages > 0 && contributorUserMessages > 0;
   // Split why/emotion claims by attribution. Owner-sourced = userId matches
   // the ember owner. Contributor-sourced = any claim with a different userId
   // (logged-in contributor) or an emberContributorId. Guests have neither.
@@ -2319,7 +2360,6 @@ export default function KipemberWikiContent({
     (c) =>
       (c.userId !== null && c.userId !== ownerUserId) || c.contributorId !== null
   );
-  const whyComplete = ownerWhyClaims.length > 0 && contributorWhyClaims.length > 0;
   const ownerEmotionClaims = (emotionClaims || []).filter(
     (c) => c.userId !== null && c.userId === ownerUserId
   );
@@ -2327,8 +2367,8 @@ export default function KipemberWikiContent({
     (c) =>
       (c.userId !== null && c.userId !== ownerUserId) || c.contributorId !== null
   );
-  const emotionComplete =
-    ownerEmotionClaims.length > 0 && contributorEmotionClaims.length > 0;
+  // storyCircleComplete / whyComplete / emotionComplete are computed later
+  // from the rule evaluator (uses admin-configurable thresholds).
   const isAudioAttachment = (attachment: KipemberAttachment) =>
     attachment.mediaType === 'AUDIO' ||
     isAudioLikeFilename(attachment.filename) ||
@@ -2354,11 +2394,137 @@ export default function KipemberWikiContent({
   const taggedPeopleCount = detail?.tags?.length ?? 0;
   const peopleComplete = detectedPeopleCount !== null && taggedPeopleCount >= detectedPeopleCount;
 
+  // Admin tracker config (which slugs are enabled + completion rule
+  // per step). While loading, we fall back to "everything enabled with
+  // default rules" so the bar doesn't briefly hide steps.
+  const trackerConfig = useTrackerConfig();
+
+  // Multi-party engagement: build a stable identity key for every
+  // contributor on the ember (invited) and for every contributor that
+  // has actually contributed messages / claims (engaged). The "All
+  // invited" rule needs both to compute "X of Y".
+  const makeIdentityKey = (input: {
+    userId?: string | null;
+    email?: string | null;
+    phoneNumber?: string | null;
+    name?: string | null;
+  }): string | null => {
+    if (input.userId) return `u:${input.userId}`;
+    if (input.email) return `e:${input.email.trim().toLowerCase()}`;
+    if (input.phoneNumber) return `p:${input.phoneNumber}`;
+    if (input.name) return `n:${input.name.trim().toLowerCase()}`;
+    return null;
+  };
+
+  const invitedContributorKeys = new Set<string>();
+  const invitedKeyByContributorId = new Map<string, string>();
+  for (const c of [...activeContributors, ...pendingContributors]) {
+    const key = makeIdentityKey({
+      userId: c.user?.id ?? c.userId ?? null,
+      email: c.user?.email ?? c.email ?? null,
+      phoneNumber: c.phoneNumber ?? null,
+      name: c.name ?? null,
+    });
+    if (key) {
+      invitedContributorKeys.add(key);
+      invitedKeyByContributorId.set(c.id, key);
+    }
+  }
+
+  const storyCircleEngagedKeys = new Set<string>();
+  for (const block of detail?.chatBlocks ?? []) {
+    if (block.isOwner) continue;
+    if (!block.messages.some((m) => m.role === 'user')) continue;
+    const key = makeIdentityKey({
+      userId: block.personUserId ?? null,
+      email: block.personEmail ?? null,
+      phoneNumber: block.personPhoneNumber ?? null,
+      name: block.personName ?? null,
+    });
+    if (key) storyCircleEngagedKeys.add(key);
+  }
+
+  const claimContributorKey = (claim: ReconciliationClaim): string | null => {
+    if (claim.userId && claim.userId !== ownerUserId) return `u:${claim.userId}`;
+    if (claim.contributorId) {
+      return invitedKeyByContributorId.get(claim.contributorId) ?? `c:${claim.contributorId}`;
+    }
+    return null;
+  };
+
+  const whyEngagedKeys = new Set<string>();
+  for (const claim of whyClaims ?? []) {
+    const key = claimContributorKey(claim);
+    if (key) whyEngagedKeys.add(key);
+  }
+
+  const emotionEngagedKeys = new Set<string>();
+  for (const claim of emotionClaims ?? []) {
+    const key = claimContributorKey(claim);
+    if (key) emotionEngagedKeys.add(key);
+  }
+
+  type RuleResult = {
+    complete: boolean;
+    missingLabel: React.ReactNode | null; // shown on the missing chip when not complete
+  };
+  const evaluateMultiParty = (
+    slug: string,
+    ownerHas: boolean,
+    engagedKeys: Set<string>
+  ): RuleResult => {
+    const cfg = trackerConfig?.find((s) => s.slug === slug);
+    const ownerRequired = cfg?.ownerRequired ?? true;
+    const contributorMin = cfg === undefined ? 1 : cfg.contributorMin; // default 1 to preserve prior behavior
+    const ownerPart = !ownerRequired || ownerHas;
+    const required =
+      contributorMin === null ? invitedContributorKeys.size : contributorMin ?? 0;
+    const haveCount = engagedKeys.size;
+    const contributorPart = required === 0 ? true : haveCount >= required;
+    const complete = ownerPart && contributorPart;
+    let missingLabel: React.ReactNode | null = null;
+    if (!complete && required > 0) {
+      const denom = contributorMin === null ? 'All' : String(required);
+      missingLabel = (
+        <>
+          <span className="text-white">{haveCount}</span>/{denom}
+        </>
+      );
+    }
+    return { complete, missingLabel };
+  };
+
+  const storyCircleResult = evaluateMultiParty(
+    'story-circle',
+    ownerUserMessages > 0,
+    storyCircleEngagedKeys
+  );
+  const whyResult = evaluateMultiParty(
+    'why',
+    ownerWhyClaims.length > 0,
+    whyEngagedKeys
+  );
+  const emotionResult = evaluateMultiParty(
+    'emotional-states',
+    ownerEmotionClaims.length > 0,
+    emotionEngagedKeys
+  );
+  // Aliases for the wiki section badges — these consume the same rule
+  // result, so the badge state matches the progress bar exactly.
+  const storyCircleComplete = storyCircleResult.complete;
+  const whyComplete = whyResult.complete;
+  const emotionComplete = emotionResult.complete;
+
   // Universal ember progress tracker — the 10 steps that feed the
   // progress bar above IDENTITY. Order here is the order chips appear
   // when missing. Each `slug` matches the `id` rendered on its
   // WikiSection so chip taps can scrollIntoView.
-  const trackerSteps: ReadonlyArray<{ slug: string; label: string; complete: boolean }> = [
+  const allTrackerSteps: ReadonlyArray<{
+    slug: string;
+    label: string;
+    complete: boolean;
+    missingLabel?: React.ReactNode | null;
+  }> = [
     {
       slug: 'contributors',
       label: 'Contributor',
@@ -2384,10 +2550,29 @@ export default function KipemberWikiContent({
       label: 'Image Analysis',
       complete: detail?.analysis?.status === 'ready',
     },
-    { slug: 'story-circle', label: 'Story Circle', complete: storyCircleComplete },
-    { slug: 'why', label: 'Why', complete: whyComplete },
-    { slug: 'emotional-states', label: 'Emotional States', complete: emotionComplete },
+    {
+      slug: 'story-circle',
+      label: 'Story Circle',
+      complete: storyCircleResult.complete,
+      missingLabel: storyCircleResult.missingLabel,
+    },
+    {
+      slug: 'why',
+      label: 'Why',
+      complete: whyResult.complete,
+      missingLabel: whyResult.missingLabel,
+    },
+    {
+      slug: 'emotional-states',
+      label: 'Emotional States',
+      complete: emotionResult.complete,
+      missingLabel: emotionResult.missingLabel,
+    },
   ];
+  const enabledSlugs = trackerConfig ? new Set(trackerConfig.map((s) => s.slug)) : null;
+  const trackerSteps = enabledSlugs
+    ? allTrackerSteps.filter((step) => enabledSlugs.has(step.slug))
+    : allTrackerSteps;
 
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-7 pb-10">

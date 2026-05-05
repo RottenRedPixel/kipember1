@@ -536,3 +536,22 @@ model PromptOverride {
   updatedAt DateTime @updatedAt
   updatedBy String?
 }
+
+// Universal ember progress tracker config — admins can toggle which
+// steps count toward the wiki progress bar. The slug is the same
+// id used by the wiki's chip scroll-to-anchor (id="tracker-<slug>").
+model ProgressTrackerStep {
+  slug      String   @id
+  label     String
+  enabled   Boolean  @default(true)
+  position  Int
+  // Whether the owner must contribute (or set the attribute) for this
+  // step to count complete. Defaults true since most steps are owner-led.
+  ownerRequired   Boolean  @default(true)
+  // How many INVITED contributors must contribute. 0 = none required,
+  // N > 0 = at least N, NULL = every invited contributor must
+  // contribute. Only meaningful for multi-party steps; single-action
+  // steps keep this at 0 and ignore it.
+  contributorMin  Int?     @default(0)
+  updatedAt       DateTime @updatedAt
+}

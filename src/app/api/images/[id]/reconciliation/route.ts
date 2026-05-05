@@ -32,7 +32,7 @@ function serializeClaim(claim: {
   metadataJson: string | null;
   createdAt: Date;
   emberMessageId?: string | null;
-  contributorId?: string | null;
+  emberContributorId?: string | null;
   userId?: string | null;
 }) {
   return {
@@ -49,7 +49,7 @@ function serializeClaim(claim: {
     questionType: claim.questionType,
     source: claim.source,
     emberMessageId: claim.emberMessageId ?? null,
-    contributorId: claim.contributorId ?? null,
+    contributorId: claim.emberContributorId ?? null,
     userId: claim.userId ?? null,
     metadata: safeParseJson(claim.metadataJson),
     createdAt: claim.createdAt.toISOString(),
