@@ -348,38 +348,19 @@ export default function AccountScreen({
             : { background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }
         }
       >
-        {/* Header */}
+        {/* Header — always shows the Account root header in embedded mode.
+            Sub-sections render their own header inside the slide-in overlay,
+            so this underlying header should not change when `section` is set
+            (otherwise a back chevron flashes during the slide-in animation). */}
         <div
           className="flex items-center gap-3 px-4 flex-shrink-0"
           style={{ height: 56, borderBottom: '1px solid var(--border-subtle)' }}
         >
-          {section ? (
-            <button
-              type="button"
-              onClick={() => {
-                // In the contributor add view, back goes to the contributor
-                // list (one level up), not all the way out to the account
-                // root menu.
-                if (section === 'contributors' && contributorMode === 'add') {
-                  setContributorMode('list');
-                  setAddError(null);
-                  return;
-                }
-                setSection(null);
-              }}
-              className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
-              style={{ opacity: 0.75, cursor: 'pointer' }}
-            >
-              <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
-            </button>
-          ) : null}
           <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
-            {activeSection ? activeSection.icon : <User size={22} strokeWidth={1.6} />}
+            <User size={22} strokeWidth={1.6} />
           </span>
-          <h2 className="flex-1 text-white font-medium text-base">
-            {activeSection ? activeSection.label : 'Account'}
-          </h2>
-          {embedded && onClose && !section ? (
+          <h2 className="flex-1 text-white font-medium text-base">Account</h2>
+          {embedded && onClose ? (
             <button
               type="button"
               onClick={onClose}
