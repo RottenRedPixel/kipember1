@@ -8,6 +8,7 @@ import {
   Settings, ShieldAlert, User, Users, X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
 import ContributorsListView from '@/components/kipember/ContributorsListView';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
@@ -107,6 +108,12 @@ export default function AccountScreen({
 }: AccountScreenProps) {
   const router = useRouter();
   const [section, setSection] = useState<Section>(null);
+  // Slide-in/out animation state for the section overlay (Profile,
+  // Contributors, Preferences, Password, Settings). Mirrors the wiki
+  // edit overlay pattern: mount with transform translateX(100%), flip
+  // to 0 on next frame for slide-in. Close: flip back to 100%, unmount
+  // 300ms later.
+  const [sectionOverlayOpen, setSectionOverlayOpen] = useState(false);
 
   // Avatar
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -312,9 +319,29 @@ export default function AccountScreen({
 
   const activeSection = SECTIONS.find((s) => s.key === section);
 
+  // Trigger slide-in transition whenever a section becomes active.
+  useEffect(() => {
+    if (!section) return;
+    setSectionOverlayOpen(false);
+    const id = requestAnimationFrame(() => setSectionOverlayOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, [section]);
+
+  const closeSection = useCallback(() => {
+    // Inside Contributors → Add, X is interpreted as "back to list",
+    // not "close section overlay". Matches the legacy chevron behavior.
+    if (section === 'contributors' && contributorMode === 'add') {
+      setContributorMode('list');
+      setAddError(null);
+      return;
+    }
+    setSectionOverlayOpen(false);
+    setTimeout(() => setSection(null), 300);
+  }, [section, contributorMode]);
+
   const inner = (
       <div
-        className={embedded ? 'flex-1 h-full flex flex-col' : 'flex-1 h-full flex flex-col slide-in-right'}
+        className={embedded ? 'flex-1 h-full flex flex-col relative' : 'flex-1 h-full flex flex-col slide-in-right relative'}
         style={
           embedded
             ? undefined
@@ -323,8 +350,8 @@ export default function AccountScreen({
       >
         {/* Header */}
         <div
-          className="flex items-center gap-3 px-4 pt-6 pb-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+          className="flex items-center gap-3 px-4 flex-shrink-0"
+          style={{ height: 56, borderBottom: '1px solid var(--border-subtle)' }}
         >
           {section ? (
             <button
@@ -345,28 +372,7 @@ export default function AccountScreen({
             >
               <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                // In embedded (modal) mode, root-level back closes the
-                // overlay rather than navigating away from the page.
-                if (embedded && onClose) {
-                  onClose();
-                  return;
-                }
-                if (typeof window !== 'undefined' && window.history.length > 1) {
-                  router.back();
-                } else {
-                  router.push('/home');
-                }
-              }}
-              className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
-              style={{ opacity: 0.75, cursor: 'pointer' }}
-            >
-              <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
-            </button>
-          )}
+          ) : null}
           <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
             {activeSection ? activeSection.icon : <User size={22} strokeWidth={1.6} />}
           </span>
@@ -411,11 +417,12 @@ export default function AccountScreen({
           />
         ) : null}
 
-        {/* Content */}
+        {/* Content — root menu is always rendered; sub-sections render
+            as a portaled sliding overlay on top (see end of return). */}
         <div className="flex-1 overflow-y-auto no-scrollbar">
 
           {/* ── Main menu ── */}
-          {!section && (
+          {true && (
             <div className="flex flex-col items-center px-5 py-6 gap-6">
 
               {/* Avatar */}
@@ -521,6 +528,59 @@ export default function AccountScreen({
 
             </div>
           )}
+        </div>
+
+        {/* ── Section overlay (Profile / Contributors / Preferences /
+            Password / Settings) — slides in from the right on top of
+            the Account root menu. Mirrors the wiki edit overlay
+            pattern. Renders inside the panel using absolute positioning
+            (no portal) since the panel is the section's containing
+            block. */}
+        {section && activeSection ? (
+          <div
+            className="absolute inset-0 flex flex-col"
+            style={{
+              background: 'var(--bg-screen)',
+              transform: sectionOverlayOpen ? 'translateX(0)' : 'translateX(100%)',
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              zIndex: 5,
+            }}
+          >
+            <div
+              className="flex items-center gap-3 px-4 flex-shrink-0"
+              style={{ height: 56, borderBottom: '1px solid var(--border-subtle)' }}
+            >
+              {section === 'contributors' && contributorMode === 'add' ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContributorMode('list');
+                    setAddError(null);
+                  }}
+                  aria-label="Back"
+                  className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+                  style={{ opacity: 0.75, cursor: 'pointer' }}
+                >
+                  <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
+                </button>
+              ) : null}
+              <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
+                {activeSection.icon}
+              </span>
+              <h2 className="flex-1 text-white font-medium text-base">
+                {activeSection.label}
+              </h2>
+              <button
+                type="button"
+                onClick={closeSection}
+                aria-label="Close"
+                className="w-9 h-9 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+                style={{ opacity: 0.75, cursor: 'pointer' }}
+              >
+                <X size={20} color="var(--text-primary)" strokeWidth={1.8} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto no-scrollbar">
 
           {/* ── Profile ── */}
           {section === 'profile' && (
@@ -742,7 +802,9 @@ export default function AccountScreen({
             </div>
           )}
 
-        </div>
+            </div>
+          </div>
+        ) : null}
       </div>
   );
 
