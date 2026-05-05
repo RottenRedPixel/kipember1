@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Activity, ChevronRight, Star, Users } from 'lucide-react';
+import { Activity, ChevronRight, Star } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
@@ -145,13 +145,6 @@ function SwipeDismiss({ children, onDismiss }: { children: React.ReactNode; onDi
 
 // ─── Facepile ─────────────────────────────────────────────────────────────────
 
-const DUMMY_CONTRIBUTORS: Array<{ initials: string; color: string; name: string; joined: string; avatarUrl?: string }> = [
-  { initials: 'SA', color: '#7c3aed', name: 'Sarah',  joined: 'Today' },
-  { initials: 'MK', color: '#0891b2', name: 'Mike',   joined: 'Today' },
-  { initials: 'JL', color: '#16a34a', name: 'James',  joined: 'Yesterday' },
-  { initials: 'RB', color: '#b45309', name: 'Rachel', joined: '3d ago' },
-];
-
 function Facepile({
   people,
   max = 3,
@@ -210,39 +203,6 @@ function Facepile({
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-const CONTRIBUTOR_COLORS = ['#7c3aed', '#0891b2', '#16a34a', '#b45309', '#db2777', '#2563eb', '#d97706', '#9333ea'];
-
-function colorForKey(key: string) {
-  let hash = 0;
-  for (let i = 0; i < key.length; i += 1) {
-    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
-  }
-  return CONTRIBUTOR_COLORS[hash % CONTRIBUTOR_COLORS.length];
-}
-
-function relativeJoined(value: Date | string) {
-  const date = typeof value === 'string' ? new Date(value) : value;
-  const now = new Date();
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const startOfThat = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-  const diffDays = Math.round((startOfToday - startOfThat) / (1000 * 60 * 60 * 24));
-  if (diffDays <= 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
-  return `${Math.floor(diffDays / 365)}y ago`;
-}
-
-type ContributorCard = {
-  key: string;
-  contributorId: string;
-  emberId: string;
-  name: string;
-  avatarUrl: string | null;
-  joinedAt: Date | string;
-};
-
 type HomeActivityItemProp = {
   emberId: string;
   emberTitle: string | null;
@@ -257,7 +217,6 @@ export default function UserHomeScreen({
   initialEmbers,
   initialAvatarUrl,
   initialTotalContributors,
-  initialContributors,
   initialHomeActivity,
 }: {
   initialProfile: { firstName: string | null; lastName: string | null; email: string } | null;
@@ -269,7 +228,6 @@ export default function UserHomeScreen({
   }>;
   initialAvatarUrl?: string | null;
   initialTotalContributors?: number;
-  initialContributors?: ContributorCard[];
   initialHomeActivity?: {
     contributions: { items: HomeActivityItemProp[] };
     wikiUpdates:   { items: HomeActivityItemProp[] };
@@ -278,14 +236,6 @@ export default function UserHomeScreen({
 }) {
   const totalEmbers = initialEmbers?.filter((ember) => ember.accessType === 'owner').length ?? 0;
   const totalContributors = initialTotalContributors ?? 0;
-  const contributors = initialContributors ?? [];
-  const activityImages = (initialEmbers ?? []).slice(0, 3).map((ember) =>
-    getPreviewMediaUrl({
-      mediaType: ember.mediaType,
-      filename: ember.filename,
-      posterFilename: ember.posterFilename,
-    })
-  );
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -549,54 +499,7 @@ export default function UserHomeScreen({
           );
         })()}
 
-        {/* d) New members */}
-        <div className="mt-5 mb-8">
-          <div className="flex items-center gap-2 mb-3">
-            <Users size={18} strokeWidth={2} color="white" />
-            <p className="text-base font-bold text-white">Contributors</p>
-            {contributors.length > 4 ? (
-              <Link
-                href={accountOpenHref}
-                className="ml-auto text-xs font-medium can-hover"
-                style={{ color: 'rgba(255,255,255,0.5)' }}
-              >
-                View all →
-              </Link>
-            ) : null}
-          </div>
-          {contributors.length === 0 ? (
-            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              No contributors yet.
-            </p>
-          ) : (
-            <div className="flex gap-3 -mx-4 px-4">
-              {contributors.slice(0, 4).map((person) => (
-                <Link
-                  key={person.key}
-                  href={`/tend/contributors?id=${person.emberId}&view=${person.contributorId}&from=home`}
-                  className="flex flex-col items-center gap-2 flex-shrink-0 can-hover"
-                  style={{ width: 60 }}
-                >
-                  <div
-                    className="rounded-full flex items-center justify-center text-white font-bold overflow-hidden"
-                    style={{
-                      width: 44,
-                      height: 44,
-                      background: colorForKey(person.key),
-                      fontSize: 13,
-                    }}
-                  >
-                    {person.avatarUrl
-                      ? <img src={person.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                      : initials(person.name)}
-                  </div>
-                  <p className="text-sm text-white font-medium text-center truncate w-full">{person.name.split(/\s+/)[0] || person.name}</p>
-                  <p className="text-[10px] text-center truncate w-full" style={{ color: 'rgba(255,255,255,0.25)', marginTop: -4 }}>{relativeJoined(person.joinedAt)}</p>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        <div className="mb-8" />
 
       </div>
       </div>
