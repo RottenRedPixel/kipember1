@@ -15,6 +15,7 @@ import {
   History,
   Image as ImageIcon,
   Lightbulb,
+  ListChecks,
   Lock,
   LockKeyhole,
   Map as MapIcon,
@@ -1548,6 +1549,83 @@ function WikiBadge({
   );
 }
 
+// Universal ember progress bar — sits above the IDENTITY group at the
+// top of the wiki. One green fill driven by completed tracker steps;
+// remaining steps appear as tappable chips that scrollIntoView the
+// matching WikiSection by its DOM id.
+function EmberProgressBar({
+  steps,
+}: {
+  steps: ReadonlyArray<{ slug: string; label: string; complete: boolean }>;
+}) {
+  if (steps.length === 0) return null;
+  const completed = steps.filter((s) => s.complete).length;
+  const total = steps.length;
+  const percent = Math.round((completed / total) * 100);
+  const missing = steps.filter((s) => !s.complete);
+
+  const handleChipClick = (slug: string) => {
+    const target = document.getElementById(`tracker-${slug}`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span style={{ color: 'var(--text-secondary)' }}>
+            <ListChecks size={17} />
+          </span>
+          <h3 className="text-white font-medium text-base">Progress</h3>
+        </div>
+        <span className="text-white/60 text-xs font-medium">
+          <span className="text-white">{completed}</span> of {total}
+        </span>
+      </div>
+      <div
+        className="h-2 rounded-full overflow-hidden"
+        style={{ background: 'rgba(255,255,255,0.08)' }}
+        role="progressbar"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${percent}%`,
+            background: '#4ade80',
+            transition: 'width 0.3s ease',
+          }}
+        />
+      </div>
+      {missing.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-white/40 text-xs font-medium">Missing</span>
+          {missing.map((step) => (
+            <button
+              key={step.slug}
+              type="button"
+              onClick={() => handleChipClick(step.slug)}
+              className="text-xs font-medium px-2.5 py-1 rounded-full can-hover cursor-pointer"
+              style={{
+                background: 'rgba(148,163,184,0.15)',
+                color: '#94a3b8',
+                minHeight: 28,
+                border: 'none',
+              }}
+            >
+              {step.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function WikiSection({
   icon,
   title,
@@ -1559,6 +1637,7 @@ function WikiSection({
   hideBadge = false,
   tracksProgress = false,
   count,
+  id,
   children,
 }: {
   icon: React.ReactNode;
@@ -1579,6 +1658,9 @@ function WikiSection({
   // For non-tracker sections: the number of collected items. Drives the
   // "Collected N" label and flips the pill grey when N === 0.
   count?: number;
+  // DOM id used by the progress-bar chips to scrollIntoView. Only
+  // set on tracker sections (slugs match the trackerSteps list).
+  id?: string;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -1602,7 +1684,7 @@ function WikiSection({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div id={id} className="flex flex-col gap-3 scroll-mt-4">
       <div className="flex items-center justify-between">
         {collapsible ? (
           <button
@@ -2265,8 +2347,52 @@ export default function KipemberWikiContent({
     isLoading: locationLookupPending,
   } = placeResolution;
 
+  // People-tagged check (lifted out of its render-time IIFE so the
+  // progress tracker can read it).
+  const detectedPeopleCount =
+    detail?.analysis?.sceneInsights?.peopleAndDemographics?.numberOfPeopleVisible ?? null;
+  const taggedPeopleCount = detail?.tags?.length ?? 0;
+  const peopleComplete = detectedPeopleCount !== null && taggedPeopleCount >= detectedPeopleCount;
+
+  // Universal ember progress tracker — the 10 steps that feed the
+  // progress bar above IDENTITY. Order here is the order chips appear
+  // when missing. Each `slug` matches the `id` rendered on its
+  // WikiSection so chip taps can scrollIntoView.
+  const trackerSteps: ReadonlyArray<{ slug: string; label: string; complete: boolean }> = [
+    {
+      slug: 'contributors',
+      label: 'Contributor',
+      complete: activeContributors.length > 0 || pendingContributors.length > 0,
+    },
+    { slug: 'people', label: 'People', complete: peopleComplete },
+    { slug: 'title', label: 'Title', complete: Boolean(detail?.title) },
+    { slug: 'snapshot', label: 'Snapshot', complete: Boolean(detail?.snapshot?.script) },
+    {
+      slug: 'time-place',
+      label: 'Time & Place',
+      complete:
+        Boolean(detail?.analysis?.capturedAt || detail?.createdAt) &&
+        Boolean(placeName || addressLines.length > 0 || coordinateLine),
+    },
+    {
+      slug: 'photos',
+      label: 'Cover Photo',
+      complete: Boolean(detail?.originalName || visualAttachments.length),
+    },
+    {
+      slug: 'image-analysis',
+      label: 'Image Analysis',
+      complete: detail?.analysis?.status === 'ready',
+    },
+    { slug: 'story-circle', label: 'Story Circle', complete: storyCircleComplete },
+    { slug: 'why', label: 'Why', complete: whyComplete },
+    { slug: 'emotional-states', label: 'Emotional States', complete: emotionComplete },
+  ];
+
   return (
     <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-7 pb-10">
+      <EmberProgressBar steps={trackerSteps} />
+
       {/* IDENTITY — who is involved with this ember. */}
       <WikiGroup label="Identity">
 
@@ -2303,6 +2429,7 @@ export default function KipemberWikiContent({
         complete={activeContributors.length > 0 || pendingContributors.length > 0}
         editHref={detail?.id ? `/tend/contributors?id=${detail.id}` : undefined}
         tracksProgress
+        id="tracker-contributors"
       >
         <WikiCard>
           {activeContributors.length === 0 && pendingContributors.length === 0 ? (
@@ -2355,11 +2482,8 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       {(() => {
-        const detected =
-          detail?.analysis?.sceneInsights?.peopleAndDemographics?.numberOfPeopleVisible ?? null;
-        const tagged = detail?.tags?.length ?? 0;
-        const peopleComplete = detected !== null && tagged >= detected;
-        const remaining = detected !== null ? detected - tagged : 0;
+        const detected = detectedPeopleCount;
+        const remaining = detected !== null ? detected - taggedPeopleCount : 0;
         const peopleBadgeLabel: React.ReactNode =
           detected === null
             ? 'Not Complete'
@@ -2379,6 +2503,7 @@ export default function KipemberWikiContent({
             badgeLabel={peopleBadgeLabel}
             editHref={detail?.id ? `/tend/tag-people?id=${detail.id}` : undefined}
             tracksProgress
+            id="tracker-people"
           >
         <WikiCard>
           {detail?.tags && detail.tags.length > 0 ? (
@@ -2412,6 +2537,7 @@ export default function KipemberWikiContent({
         complete={Boolean(detail?.title)}
         editHref={detail?.id ? `/tend/edit-title?id=${detail.id}` : undefined}
         tracksProgress
+        id="tracker-title"
       >
         <WikiCard>
           <p className="text-white font-medium text-base">
@@ -2429,6 +2555,7 @@ export default function KipemberWikiContent({
         complete={Boolean(detail?.snapshot?.script)}
         editHref={detail?.id ? `/tend/edit-snapshot?id=${detail.id}` : undefined}
         tracksProgress
+        id="tracker-snapshot"
       >
         <WikiCard>
           {detail?.snapshot?.script ? (
@@ -2459,6 +2586,7 @@ export default function KipemberWikiContent({
         }
         editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
         tracksProgress
+        id="tracker-time-place"
       >
         <WikiCard>
           <p className="text-white font-medium text-sm">
@@ -2487,6 +2615,7 @@ export default function KipemberWikiContent({
         title="Photos"
         complete={Boolean(detail?.originalName || visualAttachments.length)}
         tracksProgress
+        id="tracker-photos"
       >
         <WikiCard>
           <p className="text-white/30 text-xs font-medium mb-2">Ember Cover Photo</p>
@@ -2563,6 +2692,7 @@ export default function KipemberWikiContent({
         collapsible
         defaultCollapsed
         tracksProgress
+        id="tracker-image-analysis"
       >
         {detail ? (
           <CollapsibleAnalysisCard
@@ -2681,6 +2811,7 @@ export default function KipemberWikiContent({
         collapsible
         defaultCollapsed
         tracksProgress
+        id="tracker-story-circle"
       >
         <div className="flex flex-col gap-4">
           {(detail?.chatBlocks && detail.chatBlocks.length > 0) ||
@@ -2742,6 +2873,7 @@ export default function KipemberWikiContent({
         title="Why"
         complete={whyComplete}
         tracksProgress
+        id="tracker-why"
       >
         <WhyCard claims={whyClaims} findPerson={findPerson} />
       </WikiSection>
@@ -2751,6 +2883,7 @@ export default function KipemberWikiContent({
         title="Emotional States"
         complete={emotionComplete}
         tracksProgress
+        id="tracker-emotional-states"
       >
         <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
       </WikiSection>
