@@ -805,8 +805,16 @@ export default function HomeScreen({
       {!firstEmber && currentPhotoUrl ? (
         <div
           ref={swipeWrapperRef}
-          className="absolute inset-0"
+          className="absolute left-0 right-0 bottom-0"
           style={{
+            // Start below the AppHeader (56px tall) so the swipe layer
+            // never overlaps the header's tap targets. iOS Safari can
+            // forward touchstart on a touch-action: none layer to
+            // overlapping fixed siblings (logo / HOME / EMBERS / avatar)
+            // and silently swallow their click events. Pulling the
+            // wrapper's top edge down to 56 removes the overlap and
+            // restores tap-through to the header on mobile.
+            top: 56,
             transform: dragY ? `translateY(${dragY}px)` : undefined,
             transition: swipeSettling ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
             pointerEvents: swipeEnabled ? 'auto' : 'none',
