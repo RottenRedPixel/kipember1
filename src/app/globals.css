@@ -92,18 +92,18 @@ body {
   animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-@keyframes slideInLeft {
+@keyframes fadeIn {
   from {
-    transform: translateX(-100%);
+    opacity: 0;
   }
 
   to {
-    transform: translateX(0);
+    opacity: 1;
   }
 }
 
-.slide-in-left {
-  animation: slideInLeft 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
+.fade-in {
+  animation: fadeIn 0.2s ease-out both;
 }
 
 @media (hover: hover) and (pointer: fine) {
