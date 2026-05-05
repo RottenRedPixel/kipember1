@@ -868,8 +868,14 @@ export default function HomeScreen({
                 const scale = hasCrop && cw != null && ch != null && cw > 0 && ch > 0
                   ? Math.min(100 / cw, 100 / ch)
                   : 1;
+                // The swipe wrapper's top edge already sits at viewport
+                // y=56 (below the AppHeader). The img is absolutely
+                // positioned within that wrapper, so its `top` must be 0
+                // to land at viewport y=56 — using `top: 56` here would
+                // double-offset the photo down by 56px and clip its
+                // bottom behind the ember sheet at full detent.
                 if (emberModalExpanded) return {
-                  top: 56,
+                  top: 0,
                   left: '50%',
                   transform: 'translateX(-50%)',
                   height: 'calc(25vh - 56px)',
@@ -880,12 +886,16 @@ export default function HomeScreen({
                   transition: `opacity ${photoFadeMs}ms ease-in-out`,
                 };
                 return {
-                  top: 56,
+                  top: 0,
                   bottom: 72,
                   left: 0,
                   right: 0,
                   width: '100%',
-                  height: 'calc(100% - 128px)',
+                  // Explicit height matches the implicit (top:0 +
+                  // bottom:72) value but makes the cleanup explicit so
+                  // the browser doesn't carry over the expanded state's
+                  // calc(25vh - 56px) when the modal closes.
+                  height: 'calc(100% - 72px)',
                   objectFit: hasCrop ? ('cover' as const) : ('contain' as const),
                   objectPosition: hasCrop ? `${cx}% ${cy}%` : 'center center',
                   transform: hasCrop && scale > 1.01 ? `scale(${scale.toFixed(3)})` : undefined,
@@ -1144,28 +1154,31 @@ export default function HomeScreen({
           className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
           style={{
             // Bottom sheet with three detents (closed / peek / full).
-            // Animates transform: translateY between detents instead of
-            // top/height — the latter triggers layout on every frame and
-            // is what made the sheet jump and stutter. translateY is
-            // GPU-composited so the animation stays smooth.
+            // Animates `top` between numeric calc values. The original
+            // code used `auto` for the closed state, which doesn't
+            // interpolate cleanly to a percentage and is what caused
+            // the closed→peek jump. Using calc(100% - 68px) at closed
+            // keeps every value numeric so the transition is smooth.
             //
-            // The element is sized to the "full" detent (75dvh) and the
-            // bottom edge is always pinned to the viewport bottom, so
-            // chat auto-scroll-to-bottom still lands the latest message
-            // right above the viewport bottom at every detent.
-            height: '75dvh',
-            transform: emberModalExpanded
-              ? 'translateY(0)'                       // full: top edge at 25dvh
+            // We tried a translateY/clip-path approach with a fixed
+            // 75dvh sheet — it animated faster but broke chat scroll
+            // and bubble clipping, since the sheet's layout box
+            // couldn't both stay full-size AND expose only the peek
+            // slice. With dynamic top, the sheet's actual size matches
+            // each detent so the messages list sizes correctly,
+            // bubbles clip naturally at the header, and scroll-to-top
+            // reaches the first message.
+            top: emberModalExpanded
+              ? '25%'
               : emberModalOpen
-                ? 'translateY(40dvh)'                 // peek: top edge at 65dvh
-                : 'translateY(calc(75dvh - 68px))',   // closed: only the 68px header bar peeks at the bottom
+                ? '65%'
+                : 'calc(100% - 68px)',
             background: 'var(--bg-screen)',
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
             borderTop: '1px solid var(--border-subtle)',
             borderRadius: '20px 20px 0 0',
-            transition: 'transform 220ms cubic-bezier(0.4, 0, 0.2, 1)',
-            willChange: 'transform',
+            transition: 'top 220ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           <div className="relative flex items-center gap-3 pl-2 pr-4 py-3 flex-shrink-0">
