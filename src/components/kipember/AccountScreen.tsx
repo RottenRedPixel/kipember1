@@ -3,15 +3,13 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Camera, ChevronLeft, ChevronRight,
+  Camera, ChevronRight,
   KeyRound, LayoutDashboard,
   Settings, ShieldAlert, User, Users, X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
-import ContributorsListView from '@/components/kipember/ContributorsListView';
-import type { UnifiedContributor } from '@/lib/contributors-pool';
+import AccountContributorsAccordion from '@/components/kipember/AccountContributorsAccordion';
 
 type Section = 'profile' | 'contributors' | 'preferences' | 'password' | 'settings' | null;
 
@@ -137,67 +135,6 @@ export default function AccountScreen({
   useEffect(() => {
     setIsDark(localStorage.getItem('ember-theme') !== 'light');
   }, []);
-
-  // Unified contributor pool — same data the /tend/contributors view uses.
-  const [contributorPool, setContributorPool] = useState<UnifiedContributor[]>([]);
-  // Default to "With Ember" since that's the more useful view (people who
-  // are actually attached to memories). Toggle reveals the unattached pool.
-  const [contributorFilter, setContributorFilter] = useState<'with-ember' | 'without-ember'>(
-    'with-ember'
-  );
-
-  // Inline add-form state — same shape as the /tend/contributors add view.
-  const [contributorMode, setContributorMode] = useState<'list' | 'add'>('list');
-  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
-  const [addBusy, setAddBusy] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
-
-  const refreshContributorPool = useCallback(async () => {
-    try {
-      const r = await fetch('/api/contributors/pool', { cache: 'no-store' });
-      const d = await r.json();
-      if (Array.isArray(d?.contributors)) setContributorPool(d.contributors);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshContributorPool();
-  }, [refreshContributorPool]);
-
-  async function handleAddPoolContributor() {
-    if (addBusy) return;
-    const name = `${addForm.firstName} ${addForm.lastName}`.trim();
-    if (!name && !addForm.phone.trim() && !addForm.email.trim()) {
-      setAddError('Add a name, phone, or email.');
-      return;
-    }
-    setAddBusy(true);
-    setAddError(null);
-    try {
-      const res = await fetch('/api/contributors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phoneNumber: addForm.phone, email: addForm.email }),
-      });
-      const payload = await res.json().catch(() => ({} as { error?: string }));
-      if (!res.ok) {
-        setAddError(payload?.error || 'Failed to add contributor.');
-        return;
-      }
-      setAddForm({ firstName: '', lastName: '', phone: '', email: '' });
-      setContributorMode('list');
-      // Newly-added pool entries have emberCount=0, so flip filter so the
-      // user can see them right away.
-      setContributorFilter('without-ember');
-      await refreshContributorPool();
-    } catch {
-      setAddError('Network error. Try again.');
-    } finally {
-      setAddBusy(false);
-    }
-  }
 
   // Delete account
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -328,16 +265,9 @@ export default function AccountScreen({
   }, [section]);
 
   const closeSection = useCallback(() => {
-    // Inside Contributors → Add, X is interpreted as "back to list",
-    // not "close section overlay". Matches the legacy chevron behavior.
-    if (section === 'contributors' && contributorMode === 'add') {
-      setContributorMode('list');
-      setAddError(null);
-      return;
-    }
     setSectionOverlayOpen(false);
     setTimeout(() => setSection(null), 300);
-  }, [section, contributorMode]);
+  }, []);
 
   const inner = (
       <div
@@ -536,20 +466,6 @@ export default function AccountScreen({
               className="flex items-center gap-3 px-4 flex-shrink-0"
               style={{ height: 56, borderBottom: '1px solid var(--border-subtle)' }}
             >
-              {section === 'contributors' && contributorMode === 'add' ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setContributorMode('list');
-                    setAddError(null);
-                  }}
-                  aria-label="Back"
-                  className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
-                  style={{ opacity: 0.75, cursor: 'pointer' }}
-                >
-                  <ChevronLeft size={22} color="var(--text-primary)" strokeWidth={1.8} />
-                </button>
-              ) : null}
               <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
                 {activeSection.icon}
               </span>
@@ -594,79 +510,7 @@ export default function AccountScreen({
           {/* ── Contributors ── */}
           {section === 'contributors' && (
             <div className="px-5 py-6 flex flex-col gap-3">
-              {contributorMode === 'list' ? (
-                <>
-                  <ContributorsListView
-                    contributors={contributorPool}
-                    context={{
-                      kind: 'account',
-                      filter: contributorFilter,
-                      onFilterChange: setContributorFilter,
-                      rowDetailHref: ({ contributor }) => {
-                        // Pick the first ember this person is on as the detail context.
-                        // The detail screen needs an ember to scope the view.
-                        const ember = contributor.embers[0];
-                        if (!ember) return '/account';
-                        return `/tend/contributors?id=${ember.id}&view=${ember.contributorId}&from=account`;
-                      },
-                    }}
-                  />
-                  <div className="flex justify-end pt-1">
-                    <button
-                      type="button"
-                      onClick={() => { setAddError(null); setContributorMode('add'); }}
-                      className="w-1/2 flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium can-hover-dim"
-                      style={{ background: '#f97316', minHeight: 44, cursor: 'pointer' }}
-                    >
-                      Add Contributor
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {[
-                    ['firstName', 'First Name'],
-                    ['lastName', 'Last Name (optional)'],
-                    ['phone', 'Phone'],
-                    ['email', 'Email (optional)'],
-                  ].map(([key, placeholder]) => (
-                    <input
-                      key={key}
-                      value={addForm[key as keyof typeof addForm]}
-                      onChange={(e) => setAddForm((cur) => ({ ...cur, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-                    />
-                  ))}
-                  {addError ? (
-                    <p className="text-xs px-1" style={{ color: '#f87171' }}>{addError}</p>
-                  ) : null}
-                  <div className="py-2 flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddForm({ firstName: '', lastName: '', phone: '', email: '' });
-                        setAddError(null);
-                        setContributorMode('list');
-                      }}
-                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium"
-                      style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void handleAddPoolContributor()}
-                      disabled={addBusy}
-                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim disabled:opacity-60"
-                      style={{ background: '#f97316', minHeight: 44, cursor: addBusy ? 'default' : 'pointer' }}
-                    >
-                      {addBusy ? 'Saving…' : 'Save'}
-                    </button>
-                  </div>
-                </>
-              )}
+              <AccountContributorsAccordion />
             </div>
           )}
 

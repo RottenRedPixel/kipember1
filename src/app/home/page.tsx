@@ -4,7 +4,6 @@ import { getCurrentAuth } from '@/lib/auth-server';
 import UserHomeScreen from '@/components/kipember/UserHomeScreen';
 import {
   getAccessibleEmbersForUser,
-  getContributorsListForUser,
   getTotalContributorsForUser,
 } from '@/lib/ember';
 import { getAvatarUrl } from '@/lib/avatar';
@@ -39,11 +38,10 @@ export default async function HomePage({
     redirect(query ? `/ember/${legacyId}?${query}` : `/ember/${legacyId}`);
   }
 
-  const [initialEmbers, initialAvatarUrl, initialTotalContributors, initialContributors, initialHomeActivity] = await Promise.all([
+  const [initialEmbers, initialAvatarUrl, initialTotalContributors, initialHomeActivity] = await Promise.all([
     getAccessibleEmbersForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
     getTotalContributorsForUser(auth.user.id),
-    getContributorsListForUser(auth.user.id),
     getHomeActivity(auth.user.id),
   ]);
 
@@ -54,7 +52,6 @@ export default async function HomePage({
         initialEmbers={initialEmbers}
         initialAvatarUrl={initialAvatarUrl}
         initialTotalContributors={initialTotalContributors}
-        initialContributors={initialContributors}
         initialHomeActivity={initialHomeActivity}
       />
     </Suspense>
