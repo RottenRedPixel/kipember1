@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowRightLeft,
+  Check,
   ChevronDown,
   ChevronRight,
   Clock,
@@ -1491,23 +1493,57 @@ function WikiGroup({
   );
 }
 
-function WikiBadge({ complete, label }: { complete: boolean; label?: React.ReactNode }) {
-  // Three palettes:
-  //   complete           → green
-  //   not complete + default "Not Complete" → red
-  //   not complete + custom label (e.g. "Need to tag 2 People") → orange
+function WikiBadge({
+  complete,
+  label,
+  tracksProgress = false,
+  count,
+}: {
+  complete: boolean;
+  label?: React.ReactNode;
+  // When true, the badge is one of the steps that feeds the universal
+  // ember progress tracker. We render a small white check inside the pill
+  // so contributors can see at a glance which sections actually move the
+  // progress bar.
+  tracksProgress?: boolean;
+  // For non-tracker badges only. When provided, the badge renders as
+  // "Collected N" with N highlighted white. count === 0 flips the pill
+  // grey to make it visually obvious nothing has been gathered yet.
+  count?: number;
+}) {
+  // Five palettes:
+  //   tracksProgress + complete (a tracker step done)              → green "Complete" + check
+  //   tracksProgress + !complete + custom label (e.g. "Need 1 …")  → orange
+  //   tracksProgress + !complete + default                         → red "Not Complete"
+  //   !tracksProgress + count === 0                                → grey "Collected 0"
+  //   !tracksProgress + count > 0 (or no count given)              → blue "Collected [N]"
   const hasCustomLabel = label != null;
-  const palette = complete
-    ? { bg: 'rgba(34,197,94,0.15)', fg: '#4ade80' }
-    : hasCustomLabel
-      ? { bg: 'rgba(249,115,22,0.15)', fg: '#f97316' }
-      : { bg: 'rgba(239,68,68,0.15)', fg: '#f87171' };
+  const palette = tracksProgress
+    ? complete
+      ? { bg: 'rgba(34,197,94,0.15)', fg: '#4ade80' }
+      : hasCustomLabel
+        ? { bg: 'rgba(249,115,22,0.15)', fg: '#f97316' }
+        : { bg: 'rgba(239,68,68,0.15)', fg: '#f87171' }
+    : count === 0
+      ? { bg: 'rgba(148,163,184,0.15)', fg: '#94a3b8' }
+      : { bg: 'rgba(59,130,246,0.15)', fg: '#60a5fa' };
+  const collectedDefault =
+    typeof count === 'number' ? (
+      <>
+        Collected <span className="text-white">{count}</span>
+      </>
+    ) : (
+      'Collected'
+    );
   return (
     <span
-      className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0"
+      className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 inline-flex items-center gap-1"
       style={{ background: palette.bg, color: palette.fg }}
     >
-      {label ?? (complete ? 'Complete' : 'Not Complete')}
+      {tracksProgress && complete ? (
+        <Check size={11} strokeWidth={3} color="#ffffff" aria-hidden />
+      ) : null}
+      {label ?? (tracksProgress ? (complete ? 'Complete' : 'Not Complete') : collectedDefault)}
     </span>
   );
 }
@@ -1521,6 +1557,8 @@ function WikiSection({
   collapsible = false,
   defaultCollapsed = false,
   hideBadge = false,
+  tracksProgress = false,
+  count,
   children,
 }: {
   icon: React.ReactNode;
@@ -1534,6 +1572,13 @@ function WikiSection({
   // state — Download, Privacy, and Delete are actions, not progress
   // milestones — so they suppress the green/red/orange badge entirely.
   hideBadge?: boolean;
+  // True for the badges that feed the universal ember progress tracker
+  // (the 11-item checklist). Rendered with a small white check inside the
+  // pill so it's visually obvious which sections move the progress bar.
+  tracksProgress?: boolean;
+  // For non-tracker sections: the number of collected items. Drives the
+  // "Collected N" label and flips the pill grey when N === 0.
+  count?: number;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -1589,7 +1634,14 @@ function WikiSection({
               <PencilLine size={13} />
             </Link>
           ) : null}
-          {hideBadge ? null : <WikiBadge complete={complete} label={badgeLabel} />}
+          {hideBadge ? null : (
+            <WikiBadge
+              complete={complete}
+              label={badgeLabel}
+              tracksProgress={tracksProgress}
+              count={count}
+            />
+          )}
         </div>
       </div>
       {isHidden ? null : children}
@@ -2159,15 +2211,42 @@ export default function KipemberWikiContent({
     !contributor.user &&
     Boolean(contributor.name || contributor.email || contributor.phoneNumber)
   );
-  // Story Circle completion is gated on contributor (non-owner) engagement —
-  // the owner's own sessions don't count. Auto-welcome assistant messages are
-  // also excluded since they don't reflect real engagement.
+  // Story Circle completion now requires BOTH owner and contributor user
+  // messages — a complete story circle is one where the memory has been
+  // narrated AND a contributor has weighed in. Auto-welcome assistant
+  // messages are excluded since they don't reflect real engagement.
+  const ownerUserMessages = (detail?.chatBlocks || []).reduce(
+    (sum, block) =>
+      sum + (block.isOwner ? block.messages.filter((m) => m.role === 'user').length : 0),
+    0
+  );
   const contributorUserMessages = (detail?.chatBlocks || []).reduce(
     (sum, block) =>
       sum + (block.isOwner ? 0 : block.messages.filter((m) => m.role === 'user').length),
     0
   );
-  const totalStoryMessages = contributorUserMessages;
+  const totalStoryMessages = ownerUserMessages + contributorUserMessages;
+  const storyCircleComplete = ownerUserMessages > 0 && contributorUserMessages > 0;
+  // Split why/emotion claims by attribution. Owner-sourced = userId matches
+  // the ember owner. Contributor-sourced = any claim with a different userId
+  // (logged-in contributor) or an emberContributorId. Guests have neither.
+  const ownerWhyClaims = (whyClaims || []).filter(
+    (c) => c.userId !== null && c.userId === ownerUserId
+  );
+  const contributorWhyClaims = (whyClaims || []).filter(
+    (c) =>
+      (c.userId !== null && c.userId !== ownerUserId) || c.contributorId !== null
+  );
+  const whyComplete = ownerWhyClaims.length > 0 && contributorWhyClaims.length > 0;
+  const ownerEmotionClaims = (emotionClaims || []).filter(
+    (c) => c.userId !== null && c.userId === ownerUserId
+  );
+  const contributorEmotionClaims = (emotionClaims || []).filter(
+    (c) =>
+      (c.userId !== null && c.userId !== ownerUserId) || c.contributorId !== null
+  );
+  const emotionComplete =
+    ownerEmotionClaims.length > 0 && contributorEmotionClaims.length > 0;
   const isAudioAttachment = (attachment: KipemberAttachment) =>
     attachment.mediaType === 'AUDIO' ||
     isAudioLikeFilename(attachment.filename) ||
@@ -2195,6 +2274,7 @@ export default function KipemberWikiContent({
         icon={<ShieldUser size={17} />}
         title="Owner"
         complete={Boolean(ownerName)}
+        hideBadge
       >
         <WikiCard>
           {ownerName ? (
@@ -2222,6 +2302,7 @@ export default function KipemberWikiContent({
         title="Contributors"
         complete={activeContributors.length > 0 || pendingContributors.length > 0}
         editHref={detail?.id ? `/tend/contributors?id=${detail.id}` : undefined}
+        tracksProgress
       >
         <WikiCard>
           {activeContributors.length === 0 && pendingContributors.length === 0 ? (
@@ -2297,6 +2378,7 @@ export default function KipemberWikiContent({
             complete={peopleComplete}
             badgeLabel={peopleBadgeLabel}
             editHref={detail?.id ? `/tend/tag-people?id=${detail.id}` : undefined}
+            tracksProgress
           >
         <WikiCard>
           {detail?.tags && detail.tags.length > 0 ? (
@@ -2327,8 +2409,9 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<FileText size={17} />}
         title="Title"
-        complete={Boolean(detail?.title || detail?.originalName)}
+        complete={Boolean(detail?.title)}
         editHref={detail?.id ? `/tend/edit-title?id=${detail.id}` : undefined}
+        tracksProgress
       >
         <WikiCard>
           <p className="text-white font-medium text-base">
@@ -2345,6 +2428,7 @@ export default function KipemberWikiContent({
         title="Snapshot"
         complete={Boolean(detail?.snapshot?.script)}
         editHref={detail?.id ? `/tend/edit-snapshot?id=${detail.id}` : undefined}
+        tracksProgress
       >
         <WikiCard>
           {detail?.snapshot?.script ? (
@@ -2374,6 +2458,7 @@ export default function KipemberWikiContent({
           Boolean(placeName || addressLines.length > 0 || coordinateLine)
         }
         editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
+        tracksProgress
       >
         <WikiCard>
           <p className="text-white font-medium text-sm">
@@ -2401,6 +2486,7 @@ export default function KipemberWikiContent({
         icon={<ImageIcon size={17} />}
         title="Photos"
         complete={Boolean(detail?.originalName || visualAttachments.length)}
+        tracksProgress
       >
         <WikiCard>
           <p className="text-white/30 text-xs font-medium mb-2">Ember Cover Photo</p>
@@ -2473,14 +2559,10 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<Sparkles size={17} />}
         title="Image Analysis"
-        complete={Boolean(
-          detail?.analysis?.sceneInsights ||
-            detail?.analysis?.summary ||
-            detail?.analysis?.visualDescription ||
-            detail?.analysis?.metadataSummary
-        )}
+        complete={detail?.analysis?.status === 'ready'}
         collapsible
         defaultCollapsed
+        tracksProgress
       >
         {detail ? (
           <CollapsibleAnalysisCard
@@ -2583,19 +2665,22 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<History size={17} />}
         title="Story Circle"
-        complete={totalStoryMessages > 0}
+        complete={storyCircleComplete}
         badgeLabel={
-          totalStoryMessages > 0 ? (
+          storyCircleComplete ? (
             'Complete'
-          ) : (
+          ) : contributorUserMessages === 0 ? (
             <>
               Need <span className="text-white">1</span> Contributor
             </>
+          ) : (
+            'Not Complete'
           )
         }
         editHref={detail?.id ? `/tend/contributors?id=${detail.id}` : undefined}
         collapsible
         defaultCollapsed
+        tracksProgress
       >
         <div className="flex flex-col gap-4">
           {(detail?.chatBlocks && detail.chatBlocks.length > 0) ||
@@ -2655,7 +2740,8 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<Lightbulb size={17} />}
         title="Why"
-        complete={Boolean(whyClaims && whyClaims.length > 0)}
+        complete={whyComplete}
+        tracksProgress
       >
         <WhyCard claims={whyClaims} findPerson={findPerson} />
       </WikiSection>
@@ -2663,7 +2749,8 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<Heart size={17} />}
         title="Emotional States"
-        complete={Boolean(emotionClaims && emotionClaims.length > 0)}
+        complete={emotionComplete}
+        tracksProgress
       >
         <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
       </WikiSection>
@@ -2672,6 +2759,7 @@ export default function KipemberWikiContent({
         icon={<Sparkles size={17} />}
         title="Extra Stories"
         complete={Boolean(extraStoryClaims && extraStoryClaims.length > 0)}
+        count={extraStoryClaims?.length ?? 0}
       >
         <ExtraStoriesCard claims={extraStoryClaims} findPerson={findPerson} />
       </WikiSection>
@@ -2680,6 +2768,7 @@ export default function KipemberWikiContent({
         icon={<MapIcon size={17} />}
         title="Places Mentioned"
         complete={Boolean(placeClaims && placeClaims.length > 0)}
+        count={placeClaims?.length ?? 0}
       >
         <PlacesMentionedCard claims={placeClaims} findPerson={findPerson} />
       </WikiSection>
@@ -2688,6 +2777,7 @@ export default function KipemberWikiContent({
         icon={<Users size={17} />}
         title="People Mentioned"
         complete={Boolean(personClaims && personClaims.length > 0)}
+        count={personClaims?.length ?? 0}
       >
         <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
       </WikiSection>
@@ -2701,6 +2791,7 @@ export default function KipemberWikiContent({
         icon={<MessagesSquare size={17} />}
         title="Guest Talk"
         complete={Boolean(detail?.guestChatBlock && detail.guestChatBlock.visitors.length > 0)}
+        count={detail?.guestChatBlock?.visitors.length ?? 0}
         collapsible
         defaultCollapsed
       >
@@ -2762,6 +2853,22 @@ export default function KipemberWikiContent({
             Export this ember as a single archive — photos, wiki text, voice
             clips, call transcripts, and contributor history. Not yet
             available.
+          </p>
+        </WikiCard>
+      </WikiSection>
+
+      <WikiSection
+        icon={<ArrowRightLeft size={17} />}
+        title="Transfer Ember"
+        complete={false}
+        hideBadge
+      >
+        <WikiCard>
+          <p className="text-white/60 text-sm">
+            Hand this ember to another user. They become the owner — full
+            admin rights over contributors, privacy, and content — and any
+            ongoing costs (storage, voice, calls) move to their account. Not
+            yet available.
           </p>
         </WikiCard>
       </WikiSection>
