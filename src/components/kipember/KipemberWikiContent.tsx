@@ -31,6 +31,7 @@ import {
   Sparkles,
   Trash2,
   Users,
+  X,
 } from 'lucide-react';
 import EmberCallCard from '@/components/kipember/EmberCallCard';
 import EmberChatMessages from '@/components/kipember/EmberChatMessages';
@@ -3320,17 +3321,17 @@ export default function KipemberWikiContent({
               className="flex items-center gap-3 px-4 flex-shrink-0"
               style={{ height: 56, borderBottom: '1px solid var(--border-subtle)' }}
             >
+              <span className="flex-shrink-0">{activeEditMeta.icon}</span>
+              <h2 className="flex-1 text-white font-medium text-base">{activeEditMeta.label}</h2>
               <button
                 type="button"
                 onClick={closeEditOverlay}
-                aria-label="Back"
-                className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+                aria-label="Close"
+                className="w-9 h-9 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
                 style={{ opacity: 0.75, cursor: 'pointer' }}
               >
-                <ChevronRight size={22} color="var(--text-primary)" strokeWidth={1.8} />
+                <X size={20} color="var(--text-primary)" strokeWidth={1.8} />
               </button>
-              <span className="flex-shrink-0">{activeEditMeta.icon}</span>
-              <h2 className="text-white font-medium text-base">{activeEditMeta.label}</h2>
             </div>
             <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
               {editingSlug === 'title' ? (

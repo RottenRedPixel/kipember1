@@ -23,7 +23,10 @@ function WikiCard({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
-      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+      style={{
+        background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+        border: '1px solid var(--border-subtle)',
+      }}
     >
       {children}
     </div>
@@ -185,7 +188,10 @@ export default function EditTitleSlider({
         </div>
         <div
           className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+          style={{
+            background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+            border: '1px solid var(--border-subtle)',
+          }}
         >
           <input
             value={titleValue}

@@ -1,9 +1,10 @@
 'use client';
 
 import { ChevronDown, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { KipemberContributor } from '@/components/kipember/KipemberWikiContent';
 import { pastelForContributorIdentity } from '@/lib/contributor-color';
+import type { UnifiedContributor } from '@/lib/contributors-pool';
 import { getUserDisplayName } from '@/lib/user-name';
 
 // ────────────────────────────────────────────────────────────
@@ -71,15 +72,28 @@ function formatPhoneNumber(value: string | null | undefined) {
   return value;
 }
 
-function getContributorPreference(phoneNumber: string | null, email: string | null) {
-  if (phoneNumber) return 'SMS';
-  if (email) return 'Email';
-  return 'Private Link';
-}
+// Languages offered for the per-contributor preference dropdown. Drives
+// both the Add Contributor form and the inline Profile editor. Currently
+// UI-only — the contributors API doesn't persist this yet.
+const LANGUAGE_OPTIONS = [
+  'English',
+  'Spanish',
+  'French',
+  'German',
+  'Italian',
+  'Portuguese',
+  'Chinese',
+  'Japanese',
+  'Korean',
+  'Arabic',
+];
 
+// Input fields match the card background — the field outline (border)
+// alone provides the affordance, so the input visually sits on the
+// same surface as the surrounding card without competing for depth.
 const fieldStyle = {
-  background: 'var(--bg-input)',
-  border: '1px solid var(--border-input)',
+  background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+  border: '1px solid var(--border-subtle)',
 };
 
 // ────────────────────────────────────────────────────────────
@@ -106,22 +120,64 @@ export default function ContributorsSlider({
   status?: string;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
-  const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+  const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '' });
+  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+  // Filter pill (This Ember / All) and sort dropdown — restored from the
+  // legacy ContributorsListView. Drives which subset of the owner's
+  // unified contributor pool we render (and in what order).
+  const [filter, setFilter] = useState<'ember' | 'all'>('ember');
+  const [sort, setSort] = useState<'Name' | 'Most Embers'>('Name');
+  const [sortOpen, setSortOpen] = useState(false);
+  const [pool, setPool] = useState<UnifiedContributor[] | null>(null);
 
   const contributors = detail?.contributors || [];
   const canManageContributors = Boolean(detail?.canManage);
 
-  function expandRow(id: string) {
-    if (expandedId === id) {
+  // Pull the deduped pool of contributors across all the owner's embers
+  // — same source the legacy slider's list view used. Refetched whenever
+  // the ember changes or the slider mounts; the wiki's refreshDetail
+  // would be a useful invalidation hook but the slider closes after
+  // adding so a stale list isn't a real concern.
+  useEffect(() => {
+    if (!imageId) return;
+    let cancelled = false;
+    fetch(`/api/contributors/pool?emberId=${imageId}`, { cache: 'no-store' })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json()) as { contributors?: UnifiedContributor[] };
+        if (!cancelled && payload?.contributors) {
+          setPool(payload.contributors);
+        }
+      })
+      .catch(() => {
+        // Silently fall back to detail.contributors below.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [imageId]);
+
+  // Quick lookup: pool key → invited flag from detail.contributors. The
+  // pool API doesn't carry invite status, but detail.contributors does
+  // for anyone on this ember.
+  const inviteByEmberContributorId = useMemo(() => {
+    const map = new Map<string, boolean>();
+    for (const c of contributors) {
+      map.set(c.id, Boolean(c.inviteSent));
+    }
+    return map;
+  }, [contributors]);
+
+  function expandRow(emberContributorId: string) {
+    if (expandedId === emberContributorId) {
       setExpandedId(null);
       return;
     }
-    setExpandedId(id);
-    const c = contributors.find((x) => x.id === id);
+    setExpandedId(emberContributorId);
+    const c = contributors.find((x) => x.id === emberContributorId);
     if (c) {
       const nameParts = contributorDisplayName(c).trim().split(/\s+/);
       const next = {
@@ -129,6 +185,8 @@ export default function ContributorsSlider({
         lastName: nameParts.slice(1).join(' ') || '',
         phone: contributorPhone(c) ?? '',
         email: contributorEmail(c) ?? '',
+        // Language isn't persisted yet — defaults to English for now.
+        language: 'English',
       };
       setEditForm(next);
       setSavedForm(next);
@@ -153,7 +211,7 @@ export default function ContributorsSlider({
       return;
     }
     onStatus?.('Contributor added.');
-    setAddForm({ firstName: '', lastName: '', phone: '', email: '' });
+    setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
     setAdding(false);
     await refreshDetail();
   }
@@ -182,36 +240,155 @@ export default function ContributorsSlider({
 
   return (
     <div className="flex flex-col gap-3">
-      {contributors.length === 0 ? (
+      {/* Toolbar — filter pill (This Ember / All) + sort dropdown */}
+      <div className="flex items-center justify-between gap-2">
         <div
-          className="rounded-xl px-4 py-3"
-          style={{
-            background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
-            border: '1px solid var(--border-subtle)',
-          }}
+          className="flex items-center gap-1 rounded-xl p-1"
+          style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)' }}
         >
-          <p className="text-white/30 text-sm">No contributors yet.</p>
+          <button
+            type="button"
+            onClick={() => setFilter('ember')}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+            style={{
+              background: filter === 'ember' ? 'var(--bg-screen)' : 'transparent',
+              color: filter === 'ember' ? '#ffffff' : 'var(--text-secondary)',
+              border: 'none',
+            }}
+          >
+            This Ember
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+            style={{
+              background: filter === 'all' ? 'var(--bg-screen)' : 'transparent',
+              color: filter === 'all' ? '#ffffff' : 'var(--text-secondary)',
+              border: 'none',
+            }}
+          >
+            All
+          </button>
         </div>
-      ) : null}
 
-      {contributors.map((contributor) => {
-        const isExpanded = expandedId === contributor.id;
-        const name = contributorDisplayName(contributor);
-        const phone = contributorPhone(contributor);
-        const email = contributorEmail(contributor);
-        const preference = getContributorPreference(phone, email);
-        const phoneFormatted = formatPhoneNumber(phone);
-        const inviteStatus = contributor.inviteSent ? 'Invited' : 'Not Invited';
-        const avatarFilename = contributor.user?.avatarFilename || null;
-        const isDirty =
-          isExpanded &&
-          (editForm.firstName !== savedForm.firstName ||
-            editForm.lastName !== savedForm.lastName ||
-            editForm.phone !== savedForm.phone ||
-            editForm.email !== savedForm.email);
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setSortOpen((s) => !s)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl can-hover"
+            style={{
+              background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+              cursor: 'pointer',
+              border: 'none',
+            }}
+          >
+            <span className="text-white text-xs font-medium">{sort}</span>
+            <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+          </button>
+          {sortOpen ? (
+            <div
+              className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-10"
+              style={{
+                background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+                border: '1px solid var(--border-subtle)',
+                minWidth: 140,
+              }}
+            >
+              {(['Name', 'Most Embers'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => {
+                    setSort(opt);
+                    setSortOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-xs text-white can-hover"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: sort === opt ? 600 : 400,
+                  }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {(() => {
+        // Build display list from the unified pool. While the pool is
+        // loading, fall back to detail.contributors so the user sees
+        // something — that fallback is what was rendered before the
+        // filter+sort toolbar existed.
+        const source: UnifiedContributor[] | null = pool;
+        const filtered = source
+          ? filter === 'ember'
+            ? source.filter((c) => c.onThisEmber)
+            : source
+          : null;
+        const sorted = filtered
+          ? [...filtered].sort((a, b) => {
+              if (sort === 'Most Embers') {
+                if (b.emberCount !== a.emberCount) return b.emberCount - a.emberCount;
+              }
+              return a.name.localeCompare(b.name);
+            })
+          : null;
+
+        if (sorted && sorted.length === 0) {
+          return (
+            <div
+              className="rounded-xl px-4 py-3"
+              style={{
+                background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              <p className="text-white/30 text-sm">
+                {filter === 'ember'
+                  ? 'No contributors on this ember yet.'
+                  : 'No contributors in your pool yet.'}
+              </p>
+            </div>
+          );
+        }
+
+        // While the pool is still loading, render nothing (the toolbar
+        // is already on screen so the area doesn't look empty).
+        if (!sorted) return null;
+
+        return sorted.map((contributor) => {
+          const emberContributorId = contributor.currentEmberContributorId;
+          const onThisEmber = contributor.onThisEmber;
+          const isExpanded = onThisEmber && expandedId === emberContributorId;
+          const name = contributor.name;
+          const avatarUrl = contributor.avatarUrl;
+          const inviteSent = emberContributorId
+            ? inviteByEmberContributorId.get(emberContributorId) ?? false
+            : false;
+          const inviteStatus = onThisEmber
+            ? inviteSent
+              ? 'Invited'
+              : 'Not Invited'
+            : `In ${contributor.emberCount} ember${contributor.emberCount === 1 ? '' : 's'}`;
+          const isDirty =
+            isExpanded &&
+            (editForm.firstName !== savedForm.firstName ||
+              editForm.lastName !== savedForm.lastName ||
+              editForm.phone !== savedForm.phone ||
+              editForm.email !== savedForm.email ||
+              editForm.language !== savedForm.language);
+          // Pool entries that aren't on this ember have no
+          // EmberContributor record to PATCH against, so the row is
+          // collapse-only — no chevron, no expansion, no editing.
+          const expandable = onThisEmber && Boolean(emberContributorId);
         return (
           <div
-            key={contributor.id}
+            key={contributor.key}
             className="rounded-xl overflow-hidden"
             style={{
               background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
@@ -220,30 +397,35 @@ export default function ContributorsSlider({
           >
             <button
               type="button"
-              onClick={() => expandRow(contributor.id)}
+              onClick={() => {
+                if (expandable && emberContributorId) {
+                  expandRow(emberContributorId);
+                }
+              }}
               aria-expanded={isExpanded}
-              className="w-full flex items-center gap-3 px-4 cursor-pointer"
-              style={{ minHeight: 56 }}
+              disabled={!expandable}
+              className="w-full flex items-center gap-3 px-4"
+              style={{ minHeight: 56, cursor: expandable ? 'pointer' : 'default' }}
             >
               <div
                 className="rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
                 style={{
                   width: 36,
                   height: 36,
-                  background: avatarFilename
+                  background: avatarUrl
                     ? 'rgba(249,115,22,0.85)'
                     : pastelForContributorIdentity({
-                        userId: contributor.user?.id ?? contributor.userId ?? null,
-                        email: contributor.email ?? null,
-                        phoneNumber: contributor.phoneNumber ?? null,
-                        id: contributor.id,
+                        userId: null,
+                        email: null,
+                        phoneNumber: null,
+                        id: contributor.key,
                       }),
                 }}
               >
-                {avatarFilename ? (
+                {avatarUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
-                    src={`/api/uploads/${avatarFilename}`}
+                    src={avatarUrl}
                     alt={name}
                     className="w-full h-full object-cover"
                   />
@@ -255,14 +437,18 @@ export default function ContributorsSlider({
               </div>
               <span className="flex-1 text-white text-sm font-medium text-left">{name}</span>
               <span className="text-white/30 text-xs">{inviteStatus}</span>
-              <ChevronDown
-                size={14}
-                color="rgba(255,255,255,0.5)"
-                style={{
-                  transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                  transition: 'transform 0.15s ease',
-                }}
-              />
+              {expandable ? (
+                <ChevronDown
+                  size={14}
+                  color="rgba(255,255,255,0.5)"
+                  style={{
+                    transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                    transition: 'transform 0.15s ease',
+                  }}
+                />
+              ) : (
+                <span style={{ width: 14, height: 14 }} />
+              )}
             </button>
 
             {isExpanded ? (
@@ -325,23 +511,38 @@ export default function ContributorsSlider({
                       className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent disabled:opacity-50"
                       style={{ borderTop: '1px solid var(--border-subtle)' }}
                     />
+                    <select
+                      value={editForm.language}
+                      onChange={(e) =>
+                        setEditForm((f) => ({ ...f, language: e.target.value }))
+                      }
+                      disabled={!canManageContributors}
+                      className="w-full h-12 px-0 text-sm text-white outline-none bg-transparent disabled:opacity-50 cursor-pointer"
+                      style={{ borderTop: '1px solid var(--border-subtle)' }}
+                    >
+                      {LANGUAGE_OPTIONS.map((lang) => (
+                        <option key={lang} value={lang} style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>
+                          {lang}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="flex justify-between items-center px-1">
+                  <div className="flex gap-3 items-center">
                     {status ? (
-                      <span className="text-xs text-white/50">{status}</span>
+                      <span className="flex-1 text-xs text-white/50">{status}</span>
                     ) : (
-                      <span />
+                      <div className="flex-1" />
                     )}
                     <button
                       type="button"
-                      onClick={() => void updateContributor(contributor.id)}
+                      onClick={() => emberContributorId && void updateContributor(emberContributorId)}
                       disabled={savingContributor || !isDirty || !canManageContributors}
-                      className="rounded-full px-5 text-white text-sm font-medium transition-colors"
+                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
                       style={{
                         background: isDirty ? '#f97316' : 'var(--bg-surface)',
                         border: isDirty ? 'none' : '1px solid var(--border-subtle)',
                         minHeight: 44,
-                        cursor: isDirty ? 'pointer' : 'default',
+                        cursor: isDirty && !savingContributor ? 'pointer' : 'default',
                         opacity: savingContributor ? 0.6 : 1,
                       }}
                     >
@@ -350,62 +551,12 @@ export default function ContributorsSlider({
                   </div>
                 </div>
 
-                {/* Preferences */}
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">
-                    Preferences
-                  </h3>
-                  <div
-                    className="rounded-xl overflow-hidden"
-                    style={{
-                      background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
-                      border: '1px solid var(--border-subtle)',
-                    }}
-                  >
-                    <div
-                      className="flex items-center justify-between px-4"
-                      style={{ minHeight: 44 }}
-                    >
-                      <span className="text-white text-sm font-medium">
-                        Prefers{' '}
-                        <span className="text-white/50 font-normal">({preference})</span>
-                      </span>
-                    </div>
-                    <div
-                      className="flex items-center justify-between px-4"
-                      style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}
-                    >
-                      <span className="text-white text-sm font-medium">
-                        Contact Time{' '}
-                        <span className="text-white/50 font-normal">(Not set)</span>
-                      </span>
-                    </div>
-                    <div
-                      className="flex items-center justify-between px-4"
-                      style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}
-                    >
-                      <span className="text-white text-sm font-medium">
-                        Language <span className="text-white/50 font-normal">(English)</span>
-                      </span>
-                    </div>
-                    {phoneFormatted ? (
-                      <div
-                        className="flex items-center justify-between px-4"
-                        style={{ minHeight: 44, borderTop: '1px solid var(--border-subtle)' }}
-                      >
-                        <span className="text-white text-sm font-medium">
-                          Phone{' '}
-                          <span className="text-white/50 font-normal">({phoneFormatted})</span>
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
               </div>
             ) : null}
           </div>
         );
-      })}
+        });
+      })()}
 
       {/* Add Contributor — collapsed button, expands inline into a form */}
       {adding ? (
@@ -433,12 +584,26 @@ export default function ContributorsSlider({
               style={fieldStyle}
             />
           ))}
+          <select
+            value={addForm.language}
+            onChange={(event) =>
+              setAddForm((current) => ({ ...current, language: event.target.value }))
+            }
+            className="w-full h-12 rounded-xl px-4 text-sm text-white outline-none cursor-pointer"
+            style={fieldStyle}
+          >
+            {LANGUAGE_OPTIONS.map((lang) => (
+              <option key={lang} value={lang} style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>
+                {lang}
+              </option>
+            ))}
+          </select>
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => {
                 setAdding(false);
-                setAddForm({ firstName: '', lastName: '', phone: '', email: '' });
+                setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
               }}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
               style={{
