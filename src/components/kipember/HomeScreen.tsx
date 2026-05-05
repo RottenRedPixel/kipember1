@@ -26,6 +26,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
+import KipemberWikiOverlay from '@/components/kipember/KipemberWikiOverlay';
 import ContributorFlow from '@/components/kipember/workflows/ContributorFlow';
 import OwnerFlow from '@/components/kipember/workflows/OwnerFlow';
 import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
@@ -1056,8 +1057,8 @@ export default function HomeScreen({
         <RailBtn
           icon={Leaf}
           label="tend"
-          href={selectedEmberId ? `/tend/view-wiki?id=${selectedEmberId}` : '/tend/view-wiki'}
-          active={false}
+          href={selectedEmberId ? buildHomeHref({ m: 'wiki' }) : '/home'}
+          active={modal === 'wiki'}
         />
         <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
@@ -1127,6 +1128,14 @@ export default function HomeScreen({
           closeHref={buildHomeHref({ m: null })}
           imageId={selectedEmberId}
           storyScript={selectedEmber?.snapshot?.script || null}
+        />
+      ) : null}
+
+      {modal === 'wiki' ? (
+        <KipemberWikiOverlay
+          key={selectedEmberId || 'empty'}
+          closeHref={buildHomeHref({ m: null })}
+          imageId={selectedEmberId}
         />
       ) : null}
 

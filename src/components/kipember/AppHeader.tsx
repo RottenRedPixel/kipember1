@@ -81,7 +81,7 @@ export default function AppHeader({
     >
       {/* Logo */}
       <Link href="/" className="flex items-center flex-shrink-0 pr-2">
-        <svg width={28} height={28} viewBox="0 0 72 72" fill="white">
+        <svg width={22} height={22} viewBox="0 0 72 72" fill="white">
           <circle cx="36" cy="36" r="7.2" fill="#f97316" />
           <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
           <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />

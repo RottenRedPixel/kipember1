@@ -24,7 +24,6 @@ import EditTimePlaceSlider from '@/components/kipember/tend/EditTimePlaceSlider'
 import FrameSlider from '@/components/kipember/tend/FrameSlider';
 import TagPeopleSlider from '@/components/kipember/tend/TagPeopleSlider';
 import ContributorsSlider, {
-  type ContributorDetail,
   type TendContributor,
 } from '@/components/kipember/tend/ContributorsSlider';
 import { getUserDisplayName } from '@/lib/user-name';
@@ -93,8 +92,18 @@ type TendDetail = KipemberWikiDetail & {
   tags: ImageTag[];
 };
 
-type ContributorRecord = KipemberContributor | TendContributor | ContributorDetail;
+// Legacy contributor-detail type — only used by the parent header for
+// the (now defunct) sub-section back navigation. Kept locally so the
+// dead-code paths still compile until they're fully cleaned up.
+type ContributorDetail = TendContributor & {
+  conversation?: unknown;
+  voiceCalls?: unknown[];
+};
 
+type ContributorRecord = KipemberContributor | TendContributor;
+
+// Legacy sub-section nav — no longer used by the new flat ContributorsSlider.
+// Type retained for the dead JSX paths in this parent.
 type ContributorSubSection = 'profile' | 'contributions' | 'preferences' | null;
 
 // Tiny helpers the parent header still uses for contributors. The full
@@ -365,14 +374,14 @@ export default function TendActionScreen({ action }: { action: string }) {
           backgroundPosition: 'center',
         } : undefined}
       >
-      <button type="button" onClick={handleBack} className="w-[7%] h-full" style={{ cursor: 'pointer' }} aria-label="Back" />
+      <button type="button" onClick={handleBack} className="w-[8%] h-full" style={{ cursor: 'pointer' }} aria-label="Back" />
       <div
         className="flex-1 h-full flex flex-col slide-in-right"
         style={{ background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }}
       >
         <div
-          className="flex items-center gap-3 px-4 pt-6 pb-4 flex-shrink-0"
-          style={{ borderBottom: '1px solid var(--border-subtle)' }}
+          className="flex items-center gap-3 px-4 flex-shrink-0"
+          style={{ height: 56, borderBottom: '1px solid var(--border-subtle)' }}
         >
           {contributorSubMeta ? (
             <button
@@ -414,16 +423,6 @@ export default function TendActionScreen({ action }: { action: string }) {
             <ContributorsSlider
               detail={detail}
               imageId={resolvedImageId}
-              view={view}
-              fromParam={fromParam}
-              contributorFilter={contributorFilter}
-              subSection={contributorSubSection}
-              onSubSectionChange={setContributorSubSection}
-              selectedContributorDetail={selectedContributorDetail}
-              detailLoading={detailLoading}
-              detailError={detailError}
-              setDetailError={setDetailError}
-              refreshContributorDetail={refreshContributorDetail}
               refreshDetail={refreshDetail}
               onStatus={setStatus}
               status={status}

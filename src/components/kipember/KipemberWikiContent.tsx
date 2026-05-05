@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowRightLeft,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Clock,
   Download,
@@ -34,6 +36,12 @@ import EmberCallCard from '@/components/kipember/EmberCallCard';
 import EmberChatMessages from '@/components/kipember/EmberChatMessages';
 import VoiceMessageList, { type VoiceMessage } from '@/components/kipember/workflows/VoiceMessageList';
 import MediaPreview from '@/components/MediaPreview';
+import EditTitleSlider from '@/components/kipember/tend/EditTitleSlider';
+import EditSnapshotSlider from '@/components/kipember/tend/EditSnapshotSlider';
+import EditTimePlaceSlider from '@/components/kipember/tend/EditTimePlaceSlider';
+import ContributorsSlider from '@/components/kipember/tend/ContributorsSlider';
+import TagPeopleSlider from '@/components/kipember/tend/TagPeopleSlider';
+import { getPreviewMediaUrl } from '@/lib/media';
 import { usePlaceResolution } from '@/components/kipember/usePlaceResolution';
 import { pastelForContributor, pastelForContributorIdentity } from '@/lib/contributor-color';
 import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
@@ -1553,15 +1561,19 @@ function WikiBadge({
   //   !tracksProgress + count === 0                                → grey "Collected 0"
   //   !tracksProgress + count > 0 (or no count given)              → blue "Collected [N]"
   const hasCustomLabel = label != null;
+  // Each background pre-composites the 15% alpha tint against the wiki's
+  // bg-screen so the pill stays fully opaque even when the wiki overlay
+  // itself is partially transparent. Visual matches the original tinted
+  // pills exactly in both dark and light themes.
   const palette = tracksProgress
     ? complete
-      ? { bg: 'rgba(34,197,94,0.15)', fg: '#4ade80' }
+      ? { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(34,197,94) 15%)', fg: '#4ade80' }
       : hasCustomLabel
-        ? { bg: 'rgba(249,115,22,0.15)', fg: '#f97316' }
-        : { bg: 'rgba(239,68,68,0.15)', fg: '#f87171' }
+        ? { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(249,115,22) 15%)', fg: '#f97316' }
+        : { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(239,68,68) 15%)', fg: '#f87171' }
     : count === 0
-      ? { bg: 'rgba(148,163,184,0.15)', fg: '#94a3b8' }
-      : { bg: 'rgba(59,130,246,0.15)', fg: '#60a5fa' };
+      ? { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(148,163,184) 15%)', fg: '#94a3b8' }
+      : { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(59,130,246) 15%)', fg: '#60a5fa' };
   const collectedDefault =
     typeof count === 'number' ? (
       <>
@@ -1650,7 +1662,7 @@ function EmberProgressBar({
               onClick={() => handleChipClick(step.slug)}
               className="text-xs font-medium px-2.5 py-1 rounded-full can-hover cursor-pointer inline-flex items-center gap-1.5"
               style={{
-                background: 'rgba(148,163,184,0.15)',
+                background: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(148,163,184) 15%)',
                 color: '#94a3b8',
                 minHeight: 28,
                 border: 'none',
@@ -1674,6 +1686,7 @@ function WikiSection({
   complete,
   badgeLabel,
   editHref,
+  onEdit,
   collapsible = false,
   defaultCollapsed = false,
   hideBadge = false,
@@ -1687,6 +1700,10 @@ function WikiSection({
   complete: boolean;
   badgeLabel?: React.ReactNode;
   editHref?: string;
+  // When onEdit is set, the pencil renders as a button that opens the
+  // in-page edit overlay instead of navigating. Takes precedence over
+  // editHref so sections can opt into the overlay one at a time.
+  onEdit?: () => void;
   collapsible?: boolean;
   defaultCollapsed?: boolean;
   // Sections under the Control group don't have a meaningful "complete"
@@ -1742,7 +1759,23 @@ function WikiSection({
           <div className="flex items-center gap-2">{headerInner}</div>
         )}
         <div className="flex items-center gap-2">
-          {editHref ? (
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label={`Edit ${title}`}
+              className="flex items-center justify-center rounded-full can-hover cursor-pointer"
+              style={{
+                width: 28,
+                height: 28,
+                background: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <PencilLine size={13} />
+            </button>
+          ) : editHref ? (
             <Link
               href={editHref}
               aria-label={`Edit ${title}`}
@@ -1777,7 +1810,14 @@ function WikiCard({ children }: { children: React.ReactNode }) {
   return (
     <div
       className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
-      style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+      style={{
+        // Pre-composite the translucent --bg-surface against --bg-screen
+        // so the card stays fully opaque even when the wiki overlay's
+        // own background is partially transparent. Matches the visual
+        // of the original translucent surface in either theme.
+        background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+        border: '1px solid var(--border-subtle)',
+      }}
     >
       {children}
     </div>
@@ -2218,6 +2258,29 @@ export default function KipemberWikiContent({
   const imageId = detail?.id || null;
   const ownerName = getUserDisplayName(detail?.owner) || detail?.owner?.email || null;
   const ownerUserId = detail?.owner?.id;
+  // In-page edit overlay state — keeps the wiki (and the ember view
+  // beneath it) mounted while the user edits a single field. Closing
+  // the overlay returns to the wiki with scroll, expanded sections,
+  // and progress-bar config all preserved.
+  type EditingSlug = 'title' | 'snapshot' | 'time-place' | 'contributors' | 'tag-people' | null;
+  const [editingSlug, setEditingSlug] = useState<EditingSlug>(null);
+  // Visual open state — drives a CSS transition on `transform` so the
+  // overlay slides in from the right on open and back out to the right
+  // on close. Decoupled from `editingSlug` so we can run the slide-out
+  // animation BEFORE unmounting (300ms delay matches the transition).
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  useEffect(() => {
+    if (!editingSlug) return;
+    // Mount happened with overlayOpen=false → transform: translateX(100%).
+    // Kick the transition on the next animation frame so the browser
+    // commits the off-screen state before transitioning to onscreen.
+    const id = requestAnimationFrame(() => setOverlayOpen(true));
+    return () => cancelAnimationFrame(id);
+  }, [editingSlug]);
+  const closeEditOverlay = useCallback(() => {
+    setOverlayOpen(false);
+    setTimeout(() => setEditingSlug(null), 300);
+  }, []);
 
   // Single source of truth: name → person identity bundle. Every avatar
   // surface in the wiki resolves through this so the same contributor
@@ -2574,7 +2637,20 @@ export default function KipemberWikiContent({
     ? allTrackerSteps.filter((step) => enabledSlugs.has(step.slug))
     : allTrackerSteps;
 
+  // Map each editing slug to the inputs the overlay header needs
+  // (icon + display label) so we can render the right edit slider
+  // with the same visual chrome as the legacy /tend/[action] route.
+  const editingMeta: Record<NonNullable<EditingSlug>, { label: string; icon: React.ReactNode }> = {
+    title: { label: 'Edit Title', icon: <PencilLine size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
+    snapshot: { label: 'Edit Snapshot', icon: <ScanEye size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
+    'time-place': { label: 'Edit Time & Place', icon: <Clock size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
+    contributors: { label: 'Contributors', icon: <Users size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
+    'tag-people': { label: 'Tag People', icon: <Users size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
+  };
+  const activeEditMeta = editingSlug ? editingMeta[editingSlug] : null;
+
   return (
+    <>
     <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-7 pb-10">
       <EmberProgressBar steps={trackerSteps} />
 
@@ -2612,7 +2688,7 @@ export default function KipemberWikiContent({
         icon={<Users size={17} />}
         title="Contributors"
         complete={activeContributors.length > 0 || pendingContributors.length > 0}
-        editHref={detail?.id ? `/tend/contributors?id=${detail.id}` : undefined}
+        onEdit={detail?.id ? () => setEditingSlug('contributors') : undefined}
         tracksProgress
         id="tracker-contributors"
       >
@@ -2686,7 +2762,7 @@ export default function KipemberWikiContent({
             title="People"
             complete={peopleComplete}
             badgeLabel={peopleBadgeLabel}
-            editHref={detail?.id ? `/tend/tag-people?id=${detail.id}` : undefined}
+            onEdit={detail?.id ? () => setEditingSlug('tag-people') : undefined}
             tracksProgress
             id="tracker-people"
           >
@@ -2720,7 +2796,7 @@ export default function KipemberWikiContent({
         icon={<FileText size={17} />}
         title="Title"
         complete={Boolean(detail?.title)}
-        editHref={detail?.id ? `/tend/edit-title?id=${detail.id}` : undefined}
+        onEdit={detail?.id ? () => setEditingSlug('title') : undefined}
         tracksProgress
         id="tracker-title"
       >
@@ -2738,7 +2814,7 @@ export default function KipemberWikiContent({
         icon={<ScanEye size={17} />}
         title="Snapshot"
         complete={Boolean(detail?.snapshot?.script)}
-        editHref={detail?.id ? `/tend/edit-snapshot?id=${detail.id}` : undefined}
+        onEdit={detail?.id ? () => setEditingSlug('snapshot') : undefined}
         tracksProgress
         id="tracker-snapshot"
       >
@@ -2769,7 +2845,7 @@ export default function KipemberWikiContent({
           Boolean(detail?.analysis?.capturedAt || detail?.createdAt) &&
           Boolean(placeName || addressLines.length > 0 || coordinateLine)
         }
-        editHref={detail?.id ? `/tend/edit-time-place?id=${detail.id}` : undefined}
+        onEdit={detail?.id ? () => setEditingSlug('time-place') : undefined}
         tracksProgress
         id="tracker-time-place"
       >
@@ -2992,7 +3068,7 @@ export default function KipemberWikiContent({
             'Not Complete'
           )
         }
-        editHref={detail?.id ? `/tend/contributors?id=${detail.id}` : undefined}
+        onEdit={detail?.id ? () => setEditingSlug('contributors') : undefined}
         collapsible
         defaultCollapsed
         tracksProgress
@@ -3212,5 +3288,109 @@ export default function KipemberWikiContent({
       </WikiGroup>
 
     </div>
+
+    {/* Edit overlay — slides in over the wiki (which itself is a modal
+        over the ember view). The wiki stays mounted underneath so
+        scroll, expanded sections, and progress bar all persist.
+        Portaled to document.body so its fixed positioning is anchored
+        to the viewport rather than the wiki's transform-containing
+        block (the wiki's slide-in-right transform would otherwise
+        capture our `fixed` and shift the peek off-axis). */}
+    {editingSlug && imageId && activeEditMeta && refreshDetail && typeof document !== 'undefined'
+      ? createPortal(
+      <div className="fixed inset-0 z-50 flex justify-center">
+        <div className="relative w-full max-w-xl h-full flex">
+          <button
+            type="button"
+            onClick={closeEditOverlay}
+            className="h-full"
+            style={{ width: 'calc(8% + 10px)', cursor: 'pointer' }}
+            aria-label="Back to wiki"
+          />
+          <div
+            className="flex-1 h-full flex flex-col"
+            style={{
+              background: 'var(--bg-screen)',
+              borderLeft: '1px solid var(--border-subtle)',
+              transform: overlayOpen ? 'translateX(0)' : 'translateX(100%)',
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          >
+            <div
+              className="flex items-center gap-3 px-4 flex-shrink-0"
+              style={{ height: 56, borderBottom: '1px solid var(--border-subtle)' }}
+            >
+              <button
+                type="button"
+                onClick={closeEditOverlay}
+                aria-label="Back"
+                className="w-11 h-11 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+                style={{ opacity: 0.75, cursor: 'pointer' }}
+              >
+                <ChevronRight size={22} color="var(--text-primary)" strokeWidth={1.8} />
+              </button>
+              <span className="flex-shrink-0">{activeEditMeta.icon}</span>
+              <h2 className="text-white font-medium text-base">{activeEditMeta.label}</h2>
+            </div>
+            <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
+              {editingSlug === 'title' ? (
+                <EditTitleSlider
+                  detail={detail}
+                  imageId={imageId}
+                  refreshDetail={async () => {
+                    await refreshDetail();
+                  }}
+                  onStatus={onStatus}
+                />
+              ) : null}
+              {editingSlug === 'snapshot' ? (
+                <EditSnapshotSlider
+                  detail={detail}
+                  imageId={imageId}
+                  refreshDetail={async () => {
+                    await refreshDetail();
+                  }}
+                  onStatus={onStatus}
+                />
+              ) : null}
+              {editingSlug === 'time-place' ? (
+                <EditTimePlaceSlider
+                  detail={detail}
+                  imageId={imageId}
+                  refreshDetail={async () => {
+                    await refreshDetail();
+                  }}
+                  onStatus={onStatus}
+                />
+              ) : null}
+              {editingSlug === 'contributors' ? (
+                <ContributorsSlider
+                  detail={detail}
+                  imageId={imageId}
+                  refreshDetail={async () => {
+                    await refreshDetail();
+                  }}
+                  onStatus={onStatus}
+                />
+              ) : null}
+              {editingSlug === 'tag-people' && detail ? (
+                <TagPeopleSlider
+                  detail={detail}
+                  imageId={imageId}
+                  coverPhotoUrl={getPreviewMediaUrl({
+                    mediaType: detail.mediaType,
+                    filename: detail.filename,
+                    posterFilename: detail.posterFilename,
+                  })}
+                />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </div>,
+          document.body,
+        )
+      : null}
+    </>
   );
 }
