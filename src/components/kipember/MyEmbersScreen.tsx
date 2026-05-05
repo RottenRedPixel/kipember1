@@ -113,7 +113,7 @@ export default function MyEmbersScreen({
   }
 
   return (
-    <div className="fixed inset-0 fade-in" style={{ background: 'var(--bg-screen)' }}>
+    <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
       <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref={accountOpenHref} />
       <input
         ref={fileInputRef}
@@ -127,7 +127,7 @@ export default function MyEmbersScreen({
         }}
       />
 
-<div className="absolute left-0 right-0 bottom-0 flex flex-col items-center" style={{ top: 56 }}>
+<div className="absolute left-0 right-0 bottom-0 flex flex-col items-center fade-in" style={{ top: 56 }}>
       <div className="flex flex-col w-full max-w-xl flex-1 min-h-0">
 
         {/* Toolbar */}

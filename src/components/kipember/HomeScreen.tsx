@@ -780,8 +780,13 @@ export default function HomeScreen({
   }, [createdEmberId, router, step]);
 
   return (
-    <div className="fixed inset-0 flex justify-center fade-in" style={{ background: 'var(--bg-screen)' }}>
-      <div className="relative w-full max-w-xl h-full">
+    <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
+      <AppHeader
+        avatarUrl={avatarUrl}
+        userInitials={initials(getUserDisplayName(profile) || profile?.email || 'ST')}
+        userModalHref={buildHomeHref({ m: 'account' })}
+      />
+      <div className="relative w-full max-w-xl h-full fade-in">
       <input
         ref={fileInputRef}
         type="file"
@@ -920,12 +925,6 @@ export default function HomeScreen({
 
       {prevEmberPreloadUrl ? <img src={prevEmberPreloadUrl} alt="" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} /> : null}
       {nextEmberPreloadUrl ? <img src={nextEmberPreloadUrl} alt="" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} /> : null}
-
-      <AppHeader
-        avatarUrl={avatarUrl}
-        userInitials={initials(getUserDisplayName(profile) || profile?.email || 'ST')}
-        userModalHref={buildHomeHref({ m: 'account' })}
-      />
 
       {!firstEmber && displayEmber && !emberModalExpanded ? (
         <div

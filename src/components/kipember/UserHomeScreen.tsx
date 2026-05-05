@@ -357,7 +357,7 @@ export default function UserHomeScreen({
 
   return (
     <div
-      className="fixed inset-0 fade-in"
+      className="fixed inset-0"
       style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
     >
       <AppHeader
@@ -379,7 +379,7 @@ export default function UserHomeScreen({
 
       {/* Scrollable content */}
       <div
-        className="absolute left-0 right-0 bottom-0 overflow-y-auto no-scrollbar flex flex-col items-center px-4"
+        className="absolute left-0 right-0 bottom-0 overflow-y-auto no-scrollbar flex flex-col items-center px-4 fade-in"
         style={{ top: 56 }}
       >
       <div className="w-full max-w-xl">
