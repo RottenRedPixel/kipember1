@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Activity, ChevronRight, Star, Users } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
+import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import { getPreviewMediaUrl, type EmberMediaType } from '@/lib/media';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -291,6 +293,24 @@ export default function UserHomeScreen({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const [dismissedActivity, setDismissedActivity] = useState<Set<string>>(new Set());
 
+  // Account modal — clicking the avatar appends ?m=account to the
+  // current URL so the overlay opens on top of /home (matching the
+  // pattern HomeScreen uses on /ember/[id]).
+  const params = useSearchParams();
+  const modal = params.get('m');
+  const accountOpenHref = useMemo(() => {
+    const next = new URLSearchParams(params.toString());
+    next.set('m', 'account');
+    const query = next.toString();
+    return query ? `/home?${query}` : '/home';
+  }, [params]);
+  const accountCloseHref = useMemo(() => {
+    const next = new URLSearchParams(params.toString());
+    next.delete('m');
+    const query = next.toString();
+    return query ? `/home?${query}` : '/home';
+  }, [params]);
+
   const displayName = getUserDisplayName(initialProfile) || initialProfile?.email || 'Ember User';
 
   function handleFile(file: File) {
@@ -343,7 +363,7 @@ export default function UserHomeScreen({
       <AppHeader
         avatarUrl={avatarUrl}
         userInitials={initials(displayName)}
-        userModalHref="/account"
+        userModalHref={accountOpenHref}
       />
       <input
         ref={fileInputRef}
@@ -536,7 +556,7 @@ export default function UserHomeScreen({
             <p className="text-base font-bold text-white">Contributors</p>
             {contributors.length > 4 ? (
               <Link
-                href="/account"
+                href={accountOpenHref}
                 className="ml-auto text-xs font-medium can-hover"
                 style={{ color: 'rgba(255,255,255,0.5)' }}
               >
@@ -580,6 +600,10 @@ export default function UserHomeScreen({
 
       </div>
       </div>
+
+      {modal === 'account' ? (
+        <KipemberAccountOverlay closeHref={accountCloseHref} />
+      ) : null}
     </div>
   );
 }

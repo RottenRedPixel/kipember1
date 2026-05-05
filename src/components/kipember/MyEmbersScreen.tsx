@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { ChevronDown, Plus, FileStack, LayoutGrid, LayoutList, Users, BookOpen } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AppHeader from '@/components/kipember/AppHeader';
 import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
+import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
 import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
@@ -36,6 +37,21 @@ export default function MyEmbersScreen({
   userInitials?: string;
 }) {
   const searchParams = useSearchParams();
+  const modal = searchParams.get('m');
+  // Account modal — clicking the avatar appends ?m=account to the
+  // current URL so the overlay opens in-place over /embers.
+  const accountOpenHref = useMemo(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set('m', 'account');
+    const query = next.toString();
+    return query ? `/embers?${query}` : '/embers';
+  }, [searchParams]);
+  const accountCloseHref = useMemo(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('m');
+    const query = next.toString();
+    return query ? `/embers?${query}` : '/embers';
+  }, [searchParams]);
   const [embers, setEmbers] = useState<EmberSummary[]>(initialEmbers);
   const [createFile, setCreateFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -98,7 +114,7 @@ export default function MyEmbersScreen({
 
   return (
     <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
-      <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref="/account" />
+      <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref={accountOpenHref} />
       <input
         ref={fileInputRef}
         type="file"
@@ -365,6 +381,10 @@ export default function MyEmbersScreen({
         </div>
       </div>
       </div>
+
+      {modal === 'account' ? (
+        <KipemberAccountOverlay closeHref={accountCloseHref} />
+      ) : null}
     </div>
   );
 }
