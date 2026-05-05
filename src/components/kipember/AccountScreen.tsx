@@ -538,9 +538,14 @@ export default function AccountScreen({
             block. */}
         {section && activeSection ? (
           <div
-            className="absolute inset-0 flex flex-col"
+            className="absolute top-0 right-0 bottom-0 flex flex-col"
             style={{
+              // Leave 10px of the Account root view visible on the
+              // left, mirroring the wiki edit overlays' 10px peek
+              // past the wiki edge.
+              left: 10,
               background: 'var(--bg-screen)',
+              borderLeft: '1px solid var(--border-subtle)',
               transform: sectionOverlayOpen ? 'translateX(0)' : 'translateX(100%)',
               transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               zIndex: 5,

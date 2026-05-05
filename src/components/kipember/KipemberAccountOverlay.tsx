@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import AccountScreen from '@/components/kipember/AccountScreen';
-import { isAdmin } from '@/lib/admin-access';
 import { getUserDisplayName } from '@/lib/user-name';
 
 // Account overlay — same modal pattern as KipemberWikiOverlay. Renders
@@ -19,6 +18,7 @@ type AccountUser = {
   phoneNumber: string | null;
   avatarUrl: string | null;
   createdAt: string | null;
+  canAccessAdmin: boolean;
 };
 
 function initialsOf(value: string) {
@@ -71,7 +71,7 @@ export default function KipemberAccountOverlay({ closeHref }: { closeHref: strin
 
   const displayName = user ? getUserDisplayName(user) || user.email : '';
   const userInitials = initialsOf(displayName || 'ST');
-  const canAccessAdmin = user ? isAdmin({ email: user.email }) : false;
+  const canAccessAdmin = user?.canAccessAdmin ?? false;
 
   return (
     <div className="absolute inset-0 z-40 flex justify-center">

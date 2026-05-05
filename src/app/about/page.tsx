@@ -147,7 +147,7 @@ export default function AboutPage() {
   return (
     <Suspense>
       <div
-        className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4"
+        className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4 slide-in-right"
         style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
       >
         <AppHeader />
