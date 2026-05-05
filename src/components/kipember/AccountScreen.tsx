@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   Camera, ChevronLeft, ChevronRight,
   KeyRound, LayoutDashboard,
-  Settings, ShieldAlert, User, Users,
+  Settings, ShieldAlert, User, Users, X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
@@ -25,6 +25,14 @@ type AccountScreenProps = {
   coverPhotoUrl?: string | null;
   /** True when this user has admin access (drives the Admin View row). */
   canAccessAdmin?: boolean;
+  /**
+   * When true, the screen renders WITHOUT its own outer slider chrome
+   * (fixed inset-0, peek, borderLeft, slide-in-right) — the parent
+   * overlay provides those. Top-level back navigation calls onClose
+   * instead of routing.
+   */
+  embedded?: boolean;
+  onClose?: () => void;
 };
 
 function InputRow({
@@ -94,6 +102,8 @@ export default function AccountScreen({
   joinedAt,
   coverPhotoUrl,
   canAccessAdmin = false,
+  embedded = false,
+  onClose,
 }: AccountScreenProps) {
   const router = useRouter();
   const [section, setSection] = useState<Section>(null);
@@ -302,15 +312,14 @@ export default function AccountScreen({
 
   const activeSection = SECTIONS.find((s) => s.key === section);
 
-  return (
-    <div
-      className="fixed inset-0 flex"
-      style={coverPhotoUrl ? { backgroundImage: `url(${coverPhotoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-    >
-      <Link href="/home" className="w-[7%] h-full" />
+  const inner = (
       <div
-        className="flex-1 h-full flex flex-col slide-in-right"
-        style={{ background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }}
+        className={embedded ? 'flex-1 h-full flex flex-col' : 'flex-1 h-full flex flex-col slide-in-right'}
+        style={
+          embedded
+            ? undefined
+            : { background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }
+        }
       >
         {/* Header */}
         <div
@@ -340,6 +349,12 @@ export default function AccountScreen({
             <button
               type="button"
               onClick={() => {
+                // In embedded (modal) mode, root-level back closes the
+                // overlay rather than navigating away from the page.
+                if (embedded && onClose) {
+                  onClose();
+                  return;
+                }
                 if (typeof window !== 'undefined' && window.history.length > 1) {
                   router.back();
                 } else {
@@ -355,9 +370,20 @@ export default function AccountScreen({
           <span className="flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
             {activeSection ? activeSection.icon : <User size={22} strokeWidth={1.6} />}
           </span>
-          <h2 className="text-white font-medium text-base">
+          <h2 className="flex-1 text-white font-medium text-base">
             {activeSection ? activeSection.label : 'Account'}
           </h2>
+          {embedded && onClose && !section ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close account"
+              className="w-9 h-9 flex items-center justify-center flex-shrink-0 rounded-full can-hover"
+              style={{ opacity: 0.75, cursor: 'pointer' }}
+            >
+              <X size={20} color="var(--text-primary)" strokeWidth={1.8} />
+            </button>
+          ) : null}
         </div>
 
         <input
@@ -718,6 +744,18 @@ export default function AccountScreen({
 
         </div>
       </div>
+  );
+
+  if (embedded) {
+    return inner;
+  }
+  return (
+    <div
+      className="fixed inset-0 flex"
+      style={coverPhotoUrl ? { backgroundImage: `url(${coverPhotoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+    >
+      <Link href="/home" className="w-[7%] h-full" />
+      {inner}
     </div>
   );
 }

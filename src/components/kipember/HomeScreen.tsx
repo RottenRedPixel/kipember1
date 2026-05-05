@@ -27,6 +27,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberWikiOverlay from '@/components/kipember/KipemberWikiOverlay';
+import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import ContributorFlow from '@/components/kipember/workflows/ContributorFlow';
 import OwnerFlow from '@/components/kipember/workflows/OwnerFlow';
 import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
@@ -915,7 +916,7 @@ export default function HomeScreen({
       <AppHeader
         avatarUrl={avatarUrl}
         userInitials={initials(getUserDisplayName(profile) || profile?.email || 'ST')}
-        userModalHref={selectedEmberId ? `/account?imageId=${selectedEmberId}` : '/account'}
+        userModalHref={buildHomeHref({ m: 'account' })}
       />
 
       {!firstEmber && displayEmber && !emberModalExpanded ? (
@@ -1137,6 +1138,10 @@ export default function HomeScreen({
           closeHref={buildHomeHref({ m: null })}
           imageId={selectedEmberId}
         />
+      ) : null}
+
+      {modal === 'account' ? (
+        <KipemberAccountOverlay closeHref={buildHomeHref({ m: null })} />
       ) : null}
 
       {!firstEmber ? (
