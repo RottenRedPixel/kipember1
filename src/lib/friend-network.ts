@@ -6,7 +6,7 @@ export type FriendProfile = {
   id: string;
   firstName: string | null;
   lastName: string | null;
-  email: string;
+  email: string | null;
   phoneNumber: string | null;
 };
 

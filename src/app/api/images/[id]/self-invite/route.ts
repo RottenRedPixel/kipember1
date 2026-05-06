@@ -45,12 +45,12 @@ export async function POST(
       );
     }
 
-    const pool = await prisma.contributor.findUnique({
-      where: { id: emberContributor.contributorId },
+    const ownerUser = await prisma.user.findUnique({
+      where: { id: auth.user.id },
       select: { phoneNumber: true },
     });
 
-    if (!pool?.phoneNumber) {
+    if (!ownerUser?.phoneNumber) {
       return NextResponse.json(
         { error: 'Add a phone number to your profile first.' },
         { status: 400 }

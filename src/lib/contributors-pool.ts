@@ -2,27 +2,26 @@ import { prisma } from '@/lib/db';
 import { getUserDisplayName } from '@/lib/user-name';
 
 /**
- * One row per unique person across all the user's owned embers.
+ * One row per unique contributor (User) across all the owner's embers.
  *
- * Now backed directly by the owner-scoped Contributor pool (one row per
- * (owner, person)). Each pool entry has zero or more EmberContributor join
- * rows for the embers they're attached to.
+ * Backed directly by EmberContributor JOIN User — no intermediate pool
+ * table. Each row represents a user who has been added as a contributor
+ * to at least one of the owner's embers.
  *
- * When `currentEmberId` is provided, each row carries:
- * - `onThisEmber` — true if this person has an EmberContributor on that ember
+ * When `currentEmberId` is provided each row carries:
+ * - `onThisEmber` — true if this user has an EmberContributor on that ember
  * - `currentEmberContributorId` — the EmberContributor.id on that ember (or null)
  */
 export type UnifiedContributor = {
-  /** Stable dedupe key — also used as `sourceKey` when adding to an ember. */
+  /** Stable key — equals userId. Used as sourceKey when adding to an ember. */
   key: string;
-  /** DB id of the Contributor pool row — used for pool-level edits. */
-  poolId: string;
+  userId: string;
   name: string;
   email: string | null;
   phoneNumber: string | null;
   avatarColor: string | null;
   avatarUrl: string | null;
-  /** Embers across the user's pool that this person is on. */
+  /** Embers across the owner's embers that this person is on. */
   embers: { id: string; title: string; contributorId: string }[];
   emberCount: number;
   /** Photos across the owner's embers where this person is tagged with a face box. */
@@ -31,6 +30,7 @@ export type UnifiedContributor = {
   /** Only meaningful when currentEmberId is given. */
   onThisEmber: boolean;
   currentEmberContributorId: string | null;
+  inviteSent: boolean;
 };
 
 export type TaggedPhoto = {
@@ -46,110 +46,88 @@ export type TaggedPhoto = {
   heightPct: number;
 };
 
-function pickKey(c: { userId: string | null; email: string | null; phoneNumber: string | null; id: string }): string {
-  if (c.userId) return `u:${c.userId}`;
-  if (c.email) return `e:${c.email.toLowerCase()}`;
-  if (c.phoneNumber) return `p:${c.phoneNumber}`;
-  return `r:${c.id}`;
-}
-
-// Share-link contributors are placeholder rows with all 4 identity fields null.
-// They exist only to anchor the share token + guest chat session, and must
-// never surface in any contributor display or count.
-export const realContributorWhere = {
-  OR: [
-    { userId: { not: null } },
-    { email: { not: null } },
-    { phoneNumber: { not: null } },
-    { name: { not: null } },
-  ],
-};
+// In the new model every EmberContributor has a real User, so there are
+// no anonymous placeholder rows to filter out. This export is kept for
+// callers that still import it; it matches everything.
+export const realContributorWhere = {};
 
 export async function getUnifiedContributorsForUser(
-  userId: string,
+  ownerId: string,
   currentEmberId?: string | null
 ): Promise<UnifiedContributor[]> {
-  const rows = await prisma.contributor.findMany({
+  // Fetch all EmberContributors on embers owned by this user, excluding
+  // the owner themselves (they own, not contribute).
+  const rows = await prisma.emberContributor.findMany({
     where: {
-      ownerId: userId,
-      // Skip the owner's own pool row (the contributor record that points
-      // back at the owner's user account).
-      AND: [
-        { OR: [{ userId: null }, { NOT: { userId } }] },
-        realContributorWhere,
-      ],
+      image: { ownerId },
+      NOT: { userId: ownerId },
     },
     orderBy: { createdAt: 'asc' },
     select: {
       id: true,
-      name: true,
-      email: true,
-      phoneNumber: true,
-      avatarColor: true,
+      imageId: true,
+      inviteSent: true,
       userId: true,
-      user: { select: { firstName: true, lastName: true, email: true, avatarFilename: true } },
-      emberContributors: {
+      user: {
         select: {
           id: true,
-          imageId: true,
-          image: { select: { id: true, title: true, originalName: true } },
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
+          avatarFilename: true,
         },
       },
+      image: { select: { id: true, title: true, originalName: true } },
     },
   });
 
-  const byKey = new Map<string, UnifiedContributor>();
-  const poolIdToKey = new Map<string, string>();
-  const emberContribIdToKey = new Map<string, string>();
-  const userIdToKey = new Map<string, string>();
+  const byUserId = new Map<string, UnifiedContributor>();
+  const emberContribIdToUserId = new Map<string, string>();
   const emberTitles = new Map<string, string>();
 
   for (const r of rows) {
-    const key = pickKey(r);
-    poolIdToKey.set(r.id, key);
-    if (r.userId) userIdToKey.set(r.userId, key);
+    const userId = r.userId;
+    emberContribIdToUserId.set(r.id, userId);
 
-    let entry = byKey.get(key);
+    const title = r.image.title || r.image.originalName.replace(/\.[^.]+$/, '');
+    emberTitles.set(r.image.id, title);
+
+    let entry = byUserId.get(userId);
     if (!entry) {
-      const displayName =
-        getUserDisplayName(r.user) ?? r.name ?? r.user?.email ?? r.email ?? r.phoneNumber ?? 'Contributor';
+      const displayName = getUserDisplayName(r.user) ?? r.user.email ?? r.user.phoneNumber ?? 'Contributor';
       entry = {
-        key,
-        poolId: r.id,
+        key: userId,
+        userId,
         name: displayName,
-        email: r.email ?? r.user?.email ?? null,
-        phoneNumber: r.phoneNumber ?? null,
-        avatarColor: r.avatarColor ?? null,
-        avatarUrl: r.user?.avatarFilename ? `/api/uploads/${r.user.avatarFilename}` : null,
+        email: r.user.email ?? null,
+        phoneNumber: r.user.phoneNumber ?? null,
+        avatarColor: null,
+        avatarUrl: r.user.avatarFilename ? `/api/uploads/${r.user.avatarFilename}` : null,
         embers: [],
         emberCount: 0,
         taggedPhotos: [],
         taggedPhotoCount: 0,
         onThisEmber: false,
         currentEmberContributorId: null,
+        inviteSent: false,
       };
-      byKey.set(key, entry);
+      byUserId.set(userId, entry);
     }
 
-    for (const ec of r.emberContributors) {
-      const title = ec.image.title || ec.image.originalName.replace(/\.[^.]+$/, '');
-      emberTitles.set(ec.image.id, title);
-      emberContribIdToKey.set(ec.id, key);
-      const isOnCurrent = currentEmberId ? ec.imageId === currentEmberId : false;
-      entry.embers.push({ id: ec.image.id, title, contributorId: ec.id });
-      entry.emberCount += 1;
-      if (isOnCurrent) {
-        entry.onThisEmber = true;
-        entry.currentEmberContributorId = ec.id;
-      }
+    entry.embers.push({ id: r.image.id, title, contributorId: r.id });
+    entry.emberCount += 1;
+
+    if (currentEmberId && r.imageId === currentEmberId) {
+      entry.onThisEmber = true;
+      entry.currentEmberContributorId = r.id;
+      entry.inviteSent = r.inviteSent;
     }
   }
 
-  // Pull positioned tags that link (via emberContributorId or userId) to
-  // anyone in the pool, so each unified entry knows which face crops to
-  // display.
-  const allEmberContribIds = Array.from(emberContribIdToKey.keys());
-  const allUserIds = Array.from(userIdToKey.keys());
+  // Pull positioned tags linked to any of these contributors.
+  const allEmberContribIds = Array.from(emberContribIdToUserId.keys());
+  const allUserIds = Array.from(byUserId.keys());
 
   if (allEmberContribIds.length > 0 || allUserIds.length > 0) {
     const tagFilters: Array<Record<string, unknown>> = [];
@@ -158,7 +136,7 @@ export async function getUnifiedContributorsForUser(
 
     const tags = await prisma.imageTag.findMany({
       where: {
-        image: { ownerId: userId },
+        image: { ownerId },
         leftPct: { not: null },
         topPct: { not: null },
         widthPct: { not: null },
@@ -174,31 +152,24 @@ export async function getUnifiedContributorsForUser(
         topPct: true,
         widthPct: true,
         heightPct: true,
-        image: {
-          select: {
-            filename: true,
-            mediaType: true,
-            posterFilename: true,
-          },
-        },
+        image: { select: { filename: true, mediaType: true, posterFilename: true } },
       },
     });
 
-    const seenTagPerKey = new Map<string, Set<string>>();
+    const seenTagPerUser = new Map<string, Set<string>>();
     for (const t of tags) {
-      const key =
-        (t.emberContributorId && emberContribIdToKey.get(t.emberContributorId)) ||
-        (t.userId && userIdToKey.get(t.userId)) ||
+      const userId =
+        (t.emberContributorId && emberContribIdToUserId.get(t.emberContributorId)) ||
+        (t.userId && byUserId.has(t.userId) ? t.userId : null) ||
         null;
-      if (!key) continue;
-      const entry = byKey.get(key);
+      if (!userId) continue;
+      const entry = byUserId.get(userId);
       if (!entry) continue;
 
-      // Dedupe on (key, imageId) — at most one tag thumbnail per ember.
-      const seen = seenTagPerKey.get(key) ?? new Set<string>();
+      const seen = seenTagPerUser.get(userId) ?? new Set<string>();
       if (seen.has(t.imageId)) continue;
       seen.add(t.imageId);
-      seenTagPerKey.set(key, seen);
+      seenTagPerUser.set(userId, seen);
 
       entry.taggedPhotos.push({
         tagId: t.id,
@@ -216,8 +187,7 @@ export async function getUnifiedContributorsForUser(
     }
   }
 
-  // Sort: people on the current ember first (when scoped), then by name.
-  const list = Array.from(byKey.values());
+  const list = Array.from(byUserId.values());
   list.sort((a, b) => {
     if (currentEmberId) {
       if (a.onThisEmber !== b.onThisEmber) return a.onThisEmber ? -1 : 1;

@@ -287,7 +287,7 @@ export default function AccountContributorsAccordion({
               editForm.phone !== savedForm.phone ||
               editForm.email !== savedForm.email ||
               editForm.language !== savedForm.language);
-          const poolId = contributor.poolId;
+          const poolId = contributor.userId;
           return (
             <div
               key={contributor.key}

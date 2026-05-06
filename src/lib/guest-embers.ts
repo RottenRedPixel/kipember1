@@ -53,7 +53,7 @@ export async function claimGuestMemoriesForUser({
 }: {
   userId: string;
   displayName: string | null;
-  email: string;
+  email: string | null;
   phoneNumber: string | null;
 }) {
   const normalizedPhone = normalizeGuestPhone(phoneNumber);
@@ -107,20 +107,24 @@ export async function claimGuestMemoriesForUser({
       },
     });
 
-    // Reassign every contributor pool row that was linked to a guest user
-    // (either as the owner of the pool entry or as the user account it
-    // points at) to the now-claimed real user.
-    await tx.contributor.updateMany({
+    // Reassign every EmberContributor row that was linked to a guest user
+    // to the now-claimed real user.
+    await tx.emberContributor.updateMany({
       where: {
-        OR: [
-          { ownerId: { in: guestOwnerIds } },
-          { userId: { in: guestOwnerIds } },
-        ],
+        userId: { in: guestOwnerIds },
       },
       data: {
-        ownerId: userId,
         userId,
-        name: displayName,
+      },
+    });
+
+    // Update the guest user records themselves with the real identity data.
+    const nameParts = (displayName || '').trim().split(/\s+/);
+    await tx.user.updateMany({
+      where: { id: { in: guestOwnerIds } },
+      data: {
+        firstName: nameParts[0] || null,
+        lastName: nameParts.slice(1).join(' ') || null,
         email,
         phoneNumber: normalizedPhone,
       },

@@ -331,10 +331,11 @@ async function fetchImageForWiki(imageId: string) {
           emberContributor: {
             select: {
               id: true,
-              contributor: {
+              userId: true,
+              user: {
                 select: {
-                  id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                 },
               },
@@ -344,16 +345,13 @@ async function fetchImageForWiki(imageId: string) {
       },
       emberContributors: {
         include: {
-          contributor: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                },
-              },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phoneNumber: true,
             },
           },
           emberSession: {
@@ -414,18 +412,18 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   type EmberContributorWithRels = (typeof image.emberContributors)[number];
   const getContributorLabel = (ec: EmberContributorWithRels) =>
-    cleanInlineText(ec.contributor.name) ||
-    cleanInlineText(getUserDisplayName(ec.contributor.user)) ||
-    cleanInlineText(ec.contributor.email) ||
-    cleanInlineText(ec.contributor.phoneNumber) ||
+    cleanInlineText(getUserDisplayName(ec.user)) ||
+    cleanInlineText(ec.user?.email) ||
+    cleanInlineText(ec.user?.phoneNumber) ||
     'Contributor';
 
   const getContributorKind = (ec: EmberContributorWithRels) => {
-    if (ec.contributor.userId && ec.contributor.userId === image.ownerId) {
+    if (ec.userId === image.ownerId) {
       return 'owner' as const;
     }
 
-    if (ec.contributor.userId) {
+    // A real contributor has at least one identity field set
+    if (ec.user?.email || ec.user?.phoneNumber || ec.user?.firstName) {
       return 'contributor' as const;
     }
 
@@ -773,14 +771,14 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   const confirmedPeople = Array.from(
     new Set(
       image.tags
-        .map((tag) => getUserDisplayName(tag.user) || tag.emberContributor?.contributor.name || tag.label)
+        .map((tag) => getUserDisplayName(tag.user) || getUserDisplayName(tag.emberContributor?.user) || tag.label)
         .map((label) => label?.trim())
         .filter((label): label is string => Boolean(label))
     )
   );
   const confirmedTags = image.tags
     .map((tag) => ({
-      label: (getUserDisplayName(tag.user) || tag.emberContributor?.contributor.name || tag.label || '').trim(),
+      label: (getUserDisplayName(tag.user) || getUserDisplayName(tag.emberContributor?.user) || tag.label || '').trim(),
       userId: tag.userId,
       contributorId: tag.emberContributorId,
       leftPct: tag.leftPct,
@@ -953,7 +951,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
           .map((tag) => {
             const details: string[] = [];
             const contact = cleanInlineText(
-              tag.user?.email || tag.emberContributor?.contributor.email || tag.email
+              tag.user?.email || tag.emberContributor?.user?.email || tag.email
             );
             if (contact) {
               details.push(contact);

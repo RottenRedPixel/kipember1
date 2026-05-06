@@ -14,7 +14,7 @@ type AccountUser = {
   id: string;
   firstName: string | null;
   lastName: string | null;
-  email: string;
+  email: string | null;
   phoneNumber: string | null;
   avatarUrl: string | null;
   createdAt: string | null;

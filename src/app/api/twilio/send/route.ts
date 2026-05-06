@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         where: {
           imageId,
           inviteSent: false,
-          contributor: {
+          user: {
             phoneNumber: {
               not: null,
             },

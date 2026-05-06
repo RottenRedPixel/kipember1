@@ -23,7 +23,6 @@ export async function POST(
     const emberContributor = await prisma.emberContributor.findUnique({
       where: { token },
       include: {
-        contributor: true,
         image: {
           include: {
             owner: {
@@ -41,16 +40,10 @@ export async function POST(
       return NextResponse.json({ error: 'Guest memory not found' }, { status: 404 });
     }
 
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { id: emberContributor.image.owner.id },
-        data: { phoneNumber: normalizedPhone },
-      }),
-      prisma.contributor.update({
-        where: { id: emberContributor.contributor.id },
-        data: { phoneNumber: normalizedPhone },
-      }),
-    ]);
+    await prisma.user.update({
+      where: { id: emberContributor.image.owner.id },
+      data: { phoneNumber: normalizedPhone },
+    });
 
     const result = await startVoiceCallForContributor({
       emberContributorId: emberContributor.id,

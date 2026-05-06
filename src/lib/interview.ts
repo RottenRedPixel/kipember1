@@ -46,15 +46,18 @@ function getNextStep(currentStep: InterviewStep): InterviewStep | null {
 export async function startConversation(emberContributorId: string): Promise<string> {
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { id: emberContributorId },
-    include: { contributor: true, image: true },
+    include: {
+      user: { select: { id: true, phoneNumber: true } },
+      image: true,
+    },
   });
 
   if (!emberContributor) throw new Error('Contributor not found');
-  if (!emberContributor.contributor.phoneNumber) throw new Error('Contributor does not have a phone number');
+  if (!emberContributor.user?.phoneNumber) throw new Error('Contributor does not have a phone number');
 
   const participantInput = {
     id: emberContributor.id,
-    userId: emberContributor.contributor.userId,
+    userId: emberContributor.userId,
     imageId: emberContributor.imageId,
     image: { ownerId: emberContributor.image.ownerId },
   };
@@ -62,7 +65,7 @@ export async function startConversation(emberContributorId: string): Promise<str
   const session = await ensureEmberSession({
     ...identity,
     emberContributorId,
-    userId: identity.participantType === 'owner' ? emberContributor.contributor.userId : null,
+    userId: identity.participantType === 'owner' ? emberContributor.userId : null,
     status: 'pending',
     currentStep: 'greeting',
   });
@@ -73,9 +76,9 @@ export async function startConversation(emberContributorId: string): Promise<str
     data: { sessionId: session.id, role: 'assistant', content: greeting, source: 'sms' },
   });
 
-  const formattedPhone = emberContributor.contributor.phoneNumber.startsWith('+')
-    ? emberContributor.contributor.phoneNumber
-    : `+1${emberContributor.contributor.phoneNumber}`;
+  const formattedPhone = emberContributor.user.phoneNumber.startsWith('+')
+    ? emberContributor.user.phoneNumber
+    : `+1${emberContributor.user.phoneNumber}`;
 
   await sendSMS(formattedPhone, greeting);
   return greeting;
@@ -91,11 +94,11 @@ export async function handleIncomingMessage(
   // ember attachment as the conversation target.
   const emberContributor = await prisma.emberContributor.findFirst({
     where: {
-      contributor: { phoneNumber: { contains: normalizedPhone } },
+      user: { phoneNumber: { contains: normalizedPhone } },
     },
     orderBy: { createdAt: 'desc' },
     include: {
-      contributor: true,
+      user: { select: { id: true, phoneNumber: true } },
       image: true,
     },
   });
@@ -106,7 +109,7 @@ export async function handleIncomingMessage(
 
   const participantInput = {
     id: emberContributor.id,
-    userId: emberContributor.contributor.userId,
+    userId: emberContributor.userId,
     imageId: emberContributor.imageId,
     image: { ownerId: emberContributor.image.ownerId },
   };
@@ -122,7 +125,7 @@ export async function handleIncomingMessage(
     const created = await ensureEmberSession({
       ...identity,
       emberContributorId: emberContributor.id,
-      userId: identity.participantType === 'owner' ? emberContributor.contributor.userId : null,
+      userId: identity.participantType === 'owner' ? emberContributor.userId : null,
       status: 'pending',
       currentStep: 'greeting',
     });

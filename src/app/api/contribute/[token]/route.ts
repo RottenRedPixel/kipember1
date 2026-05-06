@@ -27,7 +27,15 @@ export async function GET(
     const { token } = await params;
 
     const tokenInclude = {
-      contributor: true,
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
+        },
+      },
       image: {
         include: {
           owner: {
@@ -108,8 +116,8 @@ export async function GET(
       {
         contributor: {
           id: refreshedContributor.id,
-          name: refreshedContributor.contributor.name,
-          phoneNumber: refreshedContributor.contributor.phoneNumber,
+          name: [refreshedContributor.user?.firstName, refreshedContributor.user?.lastName].filter(Boolean).join(' ') || refreshedContributor.user?.email || refreshedContributor.user?.phoneNumber || null,
+          phoneNumber: refreshedContributor.user?.phoneNumber ?? null,
         },
         image: {
           id: refreshedContributor.image.id,
@@ -162,12 +170,13 @@ export async function POST(
       select: {
         id: true,
         imageId: true,
-        contributor: {
+        userId: true,
+        user: {
           select: {
-            name: true,
+            firstName: true,
+            lastName: true,
             phoneNumber: true,
             email: true,
-            userId: true,
           },
         },
       },
@@ -180,17 +189,17 @@ export async function POST(
     const contributor = {
       id: emberContributor.id,
       imageId: emberContributor.imageId,
-      name: emberContributor.contributor.name,
-      phoneNumber: emberContributor.contributor.phoneNumber,
-      email: emberContributor.contributor.email,
-      userId: emberContributor.contributor.userId,
+      name: [emberContributor.user?.firstName, emberContributor.user?.lastName].filter(Boolean).join(' ') || null,
+      phoneNumber: emberContributor.user?.phoneNumber ?? null,
+      email: emberContributor.user?.email ?? null,
+      userId: emberContributor.userId,
     };
 
+    // A share-link placeholder has an anonymous User with all identity fields null.
     const isGuestShareLink =
       !contributor.name &&
       !contributor.phoneNumber &&
-      !contributor.email &&
-      !contributor.userId;
+      !contributor.email;
     const chatRole = isGuestShareLink ? ('guest' as const) : ('contributor' as const);
 
     // Each guest browser gets its own session keyed by a per-browser cookie,

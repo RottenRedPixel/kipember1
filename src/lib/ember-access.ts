@@ -78,7 +78,7 @@ export async function getEmberAccessType(
       ownerId: true,
       shareToNetwork: true,
       emberContributors: {
-        where: { contributor: { userId } },
+        where: { userId },
         select: { id: true },
         take: 1,
       },
@@ -131,17 +131,13 @@ export async function ensureOwnedContributorAccess(userId: string, emberContribu
           ownerId: true,
         },
       },
-      contributor: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phoneNumber: true,
-            },
-          },
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
         },
       },
     },
@@ -164,17 +160,13 @@ export async function ensureContributorRemovalAccess(userId: string, emberContri
           ownerId: true,
         },
       },
-      contributor: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phoneNumber: true,
-            },
-          },
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
         },
       },
     },
@@ -185,7 +177,7 @@ export async function ensureContributorRemovalAccess(userId: string, emberContri
   }
 
   const canManageAsOwner = emberContributor.image.ownerId === userId;
-  const canRemoveSelf = emberContributor.contributor.userId === userId;
+  const canRemoveSelf = emberContributor.userId === userId;
 
   if (!canManageAsOwner && !canRemoveSelf) {
     return null;

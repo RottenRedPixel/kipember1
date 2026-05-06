@@ -21,7 +21,7 @@ type Profile = {
   id: string;
   firstName: string | null;
   lastName: string | null;
-  email: string;
+  email: string | null;
   phoneNumber: string | null;
   avatarUrl?: string | null;
 };
@@ -109,7 +109,7 @@ export default function UserActionScreen({
           setForm({
             firstName: payload.user.firstName || '',
             lastName: payload.user.lastName || '',
-            email: payload.user.email,
+            email: payload.user.email || '',
             phoneNumber: payload.user.phoneNumber || '',
           });
           setAvatarUrl(payload.user.avatarUrl ?? null);

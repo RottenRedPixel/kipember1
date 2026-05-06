@@ -44,9 +44,12 @@ type InterviewContextImage = {
       lastName: string | null;
       email: string;
     } | null;
-    contributor: {
-      name: string | null;
-      email: string | null;
+    emberContributor: {
+      user: {
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+      } | null;
     } | null;
   }>;
 };
@@ -75,7 +78,7 @@ export function buildInterviewKnownContextFromImage(
   const confirmedPeople = Array.from(
     new Set(
       image.tags
-        .map((tag) => getUserDisplayName(tag.user) || tag.contributor?.name || tag.label)
+        .map((tag) => getUserDisplayName(tag.user) || getUserDisplayName(tag.emberContributor?.user) || tag.label)
         .map((value) => value?.trim())
         .filter((value): value is string => Boolean(value))
     )

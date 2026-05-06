@@ -52,21 +52,14 @@ export async function loadEmberSetupContext(imageId: string) {
           emberContributor: {
             select: {
               id: true,
-              contributor: {
+              userId: true,
+              user: {
                 select: {
                   id: true,
-                  userId: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                   phoneNumber: true,
-                  user: {
-                    select: {
-                      id: true,
-                      firstName: true,
-                      lastName: true,
-                      email: true,
-                    },
-                  },
                 },
               },
             },
@@ -97,9 +90,10 @@ export async function loadEmberSetupContext(imageId: string) {
           },
           emberContributor: {
             select: {
-              contributor: {
+              user: {
                 select: {
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                 },
               },
@@ -110,16 +104,13 @@ export async function loadEmberSetupContext(imageId: string) {
       emberContributors: {
         orderBy: { createdAt: 'asc' },
         include: {
-          contributor: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                },
-              },
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phoneNumber: true,
             },
           },
           emberSession: {
@@ -181,7 +172,7 @@ export async function loadEmberSetupContext(imageId: string) {
   const confirmedPeople = Array.from(
     new Set(
       image.tags
-        .map((tag) => getUserDisplayName(tag.user) || tag.emberContributor?.contributor.name || tag.label)
+        .map((tag) => getUserDisplayName(tag.user) || getUserDisplayName(tag.emberContributor?.user) || tag.label)
         .map((label) => label?.trim())
         .filter((label): label is string => Boolean(label))
     )
@@ -194,12 +185,11 @@ export async function loadEmberSetupContext(imageId: string) {
     ].map((message) => ({
       id: message.id,
       contributorId: ec.id,
-      contributorUserId: ec.contributor.user?.id || ec.contributor.userId || null,
+      contributorUserId: ec.user?.id ?? ec.userId ?? null,
       contributorName:
-        ec.contributor.name ||
-        getUserDisplayName(ec.contributor.user) ||
-        ec.contributor.email ||
-        ec.contributor.phoneNumber ||
+        getUserDisplayName(ec.user) ||
+        ec.user?.email ||
+        ec.user?.phoneNumber ||
         'Contributor',
       questionType: message.questionType!,
       question: message.question || '',
@@ -214,12 +204,11 @@ export async function loadEmberSetupContext(imageId: string) {
       .filter((summary): summary is string => Boolean(summary))
       .map((summary) => ({
         contributorId: ec.id,
-        contributorUserId: ec.contributor.user?.id || ec.contributor.userId || null,
+        contributorUserId: ec.user?.id ?? ec.userId ?? null,
         contributorName:
-          ec.contributor.name ||
-          getUserDisplayName(ec.contributor.user) ||
-          ec.contributor.email ||
-          ec.contributor.phoneNumber ||
+          getUserDisplayName(ec.user) ||
+          ec.user?.email ||
+          ec.user?.phoneNumber ||
           'Contributor',
         summary,
       }))
@@ -229,12 +218,11 @@ export async function loadEmberSetupContext(imageId: string) {
     voiceCallId: clip.voiceCallId,
     contributorId: clip.emberContributorId,
     contributorUserId:
-      clip.emberContributor.contributor.user?.id || clip.emberContributor.contributor.userId || null,
+      clip.emberContributor.user?.id || clip.emberContributor.userId || null,
     contributorName:
-      clip.emberContributor.contributor.name ||
-      getUserDisplayName(clip.emberContributor.contributor.user) ||
-      clip.emberContributor.contributor.email ||
-      clip.emberContributor.contributor.phoneNumber ||
+      getUserDisplayName(clip.emberContributor.user) ||
+      clip.emberContributor.user?.email ||
+      clip.emberContributor.user?.phoneNumber ||
       'Contributor',
     title: clip.title,
     quote: clip.quote,

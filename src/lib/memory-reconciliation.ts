@@ -402,10 +402,12 @@ export async function reconcileEmberMessage(messageId: string) {
           emberContributor: {
             select: {
               id: true,
-              contributor: {
+              userId: true,
+              user: {
                 select: {
                   id: true,
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                   phoneNumber: true,
                 },
@@ -435,14 +437,14 @@ export async function reconcileEmberMessage(messageId: string) {
     };
   }
 
-  const sessionContributor = message.session.emberContributor?.contributor ?? null;
+  const ecUser = message.session.emberContributor?.user ?? null;
   const source: ReconciliationClaimSource = {
     sourceLabel:
       getUserDisplayName(message.session.user) ||
-      sessionContributor?.name ||
+      getUserDisplayName(ecUser) ||
       message.session.user?.email ||
-      sessionContributor?.email ||
-      sessionContributor?.phoneNumber ||
+      ecUser?.email ||
+      ecUser?.phoneNumber ||
       'Contributor',
     emberContributorId: message.session.emberContributorId,
     userId: message.session.userId,
@@ -618,7 +620,7 @@ async function runClassificationFromContext({
         select: {
           label: true,
           user: { select: { firstName: true, lastName: true } },
-          emberContributor: { select: { contributor: { select: { name: true } } } },
+          emberContributor: { select: { user: { select: { firstName: true, lastName: true, email: true } } } },
         },
       },
     },
@@ -631,7 +633,7 @@ async function runClassificationFromContext({
   const taggedPeople = Array.from(
     new Set(
       image.tags
-        .map((t) => (getUserDisplayName(t.user) || t.emberContributor?.contributor.name || t.label || '').trim())
+        .map((t) => (getUserDisplayName(t.user) || getUserDisplayName(t.emberContributor?.user) || t.label || '').trim())
         .filter(Boolean)
     )
   ).join(', ');
@@ -709,8 +711,9 @@ async function runClassificationExtractor({
           emberContributor: {
             select: {
               id: true,
-              contributor: {
-                select: { id: true, name: true, email: true, phoneNumber: true },
+              userId: true,
+              user: {
+                select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
               },
             },
           },
@@ -729,13 +732,13 @@ async function runClassificationExtractor({
     return { claimsCreated: 0 };
   }
 
-  const sessionContributor = message.session.emberContributor?.contributor ?? null;
+  const ecUser = message.session.emberContributor?.user ?? null;
   const sourceLabel =
     getUserDisplayName(message.session.user) ||
-    sessionContributor?.name ||
+    getUserDisplayName(ecUser) ||
     message.session.user?.email ||
-    sessionContributor?.email ||
-    sessionContributor?.phoneNumber ||
+    ecUser?.email ||
+    ecUser?.phoneNumber ||
     'Contributor';
 
   return runClassificationFromContext({

@@ -8,6 +8,7 @@ import {
 } from '@/lib/ember-sessions';
 import { loadEmberContext } from '@/lib/ember-context';
 import { getEmberTitle } from '@/lib/ember-title';
+import { getUserDisplayName } from '@/lib/user-name';
 import { createRetellPhoneCall, createRetellWebCall, retrieveRetellCall } from '@/lib/retell';
 import {
   extractImportantVoiceCallClips,
@@ -181,8 +182,8 @@ type CallSessionContributor = {
   /** EmberContributor.id (per-ember row). */
   id: string;
   imageId: string;
-  /** Pool contributor's userId (the User account this contributor maps to). */
-  userId: string | null;
+  /** The User account this contributor maps to. */
+  userId: string;
   image: {
     ownerId: string;
   };
@@ -504,7 +505,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     include: {
       emberContributor: {
         include: {
-          contributor: true,
+          user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
           image: true,
         },
       },
@@ -519,7 +520,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     contributor: {
       id: voiceCall.emberContributorId,
       imageId: voiceCall.emberContributor.imageId,
-      userId: voiceCall.emberContributor.contributor.userId,
+      userId: voiceCall.emberContributor.userId,
       image: {
         ownerId: voiceCall.emberContributor.image.ownerId,
       },
@@ -529,9 +530,9 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
 
   const extracted = await extractInterviewFromTranscript(voiceCall.transcript);
   const contributorLabel =
-    voiceCall.emberContributor.contributor.name?.trim() ||
-    voiceCall.emberContributor.contributor.email?.trim() ||
-    voiceCall.emberContributor.contributor.phoneNumber?.trim() ||
+    getUserDisplayName(voiceCall.emberContributor.user)?.trim() ||
+    voiceCall.emberContributor.user?.email?.trim() ||
+    voiceCall.emberContributor.user?.phoneNumber?.trim() ||
     'Contributor';
   const transcriptSegments = parseVoiceCallTranscriptSegments({
     transcript: voiceCall.transcript,
@@ -582,7 +583,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
         imageId: voiceCall.emberContributor.imageId,
         sessionId: session.id,
         emberContributorId: voiceCall.emberContributorId,
-        userId: voiceCall.emberContributor.contributor.userId,
+        userId: voiceCall.emberContributor.userId,
         emberMessageId: null,
         source: 'voice_call',
         questionType: 'context',
@@ -690,7 +691,7 @@ async function prepareVoiceCallContext(emberContributorId: string) {
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { id: emberContributorId },
     include: {
-      contributor: true,
+      user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
       image: true,
       voiceCalls: {
         orderBy: { createdAt: 'desc' },
@@ -703,9 +704,9 @@ async function prepareVoiceCallContext(emberContributorId: string) {
     throw new Error('Contributor not found');
   }
 
-  const { contributor, image } = emberContributor;
+  const { user, image } = emberContributor;
 
-  if (!contributor.phoneNumber) {
+  if (!user?.phoneNumber) {
     throw new Error('Contributor does not have a phone number for voice calls');
   }
 
@@ -722,7 +723,7 @@ async function prepareVoiceCallContext(emberContributorId: string) {
     contributor: {
       id: emberContributor.id,
       imageId: emberContributor.imageId,
-      userId: contributor.userId,
+      userId: emberContributor.userId,
       image: {
         ownerId: image.ownerId,
       },
@@ -737,8 +738,10 @@ async function prepareVoiceCallContext(emberContributorId: string) {
     loadEmberContext(emberContributor.imageId),
   ]);
 
+  const contributorName =
+    getUserDisplayName(user)?.trim() || user?.email?.trim() || user?.phoneNumber?.trim() || 'Contributor';
   const dynamicVariables = pickDynamicVariables({
-    contributor_name: contributor.name,
+    contributor_name: contributorName,
     image_title: getEmberTitle(image),
     image_description: image.description,
     prior_interview_count:
@@ -759,7 +762,7 @@ async function prepareVoiceCallContext(emberContributorId: string) {
 
   return {
     emberContributor,
-    contributor,
+    user,
     image,
     session,
     dynamicVariables,
@@ -775,15 +778,15 @@ export async function startVoiceCallForContributor({
   initiatedBy: 'owner' | 'contributor';
   useBetaAgent?: boolean;
 }) {
-  const { emberContributor, contributor, session, dynamicVariables } =
+  const { emberContributor, user, session, dynamicVariables } =
     await prepareVoiceCallContext(emberContributorId);
 
-  if (!contributor.phoneNumber) {
+  if (!user?.phoneNumber) {
     throw new Error('Contributor does not have a phone number for voice calls');
   }
 
   const call = await createRetellPhoneCall({
-    toNumber: contributor.phoneNumber,
+    toNumber: user.phoneNumber,
     useBetaAgent,
     metadata: {
       emberContributorId: emberContributor.id,

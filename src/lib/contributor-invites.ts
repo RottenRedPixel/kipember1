@@ -33,9 +33,10 @@ export async function sendContributorSmsInvite(
     select: {
       id: true,
       token: true,
-      contributor: {
+      user: {
         select: {
-          name: true,
+          firstName: true,
+          lastName: true,
           phoneNumber: true,
         },
       },
@@ -56,7 +57,7 @@ export async function sendContributorSmsInvite(
     throw new Error('Contributor not found');
   }
 
-  if (!emberContributor.contributor.phoneNumber) {
+  if (!emberContributor.user.phoneNumber) {
     throw new Error('Contributor does not have a phone number for SMS invites');
   }
 
@@ -67,7 +68,7 @@ export async function sendContributorSmsInvite(
   const emberMessage =
     'Ember is a memory app that helps preserve moments through guided conversations.';
   const combinedMessage = `${intro} ${linkMessage} ${emberMessage}`;
-  const phone = formatPhoneNumber(emberContributor.contributor.phoneNumber);
+  const phone = formatPhoneNumber(emberContributor.user.phoneNumber);
 
   try {
     if (combinedMessage.length <= 160) {

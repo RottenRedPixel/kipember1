@@ -56,7 +56,6 @@ async function ensureContributorSession(emberContributorId: string, imageId: str
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { id: emberContributorId },
     include: {
-      contributor: true,
       image: {
         select: {
           ownerId: true,
@@ -74,7 +73,7 @@ async function ensureContributorSession(emberContributorId: string, imageId: str
 
   const participantInput = {
     id: emberContributor.id,
-    userId: emberContributor.contributor.userId,
+    userId: emberContributor.userId,
     imageId: emberContributor.imageId,
     image: { ownerId: emberContributor.image.ownerId },
   };
@@ -83,7 +82,7 @@ async function ensureContributorSession(emberContributorId: string, imageId: str
   return ensureEmberSession({
     ...identity,
     emberContributorId,
-    userId: identity.participantType === 'owner' ? emberContributor.contributor.userId : null,
+    userId: identity.participantType === 'owner' ? emberContributor.userId : null,
     status: 'active',
     currentStep: 'followup',
   });

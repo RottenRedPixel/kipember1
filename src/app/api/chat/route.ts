@@ -28,7 +28,7 @@ async function resolveUserChatParticipant({
     select: {
       ownerId: true,
       emberContributors: {
-        where: { contributor: { userId } },
+        where: { userId },
         select: { id: true },
         take: 1,
       },

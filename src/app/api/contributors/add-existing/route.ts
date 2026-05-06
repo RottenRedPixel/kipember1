@@ -7,13 +7,9 @@ import { prisma } from '@/lib/db';
  *
  * Body: { imageId: string, sourceKey: string }
  *
- * Adds a person from the owner's existing contributor pool to a different
- * ember they own. The `sourceKey` is the dedupe key produced by
- * `getUnifiedContributorsForUser` (e.g. "u:cmofXX", "e:foo@bar.com", "p:+15551212").
- *
- * Resolves the source identity from any prior Contributor row that matches
- * the key and clones it onto the target image. Idempotent: if a row already
- * exists on `imageId` with matching identity, the existing one is returned.
+ * Adds a person from the owner's contributor pool to another ember they own.
+ * `sourceKey` is the UnifiedContributor.key, which equals the User.id.
+ * Idempotent: returns ok if the row already exists.
  */
 export async function POST(request: NextRequest) {
   const auth = await requireApiUser();
@@ -32,55 +28,20 @@ export async function POST(request: NextRequest) {
   }
 
   // Confirm the user owns the target image.
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
-    select: { ownerId: true },
-  });
+  const image = await prisma.image.findUnique({ where: { id: imageId }, select: { ownerId: true } });
   if (!image || image.ownerId !== auth.user.id) {
     return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
   }
 
-  // Decode the dedupe key to a lookup filter scoped to this owner's pool.
-  const colonIdx = sourceKey.indexOf(':');
-  const kind = colonIdx === -1 ? '' : sourceKey.slice(0, colonIdx);
-  const value = colonIdx === -1 ? '' : sourceKey.slice(colonIdx + 1);
-
-  let sourceWhere;
-  if (kind === 'u' && value) {
-    sourceWhere = { ownerId: auth.user.id, userId: value };
-  } else if (kind === 'e' && value) {
-    sourceWhere = { ownerId: auth.user.id, email: { equals: value, mode: 'insensitive' as const } };
-  } else if (kind === 'p' && value) {
-    sourceWhere = { ownerId: auth.user.id, phoneNumber: value };
-  } else if (kind === 'r' && value) {
-    sourceWhere = { ownerId: auth.user.id, id: value };
-  } else {
-    return NextResponse.json({ error: 'Invalid sourceKey' }, { status: 400 });
+  // sourceKey === userId in the new model.
+  const targetUserId = sourceKey;
+  const user = await prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true } });
+  if (!user) {
+    return NextResponse.json({ error: 'Contributor not found' }, { status: 404 });
   }
 
-  const source = await prisma.contributor.findFirst({
-    where: sourceWhere,
-    orderBy: { createdAt: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      phoneNumber: true,
-      userId: true,
-    },
-  });
-  if (!source) {
-    return NextResponse.json({ error: 'Source contributor not found in your pool' }, { status: 404 });
-  }
-
-  // Idempotent: if an EmberContributor row already exists for (pool, image), return it.
   const existing = await prisma.emberContributor.findUnique({
-    where: {
-      contributorId_imageId: {
-        contributorId: source.id,
-        imageId,
-      },
-    },
+    where: { userId_imageId: { userId: targetUserId, imageId } },
     select: { id: true },
   });
   if (existing) {
@@ -88,11 +49,7 @@ export async function POST(request: NextRequest) {
   }
 
   const created = await prisma.emberContributor.create({
-    data: {
-      contributorId: source.id,
-      imageId,
-      // inviteSent stays false — they haven't been re-invited specifically for this ember yet.
-    },
+    data: { userId: targetUserId, imageId },
     select: { id: true },
   });
 

@@ -16,7 +16,7 @@ type Section = 'profile' | 'contributors' | 'preferences' | 'password' | 'settin
 type AccountScreenProps = {
   firstName: string | null;
   lastName: string | null;
-  email: string;
+  email: string | null;
   phoneNumber: string | null;
   avatarUrl: string | null;
   userInitials: string;
@@ -490,7 +490,7 @@ export default function AccountScreen({
               <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <InputRow placeholder="First name" value={firstName} onChange={setFirstName} />
                 <InputRow placeholder="Last name" value={lastName} onChange={setLastName} border />
-                <InputRow placeholder="Email address" value={form.email} type="email" onChange={(v) => setForm((f) => ({ ...f, email: v }))} border />
+                <InputRow placeholder="Email address" value={form.email ?? ''} type="email" onChange={(v) => setForm((f) => ({ ...f, email: v }))} border />
                 <InputRow placeholder="Phone number" value={form.phoneNumber} type="tel" onChange={(v) => setForm((f) => ({ ...f, phoneNumber: v }))} border />
               </div>
               <div className="flex justify-between items-center px-1">

@@ -12,7 +12,7 @@ export default async function LandingPage() {
       style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
     >
       <AppHeader />
-      <div className="flex w-full max-w-xl flex-col gap-8 pt-6 pb-16 fade-in">
+      <div className="flex w-full max-w-xl flex-col gap-8 pt-6 pb-16">
         <div className="flex flex-col gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-white">
             This is ember

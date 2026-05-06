@@ -82,12 +82,13 @@ export async function POST(
         },
         select: {
           id: true,
-          contributor: {
+          userId: true,
+          user: {
             select: {
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
               phoneNumber: true,
-              userId: true,
             },
           },
         },
@@ -98,10 +99,11 @@ export async function POST(
       }
 
       linkedContributorId = ec.id;
-      linkedUserId = linkedUserId || ec.contributor.userId || null;
-      tagLabel = ec.contributor.name || ec.contributor.email || tagLabel;
-      tagEmail = ec.contributor.email || tagEmail;
-      tagPhoneNumber = normalizePhone(ec.contributor.phoneNumber) || tagPhoneNumber;
+      linkedUserId = linkedUserId || ec.userId || null;
+      const ecDisplayName = [ec.user?.firstName, ec.user?.lastName].filter(Boolean).join(' ') || null;
+      tagLabel = ecDisplayName || ec.user?.email || tagLabel;
+      tagEmail = ec.user?.email || tagEmail;
+      tagPhoneNumber = normalizePhone(ec.user?.phoneNumber) || tagPhoneNumber;
     }
 
     if (!tagLabel) {
@@ -136,10 +138,11 @@ export async function POST(
           select: {
             id: true,
             inviteSent: true,
-            contributor: {
+            userId: true,
+            user: {
               select: {
-                id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 phoneNumber: true,
               },

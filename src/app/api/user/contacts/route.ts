@@ -8,28 +8,25 @@ export async function GET() {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // List one EmberContributor row per ember (per attachment), then dedupe
-  // across embers for display. The pool entry is reached via .contributor.
+  // across embers for display. Contributors are fetched via the direct User relation.
   const emberContributors = await prisma.emberContributor.findMany({
     where: {
-      contributor: {
-        ownerId: auth.user.id,
-        OR: [
-          { userId: null },
-          { NOT: { userId: auth.user.id } },
-        ],
-      },
+      image: { ownerId: auth.user.id },
+      // Exclude the owner's own contributor rows
+      NOT: { userId: auth.user.id },
     },
     select: {
       id: true,
+      userId: true,
       inviteSent: true,
-      contributor: {
+      user: {
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           phoneNumber: true,
           email: true,
-          userId: true,
-          user: { select: { firstName: true, lastName: true, avatarFilename: true } },
+          avatarFilename: true,
         },
       },
       image: { select: { id: true, title: true, originalName: true } },
@@ -46,15 +43,11 @@ export async function GET() {
   type Row = (typeof emberContributors)[number];
   type Aggregated = Row & { emberTitles: string[] };
 
-  // Deduplicate by pool contributor identity (userId | phone | email | row id).
+  // Deduplicate by userId (or fall back to EC id for anonymous users).
   const seen = new Map<string, Aggregated>();
 
   for (const c of emberContributors) {
-    const key =
-      c.contributor.userId ??
-      c.contributor.phoneNumber ??
-      c.contributor.email ??
-      c.contributor.id;
+    const key = c.userId ?? c.id;
     const emberTitle = c.image.title || c.image.originalName.replace(/\.[^.]+$/, '');
     if (seen.has(key)) {
       seen.get(key)!.emberTitles.push(emberTitle);
@@ -66,7 +59,8 @@ export async function GET() {
   type ContactStatus = 'contributed' | 'joined' | 'called' | 'sms_sent' | 'invited';
 
   function getStatus(c: Row): ContactStatus {
-    const hasAccount = Boolean(c.contributor.userId);
+    // A real user has identity fields set; anonymous share-link placeholders have all null.
+    const hasAccount = Boolean(c.user?.email || c.user?.phoneNumber || c.user?.firstName);
     const hasContributed = hasAccount && (
       (c.voiceCalls?.length ?? 0) > 0 ||
       (c.emberSession?.messages?.length ?? 0) > 0
@@ -90,10 +84,10 @@ export async function GET() {
     .map((c) => ({
       id: c.id,
       emberId: c.image.id,
-      name: getUserDisplayName(c.contributor.user) || c.contributor.name,
-      phoneNumber: c.contributor.phoneNumber,
-      email: c.contributor.email,
-      avatarFilename: c.contributor.user?.avatarFilename ?? null,
+      name: getUserDisplayName(c.user) || null,
+      phoneNumber: c.user?.phoneNumber ?? null,
+      email: c.user?.email ?? null,
+      avatarFilename: c.user?.avatarFilename ?? null,
       emberTitles: c.emberTitles,
       status: getStatus(c),
     }))

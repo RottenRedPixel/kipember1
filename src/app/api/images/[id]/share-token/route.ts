@@ -20,18 +20,16 @@ export async function POST(
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    // Find or create the anonymous share-link pool entry for this owner
-    // (identified by having no userId, phoneNumber, or email — share-link
-    // placeholders are owned by the image owner). The same anonymous pool
-    // entry is reused per ember via its EmberContributor join row.
+    // Look for an existing anonymous (share-link) EC on this ember:
+    // an EC whose linked User has all identity fields null.
     const existingEmberContributor = await prisma.emberContributor.findFirst({
       where: {
         imageId,
-        contributor: {
-          ownerId: image.ownerId,
-          userId: null,
-          phoneNumber: null,
+        user: {
+          firstName: null,
+          lastName: null,
           email: null,
+          phoneNumber: null,
         },
       },
       select: { token: true },
@@ -41,29 +39,24 @@ export async function POST(
       return NextResponse.json({ token: existingEmberContributor.token });
     }
 
-    // No share-link EC for this ember yet. Find or create the anonymous pool
-    // entry first, then attach.
-    let anonymousPool = await prisma.contributor.findFirst({
-      where: {
-        ownerId: image.ownerId,
-        userId: null,
-        phoneNumber: null,
+    // No share-link EC for this ember yet. Create an anonymous User shell
+    // (all identity fields null) and attach it as an EmberContributor.
+    const anonymousUser = await prisma.user.create({
+      data: {
+        // All identity fields intentionally null — marks this as a
+        // share-link placeholder, not a real person.
+        firstName: null,
+        lastName: null,
         email: null,
-        name: null,
+        phoneNumber: null,
       },
       select: { id: true },
     });
-    if (!anonymousPool) {
-      anonymousPool = await prisma.contributor.create({
-        data: { ownerId: image.ownerId },
-        select: { id: true },
-      });
-    }
 
     const created = await prisma.emberContributor.create({
       data: {
         imageId,
-        contributorId: anonymousPool.id,
+        userId: anonymousUser.id,
         tokenCreatedAt: new Date(),
         tokenCreatedByUserId: auth.user.id,
       },

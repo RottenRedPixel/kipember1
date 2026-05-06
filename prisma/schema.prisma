@@ -26,6 +26,7 @@ model Image {
   ownerId      String
   shareToNetwork Boolean     @default(false)
   keepPrivate    Boolean     @default(false)
+  noContributors Boolean     @default(false)
   cropX          Float?
   cropY          Float?
   cropWidth      Float?
@@ -93,40 +94,14 @@ model ImageAnalysis {
   updatedAt         DateTime @updatedAt
 }
 
-// A person in an owner's contributor pool. One row per (owner, person) —
-// the same person invited to two embers is still ONE row here, with two
-// EmberContributor join rows for the per-ember relationships.
-model Contributor {
-  id           String        @id @default(cuid())
-  ownerId      String
-  owner        User          @relation("OwnedContributors", fields: [ownerId], references: [id], onDelete: Cascade)
-  phoneNumber  String?
-  email        String?
-  name         String?
-  avatarColor  String?
-  userId       String?
-  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  emberContributors EmberContributor[]
-  guestViews   GuestView[]
-  createdAt    DateTime      @default(now())
-
-  // Pool dedup: one entry per (owner, person). Each identity dimension
-  // (account, email, phone) is unique within the owner's pool.
-  @@unique([ownerId, userId])
-  @@unique([ownerId, email])
-  @@unique([ownerId, phoneNumber])
-  @@index([ownerId, createdAt])
-  @@index([userId, createdAt])
-}
-
-// Per-ember attachment of a Contributor to an Image. Holds the share
-// token (per-ember access link) and per-ember invite state, and is the
-// FK target for everything that's scoped to (this contributor, this
+// Per-ember attachment of a User to an Image as a contributor. Holds
+// the share token (per-ember access link) and per-ember invite state,
+// and is the FK target for everything scoped to (this contributor, this
 // ember): the chat session, voice calls, tags, and memory claims.
 model EmberContributor {
   id            String        @id @default(cuid())
-  contributorId String
-  contributor   Contributor   @relation(fields: [contributorId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   imageId       String
   image         Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
   token              String        @unique @default(cuid())
@@ -138,19 +113,21 @@ model EmberContributor {
   voiceCallClips     VoiceCallClip[]
   tags               ImageTag[]
   memoryClaims       MemoryClaim[]
+  guestViews         GuestView[]
   createdAt          DateTime      @default(now())
 
-  @@unique([contributorId, imageId])
+  @@unique([userId, imageId])
   @@index([imageId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model GuestView {
-  id            String      @id @default(cuid())
-  contributorId String
-  contributor   Contributor @relation(fields: [contributorId], references: [id], onDelete: Cascade)
-  viewedAt      DateTime    @default(now())
+  id                  String           @id @default(cuid())
+  emberContributorId  String
+  emberContributor    EmberContributor @relation(fields: [emberContributorId], references: [id], onDelete: Cascade)
+  viewedAt            DateTime         @default(now())
 
-  @@index([contributorId, viewedAt])
+  @@index([emberContributorId, viewedAt])
 }
 
 model EmberSession {
@@ -346,19 +323,15 @@ model User {
   id                   String       @id @default(cuid())
   firstName            String?
   lastName             String?
-  email                String       @unique
-  phoneNumber          String?
+  email                String?      @unique
+  phoneNumber          String?      @unique
   avatarFilename       String?
-  passwordHash         String
+  passwordHash         String?
   sessions             UserSession[]
   authChallenges       AuthChallenge[]
   ownedImages          Image[]      @relation("OwnedImages")
-  // Contributors I've added to my pool (people I might invite to one or
-  // more of my embers). One row per (owner, person), not per ember.
-  ownedContributors    Contributor[] @relation("OwnedContributors")
-  // Contributor pool entries that point AT me (when someone else added me
-  // to their pool because my account email/phone matched theirs).
-  contributorRecords   Contributor[]
+  // Embers this user is a contributor on (one row per ember)
+  emberContributors    EmberContributor[]
   sentFriendships      Friendship[] @relation("FriendshipRequester")
   receivedFriendships  Friendship[] @relation("FriendshipAddressee")
   createdTags          ImageTag[]   @relation("CreatedImageTags")

@@ -92,20 +92,6 @@ body {
   animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
-}
-
-.fade-in {
-  animation: fadeIn 0.2s ease-out both;
-}
-
 @media (hover: hover) and (pointer: fine) {
   .can-hover:hover {
     opacity: 1;
