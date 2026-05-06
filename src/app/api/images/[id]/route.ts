@@ -156,6 +156,11 @@ export async function GET(
           cropY: true,
           cropWidth: true,
           cropHeight: true,
+            analysis: {
+              select: {
+                metadataJson: true,
+              },
+            },
             owner: {
               select: {
                 id: true,
@@ -289,7 +294,9 @@ export async function GET(
         tags: [],
         friends: [],
         tagIdentities: [],
-        analysis: null,
+        analysis: image.analysis
+          ? { noContributors: parseNoContributors(image.analysis.metadataJson) }
+          : null,
         voiceCallClips: [],
         wiki: null,
         snapshot: null,
