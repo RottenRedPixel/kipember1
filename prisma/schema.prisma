@@ -129,14 +129,16 @@ model EmberContributor {
   contributor   Contributor   @relation(fields: [contributorId], references: [id], onDelete: Cascade)
   imageId       String
   image         Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  token         String        @unique @default(cuid())
-  inviteSent    Boolean       @default(false)
-  emberSession  EmberSession?
-  voiceCalls    VoiceCall[]
-  voiceCallClips VoiceCallClip[]
-  tags          ImageTag[]
-  memoryClaims  MemoryClaim[]
-  createdAt     DateTime      @default(now())
+  token              String        @unique @default(cuid())
+  tokenCreatedAt     DateTime?
+  tokenCreatedByUserId String?
+  inviteSent         Boolean       @default(false)
+  emberSession       EmberSession?
+  voiceCalls         VoiceCall[]
+  voiceCallClips     VoiceCallClip[]
+  tags               ImageTag[]
+  memoryClaims       MemoryClaim[]
+  createdAt          DateTime      @default(now())
 
   @@unique([contributorId, imageId])
   @@index([imageId, createdAt])

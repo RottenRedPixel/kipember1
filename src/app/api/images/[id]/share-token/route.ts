@@ -61,7 +61,12 @@ export async function POST(
     }
 
     const created = await prisma.emberContributor.create({
-      data: { imageId, contributorId: anonymousPool.id },
+      data: {
+        imageId,
+        contributorId: anonymousPool.id,
+        tokenCreatedAt: new Date(),
+        tokenCreatedByUserId: auth.user.id,
+      },
       select: { token: true },
     });
 
