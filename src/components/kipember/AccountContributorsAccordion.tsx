@@ -133,9 +133,14 @@ export default function AccountContributorsAccordion({
     }
   }
 
-  async function updateContributor(emberContributorId: string) {
+  async function updateContributor(emberContributorId: string | null, poolId: string) {
     setSavingContributor(true);
-    const response = await fetch(`/api/contributors/${emberContributorId}`, {
+    // Route to the per-ember endpoint when we have an EC id, otherwise fall
+    // back to the pool-level endpoint (for contributors not yet on any ember).
+    const url = emberContributorId
+      ? `/api/contributors/${emberContributorId}`
+      : `/api/contributors/pool/${poolId}`;
+    const response = await fetch(url, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -265,11 +270,8 @@ export default function AccountContributorsAccordion({
         </div>
       ) : (
         sorted.map((contributor) => {
-          // For account: rows are expandable when the contributor is on at
-          // least one ember (we PATCH against the first ember's join row).
           const emberContributorId = contributor.embers[0]?.contributorId ?? null;
-          const expandable = Boolean(emberContributorId);
-          const isExpanded = expandable && expandedKey === contributor.key;
+          const isExpanded = expandedKey === contributor.key;
           const name = contributor.name;
           const avatarUrl = contributor.avatarUrl;
           const subtext =
@@ -285,6 +287,7 @@ export default function AccountContributorsAccordion({
               editForm.phone !== savedForm.phone ||
               editForm.email !== savedForm.email ||
               editForm.language !== savedForm.language);
+          const poolId = contributor.poolId;
           return (
             <div
               key={contributor.key}
@@ -296,13 +299,10 @@ export default function AccountContributorsAccordion({
             >
               <button
                 type="button"
-                onClick={() => {
-                  if (expandable) expandRow(contributor);
-                }}
+                onClick={() => expandRow(contributor)}
                 aria-expanded={isExpanded}
-                disabled={!expandable}
                 className="w-full flex items-center gap-3 px-4"
-                style={{ minHeight: 56, cursor: expandable ? 'pointer' : 'default' }}
+                style={{ minHeight: 56, cursor: 'pointer' }}
               >
                 <div
                   className="rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
@@ -330,7 +330,10 @@ export default function AccountContributorsAccordion({
                 </div>
                 <span className="flex-1 text-white text-sm font-medium text-left">{name}</span>
                 <span className="text-white/30 text-xs">{subtext}</span>
-                {expandable ? (
+                <div
+                  className="flex items-center justify-center rounded-full flex-shrink-0"
+                  style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.08)' }}
+                >
                   <ChevronDown
                     size={14}
                     color="rgba(255,255,255,0.5)"
@@ -339,9 +342,7 @@ export default function AccountContributorsAccordion({
                       transition: 'transform 0.15s ease',
                     }}
                   />
-                ) : (
-                  <span style={{ width: 14, height: 14 }} />
-                )}
+                </div>
               </button>
 
               {isExpanded ? (
@@ -412,7 +413,7 @@ export default function AccountContributorsAccordion({
                       )}
                       <button
                         type="button"
-                        onClick={() => emberContributorId && void updateContributor(emberContributorId)}
+                        onClick={() => void updateContributor(emberContributorId, poolId)}
                         disabled={savingContributor || !isDirty}
                         className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
                         style={{

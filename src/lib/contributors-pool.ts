@@ -15,6 +15,8 @@ import { getUserDisplayName } from '@/lib/user-name';
 export type UnifiedContributor = {
   /** Stable dedupe key — also used as `sourceKey` when adding to an ember. */
   key: string;
+  /** DB id of the Contributor pool row — used for pool-level edits. */
+  poolId: string;
   name: string;
   email: string | null;
   phoneNumber: string | null;
@@ -113,6 +115,7 @@ export async function getUnifiedContributorsForUser(
         getUserDisplayName(r.user) ?? r.name ?? r.user?.email ?? r.email ?? r.phoneNumber ?? 'Contributor';
       entry = {
         key,
+        poolId: r.id,
         name: displayName,
         email: r.email ?? r.user?.email ?? null,
         phoneNumber: r.phoneNumber ?? null,
