@@ -14,7 +14,6 @@ export async function POST(
       where: { token },
       include: {
         image: true,
-        contributor: true,
       },
     });
 

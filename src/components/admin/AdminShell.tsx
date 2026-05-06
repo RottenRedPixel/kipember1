@@ -78,7 +78,7 @@ export default function AdminShell({
   userEmail,
   children,
 }: {
-  userEmail: string;
+  userEmail: string | null;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);

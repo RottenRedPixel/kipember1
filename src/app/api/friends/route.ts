@@ -120,14 +120,16 @@ export async function POST(request: NextRequest) {
           },
         });
 
-    try {
-      const requesterName = getUserDisplayName(auth.user) || auth.user.email;
-      await sendFriendRequestEmail({
-        toEmail: targetUser.email,
-        requesterName,
-      });
-    } catch (emailError) {
-      console.error('Friend request email failed:', emailError);
+    if (targetUser.email) {
+      try {
+        const requesterName = getUserDisplayName(auth.user) || auth.user.email || 'Someone';
+        await sendFriendRequestEmail({
+          toEmail: targetUser.email,
+          requesterName,
+        });
+      } catch (emailError) {
+        console.error('Friend request email failed:', emailError);
+      }
     }
 
     invalidateFriendNetworkForUser(auth.user.id);

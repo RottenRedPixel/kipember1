@@ -18,7 +18,7 @@ async function resolveParticipant(userId: string, imageId: string) {
     select: {
       ownerId: true,
       emberContributors: {
-        where: { contributor: { userId } },
+        where: { userId },
         select: { id: true },
         take: 1,
       },

@@ -7,8 +7,8 @@
  * etc.), migrate to a `role` column on User and update isAdmin() to
  * read it. Keep the env var as a bootstrap fallback.
  */
-export function isAdmin(user: { email: string } | null | undefined): boolean {
-  if (!user) return false;
+export function isAdmin(user: { email: string | null } | null | undefined): boolean {
+  if (!user || !user.email) return false;
   const allow = (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map((e) => e.trim().toLowerCase())

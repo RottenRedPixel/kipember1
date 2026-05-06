@@ -28,23 +28,14 @@ export async function GET(
         id: true,
         inviteSent: true,
         createdAt: true,
-        contributor: {
+        userId: true,
+        user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
             phoneNumber: true,
-            avatarColor: true,
-            createdAt: true,
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phoneNumber: true,
-              },
-            },
           },
         },
         emberSession: {
@@ -85,15 +76,17 @@ export async function GET(
       return NextResponse.json({ error: 'Contributor not found' }, { status: 404 });
     }
 
+    const displayName = [detail.user?.firstName, detail.user?.lastName].filter(Boolean).join(' ') || null;
+
     return NextResponse.json({
       id: detail.id,
       inviteSent: detail.inviteSent,
       createdAt: detail.createdAt,
-      name: detail.contributor.name,
-      email: detail.contributor.email,
-      phoneNumber: detail.contributor.phoneNumber,
-      avatarColor: detail.contributor.avatarColor ?? null,
-      user: detail.contributor.user,
+      name: displayName,
+      email: detail.user?.email ?? null,
+      phoneNumber: detail.user?.phoneNumber ?? null,
+      avatarColor: null,
+      user: detail.user,
       emberSession: detail.emberSession,
       voiceCalls: detail.voiceCalls,
     });

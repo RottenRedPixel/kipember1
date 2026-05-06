@@ -10,7 +10,7 @@ export default function DeleteUserButton({
   isSelf,
 }: {
   userId: string;
-  userLabel: string;
+  userLabel: string | null;
   isSelf: boolean;
 }) {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function DeleteUserButton({
   async function handleClick() {
     if (isSelf || busy) return;
     const ok = window.confirm(
-      `Delete ${userLabel}?\n\nThis permanently removes their account along with every ember they own (and the wikis, snapshots, contributors, and chats inside those embers). This cannot be undone.`
+      `Delete ${userLabel ?? 'this user'}?\n\nThis permanently removes their account along with every ember they own (and the wikis, snapshots, contributors, and chats inside those embers). This cannot be undone.`
     );
     if (!ok) return;
 
@@ -43,7 +43,7 @@ export default function DeleteUserButton({
       onClick={handleClick}
       disabled={isSelf || busy}
       title={isSelf ? "Can't delete your own admin account" : 'Delete user'}
-      aria-label={isSelf ? "Can't delete your own admin account" : `Delete ${userLabel}`}
+      aria-label={isSelf ? "Can't delete your own admin account" : `Delete ${userLabel ?? 'user'}`}
       className="inline-flex items-center justify-center w-8 h-8 rounded text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed"
     >
       <Trash2 size={14} strokeWidth={1.8} />

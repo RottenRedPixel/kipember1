@@ -11,7 +11,7 @@ export async function GET(
     const { token } = await params;
 
     const tokenInclude = {
-      contributor: true,
+      user: true,
       emberSession: {
         include: {
           messages: {
@@ -76,10 +76,9 @@ export async function GET(
       );
     }
 
-    // Log a guest view against the pool contributor for the owner's home-activity
-    // counter. Fire-and-forget; a DB hiccup here must not block the guest's page load.
+    // Log a guest view for the owner's home-activity counter. Fire-and-forget.
     prisma.guestView
-      .create({ data: { contributorId: emberContributor.contributor.id } })
+      .create({ data: { emberContributorId: emberContributor.id } })
       .catch((err) => {
         console.error('Failed to log guest view:', err);
       });
@@ -115,8 +114,8 @@ export async function GET(
         guestFlow: true,
         contributor: {
           id: refreshedContributor.id,
-          name: refreshedContributor.contributor.name,
-          phoneNumber: refreshedContributor.contributor.phoneNumber,
+          name: [refreshedContributor.user.firstName, refreshedContributor.user.lastName].filter(Boolean).join(' ') || null,
+          phoneNumber: refreshedContributor.user.phoneNumber,
         },
         image: {
           id: refreshedContributor.image.id,

@@ -49,25 +49,24 @@ export async function PATCH(
           where: { id: body.contributorId, imageId: id },
           select: {
             id: true,
-            contributor: {
-              select: { id: true, name: true, email: true, phoneNumber: true, userId: true },
-            },
+            userId: true,
+            user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true } },
           },
         });
         if (!ec) {
           return NextResponse.json({ error: 'Contributor not found' }, { status: 404 });
         }
-        const contributor = ec.contributor;
+        const ecDisplayName = [ec.user?.firstName, ec.user?.lastName].filter(Boolean).join(' ') || null;
         updates.emberContributorId = ec.id;
         // If userId wasn't explicitly set in this request, inherit from the contributor.
-        if (body.userId === undefined && contributor.userId) {
-          updates.userId = contributor.userId;
+        if (body.userId === undefined && ec.userId) {
+          updates.userId = ec.userId;
         }
         // Mirror identity fields onto the tag for legacy display paths that
         // read tag.label / tag.email directly.
-        if (typeof body.label !== 'string' && contributor.name) updates.label = contributor.name;
-        if (body.email === undefined) updates.email = contributor.email;
-        if (body.phoneNumber === undefined) updates.phoneNumber = normalizePhone(contributor.phoneNumber);
+        if (typeof body.label !== 'string' && ecDisplayName) updates.label = ecDisplayName;
+        if (body.email === undefined) updates.email = ec.user?.email ?? null;
+        if (body.phoneNumber === undefined) updates.phoneNumber = normalizePhone(ec.user?.phoneNumber);
       }
     }
 
@@ -145,10 +144,11 @@ export async function PATCH(
           select: {
             id: true,
             inviteSent: true,
-            contributor: {
+            userId: true,
+            user: {
               select: {
-                id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
                 email: true,
                 phoneNumber: true,
               },

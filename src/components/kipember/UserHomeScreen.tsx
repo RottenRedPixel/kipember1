@@ -219,7 +219,7 @@ export default function UserHomeScreen({
   initialTotalContributors,
   initialHomeActivity,
 }: {
-  initialProfile: { firstName: string | null; lastName: string | null; email: string } | null;
+  initialProfile: { firstName: string | null; lastName: string | null; email: string | null } | null;
   initialEmbers?: Array<{
     accessType: string;
     filename: string;

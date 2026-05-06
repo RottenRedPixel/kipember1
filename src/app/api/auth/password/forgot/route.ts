@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       select: { id: true, email: true },
     });
 
-    if (user) {
+    if (user && user.email) {
       const token = await createPasswordResetChallenge({
         email: user.email,
         userId: user.id,

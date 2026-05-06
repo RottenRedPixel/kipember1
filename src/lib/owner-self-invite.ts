@@ -22,11 +22,11 @@ export async function sendOwnerSelfSms(
     where: { id: emberContributorId },
     select: {
       token: true,
-      contributor: { select: { phoneNumber: true } },
+      user: { select: { phoneNumber: true } },
     },
   });
 
-  if (!emberContributor?.contributor.phoneNumber) {
+  if (!emberContributor?.user?.phoneNumber) {
     return { success: false, error: 'No phone number on file' };
   }
 
@@ -34,7 +34,7 @@ export async function sendOwnerSelfSms(
   const message = `Kipember: continue adding to your memory here: ${link}`;
 
   try {
-    await sendSMS(formatPhoneForSms(emberContributor.contributor.phoneNumber), message);
+    await sendSMS(formatPhoneForSms(emberContributor.user.phoneNumber), message);
     await prisma.emberContributor.update({
       where: { id: emberContributorId },
       data: { inviteSent: true },

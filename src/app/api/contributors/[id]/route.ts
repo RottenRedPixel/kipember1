@@ -21,26 +21,39 @@ export async function PATCH(
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
-    const pool = emberContributor.contributor;
+    const user = emberContributor.user ?? null;
     const body = await request.json();
-    const name =
-      body?.name === null
-        ? null
-        : typeof body?.name === 'string'
-        ? body.name.trim() || null
-        : pool.name;
+
+    // Map legacy `name` field to firstName/lastName split, or accept firstName/lastName directly
+    let firstName: string | null = user?.firstName ?? null;
+    let lastName: string | null = user?.lastName ?? null;
+    if (typeof body?.firstName === 'string') {
+      firstName = body.firstName.trim() || null;
+    } else if (typeof body?.name === 'string') {
+      // Legacy: split "First Last" into firstName/lastName
+      const parts = body.name.trim().split(/\s+/);
+      firstName = parts[0] || null;
+      lastName = parts.slice(1).join(' ') || null;
+    } else if (body?.name === null) {
+      firstName = null;
+      lastName = null;
+    }
+    if (typeof body?.lastName === 'string') {
+      lastName = body.lastName.trim() || null;
+    }
+
     const phoneNumber =
       body?.phoneNumber === null
         ? null
         : typeof body?.phoneNumber === 'string'
         ? normalizePhone(body.phoneNumber)
-        : pool.phoneNumber;
+        : user?.phoneNumber ?? null;
     const email =
       body?.email === null
         ? null
         : typeof body?.email === 'string'
         ? normalizeEmail(body.email)
-        : pool.email;
+        : user?.email ?? null;
 
     if (!phoneNumber && !email) {
       return NextResponse.json(
@@ -49,11 +62,10 @@ export async function PATCH(
       );
     }
 
-    // Within the owner's pool, identity (phone/email) must remain unique.
-    const existing = await prisma.contributor.findFirst({
+    // Within the owner's embers, identity (phone/email) must remain unique across users.
+    const existing = await prisma.user.findFirst({
       where: {
-        ownerId: pool.ownerId,
-        id: { not: pool.id },
+        id: { not: emberContributor.userId },
         OR: [
           ...(phoneNumber ? [{ phoneNumber }] : []),
           ...(email ? [{ email }] : []),
@@ -68,23 +80,20 @@ export async function PATCH(
       );
     }
 
-    const updatedPool = await prisma.contributor.update({
-      where: { id: pool.id },
+    const updatedUser = await prisma.user.update({
+      where: { id: emberContributor.userId },
       data: {
-        name,
+        firstName,
+        lastName,
         phoneNumber,
         email,
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phoneNumber: true,
       },
     });
 
@@ -113,16 +122,18 @@ export async function PATCH(
       },
     });
 
+    const displayName = [updatedUser.firstName, updatedUser.lastName].filter(Boolean).join(' ');
+
     return NextResponse.json({
       id: emberContributor.id,
       imageId: emberContributor.imageId,
       token: emberContributor.token,
       inviteSent: emberContributor.inviteSent,
-      name: updatedPool.name,
-      email: updatedPool.email,
-      phoneNumber: updatedPool.phoneNumber,
-      userId: updatedPool.userId,
-      user: updatedPool.user,
+      name: displayName || null,
+      email: updatedUser.email,
+      phoneNumber: updatedUser.phoneNumber,
+      userId: updatedUser.id,
+      user: updatedUser,
       emberSession: refreshed?.emberSession ?? null,
       voiceCalls: refreshed?.voiceCalls ?? [],
     });

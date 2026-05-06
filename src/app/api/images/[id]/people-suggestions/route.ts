@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
 import { ensureEmberOwnerAccess } from '@/lib/ember';
-import { realContributorWhere } from '@/lib/contributors-pool';
 import { prisma } from '@/lib/db';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -46,32 +45,20 @@ export async function GET(
       prisma.emberContributor.findMany({
         where: {
           imageId: id,
-          contributor: {
-            AND: [
-              realContributorWhere,
-              // Skip the owner's own contributor row.
-              { OR: [{ userId: null }, { NOT: { userId: auth.user.id } }] },
-            ],
-          },
+          // Exclude the owner's own contributor row
+          NOT: { userId: auth.user.id },
         },
         orderBy: { createdAt: 'asc' },
         select: {
           id: true,
-          contributor: {
+          userId: true,
+          user: {
             select: {
-              userId: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
               phoneNumber: true,
-              avatarColor: true,
-              user: {
-                select: {
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  avatarFilename: true,
-                },
-              },
+              avatarFilename: true,
             },
           },
         },
@@ -90,19 +77,17 @@ export async function GET(
 
     const result: PeopleSuggestionContributor[] = emberContributors.map((ec) => ({
       contributorId: ec.id,
-      userId: ec.contributor.userId,
+      userId: ec.userId ?? null,
       name:
-        getUserDisplayName(ec.contributor.user) ??
-        ec.contributor.name ??
-        ec.contributor.user?.email ??
-        ec.contributor.email ??
-        ec.contributor.phoneNumber ??
+        getUserDisplayName(ec.user) ??
+        ec.user?.email ??
+        ec.user?.phoneNumber ??
         'Contributor',
-      email: ec.contributor.email ?? ec.contributor.user?.email ?? null,
-      phoneNumber: ec.contributor.phoneNumber,
-      avatarColor: ec.contributor.avatarColor ?? null,
-      avatarUrl: ec.contributor.user?.avatarFilename
-        ? `/api/uploads/${ec.contributor.user.avatarFilename}`
+      email: ec.user?.email ?? null,
+      phoneNumber: ec.user?.phoneNumber ?? null,
+      avatarColor: null,
+      avatarUrl: ec.user?.avatarFilename
+        ? `/api/uploads/${ec.user.avatarFilename}`
         : null,
       alreadyTagged: taggedContributorIds.has(ec.id),
     }));

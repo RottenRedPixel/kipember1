@@ -44,7 +44,8 @@ export function hashPassword(password: string): string {
   return `${salt}:${derived}`;
 }
 
-export function verifyPassword(password: string, storedHash: string): boolean {
+export function verifyPassword(password: string, storedHash: string | null): boolean {
+  if (!storedHash) return false;
   const [salt, derivedKey] = storedHash.split(':');
   if (!salt || !derivedKey) {
     return false;
@@ -74,9 +75,9 @@ export function isPhoneAccountEmail(value: string | null | undefined): boolean {
 
 export async function transferLegacyOwnerImagesIfNeeded(user: {
   id: string;
-  email: string;
+  email: string | null;
 }) {
-  if (normalizeEmail(user.email) !== PRIMARY_OWNER_EMAIL) {
+  if (!user.email || normalizeEmail(user.email) !== PRIMARY_OWNER_EMAIL) {
     return;
   }
 
@@ -86,42 +87,14 @@ export async function transferLegacyOwnerImagesIfNeeded(user: {
   });
 }
 
-async function syncContributorLinksForUser(user: {
-  id: string;
-  email: string;
-  phoneNumber: string | null;
-  firstName: string | null;
-  lastName: string | null;
-}) {
-  const orFilters: Array<Record<string, string>> = [{ email: user.email }];
-
-  if (user.phoneNumber) {
-    orFilters.push({ phoneNumber: user.phoneNumber });
-  }
-
-  await prisma.contributor.updateMany({
-    where: {
-      userId: null,
-      OR: orFilters,
-    },
-    data: {
-      userId: user.id,
-      name: getUserDisplayName(user),
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-    },
-  });
-}
-
 export async function claimMemoriesForUser(user: {
   id: string;
-  email: string;
+  email: string | null;
   phoneNumber: string | null;
   firstName: string | null;
   lastName: string | null;
 }) {
   await Promise.all([
-    syncContributorLinksForUser(user),
     claimGuestMemoriesForUser({
       userId: user.id,
       email: user.email,

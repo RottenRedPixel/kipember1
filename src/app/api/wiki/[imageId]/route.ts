@@ -67,14 +67,9 @@ export async function GET(
     const ownerEcInclude = {
       id: true,
       token: true,
-      contributor: {
+      user: {
         select: {
           phoneNumber: true,
-          user: {
-            select: {
-              phoneNumber: true,
-            },
-          },
         },
       },
       voiceCalls: {
@@ -99,7 +94,7 @@ export async function GET(
         ? await prisma.emberContributor.findFirst({
             where: {
               imageId,
-              contributor: { userId: auth.user.id },
+              userId: auth.user.id,
             },
             select: ownerEcInclude,
           })
@@ -112,7 +107,7 @@ export async function GET(
         ownerConversationTarget = await prisma.emberContributor.findFirst({
           where: {
             imageId,
-            contributor: { userId: auth.user.id },
+            userId: auth.user.id,
           },
           select: ownerEcInclude,
         });
@@ -148,19 +143,12 @@ export async function GET(
           createdAt: true,
           emberContributor: {
             select: {
-              contributor: {
+              user: {
                 select: {
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                   phoneNumber: true,
-                  avatarColor: true,
-                  user: {
-                    select: {
-                      firstName: true,
-                      lastName: true,
-                      email: true,
-                    },
-                  },
                 },
               },
             },
@@ -169,7 +157,7 @@ export async function GET(
       });
 
       voiceCallClips = clips.map((clip) => {
-        const c = clip.emberContributor.contributor;
+        const u = clip.emberContributor.user;
         return {
           id: clip.id,
           title: clip.title,
@@ -180,11 +168,9 @@ export async function GET(
           endMs: clip.endMs,
           createdAt: clip.createdAt,
           contributorName:
-            c.name ||
-            getUserDisplayName(c.user) ||
-            c.email ||
-            c.user?.email ||
-            c.phoneNumber ||
+            getUserDisplayName(u) ||
+            u?.email ||
+            u?.phoneNumber ||
             'Contributor',
         };
       });
@@ -200,11 +186,8 @@ export async function GET(
         ? {
             id: ownerConversationTarget.id,
             token: ownerConversationTarget.token,
-            phoneNumber: ownerConversationTarget.contributor.phoneNumber,
-            phoneAvailable: Boolean(
-              ownerConversationTarget.contributor.phoneNumber ||
-                ownerConversationTarget.contributor.user?.phoneNumber
-            ),
+            phoneNumber: ownerConversationTarget.user?.phoneNumber ?? null,
+            phoneAvailable: Boolean(ownerConversationTarget.user?.phoneNumber),
             latestVoiceCall: ownerConversationTarget.voiceCalls[0] || null,
           }
         : null,

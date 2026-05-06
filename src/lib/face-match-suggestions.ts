@@ -233,7 +233,7 @@ function buildCandidateLabel(tag: {
   user: {
     firstName: string | null;
     lastName: string | null;
-    email: string;
+    email: string | null;
   } | null;
 }) {
   return getUserDisplayName(tag.user) || tag.label || tag.user?.email || 'Known person';

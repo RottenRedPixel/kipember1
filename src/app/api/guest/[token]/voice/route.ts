@@ -56,15 +56,25 @@ async function resolveToken(token: string): Promise<ResolvedToken | null> {
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { token },
     include: {
-      contributor: true,
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phoneNumber: true,
+          email: true,
+        },
+      },
       image: { select: { id: true, keepPrivate: true } },
     },
   });
 
   if (!emberContributor) return null;
 
-  const c = emberContributor.contributor;
-  const isGuestShareLink = !c.name && !c.phoneNumber && !c.email && !c.userId;
+  const u = emberContributor.user;
+  const displayName = u ? [u.firstName, u.lastName].filter(Boolean).join(' ') || null : null;
+  // A share-link placeholder has an anonymous User with all identity fields null.
+  const isGuestShareLink = !displayName && !u?.phoneNumber && !u?.email;
 
   return {
     imageId: emberContributor.image.id,

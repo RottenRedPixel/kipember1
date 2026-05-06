@@ -4,6 +4,7 @@ import { sendEmail, isEmailConfigured } from '@/lib/email';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewUploadUrl } from '@/lib/uploads';
+import { getUserDisplayName } from '@/lib/user-name';
 
 /**
  * Retell disconnection reasons that unambiguously mean the call didn't
@@ -285,7 +286,7 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
     include: {
       emberContributor: {
         include: {
-          contributor: true,
+          user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
           image: {
             include: {
               owner: true,
@@ -330,12 +331,12 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
   }
 
   const { emberContributor } = voiceCall;
-  const contributor = emberContributor.contributor;
+  const ecUser = emberContributor.user;
   const owner = emberContributor.image.owner;
   const emberTitle = getEmberTitle(emberContributor.image);
   const ownerFirstName = getFirstName(owner.firstName, 'Someone');
-  const contributorName =
-    contributor.name?.trim() || contributor.email?.trim() || 'there';
+  const contributorDisplayName =
+    getUserDisplayName(ecUser)?.trim() || ecUser?.email?.trim() || ecUser?.phoneNumber?.trim() || 'there';
   const targetUrl = `/contribute/${emberContributor.token}`;
   const inviteUrl = buildAbsoluteUrl(targetUrl);
   const thumbnailUrl = buildAbsoluteUrl(
@@ -345,26 +346,26 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
       posterFilename: emberContributor.image.posterFilename,
     })
   );
-  const isCreator = contributor.userId === owner.id;
+  const isCreator = emberContributor.userId === owner.id;
 
   const contributorSms = buildContributorSms({
     ownerFirstName,
     inviteUrl,
   });
   const contributorEmail = buildContributorEmail({
-    contributorName,
+    contributorName: contributorDisplayName,
     ownerFirstName,
     inviteUrl,
     thumbnailUrl,
   });
   const ownerSms = buildOwnerSms({
-    contributorName: contributor.name,
+    contributorName: contributorDisplayName,
     emberTitle,
     reason: classification.reason,
   });
   const ownerEmail = buildOwnerEmail({
-    contributorName: contributor.name,
-    contributorPhone: contributor.phoneNumber,
+    contributorName: contributorDisplayName,
+    contributorPhone: ecUser?.phoneNumber ?? null,
     emberTitle,
     reason: classification.reason,
     voiceCallId: voiceCall.id,
@@ -377,10 +378,10 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
     sendChannel(
       'contributor-sms',
       voiceCall.id,
-      contributor.phoneNumber,
+      ecUser?.phoneNumber ?? null,
       (to) => sendSMS(to, contributorSms)
     ),
-    sendChannel('contributor-email', voiceCall.id, contributor.email, (to) => {
+    sendChannel('contributor-email', voiceCall.id, ecUser?.email ?? null, (to) => {
       if (!isEmailConfigured()) {
         console.warn(
           `[voice-call-notifications] SMTP not configured; skipping contributor email for ${voiceCall.id}`

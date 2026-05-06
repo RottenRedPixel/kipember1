@@ -31,7 +31,7 @@ export class SimpleRetriever implements ContextRetriever {
       include: {
         emberContributors: {
           include: {
-            contributor: true,
+            user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
             emberSession: {
               include: {
                 messages: {
@@ -64,16 +64,12 @@ export class SimpleRetriever implements ContextRetriever {
       quote: string;
       significance: string | null;
       emberContributor: {
-        contributor: {
-          name: string | null;
+        user: {
+          firstName: string | null;
+          lastName: string | null;
           email: string | null;
           phoneNumber: string | null;
-          user: {
-            firstName: string | null;
-            lastName: string | null;
-            email: string;
-          } | null;
-        };
+        } | null;
       };
     }> = [];
 
@@ -87,18 +83,12 @@ export class SimpleRetriever implements ContextRetriever {
           significance: true,
           emberContributor: {
             select: {
-              contributor: {
+              user: {
                 select: {
-                  name: true,
+                  firstName: true,
+                  lastName: true,
                   email: true,
                   phoneNumber: true,
-                  user: {
-                    select: {
-                      firstName: true,
-                      lastName: true,
-                      email: true,
-                    },
-                  },
                 },
               },
             },
@@ -127,7 +117,7 @@ export class SimpleRetriever implements ContextRetriever {
 
       for (const message of contributorMessages) {
         responses.push(
-          `[${ec.contributor.name || 'Anonymous'}] ${(message.questionType || '').toUpperCase()}\n` +
+          `[${getUserDisplayName(ec.user) || ec.user?.email || 'Anonymous'}] ${(message.questionType || '').toUpperCase()}\n` +
             `Q: ${message.question || message.questionType || ''}\n` +
             `A: ${message.content}`
         );
@@ -140,12 +130,10 @@ export class SimpleRetriever implements ContextRetriever {
 
     const voiceClips: string[] = [];
     for (const clip of voiceCallClips) {
-      const c = clip.emberContributor.contributor;
       const contributorName =
-        c.name ||
-        getUserDisplayName(c.user) ||
-        c.email ||
-        c.phoneNumber ||
+        getUserDisplayName(clip.emberContributor.user) ||
+        clip.emberContributor.user?.email ||
+        clip.emberContributor.user?.phoneNumber ||
         'Contributor';
 
       voiceClips.push(
