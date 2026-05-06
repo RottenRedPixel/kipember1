@@ -5,7 +5,7 @@ import { useState } from 'react';
 import AppHeader from '@/components/kipember/AppHeader';
 
 export default function ForgotPasswordForm() {
-  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -20,7 +20,7 @@ export default function ForgotPasswordForm() {
       const response = await fetch('/api/auth/password/forgot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ phoneNumber }),
       });
 
       const payload = await response.json();
@@ -28,7 +28,7 @@ export default function ForgotPasswordForm() {
         throw new Error(payload.error || 'Failed to send reset link');
       }
 
-      setSuccess(payload.message || 'If that email is in Ember, a reset link has been sent.');
+      setSuccess(payload.message || 'If that number is in Ember, a reset link has been sent.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send reset link');
     } finally {
@@ -46,7 +46,7 @@ export default function ForgotPasswordForm() {
         {success ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <h1 className="text-white text-2xl font-bold tracking-tight">Check your email</h1>
+              <h1 className="text-white text-2xl font-bold tracking-tight">Check your messages</h1>
               <p className="text-white/60 text-sm">{success}</p>
             </div>
             <Link
@@ -62,18 +62,18 @@ export default function ForgotPasswordForm() {
             <div className="flex flex-col gap-1">
               <h1 className="text-white text-2xl font-bold tracking-tight">Reset your password</h1>
               <p className="text-white/60 text-sm">
-                Enter your email and we'll send you a secure reset link.
+                Enter your phone number and we'll send you a secure reset link.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-white/60 text-xs font-medium">Email</label>
+                <label className="text-white/60 text-xs font-medium">Phone Number</label>
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@example.com"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(event) => setPhoneNumber(event.target.value)}
+                  placeholder="Phone number"
                   required
                   className="h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
                   style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
@@ -90,7 +90,7 @@ export default function ForgotPasswordForm() {
                 className="flex items-center justify-center rounded-full text-white text-sm font-medium transition-opacity hover:opacity-80 w-full disabled:cursor-not-allowed disabled:opacity-60"
                 style={{ background: '#f97316', minHeight: 44 }}
               >
-                {isSubmitting ? 'Sending reset link...' : 'Email reset link'}
+                {isSubmitting ? 'Sending reset link...' : 'Send reset link'}
               </button>
             </form>
 

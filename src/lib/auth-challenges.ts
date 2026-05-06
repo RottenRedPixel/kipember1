@@ -127,7 +127,7 @@ export async function createPasswordResetChallenge({
   email,
   userId,
 }: {
-  email: string;
+  email: string | null;
   userId: string;
 }) {
   const rawToken = randomBytes(32).toString('hex');

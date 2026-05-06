@@ -1,29 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizeEmail } from '@/lib/auth-server';
+import { normalizePhone } from '@/lib/auth-server';
 import { getRequestBaseUrl } from '@/lib/app-url';
 import { createPasswordResetChallenge, getPasswordResetTtlMinutes } from '@/lib/auth-challenges';
-import { sendPasswordResetEmail } from '@/lib/auth-email';
+import { sendSMS } from '@/lib/twilio';
 import { prisma } from '@/lib/db';
-import { isEmailConfigured } from '@/lib/email';
+
+function formatPhone(phoneNumber: string): string {
+  const digits = phoneNumber.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  return `+${digits}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json();
+    const { phoneNumber } = await request.json();
 
-    if (!email || typeof email !== 'string') {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    if (!phoneNumber || typeof phoneNumber !== 'string') {
+      return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
     }
 
-    if (!isEmailConfigured()) {
-      return NextResponse.json(
-        { error: 'Email sending is not configured yet' },
-        { status: 500 }
-      );
+    const normalizedPhone = normalizePhone(phoneNumber);
+    if (!normalizedPhone) {
+      return NextResponse.json({ error: 'Please enter a valid phone number' }, { status: 400 });
     }
 
-    const normalizedEmail = normalizeEmail(email);
     const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+      where: { phoneNumber: normalizedPhone },
       select: { id: true, email: true },
     });
 
@@ -33,17 +35,17 @@ export async function POST(request: NextRequest) {
         userId: user.id,
       });
 
-      await sendPasswordResetEmail({
-        email: user.email,
-        token,
-        ttlMinutes: getPasswordResetTtlMinutes(),
-        baseUrl: getRequestBaseUrl(request),
-      });
+      const baseUrl = getRequestBaseUrl(request).replace(/\/$/, '');
+      const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(token)}`;
+      const ttl = getPasswordResetTtlMinutes();
+      const message = `Reset your Ember password: ${resetUrl} (expires in ${ttl} min)`;
+
+      await sendSMS(formatPhone(normalizedPhone), message);
     }
 
     return NextResponse.json({
       ok: true,
-      message: 'If that email is in Ember, a reset link has been sent.',
+      message: 'If that number is in Ember, a reset link has been sent.',
     });
   } catch (error) {
     console.error('Forgot password error:', error);

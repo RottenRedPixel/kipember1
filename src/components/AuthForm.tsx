@@ -13,7 +13,6 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
-    email: '',
     phoneNumber: '',
     password: '',
   });
@@ -36,8 +35,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
         body: JSON.stringify({
           firstName: isSignup ? form.firstName.trim() || undefined : undefined,
           lastName: isSignup ? form.lastName.trim() || undefined : undefined,
-          email: isSignup ? form.email.trim() || undefined : form.email,
-          phoneNumber: isSignup ? form.phoneNumber.trim() || undefined : undefined,
+          phoneNumber: form.phoneNumber.trim() || undefined,
           password: form.password,
         }),
       });
@@ -102,25 +100,14 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
               />
             </div>
           ) : null}
-          {isSignup ? (
-            <Field
-              label="Phone Number"
-              name="phoneNumber"
-              type="tel"
-              placeholder="Phone number"
-              value={form.phoneNumber}
-              onChange={handleChange}
-              required
-            />
-          ) : null}
           <Field
-            label={isSignup ? 'Email (optional)' : 'Email'}
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            value={form.email}
+            label="Phone Number"
+            name="phoneNumber"
+            type="tel"
+            placeholder="Phone number"
+            value={form.phoneNumber}
             onChange={handleChange}
-            required={!isSignup}
+            required
           />
           <Field
             label="Password"

@@ -4,28 +4,36 @@ import {
   applyUserSessionCookie,
   claimMemoriesForUser,
   createUserSession,
-  normalizeEmail,
+  normalizePhone,
   verifyPassword,
 } from '@/lib/auth-server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { phoneNumber, password } = await request.json();
 
-    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+    if (!phoneNumber || typeof phoneNumber !== 'string' || !password || typeof password !== 'string') {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Phone number and password are required' },
+        { status: 400 }
+      );
+    }
+
+    const normalizedPhone = normalizePhone(phoneNumber);
+    if (!normalizedPhone) {
+      return NextResponse.json(
+        { error: 'Please enter a valid phone number' },
         { status: 400 }
       );
     }
 
     const user = await prisma.user.findUnique({
-      where: { email: normalizeEmail(email) },
+      where: { phoneNumber: normalizedPhone },
     });
 
     if (!user || !verifyPassword(password, user.passwordHash)) {
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        { error: 'Invalid phone number or password' },
         { status: 401 }
       );
     }
