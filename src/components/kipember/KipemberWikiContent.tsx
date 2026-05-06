@@ -1982,6 +1982,7 @@ type ChatBlock = {
   personUserId?: string | null;
   personEmail?: string | null;
   personPhoneNumber?: string | null;
+  personAvatarColor?: string | null;
   messages: Array<{
     role: string;
     content: string;
