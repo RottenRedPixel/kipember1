@@ -1317,16 +1317,26 @@ export async function PATCH(
       );
     }
 
-    const image = await prisma.image.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        shareToNetwork: true,
-        title: true,
-        description: true,
-      },
-    });
+    const image = Object.keys(updateData).length > 0
+      ? await prisma.image.update({
+          where: { id },
+          data: updateData,
+          select: {
+            id: true,
+            shareToNetwork: true,
+            title: true,
+            description: true,
+          },
+        })
+      : await prisma.image.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            shareToNetwork: true,
+            title: true,
+            description: true,
+          },
+        });
 
     if (capturedAtValue !== undefined || noContributorsValue !== undefined) {
       const existing = await prisma.imageAnalysis.findUnique({
