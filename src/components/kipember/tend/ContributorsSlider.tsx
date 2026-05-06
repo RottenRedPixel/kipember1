@@ -130,6 +130,9 @@ export default function ContributorsSlider({
   const [settingsPreferredComm, setSettingsPreferredComm] = useState('sms');
   const [settingsKeepTrying, setSettingsKeepTrying] = useState(true);
   const [settingsMaxAttempts, setSettingsMaxAttempts] = useState('once');
+  const [settingsLangOpen, setSettingsLangOpen] = useState(false);
+  const [settingsCommOpen, setSettingsCommOpen] = useState(false);
+  const [settingsAttemptsOpen, setSettingsAttemptsOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
@@ -678,33 +681,74 @@ export default function ContributorsSlider({
                     {/* Preferred Language */}
                     <div className="flex items-center justify-between h-12">
                       <span className="text-sm text-white/70">Preferred Language</span>
-                      <select
-                        value={editForm.language}
-                        onChange={(e) => setEditForm((f) => ({ ...f, language: e.target.value }))}
-                        className="text-sm text-white outline-none bg-transparent cursor-pointer text-right"
-                        style={{ maxWidth: 160 }}
-                      >
-                        {LANGUAGE_OPTIONS.map((lang) => (
-                          <option key={lang} value={lang} style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>
-                            {lang}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => { setSettingsLangOpen((v) => !v); setSettingsCommOpen(false); setSettingsAttemptsOpen(false); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer"
+                          style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
+                        >
+                          <span className="text-white text-xs font-medium">{editForm.language}</span>
+                          <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+                        </button>
+                        {settingsLangOpen ? (
+                          <div
+                            className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
+                            style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
+                          >
+                            {LANGUAGE_OPTIONS.map((lang) => (
+                              <button
+                                key={lang}
+                                type="button"
+                                onClick={() => { setEditForm((f) => ({ ...f, language: lang })); setSettingsLangOpen(false); }}
+                                className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
+                                style={{ color: editForm.language === lang ? '#f97316' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                              >
+                                {lang}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
 
                     {/* Preferred Communication */}
                     <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                       <span className="text-sm text-white/70">Preferred Communication</span>
-                      <select
-                        value={settingsPreferredComm}
-                        onChange={(e) => setSettingsPreferredComm(e.target.value)}
-                        className="text-sm text-white outline-none bg-transparent cursor-pointer text-right"
-                        style={{ maxWidth: 160 }}
-                      >
-                        <option value="sms" style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>SMS / Phone</option>
-                        <option value="email" disabled style={{ background: 'var(--bg-screen)', color: 'rgba(255,255,255,0.3)' }}>Email</option>
-                        <option value="whatsapp" disabled style={{ background: 'var(--bg-screen)', color: 'rgba(255,255,255,0.3)' }}>WhatsApp</option>
-                      </select>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => { setSettingsCommOpen((v) => !v); setSettingsLangOpen(false); setSettingsAttemptsOpen(false); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer"
+                          style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
+                        >
+                          <span className="text-white text-xs font-medium">
+                            {settingsPreferredComm === 'sms' ? 'SMS / Phone' : settingsPreferredComm === 'email' ? 'Email' : 'WhatsApp'}
+                          </span>
+                          <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+                        </button>
+                        {settingsCommOpen ? (
+                          <div
+                            className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
+                            style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => { setSettingsPreferredComm('sms'); setSettingsCommOpen(false); }}
+                              className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
+                              style={{ color: settingsPreferredComm === 'sms' ? '#f97316' : 'var(--text-primary)', background: settingsPreferredComm === 'sms' ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                            >
+                              SMS / Phone
+                            </button>
+                            <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>
+                              Email
+                            </button>
+                            <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>
+                              WhatsApp
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
 
                     {/* Keep trying toggle */}
@@ -717,24 +761,10 @@ export default function ContributorsSlider({
                       <span className="text-sm text-white/70 text-left">Keep trying if this person doesn't contribute?</span>
                       <div
                         className="flex-shrink-0 rounded-full transition-colors"
-                        style={{
-                          width: 44,
-                          height: 26,
-                          background: settingsKeepTrying ? '#f97316' : 'rgba(255,255,255,0.15)',
-                          position: 'relative',
-                        }}
+                        style={{ width: 44, height: 26, background: settingsKeepTrying ? '#f97316' : 'rgba(255,255,255,0.15)', position: 'relative' }}
                       >
                         <div
-                          style={{
-                            position: 'absolute',
-                            top: 3,
-                            left: settingsKeepTrying ? 21 : 3,
-                            width: 20,
-                            height: 20,
-                            borderRadius: '50%',
-                            background: 'white',
-                            transition: 'left 0.15s ease',
-                          }}
+                          style={{ position: 'absolute', top: 3, left: settingsKeepTrying ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s ease' }}
                         />
                       </div>
                     </button>
@@ -743,16 +773,37 @@ export default function ContributorsSlider({
                     {settingsKeepTrying ? (
                       <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                         <span className="text-sm text-white/70">How many times to try?</span>
-                        <select
-                          value={settingsMaxAttempts}
-                          onChange={(e) => setSettingsMaxAttempts(e.target.value)}
-                          className="text-sm text-white outline-none bg-transparent cursor-pointer text-right"
-                          style={{ maxWidth: 160 }}
-                        >
-                          <option value="once" style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>Once</option>
-                          <option value="twice" style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>Two Times</option>
-                          <option value="three" style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>Three Times</option>
-                        </select>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => { setSettingsAttemptsOpen((v) => !v); setSettingsLangOpen(false); setSettingsCommOpen(false); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer"
+                            style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
+                          >
+                            <span className="text-white text-xs font-medium">
+                              {settingsMaxAttempts === 'once' ? 'Once' : settingsMaxAttempts === 'twice' ? 'Two Times' : 'Three Times'}
+                            </span>
+                            <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+                          </button>
+                          {settingsAttemptsOpen ? (
+                            <div
+                              className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
+                              style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
+                            >
+                              {([['once', 'Once'], ['twice', 'Two Times'], ['three', 'Three Times']] as const).map(([val, label]) => (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  onClick={() => { setSettingsMaxAttempts(val); setSettingsAttemptsOpen(false); }}
+                                  className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
+                                  style={{ color: settingsMaxAttempts === val ? '#f97316' : 'var(--text-primary)', background: settingsMaxAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     ) : null}
                   </div>
