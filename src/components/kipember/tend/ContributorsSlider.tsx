@@ -132,6 +132,8 @@ export default function ContributorsSlider({
   const [sort, setSort] = useState<'Name' | 'Most Embers'>('Name');
   const [sortOpen, setSortOpen] = useState(false);
   const [pool, setPool] = useState<UnifiedContributor[] | null>(null);
+  const [addingToEmber, setAddingToEmber] = useState<Set<string>>(new Set());
+  const [expandedPoolKey, setExpandedPoolKey] = useState<string | null>(null);
 
   const contributors = detail?.contributors || [];
   const canManageContributors = Boolean(detail?.canManage);
@@ -191,6 +193,34 @@ export default function ContributorsSlider({
       };
       setEditForm(next);
       setSavedForm(next);
+    }
+  }
+
+  async function addExistingToEmber(sourceKey: string) {
+    if (!imageId) return;
+    setAddingToEmber((prev) => new Set(prev).add(sourceKey));
+    try {
+      const response = await fetch('/api/contributors/add-existing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageId, sourceKey }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok) {
+        onStatus?.('Contributor added.');
+        await Promise.all([refreshDetail(), refreshPool()]);
+        setFilter('ember');
+      } else {
+        onStatus?.(payload?.error || 'Failed to add contributor.');
+      }
+    } catch {
+      onStatus?.('Failed to add contributor.');
+    } finally {
+      setAddingToEmber((prev) => {
+        const next = new Set(prev);
+        next.delete(sourceKey);
+        return next;
+      });
     }
   }
 
@@ -374,7 +404,7 @@ export default function ContributorsSlider({
           const inviteStatus = onThisEmber
             ? inviteSent
               ? 'Invited'
-              : 'Not Invited'
+              : 'Part of This ember'
             : `In ${contributor.emberCount} ember${contributor.emberCount === 1 ? '' : 's'}`;
           const isDirty =
             isExpanded &&
@@ -383,10 +413,10 @@ export default function ContributorsSlider({
               editForm.phone !== savedForm.phone ||
               editForm.email !== savedForm.email ||
               editForm.language !== savedForm.language);
-          // Pool entries that aren't on this ember have no
-          // EmberContributor record to PATCH against, so the row is
-          // collapse-only — no chevron, no expansion, no editing.
           const expandable = onThisEmber && Boolean(emberContributorId);
+          const isAdding = addingToEmber.has(contributor.key);
+          const canAdd = !onThisEmber && canManageContributors && Boolean(imageId);
+          const isPoolExpanded = !onThisEmber && expandedPoolKey === contributor.key;
         return (
           <div
             key={contributor.key}
@@ -447,10 +477,86 @@ export default function ContributorsSlider({
                     transition: 'transform 0.15s ease',
                   }}
                 />
+              ) : canAdd ? (
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="flex items-center justify-center rounded-full flex-shrink-0"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      background: isAdding ? 'rgba(249,115,22,0.4)' : '#f97316',
+                      cursor: isAdding ? 'default' : 'pointer',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isAdding) void addExistingToEmber(contributor.key);
+                    }}
+                  >
+                    <Plus size={14} color="white" strokeWidth={2.5} />
+                  </div>
+                  <div
+                    className="flex items-center justify-center rounded-full flex-shrink-0"
+                    style={{
+                      width: 28,
+                      height: 28,
+                      background: 'rgba(255,255,255,0.08)',
+                      cursor: 'pointer',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedPoolKey(isPoolExpanded ? null : contributor.key);
+                    }}
+                  >
+                    <ChevronDown
+                      size={14}
+                      color="rgba(255,255,255,0.5)"
+                      style={{
+                        transform: isPoolExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                        transition: 'transform 0.15s ease',
+                      }}
+                    />
+                  </div>
+                </div>
               ) : (
                 <span style={{ width: 14, height: 14 }} />
               )}
             </button>
+
+            {isPoolExpanded ? (
+              <div
+                className="px-4 py-4 flex flex-col gap-2"
+                style={{ borderTop: '1px solid var(--border-subtle)' }}
+              >
+                <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Profile</h3>
+                <div
+                  className="rounded-xl px-4"
+                  style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}
+                >
+                  {contributor.email ? (
+                    <p className="text-white/60 text-sm py-3">{contributor.email}</p>
+                  ) : null}
+                  {contributor.phoneNumber ? (
+                    <p
+                      className="text-white/60 text-sm py-3"
+                      style={contributor.email ? { borderTop: '1px solid var(--border-subtle)' } : undefined}
+                    >
+                      {formatPhoneNumber(contributor.phoneNumber)}
+                    </p>
+                  ) : null}
+                  {!contributor.email && !contributor.phoneNumber ? (
+                    <p className="text-white/30 text-sm py-3">No contact info</p>
+                  ) : null}
+                </div>
+                {contributor.embers.length > 0 ? (
+                  <div className="flex flex-col gap-1 pt-1">
+                    <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Other embers</h3>
+                    {contributor.embers.map((e) => (
+                      <p key={e.id} className="text-white/50 text-xs px-1">{e.title || 'Untitled ember'}</p>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             {isExpanded ? (
               <div
