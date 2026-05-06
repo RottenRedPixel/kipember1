@@ -484,7 +484,8 @@ export default function TendActionScreen({ action }: { action: string }) {
 
           {action === 'tag-people' ? (
             <TagPeopleSlider
-              detail={detail}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              detail={detail as any}
               imageId={resolvedImageId}
               coverPhotoUrl={coverPhotoUrl}
             />
