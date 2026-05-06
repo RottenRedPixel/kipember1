@@ -98,8 +98,12 @@ export default function AccountContributorsAccordion({
   async function addContributor() {
     if (addBusy) return;
     const name = `${addForm.firstName} ${addForm.lastName}`.trim();
-    if (!name && !addForm.phone.trim() && !addForm.email.trim()) {
-      setAddError('Add a name, phone, or email.');
+    if (!name) {
+      setAddError('First name is required.');
+      return;
+    }
+    if (!addForm.phone.trim()) {
+      setAddError('Phone number is required.');
       return;
     }
     setAddBusy(true);
@@ -489,7 +493,7 @@ export default function AccountContributorsAccordion({
             <button
               type="button"
               onClick={() => void addContributor()}
-              disabled={addBusy}
+              disabled={addBusy || !addForm.firstName.trim() || !addForm.phone.trim()}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50"
               style={{ background: '#f97316', minHeight: 44 }}
             >

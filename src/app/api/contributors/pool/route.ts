@@ -17,6 +17,11 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const emberId = url.searchParams.get('emberId');
 
-  const contributors = await getUnifiedContributorsForUser(auth.user.id, emberId || undefined);
-  return NextResponse.json({ contributors });
+  try {
+    const contributors = await getUnifiedContributorsForUser(auth.user.id, emberId || undefined);
+    return NextResponse.json({ contributors });
+  } catch (error) {
+    console.error('Error loading contributor pool:', error);
+    return NextResponse.json({ error: 'Failed to load contributors' }, { status: 500 });
+  }
 }

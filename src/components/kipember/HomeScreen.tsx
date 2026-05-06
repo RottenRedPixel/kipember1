@@ -1177,7 +1177,7 @@ export default function HomeScreen({
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
             borderTop: '1px solid var(--border-subtle)',
-            borderRadius: '25px 25px 0 0',
+            borderRadius: '30px 30px 0 0',
             transition: 'top 220ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >

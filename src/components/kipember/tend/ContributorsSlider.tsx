@@ -127,6 +127,7 @@ export default function ContributorsSlider({
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
   // Filter pill (This Ember / All) and sort dropdown — restored from the
   // legacy ContributorsListView. Drives which subset of the owner's
@@ -265,9 +266,10 @@ export default function ContributorsSlider({
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      onStatus?.(payload?.error || 'Failed to add contributor.');
+      setAddError(payload?.error || 'Failed to add contributor.');
       return;
     }
+    setAddError(null);
     onStatus?.('Contributor added.');
     setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
     setAdding(false);
@@ -744,9 +746,10 @@ export default function ContributorsSlider({
             <input
               key={key}
               value={addForm[key as keyof typeof addForm]}
-              onChange={(event) =>
-                setAddForm((current) => ({ ...current, [key]: event.target.value }))
-              }
+              onChange={(event) => {
+                setAddError(null);
+                setAddForm((current) => ({ ...current, [key]: event.target.value }));
+              }}
               placeholder={placeholder}
               className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
               style={fieldStyle}
@@ -766,11 +769,15 @@ export default function ContributorsSlider({
               </option>
             ))}
           </select>
+          {addError ? (
+            <p className="text-xs px-1" style={{ color: '#f87171' }}>{addError}</p>
+          ) : null}
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => {
                 setAdding(false);
+                setAddError(null);
                 setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
               }}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
