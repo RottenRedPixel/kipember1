@@ -98,6 +98,7 @@ export default function TagPeopleSlider({
   const [peopleSuggestions, setPeopleSuggestions] = useState<PeopleContributor[]>([]);
   const [aiSuggestionsByTagId, setAiSuggestionsByTagId] = useState<Record<string, AiSuggestion[]>>({});
   const [aiLoadingTagId, setAiLoadingTagId] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState('');
 
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
   const tagImgRef = useRef<HTMLImageElement | null>(null);

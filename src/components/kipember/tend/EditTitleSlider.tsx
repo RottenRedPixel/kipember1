@@ -54,6 +54,7 @@ export default function EditTitleSlider({
   // Edit reveals Title Ideas + People and unlocks the input. After a
   // successful save we snap back to 'view'.
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [savedMessage, setSavedMessage] = useState('');
 
   // Sync the input value from the loaded detail. Also default the people
   // checklist to "all selected" so the first batch of ideas already follows

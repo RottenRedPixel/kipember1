@@ -104,6 +104,7 @@ export default function EditTimePlaceSlider({
   const [savedLocationLat, setSavedLocationLat] = useState('');
   const [savedLocationLng, setSavedLocationLng] = useState('');
   const [timeDateSaving, setTimeDateSaving] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
   const [locationSaving, setLocationSaving] = useState(false);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
 
