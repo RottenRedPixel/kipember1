@@ -123,7 +123,6 @@ export default function AccountScreen({
   const [firstName, setFirstName] = useState(initialFirstName ?? '');
   const [lastName, setLastName] = useState(initialLastName ?? '');
   const [form, setForm] = useState({
-    email: initialEmail,
     phoneNumber: initialPhone ?? '',
   });
   const [profileStatus, setProfileStatus] = useState('');
@@ -243,7 +242,7 @@ export default function AccountScreen({
     }
   }
 
-  const displayName = [firstName, lastName].filter(Boolean).join(' ') || form.email;
+  const displayName = [firstName, lastName].filter(Boolean).join(' ') || form.phoneNumber || '';
 
   // Section header config
   const SECTIONS: { key: Exclude<Section, null>; icon: React.ReactNode; label: string }[] = [
@@ -490,7 +489,6 @@ export default function AccountScreen({
               <div className="rounded-xl px-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
                 <InputRow placeholder="First name" value={firstName} onChange={setFirstName} />
                 <InputRow placeholder="Last name" value={lastName} onChange={setLastName} border />
-                <InputRow placeholder="Email address" value={form.email ?? ''} type="email" onChange={(v) => setForm((f) => ({ ...f, email: v }))} border />
                 <InputRow placeholder="Phone number" value={form.phoneNumber} type="tel" onChange={(v) => setForm((f) => ({ ...f, phoneNumber: v }))} border />
               </div>
               <div className="flex justify-between items-center px-1">
