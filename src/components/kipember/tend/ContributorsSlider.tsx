@@ -404,7 +404,7 @@ export default function ContributorsSlider({
           const inviteStatus = onThisEmber
             ? inviteSent
               ? 'Invited'
-              : 'Part of This ember'
+              : 'Part of this ember'
             : `In ${contributor.emberCount} ember${contributor.emberCount === 1 ? '' : 's'}`;
           const isDirty =
             isExpanded &&
@@ -434,7 +434,6 @@ export default function ContributorsSlider({
                 }
               }}
               aria-expanded={isExpanded}
-              disabled={!expandable}
               className="w-full flex items-center gap-3 px-4"
               style={{ minHeight: 56, cursor: expandable ? 'pointer' : 'default' }}
             >
@@ -469,14 +468,19 @@ export default function ContributorsSlider({
               <span className="flex-1 text-white text-sm font-medium text-left">{name}</span>
               <span className="text-white/30 text-xs">{inviteStatus}</span>
               {expandable ? (
-                <ChevronDown
-                  size={14}
-                  color="rgba(255,255,255,0.5)"
-                  style={{
-                    transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                    transition: 'transform 0.15s ease',
-                  }}
-                />
+                <div
+                  className="flex items-center justify-center rounded-full flex-shrink-0"
+                  style={{ width: 28, height: 28, background: 'rgba(255,255,255,0.08)' }}
+                >
+                  <ChevronDown
+                    size={14}
+                    color="rgba(255,255,255,0.5)"
+                    style={{
+                      transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                      transition: 'transform 0.15s ease',
+                    }}
+                  />
+                </div>
               ) : canAdd ? (
                 <div className="flex items-center gap-1.5">
                   <div
@@ -522,41 +526,31 @@ export default function ContributorsSlider({
               )}
             </button>
 
-            {isPoolExpanded ? (
-              <div
-                className="px-4 py-4 flex flex-col gap-2"
-                style={{ borderTop: '1px solid var(--border-subtle)' }}
-              >
-                <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Profile</h3>
+            {isPoolExpanded ? (() => {
+              const nameParts = contributor.name.trim().split(/\s+/);
+              const poolFirst = nameParts[0] || '';
+              const poolLast = nameParts.slice(1).join(' ') || '';
+              return (
                 <div
-                  className="rounded-xl px-4"
-                  style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}
+                  className="px-4 py-4 flex flex-col gap-4"
+                  style={{ borderTop: '1px solid var(--border-subtle)' }}
                 >
-                  {contributor.email ? (
-                    <p className="text-white/60 text-sm py-3">{contributor.email}</p>
-                  ) : null}
-                  {contributor.phoneNumber ? (
-                    <p
-                      className="text-white/60 text-sm py-3"
-                      style={contributor.email ? { borderTop: '1px solid var(--border-subtle)' } : undefined}
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Profile</h3>
+                    <div
+                      className="rounded-xl px-4"
+                      style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}
                     >
-                      {formatPhoneNumber(contributor.phoneNumber)}
-                    </p>
-                  ) : null}
-                  {!contributor.email && !contributor.phoneNumber ? (
-                    <p className="text-white/30 text-sm py-3">No contact info</p>
-                  ) : null}
-                </div>
-                {contributor.embers.length > 0 ? (
-                  <div className="flex flex-col gap-1 pt-1">
-                    <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Other embers</h3>
-                    {contributor.embers.map((e) => (
-                      <p key={e.id} className="text-white/50 text-xs px-1">{e.title || 'Untitled ember'}</p>
-                    ))}
+                      <input readOnly value={poolFirst} placeholder="First name" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" />
+                      <input readOnly value={poolLast} placeholder="Last name" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
+                      <input readOnly value={contributor.email ?? ''} placeholder="Email" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
+                      <input readOnly value={formatPhoneNumber(contributor.phoneNumber) ?? ''} placeholder="Phone" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
+                      <input readOnly value="English" className="w-full h-12 px-0 text-sm text-white outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
+                    </div>
                   </div>
-                ) : null}
-              </div>
-            ) : null}
+                </div>
+              );
+            })() : null}
 
             {isExpanded ? (
               <div
