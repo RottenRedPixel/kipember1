@@ -75,7 +75,6 @@ export default function UserActionScreen({
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [friendEmail, setFriendEmail] = useState('');
   const [status, setStatus] = useState('');
   const isEmberList = action === 'my-embers' || action === 'shared-embers';
   const pagePath = basePath || `/user/${action}`;
@@ -161,26 +160,6 @@ export default function UserActionScreen({
     });
     const payload = await response.json().catch(() => ({}));
     setStatus(response.ok ? 'Profile saved.' : payload?.error || 'Failed to save profile.');
-  }
-
-  async function addFriend() {
-    setStatus('');
-    const response = await fetch('/api/friends', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: friendEmail }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      setStatus(payload?.error || 'Failed to add friend.');
-      return;
-    }
-    setStatus('Friend request sent.');
-    setFriendEmail('');
-    const refreshed = await fetch('/api/friends');
-    if (refreshed.ok) {
-      setFriends((await refreshed.json()) as FriendNetworkPayload);
-    }
   }
 
   async function handleAvatarUpload(blob: Blob) {
@@ -405,26 +384,6 @@ export default function UserActionScreen({
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
                   Save Profile
-                </button>
-              </div>
-
-              <div className="rounded-xl px-4 py-4" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
-                <p className="text-white/30 text-xs font-medium mb-3">Add to Your Network</p>
-                <input
-                  value={friendEmail}
-                  onChange={(event) => setFriendEmail(event.target.value)}
-                  placeholder="Friend email"
-                  className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                />
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={addFriend}
-                  className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-secondary"
-                  style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-                >
-                  Add Friend
                 </button>
               </div>
 
