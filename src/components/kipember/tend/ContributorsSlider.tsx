@@ -127,7 +127,7 @@ export default function ContributorsSlider({
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);
   // Mock settings state — not yet wired to API
-  const [settingsPreferredComm, setSettingsPreferredComm] = useState('sms');
+  const [settingsPreferredComm, setSettingsPreferredComm] = useState('call');
   const [settingsAttempts, setSettingsAttempts] = useState('once');
   const [settingsLangOpen, setSettingsLangOpen] = useState(false);
   const [settingsCommOpen, setSettingsCommOpen] = useState(false);
@@ -455,7 +455,7 @@ export default function ContributorsSlider({
         return (
           <div
             key={contributor.key}
-            className="rounded-xl overflow-hidden"
+            className="rounded-xl"
             style={{
               background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
               border: '1px solid var(--border-subtle)',
@@ -470,7 +470,11 @@ export default function ContributorsSlider({
               }}
               aria-expanded={isExpanded}
               className="w-full flex items-center gap-3 px-4"
-              style={{ minHeight: 56, cursor: expandable ? 'pointer' : 'default' }}
+              style={{
+                minHeight: 56,
+                cursor: expandable ? 'pointer' : 'default',
+                borderRadius: isExpanded || isPoolExpanded ? '12px 12px 0 0' : '12px',
+              }}
             >
               <div
                 className="rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
@@ -643,28 +647,6 @@ export default function ContributorsSlider({
                       style={{ borderTop: '1px solid var(--border-subtle)' }}
                     />
                   </div>
-                  <div className="flex gap-3 items-center">
-                    {status ? (
-                      <span className="flex-1 text-xs text-white/50">{status}</span>
-                    ) : (
-                      <div className="flex-1" />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => emberContributorId && void updateContributor(emberContributorId)}
-                      disabled={savingContributor || !isDirty || !canManageContributors}
-                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
-                      style={{
-                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
-                        border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-                        minHeight: 44,
-                        cursor: isDirty && !savingContributor ? 'pointer' : 'default',
-                        opacity: savingContributor ? 0.6 : 1,
-                      }}
-                    >
-                      {savingContributor ? 'Updating…' : 'Update'}
-                    </button>
-                  </div>
                 </div>
 
                 {/* Settings */}
@@ -679,7 +661,7 @@ export default function ContributorsSlider({
                   >
                     {/* Preferred Language */}
                     <div className="flex items-center justify-between h-12">
-                      <span className="text-sm text-white/70">Preferred Language</span>
+                      <span className="text-sm text-white/70">Language Preference</span>
                       <div className="relative">
                         <button
                           type="button"
@@ -695,7 +677,7 @@ export default function ContributorsSlider({
                             className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
                             style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
                           >
-                            {LANGUAGE_OPTIONS.map((lang) => (
+                            {LANGUAGE_OPTIONS.map((lang) => lang === 'English' ? (
                               <button
                                 key={lang}
                                 type="button"
@@ -703,6 +685,10 @@ export default function ContributorsSlider({
                                 className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
                                 style={{ color: editForm.language === lang ? '#f97316' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
                               >
+                                {lang}
+                              </button>
+                            ) : (
+                              <button key={lang} type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>
                                 {lang}
                               </button>
                             ))}
@@ -713,7 +699,7 @@ export default function ContributorsSlider({
 
                     {/* Preferred Communication */}
                     <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                      <span className="text-sm text-white/70">Preferred Communication</span>
+                      <span className="text-sm text-white/70">Communication Preference</span>
                       <div className="relative">
                         <button
                           type="button"
@@ -722,7 +708,7 @@ export default function ContributorsSlider({
                           style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
                         >
                           <span className="text-white text-xs font-medium">
-                            {settingsPreferredComm === 'sms' ? 'SMS / Phone' : settingsPreferredComm === 'email' ? 'Email' : 'WhatsApp'}
+                            {settingsPreferredComm === 'call' ? 'Phone Call' : settingsPreferredComm === 'sms' ? 'Text Message' : settingsPreferredComm === 'email' ? 'Email' : 'WhatsApp'}
                           </span>
                           <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
                         </button>
@@ -733,11 +719,14 @@ export default function ContributorsSlider({
                           >
                             <button
                               type="button"
-                              onClick={() => { setSettingsPreferredComm('sms'); setSettingsCommOpen(false); }}
+                              onClick={() => { setSettingsPreferredComm('call'); setSettingsCommOpen(false); }}
                               className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
-                              style={{ color: settingsPreferredComm === 'sms' ? '#f97316' : 'var(--text-primary)', background: settingsPreferredComm === 'sms' ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                              style={{ color: settingsPreferredComm === 'call' ? '#f97316' : 'var(--text-primary)', background: settingsPreferredComm === 'call' ? 'rgba(249,115,22,0.08)' : 'transparent' }}
                             >
-                              SMS / Phone
+                              Phone Call
+                            </button>
+                            <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>
+                              Text Message
                             </button>
                             <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>
                               Email
@@ -786,6 +775,29 @@ export default function ContributorsSlider({
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="flex gap-3 items-center">
+                  {status ? (
+                    <span className="flex-1 text-xs text-white/50">{status}</span>
+                  ) : (
+                    <div className="flex-1" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => emberContributorId && void updateContributor(emberContributorId)}
+                    disabled={savingContributor || !isDirty || !canManageContributors}
+                    className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
+                    style={{
+                      background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                      border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                      minHeight: 44,
+                      cursor: isDirty && !savingContributor ? 'pointer' : 'default',
+                      opacity: savingContributor ? 0.6 : 1,
+                    }}
+                  >
+                    {savingContributor ? 'Saving…' : 'Save'}
+                  </button>
                 </div>
 
               </div>
