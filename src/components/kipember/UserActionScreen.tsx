@@ -69,7 +69,6 @@ export default function UserActionScreen({
   const [form, setForm] = useState({
     firstName: initialProfile?.firstName || '',
     lastName: initialProfile?.lastName || '',
-    email: initialProfile?.email || '',
     phoneNumber: initialProfile?.phoneNumber || '',
   });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile?.avatarUrl ?? null);
@@ -109,7 +108,6 @@ export default function UserActionScreen({
           setForm({
             firstName: payload.user.firstName || '',
             lastName: payload.user.lastName || '',
-            email: payload.user.email || '',
             phoneNumber: payload.user.phoneNumber || '',
           });
           setAvatarUrl(payload.user.avatarUrl ?? null);
