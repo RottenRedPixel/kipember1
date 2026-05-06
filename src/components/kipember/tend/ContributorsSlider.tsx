@@ -785,7 +785,7 @@ export default function ContributorsSlider({
             <button
               type="button"
               onClick={() => void addContributor()}
-              disabled={!canManageContributors}
+              disabled={!canManageContributors || !addForm.firstName.trim() || !addForm.phone.trim()}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50"
               style={{ background: '#f97316', minHeight: 44 }}
             >

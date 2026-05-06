@@ -63,11 +63,11 @@ export async function POST(request: NextRequest) {
     const contributorName =
       getUserDisplayName(linkedUser) || (typeof name === 'string' && name.trim() ? name.trim() : null);
 
-    if (!normalizedPhone && !normalizedEmail && !linkedUser && !contributorName) {
-      return NextResponse.json(
-        { error: 'Provide a name, phone number, email, or select a friend' },
-        { status: 400 }
-      );
+    if (!contributorName) {
+      return NextResponse.json({ error: 'First name is required.' }, { status: 400 });
+    }
+    if (!normalizedPhone && !linkedUser) {
+      return NextResponse.json({ error: 'Phone number is required.' }, { status: 400 });
     }
 
     // Find or create the pool Contributor for this owner.
