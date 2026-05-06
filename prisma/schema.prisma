@@ -103,6 +103,7 @@ model Contributor {
   phoneNumber  String?
   email        String?
   name         String?
+  avatarColor  String?
   userId       String?
   user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   emberContributors EmberContributor[]
