@@ -1,7 +1,6 @@
 'use client';
 
 import { Calendar, Copy, MapPin } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import {
   usePlaceResolution,
@@ -106,9 +105,8 @@ export default function EditTimePlaceSlider({
   const [savedLocationLng, setSavedLocationLng] = useState('');
   const [timeDateSaving, setTimeDateSaving] = useState(false);
   const [locationSaving, setLocationSaving] = useState(false);
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
 
-  // Cast to the broader shape expected by usePlaceResolution. The hook reads a
-  // few extra fields (filename, originalName, etc.) — passing detail through.
   const placeResolution = usePlaceResolution(detail as Parameters<typeof usePlaceResolution>[0]);
   const placePrefilledRef = useRef(false);
 
@@ -148,15 +146,13 @@ export default function EditTimePlaceSlider({
     setSavedLocationCountry(parsed.country);
     setSavedLocationLat(latStr);
     setSavedLocationLng(lngStr);
+    setMode('view');
   }, [detail]);
 
-  // Reset the prefill guard whenever we open the slider for a different ember.
   useEffect(() => {
     placePrefilledRef.current = false;
   }, [imageId]);
 
-  // If the ember has no confirmed location yet, prefill once from the
-  // place-resolution suggestions (nearby place + exact address).
   useEffect(() => {
     if (!detail) return;
     if (detail.analysis?.confirmedLocation?.label) return;
@@ -277,9 +273,11 @@ export default function EditTimePlaceSlider({
   async function saveAll() {
     if (isTimeDateDirty) await saveTimeDate();
     if (Boolean(locationLabel.trim()) && isLocationDirty) await saveLocation();
+    setSavedMessage('Time & Place Saved');
+    setMode('view');
   }
 
-  const cancelHref = imageId ? `/ember/${imageId}?m=tend` : '/home';
+  const isView = mode === 'view';
 
   return (
     <>
@@ -293,11 +291,14 @@ export default function EditTimePlaceSlider({
           type="datetime-local"
           value={timeDateValue}
           onChange={(e) => setTimeDateValue(e.target.value)}
-          className="w-full h-12 px-4 rounded-xl text-sm text-white outline-none cursor-pointer"
+          readOnly={isView}
+          className="w-full h-12 px-4 rounded-xl text-sm text-white outline-none"
           style={{
             background: 'var(--bg-surface)',
             border: '1px solid var(--border-subtle)',
             colorScheme: 'dark',
+            cursor: isView ? 'default' : 'pointer',
+            pointerEvents: isView ? 'none' : 'auto',
           }}
         />
       </div>
@@ -317,14 +318,16 @@ export default function EditTimePlaceSlider({
             value={locationLabel}
             onChange={(e) => setLocationLabel(e.target.value)}
             placeholder="Name of location"
-            className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+            readOnly={isView}
+            className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent read-only:cursor-default"
           />
           <input
             type="text"
             value={locationAddress}
             onChange={(e) => setLocationAddress(e.target.value)}
             placeholder="Address"
-            className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+            readOnly={isView}
+            className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent read-only:cursor-default"
             style={{ borderTop: '1px solid var(--border-subtle)' }}
           />
           <input
@@ -332,7 +335,8 @@ export default function EditTimePlaceSlider({
             value={locationCityStateZip}
             onChange={(e) => setLocationCityStateZip(e.target.value)}
             placeholder="City, State ZIP"
-            className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+            readOnly={isView}
+            className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent read-only:cursor-default"
             style={{ borderTop: '1px solid var(--border-subtle)' }}
           />
           <input
@@ -340,7 +344,8 @@ export default function EditTimePlaceSlider({
             value={locationCountry}
             onChange={(e) => setLocationCountry(e.target.value)}
             placeholder="Country"
-            className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+            readOnly={isView}
+            className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent read-only:cursor-default"
             style={{ borderTop: '1px solid var(--border-subtle)' }}
           />
         </div>
@@ -389,35 +394,40 @@ export default function EditTimePlaceSlider({
                 setLocationLongitude(parts[1]?.trim() ?? '');
               }}
               placeholder="Latitude, Longitude"
-              className="flex-1 h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
+              readOnly={isView}
+              className="flex-1 h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent read-only:cursor-default"
             />
           )}
         </div>
       </div>
 
-      {/* Combined save */}
+      {/* Actions */}
       <div className="flex gap-3">
-        <Link
-          href={cancelHref}
-          className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary flex items-center justify-center"
-          style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-        >
-          Cancel
-        </Link>
-        <button
-          type="button"
-          onClick={() => void saveAll()}
-          disabled={isSaving || !isDirty}
-          className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-          style={{
-            background: isDirty ? '#f97316' : 'var(--bg-surface)',
-            border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-            minHeight: 44,
-            cursor: isDirty ? 'pointer' : 'default',
-          }}
-        >
-          {isSaving ? 'Saving...' : 'Save'}
-        </button>
+        {isView ? (
+          <button
+            type="button"
+            onClick={() => { setMode('edit'); setSavedMessage(''); }}
+            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium"
+            style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: 'pointer' }}
+          >
+            Edit
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void saveAll()}
+            disabled={isSaving || !isDirty}
+            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+            style={{
+              background: isDirty ? '#f97316' : 'var(--bg-surface)',
+              border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+              minHeight: 44,
+              cursor: isDirty ? 'pointer' : 'default',
+            }}
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+        )}
       </div>
     </>
   );

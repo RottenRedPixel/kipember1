@@ -44,6 +44,9 @@ function initialsFor(name: string) {
 
 type TagPeopleDetail = {
   tags?: ImageTagShape[];
+  analysis?: {
+    peopleObserved?: Array<{ label: string }> | null;
+  } | null;
 };
 
 type FaceTag = {
@@ -84,7 +87,8 @@ export default function TagPeopleSlider({
   coverPhotoUrl: string | null;
 }) {
   const [faceTags, setFaceTags] = useState<FaceTag[]>([]);
-  const [taggingMode, setTaggingMode] = useState(true);
+  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [hasChanges, setHasChanges] = useState(false);
   const [draggingTagId, setDraggingTagId] = useState<string | null>(null);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -192,7 +196,7 @@ export default function TagPeopleSlider({
   }, [draggingTagId]);
 
   async function handleImageClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!taggingMode || draggingTagId) return;
+    if (mode !== 'edit' || draggingTagId) return;
     const container = imageContainerRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
@@ -229,12 +233,13 @@ export default function TagPeopleSlider({
           prev.map((t) => (t.id === tempId ? { ...t, id: dbId, dbId } : t))
         );
         setEditingTagId((prev) => (prev === tempId ? dbId : prev));
+        setHasChanges(true);
       }
     }
   }
 
   function handleCirclePointerDown(e: React.PointerEvent<HTMLDivElement>, tag: FaceTag) {
-    if (!taggingMode) return;
+    if (mode !== 'edit') return;
     e.stopPropagation();
     e.preventDefault();
     dragStart.current = {
@@ -265,6 +270,7 @@ export default function TagPeopleSlider({
     const name = editingName.trim() || tag?.name || 'Unknown';
     setFaceTags((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
     setEditingTagId(null);
+    setHasChanges(true);
     if (tag?.dbId && imageId) {
       // Free-text save: keep label, clear any prior FK linkage so the tag
       // doesn't claim to be a contributor it isn't.
@@ -344,6 +350,7 @@ export default function TagPeopleSlider({
     setFaceTags((prev) => prev.map((t) => (t.id === tagId ? { ...t, name: person.name } : t)));
     setEditingTagId(null);
     setEditingName('');
+    setHasChanges(true);
     await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -363,6 +370,7 @@ export default function TagPeopleSlider({
     setFaceTags((prev) => prev.map((t) => (t.id === tagId ? { ...t, name: suggestion.label } : t)));
     setEditingTagId(null);
     setEditingName('');
+    setHasChanges(true);
     await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -455,6 +463,7 @@ export default function TagPeopleSlider({
       }
       if (created.length > 0) {
         setFaceTags((prev) => [...prev, ...created]);
+        setHasChanges(true);
         void refreshPeopleSuggestions();
       }
     } finally {
@@ -475,7 +484,7 @@ export default function TagPeopleSlider({
           className="w-full rounded-xl overflow-hidden relative"
           style={{
             border: '1px solid var(--border-subtle)',
-            cursor: taggingMode ? 'crosshair' : 'default',
+            cursor: mode === 'edit' ? 'crosshair' : 'default',
           }}
           onClick={handleImageClick}
         >
@@ -529,7 +538,7 @@ export default function TagPeopleSlider({
                     aspectRatio: '1 / 1',
                     border: `2.5px solid ${tag.color}`,
                     boxShadow: '0 0 0 1px rgba(0,0,0,0.5)',
-                    cursor: taggingMode ? 'grab' : 'default',
+                    cursor: mode === 'edit' ? 'grab' : 'default',
                     touchAction: 'none',
                   }}
                   onPointerDown={(e) => handleCirclePointerDown(e, tag)}
@@ -555,6 +564,37 @@ export default function TagPeopleSlider({
           })}
         </div>
       ) : null}
+
+      {/* Detected people indicator — edit mode only */}
+      {(() => {
+        if (mode !== 'edit') return null;
+        const detected = detail?.analysis?.peopleObserved?.length ?? 0;
+        if (detected === 0) return null;
+        const tagged = faceTags.length;
+        const untagged = Math.max(0, detected - tagged);
+        if (untagged === 0) return null;
+        return (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-[5px]">
+              {Array.from({ length: Math.min(untagged, 5) }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-full flex-shrink-0"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    border: `2.5px solid ${TAG_COLORS[(tagged + i) % TAG_COLORS.length]}`,
+                    background: 'transparent',
+                  }}
+                />
+              ))}
+            </div>
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              {untagged} {untagged === 1 ? 'person' : 'people'} detected — tap photo to tag
+            </p>
+          </div>
+        );
+      })()}
 
       {/* Tag list */}
       {faceTags.length > 0 ? (
@@ -584,7 +624,7 @@ export default function TagPeopleSlider({
                     className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ background: tag.color }}
                   />
-                  {isEditing ? (
+                  {isEditing && mode === 'edit' ? (
                     <input
                       autoFocus
                       value={editingName}
@@ -605,24 +645,28 @@ export default function TagPeopleSlider({
                       {tag.name || 'Unnamed'}
                     </span>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleEditTag(tag)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <Pencil size={13} color="var(--text-primary)" strokeWidth={1.8} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteTag(tag.id)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <X size={14} color="#f87171" strokeWidth={1.8} />
-                  </button>
+                  {mode === 'edit' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleEditTag(tag)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <Pencil size={13} color="var(--text-primary)" strokeWidth={1.8} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteTag(tag.id)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <X size={14} color="#f87171" strokeWidth={1.8} />
+                      </button>
+                    </>
+                  ) : null}
                 </div>
-                {isEditing ? (
+                {isEditing && mode === 'edit' ? (
                   <div className="flex flex-col gap-1.5 px-4 pb-3 pt-1 border-t border-white/5">
                     {aiSuggestions && aiSuggestions.length > 0 ? (
                       <>
@@ -722,33 +766,42 @@ export default function TagPeopleSlider({
       ) : null}
 
       <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={() => void handleAutoDetect()}
-          disabled={detectingFaces || !imageId}
-          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium disabled:opacity-50"
-          style={{
-            background: 'transparent',
-            border: '1.5px solid var(--border-btn)',
-            minHeight: 44,
-            cursor: detectingFaces ? 'default' : 'pointer',
-          }}
-        >
-          {detectingFaces ? 'Detecting…' : 'Auto Detect'}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTaggingMode((v) => !v)}
-          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium"
-          style={{
-            background: taggingMode ? '#f97316' : 'transparent',
-            border: taggingMode ? 'none' : '1.5px solid var(--border-btn)',
-            minHeight: 44,
-            cursor: 'pointer',
-          }}
-        >
-          {taggingMode ? 'Done Tagging' : 'Tag Faces'}
-        </button>
+        {mode === 'view' ? (
+          <button
+            type="button"
+            onClick={() => { setMode('edit'); setHasChanges(false); setSavedMessage(''); }}
+            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium"
+            style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: 'pointer' }}
+          >
+            Edit
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => void handleAutoDetect()}
+              disabled={detectingFaces || !imageId}
+              className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary disabled:opacity-50"
+              style={{ border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: detectingFaces ? 'default' : 'pointer' }}
+            >
+              {detectingFaces ? 'Detecting…' : 'Auto Detect'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setSavedMessage('Tagged People Saved'); setMode('view'); }}
+              disabled={!hasChanges}
+              className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+              style={{
+                background: hasChanges ? '#f97316' : 'var(--bg-surface)',
+                border: hasChanges ? 'none' : '1px solid var(--border-subtle)',
+                minHeight: 44,
+                cursor: hasChanges ? 'pointer' : 'default',
+              }}
+            >
+              Save
+            </button>
+          </>
+        )}
       </div>
     </>
   );

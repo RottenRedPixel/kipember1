@@ -144,6 +144,8 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [detailError, setDetailError] = useState('');
   const [images, setImages] = useState<Array<{ id: string }>>([]);
   const [status, setStatus] = useState('');
+  const [savedMsg, setSavedMsg] = useState('');
+  useEffect(() => { setSavedMsg(''); }, [action]);
   // Slider state moved to component files:
   //   edit-title       -> EditTitleSlider
   //   edit-time-place  -> EditTimePlaceSlider
@@ -416,6 +418,11 @@ export default function TendActionScreen({ action }: { action: string }) {
               ? contributorName
               : title}
           </h2>
+          {savedMsg ? (
+            <span className="ml-auto text-sm font-medium flex-shrink-0" style={{ color: '#4ade80' }}>
+              {savedMsg}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">

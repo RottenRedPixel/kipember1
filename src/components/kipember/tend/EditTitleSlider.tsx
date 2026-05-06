@@ -157,7 +157,9 @@ export default function EditTitleSlider({
       body: JSON.stringify({ title: titleValue }),
     });
     onStatus?.(response.ok ? 'Title saved.' : 'Failed to save title.');
-    if (response.ok) setMode('view');
+    if (response.ok) {
+      setMode('view');
+    }
     await refreshDetail();
   }
 
@@ -319,6 +321,7 @@ export default function EditTitleSlider({
             type="button"
             onClick={() => {
               setMode('edit');
+              setSavedMessage('');
               void loadCachedSuggestions();
             }}
             className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium"

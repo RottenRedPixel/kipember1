@@ -169,6 +169,7 @@ export default function EditSnapshotSlider({
       const updated = payload?.snapshot;
       if (updated?.script) setScriptDraft(updated.script);
       onStatus?.('Snapshot saved.');
+      setSavedMessage('Snapshot Saved');
       setMode('view');
       await refreshDetail();
     } catch (err) {
@@ -323,7 +324,7 @@ export default function EditSnapshotSlider({
         {mode === 'view' ? (
           <button
             type="button"
-            onClick={() => setMode('edit')}
+            onClick={() => { setMode('edit'); setSavedMessage(''); }}
             disabled={!detail.canManage}
             className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
             style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: detail.canManage ? 'pointer' : 'default' }}

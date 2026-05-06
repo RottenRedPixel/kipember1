@@ -229,7 +229,7 @@ export default function MyEmbersScreen({
             <div className="flex flex-col items-center pt-4">
               <div
                 className="flex flex-col items-center gap-4 rounded-2xl px-8 py-8 mx-4 text-center"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-subtle)' }}
               >
                 <svg width="48" height="48" viewBox="0 0 72 72" fill="white">
                   <circle cx="36" cy="36" r="7.2" fill="#f97316" />
@@ -285,7 +285,7 @@ export default function MyEmbersScreen({
                     key={ember.id}
                     href={`/ember/${ember.id}`}
                     className="flex rounded-xl overflow-hidden can-hover-card"
-                    style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}
+                    style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-default)' }}
                   >
                     {/* Photo */}
                     <div className="relative flex-shrink-0" style={{ width: 177, height: 177 }}>
@@ -358,7 +358,7 @@ export default function MyEmbersScreen({
                   key={ember.id}
                   href={`/ember/${ember.id}`}
                   className="aspect-square rounded-xl overflow-hidden can-hover-card relative"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: 0.95 }}
+                  style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-default)', opacity: 0.95 }}
                 >
                   <img
                     src={getPreviewMediaUrl({
