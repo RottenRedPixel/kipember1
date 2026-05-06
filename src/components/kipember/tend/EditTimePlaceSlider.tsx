@@ -190,35 +190,26 @@ export default function EditTimePlaceSlider({
     }
   }, [detail, placeResolution]);
 
-  async function saveTimeDate() {
-    if (!imageId || !timeDateValue) return;
-    setTimeDateSaving(true);
-    onStatus?.('');
+  async function saveTimeDate(): Promise<boolean> {
+    if (!imageId || !timeDateValue) return false;
     try {
       const response = await fetch(`/api/images/${imageId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ capturedAt: new Date(timeDateValue).toISOString() }),
       });
-      onStatus?.(response.ok ? 'Time & date saved.' : 'Failed to save time & date.');
       if (response.ok) {
         setSavedTimeDateValue(timeDateValue);
-        await refreshDetail();
+        return true;
       }
+      return false;
     } catch {
-      onStatus?.('Failed to save time & date.');
-    } finally {
-      setTimeDateSaving(false);
+      return false;
     }
   }
 
-  async function saveLocation() {
-    if (!imageId || !locationLabel.trim()) {
-      onStatus?.('A location name is required.');
-      return;
-    }
-    setLocationSaving(true);
-    onStatus?.('');
+  async function saveLocation(): Promise<boolean> {
+    if (!imageId || !locationLabel.trim()) return false;
     try {
       const composedDetail = [locationAddress, locationCityStateZip, locationCountry]
         .map((s) => s.trim())
@@ -246,16 +237,12 @@ export default function EditTimePlaceSlider({
         setSavedLocationCountry(locationCountry.trim());
         setSavedLocationLat(locationLatitude);
         setSavedLocationLng(locationLongitude);
-        onStatus?.('Location saved.');
         clearPlaceResolutionCache(imageId);
-        await refreshDetail();
-      } else {
-        onStatus?.('Failed to save location.');
+        return true;
       }
+      return false;
     } catch {
-      onStatus?.('Failed to save location.');
-    } finally {
-      setLocationSaving(false);
+      return false;
     }
   }
 
@@ -272,8 +259,15 @@ export default function EditTimePlaceSlider({
   const isSaving = timeDateSaving || locationSaving;
 
   async function saveAll() {
-    if (isTimeDateDirty) await saveTimeDate();
-    if (Boolean(locationLabel.trim()) && isLocationDirty) await saveLocation();
+    setTimeDateSaving(isTimeDateDirty);
+    setLocationSaving(Boolean(locationLabel.trim()) && isLocationDirty);
+    await Promise.all([
+      isTimeDateDirty ? saveTimeDate() : Promise.resolve(),
+      Boolean(locationLabel.trim()) && isLocationDirty ? saveLocation() : Promise.resolve(),
+    ]);
+    setTimeDateSaving(false);
+    setLocationSaving(false);
+    await refreshDetail();
     setSavedMessage('Time & Place Saved');
     setMode('view');
   }

@@ -99,6 +99,7 @@ export default function TagPeopleSlider({
   const [aiSuggestionsByTagId, setAiSuggestionsByTagId] = useState<Record<string, AiSuggestion[]>>({});
   const [aiLoadingTagId, setAiLoadingTagId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
+  const [taggedComplete, setTaggedComplete] = useState(false);
 
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
   const tagImgRef = useRef<HTMLImageElement | null>(null);
@@ -572,6 +573,7 @@ export default function TagPeopleSlider({
       {/* Detected people indicator — edit mode only */}
       {(() => {
         if (mode !== 'edit') return null;
+        if (taggedComplete) return null;
         const detected = detail?.analysis?.peopleObserved?.length ?? 0;
         if (detected === 0) return null;
         const tagged = faceTags.length;
@@ -786,7 +788,7 @@ export default function TagPeopleSlider({
             </button>
             <button
               type="button"
-              onClick={() => { setSavedMessage('Tagged People Saved'); setMode('view'); }}
+              onClick={() => { setSavedMessage('Tagged People Saved'); setTaggedComplete(true); setMode('view'); }}
               disabled={!hasChanges}
               className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
               style={{

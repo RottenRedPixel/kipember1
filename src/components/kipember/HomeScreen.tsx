@@ -1177,11 +1177,11 @@ export default function HomeScreen({
             WebkitBackdropFilter: 'blur(20px)',
             backdropFilter: 'blur(20px)',
             borderTop: '1px solid var(--border-subtle)',
-            borderRadius: '20px 20px 0 0',
+            borderRadius: '25px 25px 0 0',
             transition: 'top 220ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          <div className="relative flex items-center gap-3 pl-2 pr-4 py-3 flex-shrink-0">
+          <div className="relative flex items-center gap-3 pl-4 pr-4 py-3 flex-shrink-0">
             <Link
               href={
                 flow
@@ -1191,7 +1191,7 @@ export default function HomeScreen({
               className="flex-1 text-left"
             >
               <span className="flex items-center gap-1">
-                <EmberMark />
+                <EmberMark size={22} />
                 <span className="text-base font-medium" style={{ color: '#f97316' }}>
                   Ember
                 </span>

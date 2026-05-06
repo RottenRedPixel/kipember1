@@ -219,7 +219,7 @@ export async function POST(
       },
     });
 
-    await generateWikiForImage(id);
+    void generateWikiForImage(id);
 
     return NextResponse.json({
       success: true,
