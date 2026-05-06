@@ -14,6 +14,29 @@ function normalizeLabelKey(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
+function parseNoContributors(metadataJson: string | null | undefined): boolean {
+  if (!metadataJson) return false;
+  try {
+    const parsed = JSON.parse(metadataJson) as Record<string, unknown>;
+    return parsed?.noContributors === true;
+  } catch {
+    return false;
+  }
+}
+
+function mergeNoContributors(metadataJson: string | null | undefined, value: boolean): string {
+  let parsed: Record<string, unknown> = {};
+  if (metadataJson) {
+    try { parsed = JSON.parse(metadataJson) as Record<string, unknown>; } catch { /* keep empty */ }
+  }
+  if (value) {
+    parsed.noContributors = true;
+  } else {
+    delete parsed.noContributors;
+  }
+  return JSON.stringify(parsed);
+}
+
 function safeParseJson<T>(value: string | null | undefined, fallback: T): T {
   if (!value) {
     return fallback;
@@ -1048,6 +1071,7 @@ export async function GET(
             openQuestions: safeParseJson(image.analysis.openQuestionsJson, []),
             sceneInsights: safeParseJson(image.analysis.sceneInsightsJson, null),
             confirmedLocation: parseConfirmedLocationContext(image.analysis.metadataJson),
+            noContributors: parseNoContributors(image.analysis.metadataJson),
           }
         : null,
       voiceCallClips: voiceCallClips.map((clip) => ({
@@ -1279,7 +1303,14 @@ export async function PATCH(
       }
     }
 
-    if (Object.keys(updateData).length === 0 && capturedAtValue === undefined) {
+    const noContributorsValue =
+      typeof body?.noContributors === 'boolean' ? body.noContributors : undefined;
+
+    if (
+      Object.keys(updateData).length === 0 &&
+      capturedAtValue === undefined &&
+      noContributorsValue === undefined
+    ) {
       return NextResponse.json(
         { error: 'No valid image fields were provided' },
         { status: 400 }
@@ -1297,16 +1328,26 @@ export async function PATCH(
       },
     });
 
-    if (capturedAtValue !== undefined) {
+    if (capturedAtValue !== undefined || noContributorsValue !== undefined) {
+      const existing = await prisma.imageAnalysis.findUnique({
+        where: { imageId: id },
+        select: { metadataJson: true },
+      });
       await prisma.imageAnalysis.upsert({
         where: { imageId: id },
         update: {
-          capturedAt: capturedAtValue,
+          ...(capturedAtValue !== undefined ? { capturedAt: capturedAtValue } : {}),
+          ...(noContributorsValue !== undefined
+            ? { metadataJson: mergeNoContributors(existing?.metadataJson, noContributorsValue) }
+            : {}),
         },
         create: {
           imageId: id,
           status: 'partial',
-          capturedAt: capturedAtValue,
+          ...(capturedAtValue !== undefined ? { capturedAt: capturedAtValue } : {}),
+          ...(noContributorsValue !== undefined
+            ? { metadataJson: mergeNoContributors(null, noContributorsValue) }
+            : {}),
         },
       });
     }

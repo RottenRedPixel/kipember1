@@ -222,6 +222,8 @@ export type KipemberWikiDetail = {
       longitude?: number | null;
       confirmedAt?: string | null;
     } | null;
+    noContributors?: boolean | null;
+    peopleObserved?: Array<unknown> | null;
   } | null;
   contributors: KipemberContributor[];
   attachments: KipemberAttachment[];
@@ -2490,10 +2492,11 @@ export default function KipemberWikiContent({
 
   // People-tagged check (lifted out of its render-time IIFE so the
   // progress tracker can read it).
-  const detectedPeopleCount =
-    detail?.analysis?.sceneInsights?.peopleAndDemographics?.numberOfPeopleVisible ?? null;
+  // Use peopleObserved (the same source as TagPeopleSlider) so the wiki
+  // and the slider agree on how many people need tagging.
+  const detectedPeopleCount = detail?.analysis?.peopleObserved?.length ?? null;
   const taggedPeopleCount = detail?.tags?.length ?? 0;
-  const peopleComplete = detectedPeopleCount !== null && taggedPeopleCount >= detectedPeopleCount;
+  const peopleComplete = taggedPeopleCount > 0;
 
   // Admin tracker config (which slugs are enabled + completion rule
   // per step). While loading, we fall back to "everything enabled with
@@ -2629,7 +2632,10 @@ export default function KipemberWikiContent({
     {
       slug: 'contributors',
       label: 'Contributor',
-      complete: activeContributors.length > 0 || pendingContributors.length > 0,
+      complete:
+        activeContributors.length > 0 ||
+        pendingContributors.length > 0 ||
+        Boolean(detail?.analysis?.noContributors),
     },
     { slug: 'people', label: 'People', complete: peopleComplete },
     { slug: 'title', label: 'Title', complete: Boolean(detail?.title) },

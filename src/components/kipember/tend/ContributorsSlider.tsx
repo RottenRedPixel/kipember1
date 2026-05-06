@@ -24,6 +24,9 @@ type ContributorRecord = KipemberContributor | TendContributor;
 type ContributorsDetail = {
   canManage?: boolean;
   contributors?: TendContributor[];
+  analysis?: {
+    noContributors?: boolean | null;
+  } | null;
 };
 
 // ────────────────────────────────────────────────────────────
@@ -134,6 +137,10 @@ export default function ContributorsSlider({
   const [pool, setPool] = useState<UnifiedContributor[] | null>(null);
   const [addingToEmber, setAddingToEmber] = useState<Set<string>>(new Set());
   const [expandedPoolKey, setExpandedPoolKey] = useState<string | null>(null);
+  const [noContributors, setNoContributors] = useState(
+    Boolean(detail?.analysis?.noContributors)
+  );
+  const [savingNoContributors, setSavingNoContributors] = useState(false);
 
   const contributors = detail?.contributors || [];
   const canManageContributors = Boolean(detail?.canManage);
@@ -162,6 +169,10 @@ export default function ContributorsSlider({
   useEffect(() => {
     void refreshPool();
   }, [refreshPool]);
+
+  useEffect(() => {
+    setNoContributors(Boolean(detail?.analysis?.noContributors));
+  }, [detail]);
 
   // Quick lookup: pool key → invited flag from detail.contributors. The
   // pool API doesn't carry invite status, but detail.contributors does
@@ -221,6 +232,22 @@ export default function ContributorsSlider({
         next.delete(sourceKey);
         return next;
       });
+    }
+  }
+
+  async function toggleNoContributors(value: boolean) {
+    if (!imageId) return;
+    setSavingNoContributors(true);
+    setNoContributors(value);
+    try {
+      await fetch(`/api/images/${imageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ noContributors: value }),
+      });
+      await refreshDetail();
+    } finally {
+      setSavingNoContributors(false);
     }
   }
 
@@ -658,6 +685,46 @@ export default function ContributorsSlider({
         );
         });
       })()}
+
+      {/* No-contributors toggle */}
+      {canManageContributors && (
+        <button
+          type="button"
+          onClick={() => { if (!savingNoContributors) void toggleNoContributors(!noContributors); }}
+          className="flex items-center justify-between gap-3 w-full rounded-xl px-4 text-left"
+          style={{
+            background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+            border: '1px solid var(--border-subtle)',
+            minHeight: 56,
+            cursor: savingNoContributors ? 'default' : 'pointer',
+            opacity: savingNoContributors ? 0.6 : 1,
+          }}
+        >
+          <span className="text-sm text-white/70">I wish to not have contributors in this ember.</span>
+          <div
+            className="flex-shrink-0 rounded-full transition-colors"
+            style={{
+              width: 44,
+              height: 26,
+              background: noContributors ? '#f97316' : 'rgba(255,255,255,0.15)',
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 3,
+                left: noContributors ? 21 : 3,
+                width: 20,
+                height: 20,
+                borderRadius: '50%',
+                background: 'white',
+                transition: 'left 0.15s ease',
+              }}
+            />
+          </div>
+        </button>
+      )}
 
       {/* Add Contributor — collapsed button, expands inline into a form */}
       {adding ? (
