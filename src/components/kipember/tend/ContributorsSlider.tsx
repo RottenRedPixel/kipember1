@@ -126,6 +126,8 @@ export default function ContributorsSlider({
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);
+  const [callingContributor, setCallingContributor] = useState(false);
+  const [callMessage, setCallMessage] = useState<string | null>(null);
   // Mock settings state — not yet wired to API
   const [settingsPreferredComm, setSettingsPreferredComm] = useState('call');
   const [settingsAttempts, setSettingsAttempts] = useState('once');
@@ -198,6 +200,8 @@ export default function ContributorsSlider({
       return;
     }
     setExpandedId(emberContributorId);
+    setCallingContributor(false);
+    setCallMessage(null);
     const c = contributors.find((x) => x.id === emberContributorId);
     if (c) {
       const nameParts = contributorDisplayName(c).trim().split(/\s+/);
@@ -280,6 +284,28 @@ export default function ContributorsSlider({
     setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
     setAdding(false);
     await Promise.all([refreshDetail(), refreshPool()]);
+  }
+
+  async function callContributor(emberContributorId: string) {
+    setCallingContributor(true);
+    setCallMessage(null);
+    try {
+      const response = await fetch('/api/voice/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributorId: emberContributorId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok) {
+        setCallMessage('Call started — they should receive it shortly.');
+      } else {
+        setCallMessage(payload?.error || 'Failed to start call.');
+      }
+    } catch {
+      setCallMessage('Failed to start call.');
+    } finally {
+      setCallingContributor(false);
+    }
   }
 
   async function updateContributor(contributorId: string) {
@@ -777,27 +803,42 @@ export default function ContributorsSlider({
                   </div>
                 </div>
 
-                <div className="flex gap-3 items-center">
-                  {status ? (
-                    <span className="flex-1 text-xs text-white/50">{status}</span>
-                  ) : (
-                    <div className="flex-1" />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => emberContributorId && void updateContributor(emberContributorId)}
-                    disabled={savingContributor || !isDirty || !canManageContributors}
-                    className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
-                    style={{
-                      background: isDirty ? '#f97316' : 'var(--bg-surface)',
-                      border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-                      minHeight: 44,
-                      cursor: isDirty && !savingContributor ? 'pointer' : 'default',
-                      opacity: savingContributor ? 0.6 : 1,
-                    }}
-                  >
-                    {savingContributor ? 'Saving…' : 'Save'}
-                  </button>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => emberContributorId && void callContributor(emberContributorId)}
+                      disabled={callingContributor}
+                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
+                      style={{
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        minHeight: 44,
+                        opacity: callingContributor ? 0.6 : 1,
+                        cursor: callingContributor ? 'default' : 'pointer',
+                      }}
+                    >
+                      {callingContributor ? 'Calling…' : 'Call Now'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => emberContributorId && void updateContributor(emberContributorId)}
+                      disabled={savingContributor || !isDirty || !canManageContributors}
+                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
+                      style={{
+                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                        border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                        minHeight: 44,
+                        cursor: isDirty && !savingContributor ? 'pointer' : 'default',
+                        opacity: savingContributor ? 0.6 : 1,
+                      }}
+                    >
+                      {savingContributor ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                  {(callMessage || status) ? (
+                    <p className="text-xs text-white/50 text-center">{callMessage ?? status}</p>
+                  ) : null}
                 </div>
 
               </div>
