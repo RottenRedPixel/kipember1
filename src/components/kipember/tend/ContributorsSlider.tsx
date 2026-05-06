@@ -126,6 +126,10 @@ export default function ContributorsSlider({
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);
+  // Mock settings state — not yet wired to API
+  const [settingsPreferredComm, setSettingsPreferredComm] = useState('sms');
+  const [settingsKeepTrying, setSettingsKeepTrying] = useState(true);
+  const [settingsMaxAttempts, setSettingsMaxAttempts] = useState('once');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
@@ -636,21 +640,6 @@ export default function ContributorsSlider({
                       className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent disabled:opacity-50"
                       style={{ borderTop: '1px solid var(--border-subtle)' }}
                     />
-                    <select
-                      value={editForm.language}
-                      onChange={(e) =>
-                        setEditForm((f) => ({ ...f, language: e.target.value }))
-                      }
-                      disabled={!canManageContributors}
-                      className="w-full h-12 px-0 text-sm text-white outline-none bg-transparent disabled:opacity-50 cursor-pointer"
-                      style={{ borderTop: '1px solid var(--border-subtle)' }}
-                    >
-                      {LANGUAGE_OPTIONS.map((lang) => (
-                        <option key={lang} value={lang} style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>
-                          {lang}
-                        </option>
-                      ))}
-                    </select>
                   </div>
                   <div className="flex gap-3 items-center">
                     {status ? (
@@ -673,6 +662,99 @@ export default function ContributorsSlider({
                     >
                       {savingContributor ? 'Updating…' : 'Update'}
                     </button>
+                  </div>
+                </div>
+
+                {/* Settings */}
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Settings</h3>
+                  <div
+                    className="rounded-xl px-4"
+                    style={{
+                      background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    {/* Preferred Language */}
+                    <div className="flex items-center justify-between h-12">
+                      <span className="text-sm text-white/70">Preferred Language</span>
+                      <select
+                        value={editForm.language}
+                        onChange={(e) => setEditForm((f) => ({ ...f, language: e.target.value }))}
+                        className="text-sm text-white outline-none bg-transparent cursor-pointer text-right"
+                        style={{ maxWidth: 160 }}
+                      >
+                        {LANGUAGE_OPTIONS.map((lang) => (
+                          <option key={lang} value={lang} style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>
+                            {lang}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Preferred Communication */}
+                    <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                      <span className="text-sm text-white/70">Preferred Communication</span>
+                      <select
+                        value={settingsPreferredComm}
+                        onChange={(e) => setSettingsPreferredComm(e.target.value)}
+                        className="text-sm text-white outline-none bg-transparent cursor-pointer text-right"
+                        style={{ maxWidth: 160 }}
+                      >
+                        <option value="sms" style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>SMS / Phone</option>
+                        <option value="email" disabled style={{ background: 'var(--bg-screen)', color: 'rgba(255,255,255,0.3)' }}>Email</option>
+                        <option value="whatsapp" disabled style={{ background: 'var(--bg-screen)', color: 'rgba(255,255,255,0.3)' }}>WhatsApp</option>
+                      </select>
+                    </div>
+
+                    {/* Keep trying toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setSettingsKeepTrying((v) => !v)}
+                      className="flex items-center justify-between gap-3 w-full cursor-pointer"
+                      style={{ minHeight: 56, borderTop: '1px solid var(--border-subtle)' }}
+                    >
+                      <span className="text-sm text-white/70 text-left">Keep trying if this person doesn't contribute?</span>
+                      <div
+                        className="flex-shrink-0 rounded-full transition-colors"
+                        style={{
+                          width: 44,
+                          height: 26,
+                          background: settingsKeepTrying ? '#f97316' : 'rgba(255,255,255,0.15)',
+                          position: 'relative',
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: 3,
+                            left: settingsKeepTrying ? 21 : 3,
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: 'white',
+                            transition: 'left 0.15s ease',
+                          }}
+                        />
+                      </div>
+                    </button>
+
+                    {/* Max attempts */}
+                    {settingsKeepTrying ? (
+                      <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                        <span className="text-sm text-white/70">How many times to try?</span>
+                        <select
+                          value={settingsMaxAttempts}
+                          onChange={(e) => setSettingsMaxAttempts(e.target.value)}
+                          className="text-sm text-white outline-none bg-transparent cursor-pointer text-right"
+                          style={{ maxWidth: 160 }}
+                        >
+                          <option value="once" style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>Once</option>
+                          <option value="twice" style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>Two Times</option>
+                          <option value="three" style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>Three Times</option>
+                        </select>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
