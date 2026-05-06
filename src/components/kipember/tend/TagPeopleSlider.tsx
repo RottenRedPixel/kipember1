@@ -19,6 +19,7 @@ type PeopleContributor = {
   name: string;
   email: string | null;
   phoneNumber: string | null;
+  avatarColor: string | null;
   avatarUrl: string | null;
   alreadyTagged: boolean;
 };
@@ -723,7 +724,7 @@ export default function TagPeopleSlider({
                               style={{
                                 background: p.avatarUrl
                                   ? 'rgba(255,255,255,0.1)'
-                                  : pastelForContributorIdentity({
+                                  : p.avatarColor ?? pastelForContributorIdentity({
                                       userId: p.userId,
                                       email: p.email,
                                       phoneNumber: p.phoneNumber,

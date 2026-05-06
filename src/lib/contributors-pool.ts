@@ -18,6 +18,7 @@ export type UnifiedContributor = {
   name: string;
   email: string | null;
   phoneNumber: string | null;
+  avatarColor: string | null;
   avatarUrl: string | null;
   /** Embers across the user's pool that this person is on. */
   embers: { id: string; title: string; contributorId: string }[];
@@ -82,6 +83,7 @@ export async function getUnifiedContributorsForUser(
       name: true,
       email: true,
       phoneNumber: true,
+      avatarColor: true,
       userId: true,
       user: { select: { firstName: true, lastName: true, email: true, avatarFilename: true } },
       emberContributors: {
@@ -114,6 +116,7 @@ export async function getUnifiedContributorsForUser(
         name: displayName,
         email: r.email ?? r.user?.email ?? null,
         phoneNumber: r.phoneNumber ?? null,
+        avatarColor: r.avatarColor ?? null,
         avatarUrl: r.user?.avatarFilename ? `/api/uploads/${r.user.avatarFilename}` : null,
         embers: [],
         emberCount: 0,

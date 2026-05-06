@@ -34,6 +34,7 @@ export async function GET(
             name: true,
             email: true,
             phoneNumber: true,
+            avatarColor: true,
             createdAt: true,
             user: {
               select: {
@@ -91,6 +92,7 @@ export async function GET(
       name: detail.contributor.name,
       email: detail.contributor.email,
       phoneNumber: detail.contributor.phoneNumber,
+      avatarColor: detail.contributor.avatarColor ?? null,
       user: detail.contributor.user,
       emberSession: detail.emberSession,
       voiceCalls: detail.voiceCalls,

@@ -61,3 +61,11 @@ export function pastelForContributorIdentity(c: {
 }): string {
   return pastelForContributor(poolKeyForContributor(c));
 }
+
+// Prefer the DB-stored color when set; fall back to the deterministic pastel.
+export function resolveAvatarColor(
+  storedColor: string | null | undefined,
+  identity: { userId?: string | null; email?: string | null; phoneNumber?: string | null; id?: string | null }
+): string {
+  return storedColor ?? pastelForContributorIdentity(identity);
+}

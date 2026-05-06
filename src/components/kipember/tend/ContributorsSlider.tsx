@@ -471,7 +471,7 @@ export default function ContributorsSlider({
                   height: 36,
                   background: avatarUrl
                     ? 'rgba(249,115,22,0.85)'
-                    : pastelForContributorIdentity({
+                    : contributor.avatarColor ?? pastelForContributorIdentity({
                         userId: null,
                         email: null,
                         phoneNumber: null,

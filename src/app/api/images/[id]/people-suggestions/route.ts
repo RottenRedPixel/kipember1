@@ -11,6 +11,7 @@ export type PeopleSuggestionContributor = {
   name: string;
   email: string | null;
   phoneNumber: string | null;
+  avatarColor: string | null;
   avatarUrl: string | null;
   alreadyTagged: boolean;
 };
@@ -62,6 +63,7 @@ export async function GET(
               name: true,
               email: true,
               phoneNumber: true,
+              avatarColor: true,
               user: {
                 select: {
                   firstName: true,
@@ -98,6 +100,7 @@ export async function GET(
         'Contributor',
       email: ec.contributor.email ?? ec.contributor.user?.email ?? null,
       phoneNumber: ec.contributor.phoneNumber,
+      avatarColor: ec.contributor.avatarColor ?? null,
       avatarUrl: ec.contributor.user?.avatarFilename
         ? `/api/uploads/${ec.contributor.user.avatarFilename}`
         : null,

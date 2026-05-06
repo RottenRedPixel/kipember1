@@ -311,7 +311,7 @@ export default function ContributorsListView({
                   <div
                     className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-medium"
                     style={{
-                      background: pastelForContributor(c.key),
+                      background: c.avatarColor ?? pastelForContributor(c.key),
                       color: '#1f2937',
                     }}
                   >

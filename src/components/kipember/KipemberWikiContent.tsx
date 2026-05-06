@@ -118,6 +118,7 @@ export type KipemberContributor = {
   name: string | null;
   email: string | null;
   phoneNumber: string | null;
+  avatarColor?: string | null;
   createdAt: string;
   user?: {
     id: string;
@@ -236,6 +237,7 @@ export type KipemberWikiDetail = {
     personUserId?: string | null;
     personEmail?: string | null;
     personPhoneNumber?: string | null;
+    personAvatarColor?: string | null;
     messages: Array<{
       role: string;
       content: string;
@@ -252,6 +254,7 @@ export type KipemberWikiDetail = {
     personUserId?: string | null;
     personEmail?: string | null;
     personPhoneNumber?: string | null;
+    personAvatarColor?: string | null;
     messages: Array<{
       role: string;
       content: string;
@@ -265,6 +268,7 @@ export type KipemberWikiDetail = {
     personUserId?: string | null;
     personEmail?: string | null;
     personPhoneNumber?: string | null;
+    personAvatarColor?: string | null;
     voiceCallId: string;
     recordingUrl: string | null;
     startedAt: string | null;
@@ -395,6 +399,7 @@ type PersonIdentity = {
   email: string | null;
   phoneNumber: string | null;
   id: string | null;
+  avatarColor?: string | null;
   avatarUrl: string | null;
   // Owner gets a dedicated orange swatch so their avatar stays consistent
   // with the AppHeader, /account, and the wiki Owner card. Without this
@@ -412,7 +417,7 @@ const OWNER_AVATAR_BG = 'rgba(249,115,22,0.6)';
 // treatment AppHeader and the /account avatar use.
 function avatarStylesForPerson(person: PersonIdentity | null, fallbackName: string) {
   if (person?.isOwner) return { background: OWNER_AVATAR_BG, color: '#ffffff' };
-  if (person) return { background: pastelForContributorIdentity(person), color: '#1f2937' };
+  if (person) return { background: person.avatarColor ?? pastelForContributorIdentity(person), color: '#1f2937' };
   return { background: pastelForContributor(fallbackName), color: '#1f2937' };
 }
 
@@ -610,7 +615,7 @@ function VoiceBlockCard({
           bgColor={
             block.isOwner
               ? OWNER_AVATAR_BG
-              : pastelForContributorIdentity({
+              : block.personAvatarColor ?? pastelForContributorIdentity({
                   userId: block.personUserId ?? null,
                   email: block.personEmail ?? null,
                   phoneNumber: block.personPhoneNumber ?? null,
@@ -2014,7 +2019,7 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
           bgColor={
             block.isOwner
               ? OWNER_AVATAR_BG
-              : pastelForContributorIdentity({
+              : block.personAvatarColor ?? pastelForContributorIdentity({
                   userId: block.personUserId ?? null,
                   email: block.personEmail ?? null,
                   phoneNumber: block.personPhoneNumber ?? null,
@@ -2384,6 +2389,7 @@ export default function KipemberWikiContent({
         email: contributor.email ?? contributor.user?.email ?? null,
         phoneNumber: contributor.phoneNumber ?? contributor.user?.phoneNumber ?? null,
         id: contributor.id ?? null,
+        avatarColor: contributor.avatarColor ?? null,
         avatarUrl: contributor.user?.avatarFilename
           ? `/api/uploads/${contributor.user.avatarFilename}`
           : null,
@@ -2775,7 +2781,7 @@ export default function KipemberWikiContent({
                     <AvatarCircle
                       name={contributorName}
                       avatarUrl={contributor.user?.avatarFilename ? `/api/uploads/${contributor.user.avatarFilename}` : null}
-                      bgColor={pastelForContributorIdentity({
+                      bgColor={contributor.avatarColor ?? pastelForContributorIdentity({
                         userId: contributor.user?.id ?? contributor.userId ?? null,
                         email: contributor.email ?? contributor.user?.email ?? null,
                         phoneNumber: contributor.phoneNumber ?? contributor.user?.phoneNumber ?? null,
@@ -2791,7 +2797,7 @@ export default function KipemberWikiContent({
                 <div key={contributor.id} className="flex items-center gap-3">
                   <AvatarCircle
                     name={contributor.name || contributor.email || contributor.phoneNumber || '?'}
-                    bgColor={pastelForContributorIdentity({
+                    bgColor={contributor.avatarColor ?? pastelForContributorIdentity({
                       userId: contributor.userId ?? null,
                       email: contributor.email ?? null,
                       phoneNumber: contributor.phoneNumber ?? null,

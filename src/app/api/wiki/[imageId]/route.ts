@@ -153,6 +153,7 @@ export async function GET(
                   name: true,
                   email: true,
                   phoneNumber: true,
+                  avatarColor: true,
                   user: {
                     select: {
                       firstName: true,

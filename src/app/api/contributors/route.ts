@@ -174,6 +174,7 @@ export async function POST(request: NextRequest) {
       name: emberContributor.contributor.name,
       email: emberContributor.contributor.email,
       phoneNumber: emberContributor.contributor.phoneNumber,
+      avatarColor: emberContributor.contributor.avatarColor ?? null,
       userId: emberContributor.contributor.userId,
       user: emberContributor.contributor.user,
       emberSession: emberContributor.emberSession,

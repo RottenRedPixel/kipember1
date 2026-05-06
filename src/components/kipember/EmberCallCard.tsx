@@ -21,6 +21,7 @@ export type EmberCallBlock = {
   personUserId?: string | null;
   personEmail?: string | null;
   personPhoneNumber?: string | null;
+  personAvatarColor?: string | null;
   // True when the call's contributor is the ember owner — drives the
   // orange owner swatch instead of the pastel.
   isOwner?: boolean;
@@ -49,6 +50,7 @@ function CallHeaderAvatar({
   email,
   phoneNumber,
   contributorId,
+  avatarColor,
 }: {
   name: string;
   avatarUrl: string | null;
@@ -56,6 +58,7 @@ function CallHeaderAvatar({
   email: string | null;
   phoneNumber: string | null;
   contributorId: string | null;
+  avatarColor?: string | null;
 }) {
   if (avatarUrl) {
     // eslint-disable-next-line @next/next/no-img-element
@@ -68,13 +71,11 @@ function CallHeaderAvatar({
       />
     );
   }
-  // Pool-key pastel keeps the call avatar in lockstep with this person's
-  // avatar everywhere else (wiki contributors row, claim rows, story circle
-  // chat / voice blocks). pastelForContributor(name) here used to drift
-  // because it hashed the display name instead of the stable pool key.
-  const bg = userId || email || phoneNumber || contributorId
-    ? pastelForContributorIdentity({ userId, email, phoneNumber, id: contributorId })
-    : pastelForContributor(name);
+  const bg = avatarColor ?? (
+    userId || email || phoneNumber || contributorId
+      ? pastelForContributorIdentity({ userId, email, phoneNumber, id: contributorId })
+      : pastelForContributor(name)
+  );
   return (
     <div
       className="rounded-full flex items-center justify-center flex-shrink-0"
@@ -177,6 +178,7 @@ export default function EmberCallCard({
             email={block.personEmail ?? null}
             phoneNumber={block.personPhoneNumber ?? null}
             contributorId={null}
+            avatarColor={block.personAvatarColor ?? null}
           />
           <p className="flex-1 text-left text-white/30 text-xs font-medium">
             {block.personName}&apos;s Ember Call

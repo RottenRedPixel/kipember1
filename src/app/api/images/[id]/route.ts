@@ -262,6 +262,7 @@ export async function GET(
         name: ec.contributor.name,
         email: ec.contributor.email,
         phoneNumber: ec.contributor.phoneNumber,
+        avatarColor: ec.contributor.avatarColor ?? null,
         user: ec.contributor.user,
         emberSession: ec.emberSession,
         voiceCalls: ec.voiceCalls,
@@ -688,6 +689,7 @@ export async function GET(
       userId: string | null;
       email: string | null;
       phoneNumber: string | null;
+      avatarColor?: string | null;
     };
     let chatBlocks: Array<{
       personName: string;
@@ -696,6 +698,7 @@ export async function GET(
       personUserId: string | null;
       personEmail: string | null;
       personPhoneNumber: string | null;
+      personAvatarColor: string | null;
       messages: Array<{
         role: string;
         content: string;
@@ -712,6 +715,7 @@ export async function GET(
       personUserId: string | null;
       personEmail: string | null;
       personPhoneNumber: string | null;
+      personAvatarColor: string | null;
       messages: Array<{
         role: string;
         content: string;
@@ -752,7 +756,7 @@ export async function GET(
           emberContributor: {
             select: {
               id: true,
-              contributor: { select: { id: true, userId: true, name: true, email: true, phoneNumber: true } },
+              contributor: { select: { id: true, userId: true, name: true, email: true, phoneNumber: true, avatarColor: true } },
             },
           },
           messages: { orderBy: { createdAt: 'asc' } },
@@ -845,6 +849,7 @@ export async function GET(
           userId: session.user?.id ?? sessionContributor?.userId ?? null,
           email: session.user?.email ?? sessionContributor?.email ?? null,
           phoneNumber: sessionContributor?.phoneNumber ?? null,
+          avatarColor: sessionContributor?.avatarColor ?? null,
         };
         const bucket =
           byPerson.get(personKey) || {
@@ -898,6 +903,7 @@ export async function GET(
             personUserId: bucket.identity.userId,
             personEmail: bucket.identity.email,
             personPhoneNumber: bucket.identity.phoneNumber,
+            personAvatarColor: bucket.identity.avatarColor ?? null,
             messages: deduped,
           };
         })
@@ -911,6 +917,7 @@ export async function GET(
           personUserId: bucket.identity.userId,
           personEmail: bucket.identity.email,
           personPhoneNumber: bucket.identity.phoneNumber,
+          personAvatarColor: bucket.identity.avatarColor ?? null,
           messages: bucket.voiceMessages.sort(
             (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           ),
@@ -931,6 +938,7 @@ export async function GET(
       personUserId: string | null;
       personEmail: string | null;
       personPhoneNumber: string | null;
+      personAvatarColor: string | null;
       voiceCallId: string;
       recordingUrl: string | null;
       startedAt: string | null;
@@ -969,6 +977,7 @@ export async function GET(
             personUserId: ec.contributor.user?.id ?? ec.contributor.userId ?? null,
             personEmail: ec.contributor.email ?? ec.contributor.user?.email ?? null,
             personPhoneNumber: ec.contributor.phoneNumber ?? null,
+            personAvatarColor: ec.contributor.avatarColor ?? null,
             voiceCallId: voiceCall.id,
             recordingUrl: voiceCall.recordingUrl ?? null,
             startedAt: voiceCall.startedAt ? voiceCall.startedAt.toISOString() : null,
@@ -1023,6 +1032,7 @@ export async function GET(
         name: ec.contributor.name,
         email: ec.contributor.email,
         phoneNumber: ec.contributor.phoneNumber,
+        avatarColor: ec.contributor.avatarColor ?? null,
         user: ec.contributor.user,
         emberSession: ec.emberSession,
         voiceCalls: ec.voiceCalls,
@@ -1044,6 +1054,7 @@ export async function GET(
                 name: ec.contributor.name,
                 email: ec.contributor.email,
                 phoneNumber: ec.contributor.phoneNumber,
+                avatarColor: ec.contributor.avatarColor ?? null,
                 user: ec.contributor.user,
                 emberSession: ec.emberSession,
                 voiceCalls: ec.voiceCalls,
