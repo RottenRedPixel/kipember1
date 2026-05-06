@@ -745,11 +745,11 @@ function EmotionalClaimRow({
       style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
     >
       <div className="flex items-center flex-shrink-0" style={{ gap: 2 }}>
-        <Avatar name={sourceDisplay} person={sourcePerson} />
+        <Avatar name={sourceDisplay} person={sourcePerson} size={29} />
         {subjectDisplay ? (
           <>
             <ChevronRight size={11} className="text-white/40" strokeWidth={2.5} />
-            <Avatar name={subjectDisplay} person={subjectPerson} />
+            <Avatar name={subjectDisplay} person={subjectPerson} size={29} />
           </>
         ) : null}
       </div>
@@ -780,9 +780,11 @@ function EmotionalClaimRow({
 function Avatar({
   name,
   person,
+  size = 24,
 }: {
   name: string;
   person: PersonIdentity | null;
+  size?: number;
 }) {
   const avatarUrl = person?.avatarUrl ?? null;
   if (avatarUrl) {
@@ -792,7 +794,7 @@ function Avatar({
         src={avatarUrl}
         alt={name}
         className="rounded-full object-cover flex-shrink-0"
-        style={{ width: 24, height: 24 }}
+        style={{ width: size, height: size }}
       />
     );
   }
@@ -801,11 +803,11 @@ function Avatar({
     <div
       className="rounded-full flex items-center justify-center flex-shrink-0"
       style={{
-        width: 24,
-        height: 24,
+        width: size,
+        height: size,
         background: styles.background,
         color: styles.color,
-        fontSize: 10,
+        fontSize: size <= 24 ? 10 : 11,
         fontWeight: 600,
       }}
     >
@@ -1544,6 +1546,7 @@ function WikiBadge({
   label,
   tracksProgress = false,
   count,
+  loading = false,
 }: {
   complete: boolean;
   label?: React.ReactNode;
@@ -1556,8 +1559,12 @@ function WikiBadge({
   // "Collected N" with N highlighted white. count === 0 flips the pill
   // grey to make it visually obvious nothing has been gathered yet.
   count?: number;
+  // When true, data is still loading — render a neutral grey pill so the
+  // badge doesn't flash from "Not Complete" to "Complete" on initial load.
+  loading?: boolean;
 }) {
-  // Five palettes:
+  // Six palettes:
+  //   loading                                                       → grey "—"
   //   tracksProgress + complete (a tracker step done)              → green "Complete" + check
   //   tracksProgress + !complete + custom label (e.g. "Need 1 …")  → orange
   //   tracksProgress + !complete + default                         → red "Not Complete"
@@ -1568,14 +1575,17 @@ function WikiBadge({
   // bg-screen so the pill stays fully opaque even when the wiki overlay
   // itself is partially transparent. Visual matches the original tinted
   // pills exactly in both dark and light themes.
-  const palette = tracksProgress
+  const grey = { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(148,163,184) 15%)', fg: '#94a3b8' };
+  const palette = loading
+    ? grey
+    : tracksProgress
     ? complete
       ? { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(34,197,94) 15%)', fg: '#4ade80' }
       : hasCustomLabel
         ? { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(249,115,22) 15%)', fg: '#f97316' }
         : { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(239,68,68) 15%)', fg: '#f87171' }
     : count === 0
-      ? { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(148,163,184) 15%)', fg: '#94a3b8' }
+      ? grey
       : { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(59,130,246) 15%)', fg: '#60a5fa' };
   const collectedDefault =
     typeof count === 'number' ? (
@@ -1590,10 +1600,10 @@ function WikiBadge({
       className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 inline-flex items-center gap-1"
       style={{ background: palette.bg, color: palette.fg }}
     >
-      {tracksProgress && complete ? (
+      {!loading && tracksProgress && complete ? (
         <Check size={11} strokeWidth={3} color="#ffffff" aria-hidden />
       ) : null}
-      {label ?? (tracksProgress ? (complete ? 'Complete' : 'Not Complete') : collectedDefault)}
+      {loading ? '—' : (label ?? (tracksProgress ? (complete ? 'Complete' : 'Not Complete') : collectedDefault))}
     </span>
   );
 }
@@ -1724,6 +1734,7 @@ function WikiSection({
   tracksProgress = false,
   count,
   id,
+  loading = false,
   children,
 }: {
   icon: React.ReactNode;
@@ -1751,6 +1762,8 @@ function WikiSection({
   // DOM id used by the progress-bar chips to scrollIntoView. Only
   // set on tracker sections (slugs match the trackerSteps list).
   id?: string;
+  // When true, badge stays grey while async data is still loading.
+  loading?: boolean;
   children: React.ReactNode;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -1828,6 +1841,7 @@ function WikiSection({
               label={badgeLabel}
               tracksProgress={tracksProgress}
               count={count}
+              loading={loading}
             />
           )}
         </div>
@@ -2409,6 +2423,8 @@ export default function KipemberWikiContent({
   );
 
   const wikiClaims = useReconciliationClaims(imageId);
+  // null = still fetching; used to keep tracker badges grey until resolved
+  const wikiClaimsLoading = wikiClaims === null;
   const whyClaims = useMemo(
     () => (wikiClaims ? wikiClaims.filter((c) => c.claimType === 'why') : null),
     [wikiClaims]
@@ -2738,6 +2754,7 @@ export default function KipemberWikiContent({
         }
         onEdit={detail?.id ? () => setEditingSlug('contributors') : undefined}
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-contributors"
       >
         <WikiCard>
@@ -2812,6 +2829,7 @@ export default function KipemberWikiContent({
             badgeLabel={peopleBadgeLabel}
             onEdit={detail?.id ? () => setEditingSlug('tag-people') : undefined}
             tracksProgress
+            loading={wikiClaimsLoading}
             id="tracker-people"
           >
         <WikiCard>
@@ -2846,6 +2864,7 @@ export default function KipemberWikiContent({
         complete={Boolean(detail?.title)}
         onEdit={detail?.id ? () => setEditingSlug('title') : undefined}
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-title"
       >
         <WikiCard>
@@ -2864,6 +2883,7 @@ export default function KipemberWikiContent({
         complete={Boolean(detail?.snapshot?.script)}
         onEdit={detail?.id ? () => setEditingSlug('snapshot') : undefined}
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-snapshot"
       >
         <WikiCard>
@@ -2895,6 +2915,7 @@ export default function KipemberWikiContent({
         }
         onEdit={detail?.id ? () => setEditingSlug('time-place') : undefined}
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-time-place"
       >
         <WikiCard>
@@ -2924,6 +2945,7 @@ export default function KipemberWikiContent({
         title="Photos"
         complete={Boolean(detail?.originalName || visualAttachments.length)}
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-photos"
       >
         <WikiCard>
@@ -2999,6 +3021,7 @@ export default function KipemberWikiContent({
         title="Image Analysis"
         complete={detail?.analysis?.status === 'ready'}
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-image-analysis"
       >
         {detail ? (
@@ -3118,6 +3141,7 @@ export default function KipemberWikiContent({
         collapsible
         defaultCollapsed
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-story-circle"
       >
         <div className="flex flex-col gap-4">
@@ -3180,6 +3204,7 @@ export default function KipemberWikiContent({
         title="Why"
         complete={whyComplete}
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-why"
       >
         <WhyCard claims={whyClaims} findPerson={findPerson} />
@@ -3190,6 +3215,7 @@ export default function KipemberWikiContent({
         title="Emotional States"
         complete={emotionComplete}
         tracksProgress
+        loading={wikiClaimsLoading}
         id="tracker-emotional-states"
       >
         <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
