@@ -104,6 +104,7 @@ export default function EditSnapshotSlider({
   // Edit reveals Length + People and unlocks the textarea. After a
   // successful save we snap back to 'view'.
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [savedMessage, setSavedMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const emberTitle = detail?.title || (detail ? stripExtension(detail.originalName) : 'Ember');
