@@ -3411,7 +3411,8 @@ export default function KipemberWikiContent({
               ) : null}
               {editingSlug === 'tag-people' && detail ? (
                 <TagPeopleSlider
-                  detail={detail}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  detail={detail as any}
                   imageId={imageId}
                   coverPhotoUrl={getPreviewMediaUrl({
                     mediaType: detail.mediaType,
