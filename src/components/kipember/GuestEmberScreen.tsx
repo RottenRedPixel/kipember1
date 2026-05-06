@@ -2,19 +2,17 @@
 
 import Link from 'next/link';
 import {
-  ChevronDown,
-  ChevronUp,
   Home,
   Link2,
   Mail,
   MessageCircle,
   MoreHorizontal,
-  Plus,
   ScanEye,
   Share2,
   UserPlus,
   X,
 } from 'lucide-react';
+import EmberModalShell, { type EmberModalSurface } from '@/components/kipember/EmberModalShell';
 
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -22,7 +20,6 @@ import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
 import GuestFlow from '@/components/kipember/workflows/GuestFlow';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
-import type { EmberModalSurface } from '@/components/kipember/HomeScreen';
 
 type GuestAttachment = {
   id: string;
@@ -53,21 +50,6 @@ type GuestData = {
   snapshotScript: string | null;
 };
 
-function EmberMark({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 72 72" fill="white">
-      <circle cx="36" cy="36" r="7.2" fill="#f97316" />
-      <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
-      <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
-      <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
-      <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(22.02 94.02) rotate(-90)" />
-      <rect x="47.97" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(29.55 -30.48) rotate(45)" />
-      <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(42.45 .66) rotate(45)" />
-      <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
-      <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
-    </svg>
-  );
-}
 
 function Modal({ children, closeHref }: { children: React.ReactNode; closeHref: string }) {
   return (
@@ -458,94 +440,21 @@ export default function GuestEmberScreen({ token }: { token: string }) {
           />
         ) : null}
 
-        {/* Ember modal — anchored to the bottom. Closed: just the brand
-            row. Open (position-1): caps at 65% from the top. Expanded
-            (position-2): caps at 25% from the top. backdrop-filter +
-            border-radius mirror HomeScreen so the chrome looks identical. */}
-        <div
-          className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
-          style={{
-            top: emberModalExpanded ? '25%' : emberModalOpen ? '65%' : 'auto',
-            background: 'var(--bg-screen)',
-            WebkitBackdropFilter: 'blur(20px)',
-            backdropFilter: 'blur(20px)',
-            borderTop: '1px solid var(--border-subtle)',
-            borderRadius: emberModalOpen ? '20px 20px 0 0' : undefined,
-            transition: 'top 200ms ease',
-          }}
+        <EmberModalShell
+          isOpen={emberModalOpen}
+          isExpanded={emberModalExpanded}
+          openHref={openHref}
+          closeHref={closeHref}
+          expandHref={expandHref}
+          collapseHref={collapseHref}
+          surface={emberModalSurface}
+          tabs={[
+            { label: 'Chat', surface: 'chats', href: chatTabHref },
+            { label: 'Voice', surface: 'voice', href: voiceTabHref },
+          ]}
         >
-          <div className="relative flex items-center gap-3 pl-2 pr-4 py-3 flex-shrink-0">
-            <Link href={flowOpen ? closeHref : openHref} className="flex-1 text-left">
-              <span className="flex items-center gap-1">
-                <EmberMark />
-                <span className="text-base font-medium" style={{ color: '#f97316' }}>
-                  Ember
-                </span>
-              </span>
-            </Link>
-            {flowOpen ? (
-              <div
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 rounded-xl p-1"
-                style={{ background: 'var(--bg-surface)' }}
-              >
-                <Link
-                  href={chatTabHref}
-                  className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: emberModalSurface === 'chats' ? 'var(--bg-screen)' : 'transparent',
-                    color: emberModalSurface === 'chats' ? '#ffffff' : 'var(--text-secondary)',
-                  }}
-                >
-                  Chat
-                </Link>
-                <Link
-                  href={voiceTabHref}
-                  className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: emberModalSurface === 'voice' ? 'var(--bg-screen)' : 'transparent',
-                    color: emberModalSurface === 'voice' ? '#ffffff' : 'var(--text-secondary)',
-                  }}
-                >
-                  Voice
-                </Link>
-              </div>
-            ) : null}
-            {flowOpen && !emberModalExpanded ? (
-              <Link
-                href={expandHref}
-                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                aria-label="Expand chat"
-              >
-                <ChevronUp size={18} color="var(--text-secondary)" strokeWidth={1.8} />
-              </Link>
-            ) : null}
-            {flowOpen && emberModalExpanded ? (
-              <Link
-                href={collapseHref}
-                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                aria-label="Collapse chat"
-              >
-                <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
-              </Link>
-            ) : null}
-            <Link
-              href={flowOpen ? closeHref : openHref}
-              className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-              style={{ background: flowOpen ? 'rgba(255,255,255,0.15)' : '#f97316' }}
-            >
-              {flowOpen ? (
-                <X size={18} color="var(--text-primary)" strokeWidth={1.8} />
-              ) : (
-                <Plus size={20} color="white" strokeWidth={2} />
-              )}
-            </Link>
-          </div>
-          {flowOpen ? (
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <GuestFlow token={token} emberModalSurface={emberModalSurface} />
-            </div>
-          ) : null}
-        </div>
+          <GuestFlow token={token} emberModalSurface={emberModalSurface} />
+        </EmberModalShell>
       </div>
     </div>
   );

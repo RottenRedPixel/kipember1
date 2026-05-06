@@ -2,15 +2,12 @@
 
 import Link from 'next/link';
 import {
-  ChevronDown,
   ChevronLeft,
-  ChevronUp,
   Copy,
   LogOut,
   MapPin,
   Moon,
   MoreHorizontal,
-  Plus,
   ScanEye,
   Leaf,
   Link2,
@@ -21,6 +18,8 @@ import {
   User,
   X,
 } from 'lucide-react';
+import EmberModalShell, { EmberMark, type EmberModalSurface } from '@/components/kipember/EmberModalShell';
+export type { EmberModalSurface } from '@/components/kipember/EmberModalShell';
 import AppHeader from '@/components/kipember/AppHeader';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -101,21 +100,6 @@ function parseHomeEmberFlow(flow: string | null): HomeEmberFlow {
   }
 }
 
-function EmberMark({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 72 72" fill="white">
-      <circle cx="36" cy="36" r="7.2" fill="#f97316" />
-      <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
-      <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
-      <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
-      <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(22.02 94.02) rotate(-90)" />
-      <rect x="47.97" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(29.55 -30.48) rotate(45)" />
-      <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(42.45 .66) rotate(45)" />
-      <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
-      <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
-    </svg>
-  );
-}
 
 function initials(value: string) {
   return value
@@ -225,7 +209,6 @@ function RailBtn({
 // Ember Call). This file holds the shared types so HomeScreen and the
 // workflow components stay in sync.
 export type EmberModalPosition = 'closed' | 'position-1' | 'position-2';
-export type EmberModalSurface = 'chats' | 'voice' | 'calls';
 
 function WorkflowSlot({
   flow,
@@ -1150,137 +1133,29 @@ export default function HomeScreen({
       ) : null}
 
       {!firstEmber ? (
-        <div
-          className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
-          style={{
-            // Bottom sheet with three detents (closed / peek / full).
-            // Animates `top` between numeric calc values. The original
-            // code used `auto` for the closed state, which doesn't
-            // interpolate cleanly to a percentage and is what caused
-            // the closed→peek jump. Using calc(100% - 68px) at closed
-            // keeps every value numeric so the transition is smooth.
-            //
-            // We tried a translateY/clip-path approach with a fixed
-            // 75dvh sheet — it animated faster but broke chat scroll
-            // and bubble clipping, since the sheet's layout box
-            // couldn't both stay full-size AND expose only the peek
-            // slice. With dynamic top, the sheet's actual size matches
-            // each detent so the messages list sizes correctly,
-            // bubbles clip naturally at the header, and scroll-to-top
-            // reaches the first message.
-            top: emberModalExpanded
-              ? '25%'
-              : emberModalOpen
-                ? '65%'
-                : 'calc(100% - 68px)',
-            background: 'var(--bg-screen)',
-            WebkitBackdropFilter: 'blur(20px)',
-            backdropFilter: 'blur(20px)',
-            borderTop: '1px solid var(--border-subtle)',
-            borderRadius: '30px 30px 0 0',
-            transition: 'top 220ms cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
+        <EmberModalShell
+          isOpen={emberModalOpen}
+          isExpanded={emberModalExpanded}
+          openHref={buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })}
+          closeHref={buildHomeHref({ ember: null, view: null, step: null, sub: null })}
+          expandHref={buildHomeHref({ view: 'full' })}
+          collapseHref={buildHomeHref({ view: null })}
+          surface={emberModalSurface}
+          tabs={[
+            { label: 'Chat', surface: 'chats', href: buildHomeHref({ chat: null }) },
+            { label: 'Voice', surface: 'voice', href: buildHomeHref({ chat: 'voice' }) },
+            { label: 'Call', surface: 'calls', href: buildHomeHref({ chat: 'calls' }) },
+          ]}
         >
-          <div className="relative flex items-center gap-3 pl-4 pr-4 py-3 flex-shrink-0">
-            <Link
-              href={
-                flow
-                  ? buildHomeHref({ ember: null, view: null, step: null, sub: null })
-                  : buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })
-              }
-              className="flex-1 text-left"
-            >
-              <span className="flex items-center gap-1">
-                <EmberMark size={22} />
-                <span className="text-base font-medium" style={{ color: '#f97316' }}>
-                  Ember
-                </span>
-              </span>
-            </Link>
-            {flow ? (
-              <div
-                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 rounded-xl p-1"
-                style={{ background: 'var(--bg-surface)' }}
-              >
-                <Link
-                  href={buildHomeHref({ chat: null })}
-                  className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: emberModalSurface === 'chats' ? 'var(--bg-screen)' : 'transparent',
-                    color: emberModalSurface === 'chats' ? '#ffffff' : 'var(--text-secondary)',
-                  }}
-                >
-                  Chat
-                </Link>
-                <Link
-                  href={buildHomeHref({ chat: 'voice' })}
-                  className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: emberModalSurface === 'voice' ? 'var(--bg-screen)' : 'transparent',
-                    color: emberModalSurface === 'voice' ? '#ffffff' : 'var(--text-secondary)',
-                  }}
-                >
-                  Voice
-                </Link>
-                <Link
-                  href={buildHomeHref({ chat: 'calls' })}
-                  className="px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  style={{
-                    background: emberModalSurface === 'calls' ? 'var(--bg-screen)' : 'transparent',
-                    color: emberModalSurface === 'calls' ? '#ffffff' : 'var(--text-secondary)',
-                  }}
-                >
-                  Call
-                </Link>
-              </div>
-            ) : null}
-            {flow && !emberModalExpanded ? (
-              <Link
-                href={buildHomeHref({ view: 'full' })}
-                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{}}
-                aria-label="Expand chat"
-              >
-                <ChevronUp size={18} color="var(--text-secondary)" strokeWidth={1.8} />
-              </Link>
-            ) : null}
-            {flow && emberModalExpanded ? (
-              <Link
-                href={buildHomeHref({ view: null })}
-                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{}}
-                aria-label="Collapse chat"
-              >
-                <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
-              </Link>
-            ) : null}
-            <Link
-              href={
-                flow
-                  ? buildHomeHref({ ember: null, view: null, step: null, sub: null })
-                  : buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })
-              }
-              className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-              style={{ background: flow ? 'rgba(255,255,255,0.15)' : '#f97316' }}
-            >
-              {flow ? (
-                <X size={18} color="var(--text-primary)" strokeWidth={1.8} />
-              ) : (
-                <Plus size={20} color="white" strokeWidth={2} />
-              )}
-            </Link>
-          </div>
           {flow ? (
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <WorkflowSlot
-                flow={flow}
-                emberId={selectedEmberId}
-                onConversationStateChange={setHasConversationHistory}
-                emberModalSurface={emberModalSurface}
-              />
-            </div>
+            <WorkflowSlot
+              flow={flow}
+              emberId={selectedEmberId}
+              onConversationStateChange={setHasConversationHistory}
+              emberModalSurface={emberModalSurface}
+            />
           ) : null}
-        </div>
+        </EmberModalShell>
       ) : null}
       </div>
 
