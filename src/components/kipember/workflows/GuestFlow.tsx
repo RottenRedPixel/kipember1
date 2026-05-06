@@ -221,7 +221,7 @@ export default function GuestFlow({
           </button>
         </div>
 
-        {emberModalSurface === 'chats' ? (
+        {(emberModalSurface === 'chats' || emberModalSurface === 'voice') ? (
           <button
             type="submit"
             disabled={isSending || !input.trim()}
