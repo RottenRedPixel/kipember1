@@ -1,6 +1,6 @@
 'use client';
 
-import { Pencil, Sparkles, X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pastelForContributorIdentity } from '@/lib/contributor-color';
 
@@ -185,7 +185,10 @@ export default function TagPeopleSlider({
       const tagId = draggingTagId;
       setDraggingTagId(null);
       dragStart.current = null;
-      if (tagId) savePositionRef.current(tagId);
+      if (tagId) {
+        savePositionRef.current(tagId);
+        setHasChanges(true);
+      }
     }
 
     window.addEventListener('pointermove', onMove);
@@ -620,7 +623,11 @@ export default function TagPeopleSlider({
                   border: '1px solid var(--border-subtle)',
                 }}
               >
-                <div className="flex items-center gap-3 px-4" style={{ minHeight: 44 }}>
+                <div
+                  className="flex items-center gap-3 px-4"
+                  style={{ minHeight: 44, cursor: mode === 'edit' && !isEditing ? 'pointer' : 'default' }}
+                  onClick={() => { if (mode === 'edit' && !isEditing) handleEditTag(tag); }}
+                >
                   <div
                     className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ background: tag.color }}
@@ -647,24 +654,14 @@ export default function TagPeopleSlider({
                     </span>
                   )}
                   {mode === 'edit' ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleEditTag(tag)}
-                        className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <Pencil size={13} color="var(--text-primary)" strokeWidth={1.8} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteTag(tag.id)}
-                        className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <X size={14} color="#f87171" strokeWidth={1.8} />
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); void handleDeleteTag(tag.id); }}
+                      className="w-8 h-8 flex items-center justify-center rounded-full opacity-50 can-hover"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <X size={14} color="#f87171" strokeWidth={1.8} />
+                    </button>
                   ) : null}
                 </div>
                 {isEditing && mode === 'edit' ? (
