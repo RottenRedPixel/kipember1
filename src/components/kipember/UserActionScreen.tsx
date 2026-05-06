@@ -361,7 +361,7 @@ export default function UserActionScreen({
                       <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-white text-xl font-medium">
-                        {initials(getUserDisplayName(form) || form.email || 'U')}
+                        {initials(getUserDisplayName(form) || 'U')}
                       </span>
                     )}
                   </div>
@@ -384,7 +384,6 @@ export default function UserActionScreen({
                   {[
                     { key: 'firstName', placeholder: 'First name' },
                     { key: 'lastName', placeholder: 'Last name' },
-                    { key: 'email', placeholder: 'Email address' },
                     { key: 'phoneNumber', placeholder: 'Phone number' },
                   ].map((field, index) => (
                     <input
@@ -438,7 +437,7 @@ export default function UserActionScreen({
                 <div className="flex flex-col gap-2">
                   {(friends?.friends || []).map((friend) => (
                     <div key={friend.id} className="text-sm text-white/90">
-                      {getUserDisplayName(friend.user) || friend.user.email}
+                      {getUserDisplayName(friend.user) || friend.user.phoneNumber || ''}
                     </div>
                   ))}
                   {friends && friends.friends.length === 0 ? (

@@ -24,21 +24,18 @@ type PendingRequest = {
 };
 
 function formatPersonLabel(user: FriendUser) {
-  return getUserDisplayName(user) || user.email;
+  return getUserDisplayName(user) || user.phoneNumber || '';
 }
 
 export default function ProfileWorkspace() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [friendEmail, setFriendEmail] = useState('');
   const [friends, setFriends] = useState<FriendItem[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<PendingRequest[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<PendingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [sendingRequest, setSendingRequest] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -60,7 +57,6 @@ export default function ProfileWorkspace() {
 
       setFirstName(profilePayload.user.firstName || '');
       setLastName(profilePayload.user.lastName || '');
-      setEmail(profilePayload.user.email || '');
       setPhoneNumber(profilePayload.user.phoneNumber || '');
       setFriends(friendsPayload.friends || []);
       setIncomingRequests(friendsPayload.incomingRequests || []);
@@ -86,7 +82,7 @@ export default function ProfileWorkspace() {
       const response = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName, lastName, email, phoneNumber }),
+        body: JSON.stringify({ firstName, lastName, phoneNumber }),
       });
 
       const payload = await response.json();
@@ -97,46 +93,12 @@ export default function ProfileWorkspace() {
 
       setFirstName(payload.user.firstName || '');
       setLastName(payload.user.lastName || '');
-      setEmail(payload.user.email || '');
       setPhoneNumber(payload.user.phoneNumber || '');
       setSuccess('Profile updated.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save profile');
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const handleAddFriend = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!friendEmail.trim()) {
-      return;
-    }
-
-    setSendingRequest(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const response = await fetch('/api/friends', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: friendEmail }),
-      });
-
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Failed to add friend');
-      }
-
-      setFriendEmail('');
-      setSuccess(payload.autoAccepted ? 'Friend request accepted.' : 'Friend request sent.');
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add friend');
-    } finally {
-      setSendingRequest(false);
     }
   };
 
@@ -211,32 +173,6 @@ export default function ProfileWorkspace() {
             )}
           </div>
 
-          <div className="kip-panel rounded-[1.9rem] p-6">
-            <span className="kip-pill">Ember network</span>
-            <h2 className="mt-4 text-[2rem] font-semibold leading-[0.98] tracking-[-0.05em] text-white">
-              Add friends by email
-            </h2>
-            <p className="mt-3 text-sm leading-7 text-[var(--kip-text-secondary)]">
-              Once someone is in your network, you can share network Embers with them and add them as contributors in one step.
-            </p>
-
-            <form onSubmit={handleAddFriend} className="mt-6 flex flex-col gap-3">
-              <input
-                type="email"
-                value={friendEmail}
-                onChange={(event) => setFriendEmail(event.target.value)}
-                placeholder="friend@example.com"
-                className="kip-input"
-              />
-              <button
-                type="submit"
-                disabled={sendingRequest}
-                className="kip-primary-button w-full disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {sendingRequest ? 'Sending...' : 'Add to network'}
-              </button>
-            </form>
-          </div>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
@@ -246,7 +182,7 @@ export default function ProfileWorkspace() {
               Update your profile
             </h2>
             <p className="mt-3 text-sm leading-7 text-[var(--kip-text-secondary)]">
-              Email is used for account access, while phone helps with voice and SMS invite flows.
+              Phone number is used for account access, voice calls, and SMS invite flows.
             </p>
 
             <form onSubmit={handleProfileSave} className="mt-8 space-y-4">
@@ -270,19 +206,6 @@ export default function ProfileWorkspace() {
                   type="text"
                   value={lastName}
                   onChange={(event) => setLastName(event.target.value)}
-                  className="kip-input"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[var(--kip-text-secondary)]">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
                   className="kip-input"
                 />
               </div>
@@ -327,11 +250,8 @@ export default function ProfileWorkspace() {
                         <div className="font-semibold text-white">
                           {formatPersonLabel(friend.user)}
                         </div>
-                        <div className="mt-1 text-sm text-[var(--kip-text-secondary)]">
-                          {friend.user.email}
-                        </div>
                         {friend.user.phoneNumber && (
-                          <div className="mt-1 text-xs text-[var(--kip-text-muted)]">
+                          <div className="mt-1 text-sm text-[var(--kip-text-secondary)]">
                             {friend.user.phoneNumber}
                           </div>
                         )}
@@ -364,9 +284,6 @@ export default function ProfileWorkspace() {
                       <div key={request.id} className="kip-surface rounded-[1.45rem] px-4 py-4">
                         <div className="font-semibold text-white">
                           {formatPersonLabel(request.user)}
-                        </div>
-                        <div className="mt-1 text-sm text-[var(--kip-text-secondary)]">
-                          {request.user.email}
                         </div>
                         <div className="mt-4 flex flex-wrap gap-3">
                           <button
@@ -407,9 +324,6 @@ export default function ProfileWorkspace() {
                     <div key={request.id} className="kip-surface rounded-[1.45rem] px-4 py-4">
                       <div className="font-semibold text-white">
                         {formatPersonLabel(request.user)}
-                      </div>
-                      <div className="mt-1 text-sm text-[var(--kip-text-secondary)]">
-                        {request.user.email}
                       </div>
                       <button
                         type="button"

@@ -281,7 +281,6 @@ export default function TagManager({
                       )}
                     </div>
                     <div className="mt-2 space-y-1 text-sm text-[var(--ember-muted)]">
-                      {(tag.email || tag.user?.email) && <div>Email: {tag.email || tag.user?.email}</div>}
                       {(tag.phoneNumber || tag.user?.phoneNumber || tag.contributor?.phoneNumber) && (
                         <div>
                           Phone:{' '}

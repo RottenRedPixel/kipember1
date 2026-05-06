@@ -766,7 +766,7 @@ export default function HomeScreen({
     <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
       <AppHeader
         avatarUrl={avatarUrl}
-        userInitials={initials(getUserDisplayName(profile) || profile?.email || 'ST')}
+        userInitials={initials(getUserDisplayName(profile) || 'ST')}
         userModalHref={buildHomeHref({ m: 'account' })}
       />
       <div className="relative w-full max-w-xl h-full fade-in">

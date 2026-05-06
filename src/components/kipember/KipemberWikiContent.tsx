@@ -2307,7 +2307,7 @@ export default function KipemberWikiContent({
   const placeResolution = usePlaceResolution(detail);
   const contributors = detail?.contributors || [];
   const imageId = detail?.id || null;
-  const ownerName = getUserDisplayName(detail?.owner) || detail?.owner?.email || null;
+  const ownerName = getUserDisplayName(detail?.owner) || null;
   const ownerUserId = detail?.owner?.id;
   // In-page edit overlay state — keeps the wiki (and the ember view
   // beneath it) mounted while the user edits a single field. Closing
@@ -2368,7 +2368,7 @@ export default function KipemberWikiContent({
     };
 
     if (detail?.owner) {
-      const name = getUserDisplayName(detail.owner) || detail.owner.email;
+      const name = getUserDisplayName(detail.owner) || detail.owner.phoneNumber || null;
       const identity: PersonIdentity = {
         userId: detail.owner.id ?? null,
         email: detail.owner.email ?? null,
@@ -2773,9 +2773,8 @@ export default function KipemberWikiContent({
                 const contributorName =
                   contributor.name ||
                   getUserDisplayName(contributor.user) ||
-                  contributor.email ||
-                  contributor.user?.email ||
                   contributor.phoneNumber ||
+                  contributor.user?.phoneNumber ||
                   'Contributor';
                 return (
                   <div key={contributor.id} className="flex items-center gap-3">
@@ -2797,7 +2796,7 @@ export default function KipemberWikiContent({
               {pendingContributors.map((contributor) => (
                 <div key={contributor.id} className="flex items-center gap-3">
                   <AvatarCircle
-                    name={contributor.name || contributor.email || contributor.phoneNumber || '?'}
+                    name={contributor.name || contributor.phoneNumber || '?'}
                     bgColor={contributor.avatarColor ?? pastelForContributorIdentity({
                       userId: contributor.userId ?? null,
                       email: contributor.email ?? null,
@@ -2805,7 +2804,7 @@ export default function KipemberWikiContent({
                       id: contributor.id,
                     })}
                   />
-                  <span className="text-white/60 text-sm">{contributor.name || contributor.email || contributor.phoneNumber || 'Pending'}</span>
+                  <span className="text-white/60 text-sm">{contributor.name || contributor.phoneNumber || 'Pending'}</span>
                   <span className="ml-auto text-white/30 text-xs">Invited</span>
                 </div>
               ))}

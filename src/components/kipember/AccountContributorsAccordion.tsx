@@ -53,12 +53,12 @@ export default function AccountContributorsAccordion({
   const [sortOpen, setSortOpen] = useState(false);
 
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
-  const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
+  const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);
 
   const [adding, setAdding] = useState(false);
-  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -88,7 +88,6 @@ export default function AccountContributorsAccordion({
       firstName: nameParts[0] || '',
       lastName: nameParts.slice(1).join(' ') || '',
       phone: c.phoneNumber || '',
-      email: c.email || '',
       language: 'English',
     };
     setEditForm(next);
@@ -112,7 +111,7 @@ export default function AccountContributorsAccordion({
       const res = await fetch('/api/contributors', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phoneNumber: addForm.phone, email: addForm.email }),
+        body: JSON.stringify({ name, phoneNumber: addForm.phone }),
       });
       const payload = await res.json().catch(() => ({} as { error?: string }));
       if (!res.ok) {
@@ -120,7 +119,7 @@ export default function AccountContributorsAccordion({
         return;
       }
       onStatus?.('Contributor added.');
-      setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+      setAddForm({ firstName: '', lastName: '', phone: '', language: 'English' });
       setAdding(false);
       // Newly-added pool entries have emberCount=0, so flip filter so the user
       // can see them right away.
@@ -146,7 +145,6 @@ export default function AccountContributorsAccordion({
       body: JSON.stringify({
         name: `${editForm.firstName} ${editForm.lastName}`.trim(),
         phoneNumber: editForm.phone,
-        email: editForm.email,
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -285,7 +283,6 @@ export default function AccountContributorsAccordion({
             (editForm.firstName !== savedForm.firstName ||
               editForm.lastName !== savedForm.lastName ||
               editForm.phone !== savedForm.phone ||
-              editForm.email !== savedForm.email ||
               editForm.language !== savedForm.language);
           const poolId = contributor.userId;
           return (
@@ -372,14 +369,6 @@ export default function AccountContributorsAccordion({
                         style={{ borderTop: '1px solid var(--border-subtle)' }}
                       />
                       <input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
-                        placeholder="Email"
-                        className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                        style={{ borderTop: '1px solid var(--border-subtle)' }}
-                      />
-                      <input
                         type="tel"
                         value={editForm.phone}
                         onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
@@ -443,7 +432,6 @@ export default function AccountContributorsAccordion({
             ['firstName', 'First Name'],
             ['lastName', 'Last Name (optional)'],
             ['phone', 'Phone'],
-            ['email', 'Email (optional)'],
           ].map(([key, placeholder]) => (
             <input
               key={key}
@@ -474,7 +462,7 @@ export default function AccountContributorsAccordion({
               type="button"
               onClick={() => {
                 setAdding(false);
-                setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+                setAddForm({ firstName: '', lastName: '', phone: '', language: 'English' });
                 setAddError(null);
               }}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"

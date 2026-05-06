@@ -259,7 +259,7 @@ export default function EmberActivityView({
                   >
                     <div className="text-base font-semibold text-[var(--ember-text)]">{tag.label}</div>
                     <div className="mt-2 text-sm text-[var(--ember-muted)]">
-                      {tag.email || tag.phoneNumber || 'Tagged on image'}
+                      {tag.phoneNumber || 'Tagged on image'}
                     </div>
                   </div>
                 ))

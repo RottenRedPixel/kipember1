@@ -49,16 +49,10 @@ function contributorDisplayName(contributor: ContributorRecord | null | undefine
   return (
     contributor.name ||
     getUserDisplayName(contributor.user) ||
-    contributor.email ||
-    contributor.user?.email ||
     contributor.phoneNumber ||
     contributor.user?.phoneNumber ||
     'Contributor'
   );
-}
-
-function contributorEmail(contributor: ContributorRecord | null | undefined) {
-  return contributor?.email || contributor?.user?.email || null;
 }
 
 function contributorPhone(contributor: ContributorRecord | null | undefined) {
@@ -123,8 +117,8 @@ export default function ContributorsSlider({
   status?: string;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
-  const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
+  const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);
   const [callingContributor, setCallingContributor] = useState(false);
   const [callMessage, setCallMessage] = useState<string | null>(null);
@@ -136,7 +130,7 @@ export default function ContributorsSlider({
   const [settingsAttemptsOpen, setSettingsAttemptsOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   // Filter pill (This Ember / All) and sort dropdown — restored from the
   // legacy ContributorsListView. Drives which subset of the owner's
   // unified contributor pool we render (and in what order).
@@ -209,7 +203,6 @@ export default function ContributorsSlider({
         firstName: nameParts[0] || '',
         lastName: nameParts.slice(1).join(' ') || '',
         phone: contributorPhone(c) ?? '',
-        email: contributorEmail(c) ?? '',
         // Language isn't persisted yet — defaults to English for now.
         language: 'English',
       };
@@ -271,7 +264,6 @@ export default function ContributorsSlider({
         imageId,
         name: `${addForm.firstName} ${addForm.lastName}`.trim(),
         phoneNumber: addForm.phone,
-        email: addForm.email,
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -281,7 +273,7 @@ export default function ContributorsSlider({
     }
     setAddError(null);
     onStatus?.('Contributor added.');
-    setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+    setAddForm({ firstName: '', lastName: '', phone: '', language: 'English' });
     setAdding(false);
     await Promise.all([refreshDetail(), refreshPool()]);
   }
@@ -316,7 +308,6 @@ export default function ContributorsSlider({
       body: JSON.stringify({
         name: `${editForm.firstName} ${editForm.lastName}`.trim(),
         phoneNumber: editForm.phone,
-        email: editForm.email,
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -472,7 +463,6 @@ export default function ContributorsSlider({
             (editForm.firstName !== savedForm.firstName ||
               editForm.lastName !== savedForm.lastName ||
               editForm.phone !== savedForm.phone ||
-              editForm.email !== savedForm.email ||
               editForm.language !== savedForm.language);
           const expandable = onThisEmber && Boolean(emberContributorId);
           const isAdding = addingToEmber.has(contributor.key);
@@ -603,7 +593,6 @@ export default function ContributorsSlider({
                     >
                       <input readOnly value={poolFirst} placeholder="First name" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" />
                       <input readOnly value={poolLast} placeholder="Last name" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
-                      <input readOnly value={contributor.email ?? ''} placeholder="Email" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
                       <input readOnly value={formatPhoneNumber(contributor.phoneNumber) ?? ''} placeholder="Phone" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
                       <input readOnly value="English" className="w-full h-12 px-0 text-sm text-white outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
                     </div>
@@ -646,17 +635,6 @@ export default function ContributorsSlider({
                         setEditForm((f) => ({ ...f, lastName: e.target.value }))
                       }
                       placeholder="Last name"
-                      disabled={!canManageContributors}
-                      className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent disabled:opacity-50"
-                      style={{ borderTop: '1px solid var(--border-subtle)' }}
-                    />
-                    <input
-                      type="email"
-                      value={editForm.email}
-                      onChange={(e) =>
-                        setEditForm((f) => ({ ...f, email: e.target.value }))
-                      }
-                      placeholder="Email"
                       disabled={!canManageContributors}
                       className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent disabled:opacity-50"
                       style={{ borderTop: '1px solid var(--border-subtle)' }}
@@ -901,7 +879,6 @@ export default function ContributorsSlider({
             ['firstName', 'First Name'],
             ['lastName', 'Last Name (optional)'],
             ['phone', 'Phone'],
-            ['email', 'Email (optional)'],
           ].map(([key, placeholder]) => (
             <input
               key={key}
@@ -938,7 +915,7 @@ export default function ContributorsSlider({
               onClick={() => {
                 setAdding(false);
                 setAddError(null);
-                setAddForm({ firstName: '', lastName: '', phone: '', email: '', language: 'English' });
+                setAddForm({ firstName: '', lastName: '', phone: '', language: 'English' });
               }}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
               style={{
