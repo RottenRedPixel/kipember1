@@ -200,6 +200,7 @@ export type KipemberWikiDetail = {
     firstName: string | null;
     lastName: string | null;
     email: string;
+    phoneNumber?: string | null;
     avatarFilename?: string | null;
     createdAt?: string | null;
   } | null;
