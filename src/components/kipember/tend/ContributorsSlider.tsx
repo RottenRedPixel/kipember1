@@ -128,8 +128,7 @@ export default function ContributorsSlider({
   const [savingContributor, setSavingContributor] = useState(false);
   // Mock settings state — not yet wired to API
   const [settingsPreferredComm, setSettingsPreferredComm] = useState('sms');
-  const [settingsKeepTrying, setSettingsKeepTrying] = useState(true);
-  const [settingsMaxAttempts, setSettingsMaxAttempts] = useState('once');
+  const [settingsAttempts, setSettingsAttempts] = useState('once');
   const [settingsLangOpen, setSettingsLangOpen] = useState(false);
   const [settingsCommOpen, setSettingsCommOpen] = useState(false);
   const [settingsAttemptsOpen, setSettingsAttemptsOpen] = useState(false);
@@ -751,61 +750,41 @@ export default function ContributorsSlider({
                       </div>
                     </div>
 
-                    {/* Keep trying toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setSettingsKeepTrying((v) => !v)}
-                      className="flex items-center justify-between gap-3 w-full cursor-pointer"
-                      style={{ minHeight: 56, borderTop: '1px solid var(--border-subtle)' }}
-                    >
-                      <span className="text-sm text-white/70 text-left">Keep trying if this person doesn't contribute?</span>
-                      <div
-                        className="flex-shrink-0 rounded-full transition-colors"
-                        style={{ width: 44, height: 26, background: settingsKeepTrying ? '#f97316' : 'rgba(255,255,255,0.15)', position: 'relative' }}
-                      >
-                        <div
-                          style={{ position: 'absolute', top: 3, left: settingsKeepTrying ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left 0.15s ease' }}
-                        />
-                      </div>
-                    </button>
-
-                    {/* Max attempts */}
-                    {settingsKeepTrying ? (
-                      <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                        <span className="text-sm text-white/70">How many times to try?</span>
-                        <div className="relative">
-                          <button
-                            type="button"
-                            onClick={() => { setSettingsAttemptsOpen((v) => !v); setSettingsLangOpen(false); setSettingsCommOpen(false); }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer"
-                            style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
+                    {/* Communication Attempts */}
+                    <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                      <span className="text-sm text-white/70">Communication Attempts</span>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => { setSettingsAttemptsOpen((v) => !v); setSettingsLangOpen(false); setSettingsCommOpen(false); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer"
+                          style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
+                        >
+                          <span className="text-white text-xs font-medium">
+                            {settingsAttempts === 'once' ? 'Once' : settingsAttempts === 'twice' ? 'Twice' : settingsAttempts === 'three' ? 'Three Times' : 'Keep Trying'}
+                          </span>
+                          <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+                        </button>
+                        {settingsAttemptsOpen ? (
+                          <div
+                            className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
+                            style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 200 }}
                           >
-                            <span className="text-white text-xs font-medium">
-                              {settingsMaxAttempts === 'once' ? 'Once' : settingsMaxAttempts === 'twice' ? 'Two Times' : 'Three Times'}
-                            </span>
-                            <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
-                          </button>
-                          {settingsAttemptsOpen ? (
-                            <div
-                              className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
-                              style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
-                            >
-                              {([['once', 'Once'], ['twice', 'Two Times'], ['three', 'Three Times']] as const).map(([val, label]) => (
-                                <button
-                                  key={val}
-                                  type="button"
-                                  onClick={() => { setSettingsMaxAttempts(val); setSettingsAttemptsOpen(false); }}
-                                  className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
-                                  style={{ color: settingsMaxAttempts === val ? '#f97316' : 'var(--text-primary)', background: settingsMaxAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
+                            {([['once', 'Once'], ['twice', 'Twice'], ['three', 'Three Times'], ['forever', 'Keep Trying Until Successful']] as const).map(([val, label]) => (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => { setSettingsAttempts(val); setSettingsAttemptsOpen(false); }}
+                                className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
+                                style={{ color: settingsAttempts === val ? '#f97316' : 'var(--text-primary)', background: settingsAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
+                    </div>
                   </div>
                 </div>
 
