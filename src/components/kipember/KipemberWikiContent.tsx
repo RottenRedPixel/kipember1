@@ -2731,7 +2731,11 @@ export default function KipemberWikiContent({
       <WikiSection
         icon={<Users size={17} />}
         title="Contributors"
-        complete={activeContributors.length > 0 || pendingContributors.length > 0}
+        complete={
+          activeContributors.length > 0 ||
+          pendingContributors.length > 0 ||
+          Boolean(detail?.analysis?.noContributors)
+        }
         onEdit={detail?.id ? () => setEditingSlug('contributors') : undefined}
         tracksProgress
         id="tracker-contributors"
