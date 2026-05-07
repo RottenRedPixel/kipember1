@@ -635,7 +635,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     });
   }
 
-  if (hasInterviewResponses || hasInterviewSummary) {
+  if (userTurnsText) {
     try {
       await generateWikiForImage(voiceCall.emberContributor.imageId);
     } catch (error) {
