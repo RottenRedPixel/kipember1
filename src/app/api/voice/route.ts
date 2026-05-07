@@ -10,7 +10,9 @@ import {
 } from '@/lib/ember-sessions';
 import { getEmberAccessType } from '@/lib/ember';
 import { generateEmberVoiceReply } from '@/lib/ember-voice-reply';
-import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { extractAllClaimsFromContent, reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { getUserDisplayName } from '@/lib/user-name';
+import { generateWikiForImage } from '@/lib/wiki-generator';
 import {
   getAudioTranscriptionModel,
   getConfiguredOpenAIModel,
@@ -151,8 +153,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Run housekeeping extractors on the user's spoken message in parallel
-    // with reply generation, matching what /api/chat/route.ts does for text.
     const [replyText] = await Promise.all([
       generateEmberVoiceReply({
         imageId,
@@ -161,6 +161,25 @@ export async function POST(request: NextRequest) {
         transcript,
       }),
       reconcileEmberMessageSafely(userMessage.id, 'voice housekeeping'),
+      transcript
+        ? extractAllClaimsFromContent(
+            {
+              imageId,
+              sessionId: session.id,
+              emberContributorId: session.emberContributorId ?? null,
+              userId,
+              emberMessageId: userMessage.id,
+              source: 'voice',
+              questionType: null,
+              question: null,
+              content: transcript,
+              sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
+            },
+            'voice housekeeping'
+          ).then(() => generateWikiForImage(imageId)).catch((err) => {
+            console.error('Voice housekeeping extraction error:', err);
+          })
+        : Promise.resolve(),
     ]);
 
     let replyAudioFilename: string | null = null;

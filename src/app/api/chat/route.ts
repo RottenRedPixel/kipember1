@@ -10,7 +10,9 @@ import {
 } from '@/lib/ember-sessions';
 import { getEmberAccessType } from '@/lib/ember';
 import { generateEmberChatReply } from '@/lib/ember-chat-reply';
-import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { extractAllClaimsFromContent, reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { getUserDisplayName } from '@/lib/user-name';
+import { generateWikiForImage } from '@/lib/wiki-generator';
 
 const COOKIE_NAME = 'mw_photo_chat_v2';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -108,8 +110,26 @@ export async function POST(request: NextRequest) {
         sessionId: session.id,
         role: participant.participantType,
         trigger: 'message',
+        userFirstName: auth.user.firstName ?? undefined,
       }),
       reconcileEmberMessageSafely(userMessage.id, 'chat housekeeping'),
+      extractAllClaimsFromContent(
+        {
+          imageId,
+          sessionId: session.id,
+          emberContributorId: session.emberContributorId ?? null,
+          userId,
+          emberMessageId: userMessage.id,
+          source: 'chat',
+          questionType: null,
+          question: null,
+          content: message,
+          sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
+        },
+        'chat housekeeping'
+      ).then(() => generateWikiForImage(imageId)).catch((err) => {
+        console.error('Chat housekeeping extraction error:', err);
+      }),
     ]);
 
     await prisma.emberMessage.create({
