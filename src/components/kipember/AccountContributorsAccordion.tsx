@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { pastelForContributorIdentity } from '@/lib/contributor-color';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 
@@ -57,8 +57,23 @@ export default function AccountContributorsAccordion({
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);
 
+  const [settingsLangOpen, setSettingsLangOpen] = useState(false);
+  const [settingsCommOpen, setSettingsCommOpen] = useState(false);
+  const [settingsCommPos, setSettingsCommPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const settingsCommRef = useRef<HTMLButtonElement>(null);
+  const [settingsAttemptsOpen, setSettingsAttemptsOpen] = useState(false);
+  const [settingsAttemptsPos, setSettingsAttemptsPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const settingsAttemptsRef = useRef<HTMLButtonElement>(null);
+  const [settingsPreferredComm, setSettingsPreferredComm] = useState('call');
+  const [settingsAttempts, setSettingsAttempts] = useState('once');
+  const [editLangOpen, setEditLangOpen] = useState(false);
+  const [editLangPos, setEditLangPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const editLangRef = useRef<HTMLButtonElement>(null);
   const [adding, setAdding] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
+  const [addLangOpen, setAddLangOpen] = useState(false);
+  const [addLangPos, setAddLangPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const addLangRef = useRef<HTMLButtonElement>(null);
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -342,75 +357,99 @@ export default function AccountContributorsAccordion({
                   className="px-4 py-4 flex flex-col gap-4"
                   style={{ borderTop: '1px solid var(--border-subtle)' }}
                 >
+                  {/* Profile */}
                   <div className="flex flex-col gap-2">
-                    <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">
-                      Profile
-                    </h3>
-                    <div
-                      className="rounded-xl px-4"
+                    <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Profile</h3>
+                    <div className="rounded-xl px-4" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}>
+                      <input type="text" value={editForm.firstName} onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))} placeholder="First name" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent" />
+                      <input type="text" value={editForm.lastName} onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))} placeholder="Last name" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent" style={{ borderTop: '1px solid var(--border-subtle)' }} />
+                      <input type="tel" value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} placeholder="Phone" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent" style={{ borderTop: '1px solid var(--border-subtle)' }} />
+                    </div>
+                  </div>
+
+                  {/* Settings */}
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Settings</h3>
+                    <div className="rounded-xl px-4" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}>
+                      {/* Language */}
+                      <div className="flex items-center justify-between h-12">
+                        <span className="text-sm text-white/70">Language Preference</span>
+                        <div className="relative">
+                          <button ref={editLangRef} type="button" onClick={() => { if (!settingsLangOpen && editLangRef.current) { const r = editLangRef.current.getBoundingClientRect(); setEditLangPos({ top: r.bottom + 4, left: r.right - 180, width: 180 }); } setSettingsLangOpen((v) => !v); setSettingsCommOpen(false); setSettingsAttemptsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
+                            <span className="text-white text-xs font-medium">{editForm.language}</span>
+                            <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+                          </button>
+                          {settingsLangOpen && editLangPos ? (
+                            <div style={{ position: 'fixed', top: editLangPos.top, left: editLangPos.left, width: editLangPos.width, zIndex: 1000, background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+                              {LANGUAGE_OPTIONS.map((lang) => {
+                                const isEnglish = lang === 'English';
+                                return (
+                                  <button key={lang} type="button" disabled={!isEnglish} onClick={() => { if (isEnglish) { setEditForm((f) => ({ ...f, language: lang })); setSettingsLangOpen(false); } }} className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors" style={{ color: !isEnglish ? 'rgba(255,255,255,0.25)' : editForm.language === lang ? '#f97316' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent', cursor: isEnglish ? 'pointer' : 'default' }}>
+                                    {lang}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                      {/* Communication Preference */}
+                      <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                        <span className="text-sm text-white/70">Communication Preference</span>
+                        <div className="relative">
+                          <button ref={settingsCommRef} type="button" onClick={() => { if (!settingsCommOpen && settingsCommRef.current) { const r = settingsCommRef.current.getBoundingClientRect(); setSettingsCommPos({ top: r.bottom + 4, left: r.right - 180, width: 180 }); } setSettingsCommOpen((v) => !v); setSettingsLangOpen(false); setSettingsAttemptsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
+                            <span className="text-white text-xs font-medium">{settingsPreferredComm === 'call' ? 'Phone Call' : settingsPreferredComm === 'sms' ? 'Text Message' : settingsPreferredComm === 'email' ? 'Email' : 'WhatsApp'}</span>
+                            <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+                          </button>
+                          {settingsCommOpen && settingsCommPos ? (
+                            <div style={{ position: 'fixed', top: settingsCommPos.top, left: settingsCommPos.left, width: settingsCommPos.width, zIndex: 1000, background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+                              <button type="button" onClick={() => { setSettingsPreferredComm('call'); setSettingsCommOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: settingsPreferredComm === 'call' ? '#f97316' : 'var(--text-primary)', background: settingsPreferredComm === 'call' ? 'rgba(249,115,22,0.08)' : 'transparent' }}>Phone Call</button>
+                              {['Text Message', 'Email', 'WhatsApp'].map((label) => (
+                                <button key={label} type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>{label}</button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                      {/* Communication Attempts */}
+                      <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+                        <span className="text-sm text-white/70">Communication Attempts</span>
+                        <div className="relative">
+                          <button ref={settingsAttemptsRef} type="button" onClick={() => { if (!settingsAttemptsOpen && settingsAttemptsRef.current) { const r = settingsAttemptsRef.current.getBoundingClientRect(); setSettingsAttemptsPos({ top: r.bottom + 4, left: r.right - 220, width: 220 }); } setSettingsAttemptsOpen((v) => !v); setSettingsLangOpen(false); setSettingsCommOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
+                            <span className="text-white text-xs font-medium">{settingsAttempts === 'once' ? 'Once' : settingsAttempts === 'twice' ? 'Twice' : settingsAttempts === 'three' ? 'Three Times' : 'Keep Trying'}</span>
+                            <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+                          </button>
+                          {settingsAttemptsOpen && settingsAttemptsPos ? (
+                            <div style={{ position: 'fixed', top: settingsAttemptsPos.top, left: settingsAttemptsPos.left, width: settingsAttemptsPos.width, zIndex: 1000, background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+                              {([['once', 'Once'], ['twice', 'Twice'], ['three', 'Three Times'], ['forever', 'Keep Trying Until Successful']] as const).map(([val, label]) => (
+                                <button key={val} type="button" onClick={() => { setSettingsAttempts(val); setSettingsAttemptsOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: settingsAttempts === val ? '#f97316' : 'var(--text-primary)', background: settingsAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save */}
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void updateContributor(emberContributorId, poolId)}
+                      disabled={savingContributor || !isDirty}
+                      className="w-1/2 ml-auto flex items-center justify-center rounded-full text-white text-sm font-medium transition-colors"
                       style={{
-                        background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
-                        border: '1px solid var(--border-subtle)',
+                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                        border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+                        minHeight: 44,
+                        cursor: isDirty && !savingContributor ? 'pointer' : 'default',
+                        opacity: savingContributor ? 0.6 : 1,
                       }}
                     >
-                      <input
-                        type="text"
-                        value={editForm.firstName}
-                        onChange={(e) => setEditForm((f) => ({ ...f, firstName: e.target.value }))}
-                        placeholder="First name"
-                        className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                      />
-                      <input
-                        type="text"
-                        value={editForm.lastName}
-                        onChange={(e) => setEditForm((f) => ({ ...f, lastName: e.target.value }))}
-                        placeholder="Last name"
-                        className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                        style={{ borderTop: '1px solid var(--border-subtle)' }}
-                      />
-                      <input
-                        type="tel"
-                        value={editForm.phone}
-                        onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
-                        placeholder="Phone"
-                        className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent"
-                        style={{ borderTop: '1px solid var(--border-subtle)' }}
-                      />
-                      <select
-                        value={editForm.language}
-                        onChange={(e) => setEditForm((f) => ({ ...f, language: e.target.value }))}
-                        className="w-full h-12 px-0 text-sm text-white outline-none bg-transparent cursor-pointer"
-                        style={{ borderTop: '1px solid var(--border-subtle)' }}
-                      >
-                        {LANGUAGE_OPTIONS.map((lang) => (
-                          <option key={lang} value={lang} style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>
-                            {lang}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex gap-3 items-center">
-                      {status ? (
-                        <span className="flex-1 text-xs text-white/50">{status}</span>
-                      ) : (
-                        <div className="flex-1" />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => void updateContributor(emberContributorId, poolId)}
-                        disabled={savingContributor || !isDirty}
-                        className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
-                        style={{
-                          background: isDirty ? '#f97316' : 'var(--bg-surface)',
-                          border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-                          minHeight: 44,
-                          cursor: isDirty && !savingContributor ? 'pointer' : 'default',
-                          opacity: savingContributor ? 0.6 : 1,
-                        }}
-                      >
-                        {savingContributor ? 'Updating…' : 'Update'}
-                      </button>
-                    </div>
+                      {savingContributor ? 'Saving…' : 'Save'}
+                    </button>
                   </div>
                 </div>
               ) : null}
@@ -442,18 +481,45 @@ export default function AccountContributorsAccordion({
               style={fieldStyle}
             />
           ))}
-          <select
-            value={addForm.language}
-            onChange={(event) => setAddForm((current) => ({ ...current, language: event.target.value }))}
-            className="w-full h-12 rounded-xl px-4 text-sm text-white outline-none cursor-pointer"
-            style={fieldStyle}
-          >
-            {LANGUAGE_OPTIONS.map((lang) => (
-              <option key={lang} value={lang} style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>
-                {lang}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <button
+              ref={addLangRef}
+              type="button"
+              onClick={() => {
+                if (!addLangOpen && addLangRef.current) {
+                  const r = addLangRef.current.getBoundingClientRect();
+                  setAddLangPos({ top: r.bottom + 4, left: r.right - 200, width: 200 });
+                }
+                setAddLangOpen((v) => !v);
+              }}
+              className="w-full h-12 rounded-xl px-4 flex items-center justify-between cursor-pointer"
+              style={fieldStyle}
+            >
+              <span className="text-sm text-white">{addForm.language}</span>
+              <ChevronDown size={15} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+            </button>
+            {addLangOpen && addLangPos ? (
+              <div
+                style={{ position: 'fixed', top: addLangPos.top, left: addLangPos.left, width: addLangPos.width, zIndex: 1000, background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}
+              >
+                {LANGUAGE_OPTIONS.map((lang) => {
+                  const isEnglish = lang === 'English';
+                  return (
+                    <button
+                      key={lang}
+                      type="button"
+                      disabled={!isEnglish}
+                      onClick={() => { if (isEnglish) { setAddForm((f) => ({ ...f, language: lang })); setAddLangOpen(false); } }}
+                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                      style={{ color: !isEnglish ? 'rgba(255,255,255,0.25)' : addForm.language === lang ? '#f97316' : 'var(--text-primary)', background: addForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent', cursor: isEnglish ? 'pointer' : 'default' }}
+                    >
+                      {lang}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
           {addError ? (
             <p className="text-xs px-1" style={{ color: '#f87171' }}>{addError}</p>
           ) : null}

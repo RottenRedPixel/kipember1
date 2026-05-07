@@ -126,6 +126,7 @@ export default function ContributorsSlider({
   const [settingsPreferredComm, setSettingsPreferredComm] = useState('call');
   const [settingsAttempts, setSettingsAttempts] = useState('once');
   const [settingsLangOpen, setSettingsLangOpen] = useState(false);
+  const [addLangOpen, setAddLangOpen] = useState(false);
   const [settingsCommOpen, setSettingsCommOpen] = useState(false);
   const [settingsAttemptsOpen, setSettingsAttemptsOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -892,20 +893,35 @@ export default function ContributorsSlider({
               style={fieldStyle}
             />
           ))}
-          <select
-            value={addForm.language}
-            onChange={(event) =>
-              setAddForm((current) => ({ ...current, language: event.target.value }))
-            }
-            className="w-full h-12 rounded-xl px-4 text-sm text-white outline-none cursor-pointer"
-            style={fieldStyle}
-          >
-            {LANGUAGE_OPTIONS.map((lang) => (
-              <option key={lang} value={lang} style={{ background: 'var(--bg-screen)', color: 'var(--text-primary)' }}>
-                {lang}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setAddLangOpen((v) => !v)}
+              className="w-full h-12 rounded-xl px-4 flex items-center justify-between cursor-pointer"
+              style={fieldStyle}
+            >
+              <span className="text-sm text-white">{addForm.language}</span>
+              <ChevronDown size={15} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+            </button>
+            {addLangOpen ? (
+              <div
+                className="absolute left-0 right-0 bottom-full mb-1 rounded-xl overflow-hidden z-20"
+                style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)' }}
+              >
+                {LANGUAGE_OPTIONS.map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => { setAddForm((f) => ({ ...f, language: lang })); setAddLangOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm cursor-pointer transition-colors"
+                    style={{ color: addForm.language === lang ? '#f97316' : 'var(--text-primary)', background: addForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                  >
+                    {lang}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           {addError ? (
             <p className="text-xs px-1" style={{ color: '#f87171' }}>{addError}</p>
           ) : null}

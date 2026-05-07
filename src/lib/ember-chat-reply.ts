@@ -164,7 +164,7 @@ export async function generateEmberChatReply(ctx: EmberChatContext): Promise<str
       : loadHistory(ctx.sessionId),
   ]);
 
-  const basePrompt = await renderPromptTemplate(promptKey, '', {
+  const systemPrompt = await renderPromptTemplate(promptKey, '', {
     role: ctx.role,
     trigger: ctx.trigger,
     userFirstName: ctx.userFirstName ?? '',
@@ -172,18 +172,12 @@ export async function generateEmberChatReply(ctx: EmberChatContext): Promise<str
     ...vars,
   });
 
-  // Guests are anonymous visitors — keep replies short and conversational.
-  const systemPrompt =
-    ctx.role === 'guest'
-      ? `${basePrompt}\n\nIMPORTANT: Reply in 1–2 short sentences only. No lengthy descriptions.`
-      : basePrompt;
-
   const messages =
     history.length > 0 ? history : [{ role: 'user' as const, content: `(trigger: ${ctx.trigger})` }];
 
   const response = await chat(systemPrompt, messages, {
     capabilityKey: promptKey,
-    maxTokens: ctx.role === 'guest' ? 60 : 120,
+    maxTokens: 120,
   });
 
   return response.trim();
