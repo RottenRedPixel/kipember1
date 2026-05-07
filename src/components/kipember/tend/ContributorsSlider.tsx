@@ -867,8 +867,8 @@ export default function ContributorsSlider({
         </button>
       )}
 
-      {/* Add Contributor — collapsed button, expands inline into a form */}
-      {adding ? (
+      {/* Add Contributor — hidden while a row is expanded */}
+      {!expandedId && !expandedPoolKey && (adding ? (
         <div
           className="rounded-xl px-4 py-4 flex flex-col gap-3"
           style={{
@@ -965,7 +965,7 @@ export default function ContributorsSlider({
             Add Contributor
           </button>
         </div>
-      )}
+      ))}
     </div>
   );
 }
