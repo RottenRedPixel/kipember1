@@ -19,6 +19,7 @@
     "@libsql/client": "^0.17.2",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
+    "@types/ws": "^8.18.1",
     "dotenv": "^17.2.3",
     "exifr": "^7.1.3",
     "lucide-react": "^1.8.0",
@@ -32,7 +33,8 @@
     "react-easy-crop": "^5.5.7",
     "react-markdown": "^10.1.0",
     "retell-client-js-sdk": "^2.0.7",
-    "retell-sdk": "^5.9.0"
+    "retell-sdk": "^5.9.0",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
