@@ -4,7 +4,7 @@ export type PromptGroup =
   | 'Snapshot Generation'
   | 'Wiki'
   | 'Captions'
-  | 'Ember AI'
+  | 'Ember Modal'
   | 'Housekeeping';
 
 export type PromptDefinition = {
@@ -186,7 +186,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_chat.owner_style',
     label: 'Chat (Owner)',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'In-app text chat, owner only. The owner is filling in their own ember; this prompt helps them remember more by answering their questions from the wiki and probing gently for missing details.',
     variables: [
       'role',
@@ -224,7 +224,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_chat.contributor_style',
     label: 'Chat (Contributor)',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'In-app text chat, signed-in contributor only. The contributor is helping fill in someone else\'s ember; this prompt helps them share what THEY remember about the moment and answers their questions from the wiki.',
     variables: [
       'role',
@@ -261,7 +261,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_chat.guest_style',
     label: 'Chat (Guest)',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'Used for guest viewers who arrived via a share link. Same context shape as Ember Chat. Guests do not contribute, so this prompt should answer questions about the memory using the wiki and avoid probing for unanswered topics. No follow-up questions back at the guest.',
     variables: [
       'role',
@@ -294,7 +294,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_voice.owner_style',
     label: 'Voice (Owner)',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'In-app voice (mic) replies sent to the owner. Spoken via TTS — same memory context as Chat (Owner) but tuned for the ear.',
     variables: [
       'role',
@@ -329,7 +329,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_voice.contributor_style',
     label: 'Voice (Contributor)',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'In-app voice (mic) replies sent to a signed-in contributor. Spoken via TTS — same memory context as Chat (Contributor) but tuned for the ear.',
     variables: [
       'role',
@@ -364,7 +364,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_voice.guest_style',
     label: 'Voice (Guest)',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'Used for guest viewers using the in-app mic. Same context shape as Ember Voice. Spoken replies should answer questions about the memory using the wiki and avoid probing the guest. Guests do not contribute, so do not push interview-style follow-ups.',
     variables: [
       'role',
@@ -397,7 +397,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_call.owner_style',
     label: 'Call (Owner)',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'Phone-call agent prompt for self-test calls the owner triggers from the Tend slider. Synced to Retell when saved. Receives per-call dynamic variables: contributor_name, image_title, image_description, prior_interview_count, previous_memory_summary, follow_up_focus, plus the merged wiki bag (wiki, tagged_people, location, captured_at, claims).',
     variables: [
       'contributor_name',
@@ -426,7 +426,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_call.contributor_style',
     label: 'Call (Contributor)',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'Phone-call agent prompt for outbound calls to invited contributors. Synced to Retell when saved. Receives per-call dynamic variables: contributor_name, image_title, image_description, prior_interview_count, previous_memory_summary, follow_up_focus, plus the merged wiki bag (wiki, tagged_people, location, captured_at, claims).',
     variables: [
       'contributor_name',
@@ -454,7 +454,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   {
     key: 'ember_sms.style',
     label: 'SMS',
-    group: 'Ember AI',
+    group: 'Ember Modal',
     description: 'Controls how the system replies in SMS interview follow-ups (Twilio). Same merged-wiki context as the chat / voice prompts, tuned for the constraints of text messages.',
     variables: [
       'role',
@@ -587,7 +587,7 @@ export const PROMPT_GROUPS: PromptGroup[] = [
   'Snapshot Generation',
   'Wiki',
   'Captions',
-  'Ember AI',
+  'Ember Modal',
   'Housekeeping',
 ];
 

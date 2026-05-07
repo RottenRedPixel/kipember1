@@ -15,7 +15,7 @@ export function groupFromSlug(slug: string): PromptGroup | null {
  * (e.g. "Image Analysis - Initial Photo (ember image)") are too long
  * to nest under their group. We derive a short name from the key, with
  * manual overrides for groups whose suffixes are ambiguous (e.g. all
- * Ember AI entries end in `.style`).
+ * Ember Modal entries end in `.style`).
  */
 const SHORT_PROMPT_LABEL_OVERRIDES: Record<string, string> = {
   'ember_chat.owner_style': 'Chat (Owner)',
