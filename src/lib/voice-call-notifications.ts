@@ -375,12 +375,8 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
   // prevent the others. Errors are logged but not thrown, since the webhook
   // must still return 200 to Retell.
   await Promise.all([
-    sendChannel(
-      'contributor-sms',
-      voiceCall.id,
-      ecUser?.phoneNumber ?? null,
-      (to) => sendSMS(to, contributorSms)
-    ),
+    // contributor-sms temporarily disabled
+    Promise.resolve(),
     sendChannel('contributor-email', voiceCall.id, ecUser?.email ?? null, (to) => {
       if (!isEmailConfigured()) {
         console.warn(
