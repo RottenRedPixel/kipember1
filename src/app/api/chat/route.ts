@@ -113,24 +113,27 @@ export async function POST(request: NextRequest) {
         userFirstName: auth.user.firstName ?? undefined,
       }),
       reconcileEmberMessageSafely(userMessage.id, 'chat housekeeping'),
-      extractAllClaimsFromContent(
-        {
-          imageId,
-          sessionId: session.id,
-          emberContributorId: session.emberContributorId ?? null,
-          userId,
-          emberMessageId: userMessage.id,
-          source: 'chat',
-          questionType: null,
-          question: null,
-          content: message,
-          sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
-        },
-        'chat housekeeping'
-      ).then(() => generateWikiForImage(imageId)).catch((err) => {
-        console.error('Chat housekeeping extraction error:', err);
-      }),
     ]);
+
+    // Fire housekeeping extraction after the reply is ready — do not await,
+    // so the HTTP response is not held up by 5+ extra AI calls.
+    extractAllClaimsFromContent(
+      {
+        imageId,
+        sessionId: session.id,
+        emberContributorId: session.emberContributorId ?? null,
+        userId,
+        emberMessageId: userMessage.id,
+        source: 'chat',
+        questionType: null,
+        question: null,
+        content: message,
+        sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
+      },
+      'chat housekeeping'
+    ).then(() => generateWikiForImage(imageId)).catch((err) => {
+      console.error('Chat housekeeping extraction error:', err);
+    });
 
     await prisma.emberMessage.create({
       data: { sessionId: session.id, role: 'assistant', content: response },

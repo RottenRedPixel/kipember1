@@ -153,34 +153,34 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const [replyText] = await Promise.all([
-      generateEmberVoiceReply({
-        imageId,
-        role: participant.participantType,
-        trigger: 'mic_message',
-        transcript,
-      }),
-      reconcileEmberMessageSafely(userMessage.id, 'voice housekeeping'),
-      transcript
-        ? extractAllClaimsFromContent(
-            {
-              imageId,
-              sessionId: session.id,
-              emberContributorId: session.emberContributorId ?? null,
-              userId,
-              emberMessageId: userMessage.id,
-              source: 'voice',
-              questionType: null,
-              question: null,
-              content: transcript,
-              sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
-            },
-            'voice housekeeping'
-          ).then(() => generateWikiForImage(imageId)).catch((err) => {
-            console.error('Voice housekeeping extraction error:', err);
-          })
-        : Promise.resolve(),
-    ]);
+    const replyText = await generateEmberVoiceReply({
+      imageId,
+      role: participant.participantType,
+      trigger: 'mic_message',
+      transcript,
+    });
+
+    reconcileEmberMessageSafely(userMessage.id, 'voice housekeeping');
+
+    if (transcript) {
+      extractAllClaimsFromContent(
+        {
+          imageId,
+          sessionId: session.id,
+          emberContributorId: session.emberContributorId ?? null,
+          userId,
+          emberMessageId: userMessage.id,
+          source: 'voice',
+          questionType: null,
+          question: null,
+          content: transcript,
+          sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
+        },
+        'voice housekeeping'
+      ).then(() => generateWikiForImage(imageId)).catch((err) => {
+        console.error('Voice housekeeping extraction error:', err);
+      });
+    }
 
     let replyAudioFilename: string | null = null;
     try {
