@@ -181,7 +181,10 @@ export default function OwnerFlow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode: 'call' }),
       });
-      if (!response.ok) throw new Error('Could not start the call.');
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Could not start the call.');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {

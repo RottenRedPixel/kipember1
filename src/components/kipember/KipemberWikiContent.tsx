@@ -3144,7 +3144,6 @@ export default function KipemberWikiContent({
             'Not Complete'
           )
         }
-        onEdit={detail?.id ? () => setEditingSlug('contributors') : undefined}
         collapsible
         defaultCollapsed
         tracksProgress
