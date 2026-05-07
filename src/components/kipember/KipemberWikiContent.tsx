@@ -2010,7 +2010,7 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
       >
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 29, height: 29, background: '#2563eb' }}
+          style={{ width: 29, height: 29, background: '#f97316' }}
         >
           <MessageCircle size={16} className="text-white" fill="currentColor" stroke="currentColor" />
         </div>
