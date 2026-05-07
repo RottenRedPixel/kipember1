@@ -365,7 +365,7 @@ export default function OwnerFlow({
             <div className="w-full rounded-full bg-white/8 px-4 py-3 text-sm flex items-center gap-1">
               {isCalling ? (
                 <>
-                  <span style={{ color: '#f97316' }}>Calling</span>
+                  <span style={{ color: '#2563eb' }}>Calling</span>
                   <span className="text-white">{formatPhone(phoneNumber)}</span>
                 </>
               ) : (
@@ -381,7 +381,7 @@ export default function OwnerFlow({
             onClick={() => void triggerSelfInvite()}
             disabled={isCalling}
             className="flex h-11 w-11 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
-            style={{ background: '#f97316', color: 'white' }}
+            style={{ background: '#2563eb', color: 'white' }}
             aria-label="Call my phone"
           >
             <Phone size={18} />
@@ -409,7 +409,7 @@ export default function OwnerFlow({
               {voice.isRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
             </button>
           </div>
-          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#2563eb' }} aria-label="Send message">
+          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
             <SendHorizontal size={18} />
           </button>
         </form>

@@ -167,7 +167,7 @@ export default function EmberCallCard({
         >
           <div
             className="rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ width: 29, height: 29, background: '#f97316' }}
+            style={{ width: 29, height: 29, background: '#2563eb' }}
           >
             <Phone size={16} className="text-white" fill="currentColor" stroke="currentColor" />
           </div>
@@ -266,10 +266,10 @@ export default function EmberCallCard({
                   isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
                 }`}
                 style={{
-                  background: isUser ? 'rgba(249,115,22,0.18)' : 'var(--bg-ember-bubble)',
+                  background: isUser ? 'rgba(37,99,235,0.18)' : 'rgba(37,99,235,0.08)',
                   border: isUser
-                    ? '1px solid rgba(249,115,22,0.45)'
-                    : '1px solid var(--border-ember)',
+                    ? '1px solid rgba(37,99,235,0.45)'
+                    : '1px solid rgba(37,99,235,0.25)',
                 }}
               >
                 {segment.content}
@@ -282,7 +282,7 @@ export default function EmberCallCard({
                       }
                       className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
                       style={{
-                        background: 'rgba(249,115,22,0.85)',
+                        background: 'rgba(37,99,235,0.85)',
                         border: 'none',
                         cursor: 'pointer',
                       }}
