@@ -51,7 +51,7 @@ function AudioPlayButton({ src }: { src: string }) {
 export default function VoiceMessageList({
   messages,
   isUploading,
-  emptyHint = 'Tap the mic in the input bar to start a voice conversation.',
+  emptyHint = 'Tap the green mic to start a voice conversation.',
   selfLabel = 'you',
   emberLabel = 'ember',
 }: {

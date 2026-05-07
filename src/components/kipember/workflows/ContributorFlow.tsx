@@ -279,45 +279,56 @@ export default function ContributorFlow({
         </div>
       )}
 
-      <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2 flex-shrink-0">
-        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isSending} className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer" style={{ background: 'rgba(255,255,255,0.08)' }} aria-label="Add photo">
-          <ImagePlus size={18} />
-        </button>
-        <div className="relative min-w-0 flex-1">
-          {voice.isRecording ? (
-            <div className="flex h-11 w-full items-center rounded-full border border-transparent bg-white/8 px-4 pr-11">
-              <MicLevelMeter stream={voice.stream} className="h-5 w-full" />
-            </div>
-          ) : (
-            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Share your memory with ember..." className={`w-full rounded-full border border-transparent bg-white/8 px-4 py-3 ${emberModalSurface === 'chats' ? '' : 'pr-11'} text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]`} disabled={isSending} />
-          )}
-          {emberModalSurface !== 'chats' ? (
-            <button
-              type="button"
-              onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
-              disabled={voice.isUploading}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
+      {emberModalSurface === 'voice' ? (
+        /* Voice toolbar — visualization pill + large green mic */
+        <div className="flex items-end gap-2 flex-shrink-0">
+          <div className="flex-1 min-w-0">
+            <div
+              className="flex h-11 w-full items-center rounded-full px-4"
               style={{
-                color: voice.isRecording ? 'white' : 'rgba(255,255,255,0.5)',
-                background: voice.isRecording ? 'rgba(249,115,22,0.95)' : 'transparent',
+                background: voice.isRecording ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
+                border: `1px solid ${voice.isRecording ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
               }}
-              aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
             >
-              {voice.isRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
-            </button>
-          ) : null}
+              {voice.isRecording ? (
+                <MicLevelMeter stream={voice.stream} className="h-5 w-full" color="#22c55e" />
+              ) : (
+                <div className="h-5 w-full" />
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
+            disabled={voice.isUploading}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
+            style={{ background: voice.isRecording ? '#16a34a' : '#22c55e' }}
+            aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
+          >
+            {voice.isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
+          </button>
         </div>
-        <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
-          <SendHorizontal size={18} />
-        </button>
-      </form>
+      ) : (
+        /* Chat / Calls toolbar — unchanged */
+        <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2 flex-shrink-0">
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isSending} className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer" style={{ background: 'rgba(255,255,255,0.08)' }} aria-label="Add photo">
+            <ImagePlus size={18} />
+          </button>
+          <div className="relative min-w-0 flex-1">
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Share your memory with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
+          </div>
+          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#2563eb' }} aria-label="Send message">
+            <SendHorizontal size={18} />
+          </button>
+        </form>
+      )}
 
       {voice.isRecording || voice.isUploading || voice.error || isUploading || error || status ? (
         <div className="px-2 pt-2 text-xs">
           {error ? <p className="text-[rgba(255,180,180,0.92)]">{error}</p>
             : voice.error ? <p className="text-[rgba(255,180,180,0.92)]">{voice.error}</p>
             : status ? <p className="text-white/48">{status}</p>
-            : voice.isRecording ? <p className="text-white/48">Recording — tap the square to stop.</p>
+            : voice.isRecording ? <p style={{ color: 'rgba(34,197,94,0.7)' }}>Recording — tap stop when done.</p>
             : voice.isUploading ? <p className="text-white/48">Saving voice message…</p>
             : isUploading ? <p className="text-white/48">Adding to this memory...</p>
             : null}

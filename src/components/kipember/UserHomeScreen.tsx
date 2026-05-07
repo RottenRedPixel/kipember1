@@ -339,48 +339,6 @@ export default function UserHomeScreen({
           <p className="text-white/60 text-sm mt-1">Good to see you again!</p>
         </div>
 
-        {/* b) Create ember card */}
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center gap-3 px-3 rounded-2xl cursor-pointer can-hover-card"
-            style={{
-              height: 72,
-              background: isDragOver ? 'rgba(249,115,22,0.08)' : 'var(--bg-surface)',
-              border: `1px solid ${isDragOver ? '#f97316' : 'var(--border-subtle)'}`,
-              transition: 'background 0.15s, border-color 0.15s',
-            }}
-            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-            onDragLeave={() => setIsDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragOver(false);
-              const file = e.dataTransfer.files?.[0];
-              if (file) handleFile(file);
-            }}
-          >
-            <div
-              className="flex-shrink-0 rounded-xl flex items-center justify-center"
-              style={{
-                width: 48,
-                height: 48,
-                background: '#f97316',
-                border: 'none',
-              }}
-            >
-              <EmberMark size={22} />
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-white text-sm font-medium leading-snug">Create a new ember</p>
-              <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                Drop, paste, or choose a photo
-              </p>
-            </div>
-            <ChevronRight size={15} strokeWidth={2} className="flex-shrink-0 mr-1" style={{ color: 'rgba(255,255,255,0.2)' }} />
-          </button>
-        </div>
-
         {/* Stats strip */}
         <div className="mt-5">
           <div className="flex items-center gap-2 mb-3">
