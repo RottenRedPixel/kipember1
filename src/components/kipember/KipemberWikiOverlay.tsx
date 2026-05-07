@@ -27,6 +27,11 @@ export default function KipemberWikiOverlay({
   const router = useRouter();
   const [detail, setDetail] = useState<KipemberWikiDetail | null>(null);
   const [statusMessage, setStatusMessage] = useState('');
+  useEffect(() => {
+    if (!statusMessage) return;
+    const t = setTimeout(() => setStatusMessage(''), 3000);
+    return () => clearTimeout(t);
+  }, [statusMessage]);
   // Visual open state — drives the inline transform transition. Mounts
   // at false (off-screen right), flips to true on next animation frame
   // so the browser commits the off-screen state before transitioning.

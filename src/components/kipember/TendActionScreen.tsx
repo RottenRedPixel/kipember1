@@ -146,6 +146,12 @@ export default function TendActionScreen({ action }: { action: string }) {
   const [status, setStatus] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
   useEffect(() => { setSavedMsg(''); }, [action]);
+  // Auto-dismiss the green toast after 3 seconds.
+  useEffect(() => {
+    if (!status) return;
+    const t = setTimeout(() => setStatus(''), 3000);
+    return () => clearTimeout(t);
+  }, [status]);
   // Slider state moved to component files:
   //   edit-title       -> EditTitleSlider
   //   edit-time-place  -> EditTimePlaceSlider
@@ -425,7 +431,7 @@ export default function TendActionScreen({ action }: { action: string }) {
           ) : null}
         </div>
 
-        <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
+        <div className="relative flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
           {action === 'contributors' ? (
             <ContributorsSlider
               detail={detail}
@@ -491,7 +497,14 @@ export default function TendActionScreen({ action }: { action: string }) {
             />
           ) : null}
 
-          {status ? <p className="text-sm text-white/60">{status}</p> : null}
+          {status ? (
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm text-white font-medium"
+              style={{ background: 'rgba(34,197,94,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap' }}
+            >
+              {status}
+            </div>
+          ) : null}
         </div>
       </div>
       </div>
