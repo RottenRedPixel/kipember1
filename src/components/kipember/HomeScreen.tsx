@@ -677,6 +677,11 @@ export default function HomeScreen({
       setShareToken(null);
       return;
     }
+    // Contributors can't share — bounce them back immediately.
+    if (displayEmber?.accessType === 'contributor') {
+      router.replace(buildHomeHref({ m: null }));
+      return;
+    }
 
     void fetch(`/api/images/${selectedEmberId}/share-token`, { method: 'POST' })
       .then(async (res) => {
@@ -686,7 +691,7 @@ export default function HomeScreen({
         }
       })
       .catch(() => undefined);
-  }, [modal, selectedEmberId]);
+  }, [modal, selectedEmberId, displayEmber?.accessType, router]);
 
   useEffect(() => {
     const stored = localStorage.getItem('ember-theme');
@@ -1054,7 +1059,9 @@ export default function HomeScreen({
             <span className="text-white text-xs font-medium lowercase">more</span>
           </button>
         ) : null}
-        <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
+        {displayEmber?.accessType !== 'contributor' && (
+          <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
+        )}
         {displayEmber?.accessType !== 'contributor' && (
           <RailBtn
             icon={Leaf}
