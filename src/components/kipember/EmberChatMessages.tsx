@@ -148,8 +148,8 @@ export default function EmberChatMessages({
                     isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
                   }`}
                   style={{
-                    background: isUser ? 'rgba(249,115,22,0.20)' : 'rgba(249,115,22,0.09)',
-                    border: isUser ? '1px solid rgba(249,115,22,0.50)' : '1px solid rgba(249,115,22,0.25)',
+                    background: isUser ? 'rgba(249,115,22,0.20)' : 'var(--bg-ember-bubble)',
+                    border: isUser ? '1px solid rgba(249,115,22,0.50)' : '1px solid var(--border-ember)',
                   }}
                 >
                   <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">

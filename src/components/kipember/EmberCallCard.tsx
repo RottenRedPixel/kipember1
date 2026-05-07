@@ -266,10 +266,10 @@ export default function EmberCallCard({
                   isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
                 }`}
                 style={{
-                  background: isUser ? 'rgba(37,99,235,0.18)' : 'rgba(37,99,235,0.08)',
+                  background: isUser ? 'rgba(37,99,235,0.18)' : 'var(--bg-ember-bubble)',
                   border: isUser
                     ? '1px solid rgba(37,99,235,0.45)'
-                    : '1px solid rgba(37,99,235,0.25)',
+                    : '1px solid var(--border-ember)',
                 }}
               >
                 {segment.content}

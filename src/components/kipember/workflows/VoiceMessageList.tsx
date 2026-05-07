@@ -99,10 +99,10 @@ export default function VoiceMessageList({
               <div
                 className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
                 style={{
-                  background: isUser ? 'rgba(249,115,22,0.20)' : 'rgba(249,115,22,0.09)',
+                  background: isUser ? 'rgba(249,115,22,0.20)' : 'var(--bg-ember-bubble)',
                   border: isUser
                     ? '1px solid rgba(249,115,22,0.50)'
-                    : '1px solid rgba(249,115,22,0.25)',
+                    : '1px solid var(--border-ember)',
                 }}
               >
                 <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
@@ -128,8 +128,8 @@ export default function VoiceMessageList({
           <div
             className="inline-flex max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3"
             style={{
-              background: 'rgba(249,115,22,0.09)',
-              border: '1px solid rgba(249,115,22,0.25)',
+              background: 'var(--bg-ember-bubble)',
+              border: '1px solid var(--border-ember)',
             }}
           >
             <div className="flex gap-1">
