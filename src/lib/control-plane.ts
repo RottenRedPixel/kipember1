@@ -4,7 +4,7 @@ import {
   getPromptAliasChain,
 } from '@/lib/prompt-registry';
 
-const PROMPT_OVERRIDE_CACHE_TTL_MS = 2_000;
+const PROMPT_OVERRIDE_CACHE_TTL_MS = 60_000;
 export const PROMPT_REMOVED_MESSAGE = 'prompt removed';
 
 let overrideCache: Map<string, string> | null = null;

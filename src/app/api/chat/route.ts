@@ -10,7 +10,7 @@ import {
 } from '@/lib/ember-sessions';
 import { getEmberAccessType } from '@/lib/ember';
 import { generateEmberChatReply } from '@/lib/ember-chat-reply';
-import { extractAllClaimsFromContent, reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { extractAllClaimsFromContent } from '@/lib/memory-reconciliation';
 import { getUserDisplayName } from '@/lib/user-name';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 
@@ -104,16 +104,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const [response] = await Promise.all([
-      generateEmberChatReply({
-        imageId,
-        sessionId: session.id,
-        role: participant.participantType,
-        trigger: 'message',
-        userFirstName: auth.user.firstName ?? undefined,
-      }),
-      reconcileEmberMessageSafely(userMessage.id, 'chat housekeeping'),
-    ]);
+    const response = await generateEmberChatReply({
+      imageId,
+      sessionId: session.id,
+      role: participant.participantType,
+      trigger: 'message',
+      userFirstName: auth.user.firstName ?? undefined,
+    });
 
     // Fire housekeeping extraction after the reply is ready — do not await,
     // so the HTTP response is not held up by 5+ extra AI calls.
