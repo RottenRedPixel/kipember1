@@ -2,7 +2,7 @@
 
 import { ChevronDown, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { pastelForContributor } from '@/lib/contributor-color';
+import { pastelForContributorIdentity } from '@/lib/contributor-color';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 
 const LANGUAGE_OPTIONS = [
@@ -308,7 +308,7 @@ export default function AccountContributorsAccordion({
                     height: 36,
                     background: avatarUrl
                       ? 'rgba(249,115,22,0.85)'
-                      : contributor.avatarColor ?? pastelForContributor(contributor.key),
+                      : contributor.avatarColor ?? pastelForContributorIdentity(contributor),
                   }}
                 >
                   {avatarUrl ? (

@@ -326,6 +326,7 @@ model User {
   email                String?      @unique
   phoneNumber          String?      @unique
   avatarFilename       String?
+  avatarColor          String?
   passwordHash         String?
   sessions             UserSession[]
   authChallenges       AuthChallenge[]

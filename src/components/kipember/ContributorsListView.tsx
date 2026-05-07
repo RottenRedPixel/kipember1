@@ -11,7 +11,7 @@ import {
   UserCheck,
   UserPlus,
 } from 'lucide-react';
-import { pastelForContributor } from '@/lib/contributor-color';
+import { pastelForContributorIdentity } from '@/lib/contributor-color';
 import type { TaggedPhoto, UnifiedContributor } from '@/lib/contributors-pool';
 import { getPreviewMediaUrl } from '@/lib/media';
 
@@ -311,7 +311,7 @@ export default function ContributorsListView({
                   <div
                     className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center text-sm font-medium"
                     style={{
-                      background: c.avatarColor ?? pastelForContributor(c.key),
+                      background: c.avatarColor ?? pastelForContributorIdentity(c),
                       color: '#1f2937',
                     }}
                   >
