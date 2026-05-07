@@ -78,16 +78,17 @@ function getTransporter() {
 }
 
 export async function sendEmail(payload: EmailPayload) {
+  // Email temporarily disabled — delete these two lines and uncomment the block below to re-enable
+  console.log(`[sendEmail disabled] to=${payload.to} subject=${payload.subject}`);
+  return;
+
+  /* RE-ENABLE: remove the two lines above and uncomment this block
   const config = getSmtpConfig();
   if (!config) {
     throw new Error(
       'SMTP is not configured. Set SMTP_* or MAILGUN_SMTP_* environment variables.'
     );
   }
-
-  // Email temporarily disabled — remove this block to re-enable
-  console.log(`[sendEmail disabled] to=${payload.to} subject=${payload.subject}`);
-  return;
 
   await getTransporter().sendMail({
     from: config.from,
@@ -96,4 +97,5 @@ export async function sendEmail(payload: EmailPayload) {
     text: payload.text,
     html: payload.html,
   });
+  */
 }
