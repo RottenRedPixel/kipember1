@@ -29,6 +29,11 @@ function parseTitleList(value: string) {
   for (const rawLine of value.split(/\r?\n/)) {
     const line = normalizeTitleLine(rawLine);
     if (!line) continue;
+    // Skip lines that are clearly reasoning/preamble — too long to be a title
+    // (hard limit is 40 chars; allow a little slack for parsing edge cases)
+    if (line.length > 60) continue;
+    // Skip lines that end with a colon — those are section headers or preamble
+    if (line.endsWith(':')) continue;
     const key = line.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
