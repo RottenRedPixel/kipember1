@@ -89,6 +89,9 @@ export async function POST(request: NextRequest) {
   const dynamicVars = body.call?.retell_llm_dynamic_variables ?? {};
   const metadata = body.call?.metadata ?? {};
   const imageId = metadata.imageId || dynamicVars.image_id || '';
+  const promptKey = metadata.initiatedBy === 'owner'
+    ? 'ember_call.owner_style'
+    : 'ember_call.contributor_style';
 
   // Load fresh ember context for this turn. Falling back to whatever Retell
   // sent in dynamic variables means a missing imageId still gets a usable
@@ -100,7 +103,7 @@ export async function POST(request: NextRequest) {
       context = await loadEmberContext(imageId);
     }
     renderedSystemPrompt = await renderPromptTemplate(
-      'ember_call.contributor_style',
+      promptKey,
       '',
       {
         contributor_name: dynamicVars.contributor_name ?? '',
