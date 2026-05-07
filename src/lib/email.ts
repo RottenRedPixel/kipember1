@@ -78,6 +78,10 @@ function getTransporter() {
 }
 
 export async function sendEmail(payload: EmailPayload) {
+  // Email temporarily disabled — remove this block to re-enable
+  console.log(`[sendEmail disabled] to=${payload.to} subject=${payload.subject}`);
+  return;
+
   const config = getSmtpConfig();
   if (!config) {
     throw new Error(

@@ -15,6 +15,10 @@ function parseProviderPayload(body: string): Record<string, unknown> | null {
 }
 
 export async function sendSMS(to: string, body: string): Promise<string> {
+  // SMS temporarily disabled — remove this block to re-enable
+  console.log(`[sendSMS disabled] to=${to} body=${body.slice(0, 80)}`);
+  return 'disabled';
+
   if (!apiUsername || !apiPassword || !voipmsPhoneNumber) {
     throw new Error('voip.ms credentials not configured. Please set VOIPMS_API_USERNAME, VOIPMS_API_PASSWORD, and VOIPMS_DID.');
   }
