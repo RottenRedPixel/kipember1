@@ -38,9 +38,18 @@ export function useGuestVoiceRecording(token: string) {
         }
         const payload = await res.json();
         if (!cancelled) {
-          setMessages(
-            Array.isArray(payload.messages) ? (payload.messages as VoiceMessage[]) : []
+          const loaded: VoiceMessage[] = Array.isArray(payload.messages)
+            ? (payload.messages as VoiceMessage[])
+            : [];
+          // Pre-seed the played ref so the auto-play effect doesn't replay
+          // the last assistant message when history first loads.
+          const lastAssistant = [...loaded].reverse().find(
+            (m) => m.role === 'assistant' && m.audioUrl
           );
+          if (lastAssistant?.audioUrl) {
+            lastPlayedAssistantRef.current = lastAssistant.audioUrl;
+          }
+          setMessages(loaded);
         }
       } catch {
         if (!cancelled) setMessages([]);

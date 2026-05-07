@@ -1055,12 +1055,14 @@ export default function HomeScreen({
           </button>
         ) : null}
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
-        <RailBtn
-          icon={Leaf}
-          label="tend"
-          href={selectedEmberId ? buildHomeHref({ m: 'wiki' }) : '/home'}
-          active={modal === 'wiki'}
-        />
+        {displayEmber?.accessType !== 'contributor' && (
+          <RailBtn
+            icon={Leaf}
+            label="tend"
+            href={selectedEmberId ? buildHomeHref({ m: 'wiki' }) : '/home'}
+            active={modal === 'wiki'}
+          />
+        )}
         <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
       </div>
 
