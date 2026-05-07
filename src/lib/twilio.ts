@@ -15,10 +15,11 @@ function parseProviderPayload(body: string): Record<string, unknown> | null {
 }
 
 export async function sendSMS(to: string, body: string): Promise<string> {
-  // SMS temporarily disabled — remove this block to re-enable
+  // SMS temporarily disabled — delete these two lines and uncomment the block below to re-enable
   console.log(`[sendSMS disabled] to=${to} body=${body.slice(0, 80)}`);
   return 'disabled';
 
+  /* RE-ENABLE: remove the two lines above and uncomment this block
   if (!apiUsername || !apiPassword || !voipmsPhoneNumber) {
     throw new Error('voip.ms credentials not configured. Please set VOIPMS_API_USERNAME, VOIPMS_API_PASSWORD, and VOIPMS_DID.');
   }
@@ -78,6 +79,7 @@ export async function sendSMS(to: string, body: string): Promise<string> {
   }
 
   return typeof data.sms === 'string' ? data.sms : 'sent';
+  */
 }
 
 // voip.ms webhook validation is simpler - they use a secret URL or IP whitelist
