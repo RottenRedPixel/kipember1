@@ -18,6 +18,14 @@
 // On every turn we re-load the ember context from the DB (wiki, tagged
 // people, location, claims) so prompts always see the freshest state —
 // unlike the conversation-flow agent which freezes context at call start.
+//
+// ROLE DETECTION (in priority order):
+//   1. ?role=owner|contributor  query param baked into the Retell agent's LLM URL
+//   2. metadata.initiatedBy     passed at call-start by voice-calls.ts (fallback)
+//
+// Retell agent LLM URLs should be:
+//   Owner agent:       .../api/retell/llm?role=owner
+//   Contributor agent: .../api/retell/llm?role=contributor
 
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
@@ -89,7 +97,14 @@ export async function POST(request: NextRequest) {
   const dynamicVars = body.call?.retell_llm_dynamic_variables ?? {};
   const metadata = body.call?.metadata ?? {};
   const imageId = metadata.imageId || dynamicVars.image_id || '';
-  const promptKey = metadata.initiatedBy === 'owner'
+
+  // Determine role: URL query param takes priority (set per-agent in Retell),
+  // falling back to metadata.initiatedBy for backward compatibility.
+  const roleParam = request.nextUrl.searchParams.get('role'); // 'owner' | 'contributor'
+  const role = roleParam === 'owner' || roleParam === 'contributor'
+    ? roleParam
+    : (metadata.initiatedBy === 'owner' ? 'owner' : 'contributor');
+  const promptKey = role === 'owner'
     ? 'ember_call.owner_style'
     : 'ember_call.contributor_style';
 
