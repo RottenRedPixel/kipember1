@@ -17,14 +17,13 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = JSON.parse(rawBody) as unknown;
-    await processRetellWebhook(payload);
+    await processRetellWebhook(payload).catch((error) => {
+      console.error('Retell webhook processing error:', error);
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Retell webhook error:', error);
-    return NextResponse.json(
-      { error: 'Failed to process Retell webhook' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true });
   }
 }
