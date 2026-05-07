@@ -38,7 +38,7 @@ function AudioPlayButton({ src }: { src: string }) {
         type="button"
         onClick={toggle}
         className="flex h-5 w-5 items-center justify-center rounded-full cursor-pointer flex-shrink-0"
-        style={{ background: 'rgba(34,197,94,0.85)' }}
+        style={{ background: 'rgba(249,115,22,0.85)' }}
         aria-label={playing ? 'Pause' : 'Play'}
       >
         <Play size={9} className="text-white" />
@@ -99,10 +99,10 @@ export default function VoiceMessageList({
               <div
                 className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
                 style={{
-                  background: isUser ? 'rgba(34,197,94,0.18)' : 'var(--bg-ember-bubble)',
+                  background: isUser ? 'rgba(249,115,22,0.20)' : 'rgba(249,115,22,0.09)',
                   border: isUser
-                    ? '1px solid rgba(34,197,94,0.45)'
-                    : '1px solid var(--border-ember)',
+                    ? '1px solid rgba(249,115,22,0.50)'
+                    : '1px solid rgba(249,115,22,0.25)',
                 }}
               >
                 <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
@@ -128,8 +128,8 @@ export default function VoiceMessageList({
           <div
             className="inline-flex max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3"
             style={{
-              background: 'var(--bg-ember-bubble)',
-              border: '1px solid var(--border-ember)',
+              background: 'rgba(249,115,22,0.09)',
+              border: '1px solid rgba(249,115,22,0.25)',
             }}
           >
             <div className="flex gap-1">
