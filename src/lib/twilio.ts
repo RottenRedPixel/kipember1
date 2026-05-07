@@ -40,7 +40,7 @@ export async function sendSMS(to: string, body: string): Promise<string> {
 
   const response = await fetch(`${VOIPMS_API_URL}?${params.toString()}`, {
     headers: {
-      Accept: 'application/json, text/plain, */*',
+      Accept: 'application/json, text/plain, *' + '/*',
     },
   });
   const rawBody = await response.text();
