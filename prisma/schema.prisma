@@ -343,6 +343,20 @@ model User {
   lastSeenGuestViewsAt DateTime?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+  contributorPoolEntries ContributorPool[] @relation("PoolOwner")
+  contributorPoolMemberships ContributorPool[] @relation("PoolMember")
+}
+
+model ContributorPool {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation("PoolOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("PoolMember", fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([ownerId, userId])
+  @@index([ownerId])
 }
 
 model UserSession {

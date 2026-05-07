@@ -187,6 +187,48 @@ export async function getUnifiedContributorsForUser(
     }
   }
 
+  // Also include pool-only contributors (added to the owner's pool but not
+  // yet on any ember). These only come from ContributorPool rows.
+  const poolOnly = await prisma.contributorPool.findMany({
+    where: {
+      ownerId,
+      userId: { notIn: Array.from(byUserId.keys()) },
+    },
+    select: {
+      userId: true,
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phoneNumber: true,
+          avatarFilename: true,
+        },
+      },
+    },
+  });
+
+  for (const p of poolOnly) {
+    const displayName = getUserDisplayName(p.user) ?? p.user.email ?? p.user.phoneNumber ?? 'Contributor';
+    byUserId.set(p.userId, {
+      key: p.userId,
+      userId: p.userId,
+      name: displayName,
+      email: p.user.email ?? null,
+      phoneNumber: p.user.phoneNumber ?? null,
+      avatarColor: null,
+      avatarUrl: p.user.avatarFilename ? `/api/uploads/${p.user.avatarFilename}` : null,
+      embers: [],
+      emberCount: 0,
+      taggedPhotos: [],
+      taggedPhotoCount: 0,
+      onThisEmber: false,
+      currentEmberContributorId: null,
+      inviteSent: false,
+    });
+  }
+
   const list = Array.from(byUserId.values());
   list.sort((a, b) => {
     if (currentEmberId) {

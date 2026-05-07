@@ -57,7 +57,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!hasImageId) {
-      // Pool-only: return user data without an EmberContributor.
+      // Track the pool relationship so the owner can see this person
+      // in their contributors list even before attaching to an ember.
+      await prisma.contributorPool.upsert({
+        where: { ownerId_userId: { ownerId: auth.user.id, userId: user.id } },
+        create: { ownerId: auth.user.id, userId: user.id },
+        update: {},
+      });
       return NextResponse.json({
         id: null,
         imageId: null,
