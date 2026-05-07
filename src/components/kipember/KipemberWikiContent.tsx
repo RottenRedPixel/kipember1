@@ -2661,7 +2661,7 @@ export default function KipemberWikiContent({
         pendingContributors.length > 0 ||
         Boolean(detail?.analysis?.noContributors),
     },
-    { slug: 'people', label: 'People', complete: peopleComplete },
+    { slug: 'people', label: 'Tag People', complete: peopleComplete },
     { slug: 'title', label: 'Title', complete: Boolean(detail?.title) },
     { slug: 'snapshot', label: 'Snapshot', complete: Boolean(detail?.snapshot?.script) },
     {
@@ -2831,7 +2831,7 @@ export default function KipemberWikiContent({
         return (
           <WikiSection
             icon={<Users size={17} />}
-            title="People"
+            title="Tag People"
             complete={peopleComplete}
             badgeLabel={peopleBadgeLabel}
             onEdit={detail?.id ? () => setEditingSlug('tag-people') : undefined}

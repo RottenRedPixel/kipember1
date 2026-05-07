@@ -1,7 +1,7 @@
 'use client';
 
-import { ChevronDown, Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { pastelForContributorIdentity } from '@/lib/contributor-color';
 import type { UnifiedContributor } from '@/lib/contributors-pool';
 
@@ -59,21 +59,12 @@ export default function AccountContributorsAccordion({
 
   const [settingsLangOpen, setSettingsLangOpen] = useState(false);
   const [settingsCommOpen, setSettingsCommOpen] = useState(false);
-  const [settingsCommPos, setSettingsCommPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  const settingsCommRef = useRef<HTMLButtonElement>(null);
   const [settingsAttemptsOpen, setSettingsAttemptsOpen] = useState(false);
-  const [settingsAttemptsPos, setSettingsAttemptsPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  const settingsAttemptsRef = useRef<HTMLButtonElement>(null);
   const [settingsPreferredComm, setSettingsPreferredComm] = useState('call');
   const [settingsAttempts, setSettingsAttempts] = useState('once');
-  const [editLangOpen, setEditLangOpen] = useState(false);
-  const [editLangPos, setEditLangPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  const editLangRef = useRef<HTMLButtonElement>(null);
   const [adding, setAdding] = useState(false);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   const [addLangOpen, setAddLangOpen] = useState(false);
-  const [addLangPos, setAddLangPos] = useState<{ top: number; left: number; width: number } | null>(null);
-  const addLangRef = useRef<HTMLButtonElement>(null);
   const [addBusy, setAddBusy] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -303,7 +294,7 @@ export default function AccountContributorsAccordion({
           return (
             <div
               key={contributor.key}
-              className="rounded-xl overflow-hidden"
+              className="rounded-xl"
               style={{
                 background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
                 border: '1px solid var(--border-subtle)',
@@ -375,20 +366,19 @@ export default function AccountContributorsAccordion({
                       <div className="flex items-center justify-between h-12">
                         <span className="text-sm text-white/70">Language Preference</span>
                         <div className="relative">
-                          <button ref={editLangRef} type="button" onClick={() => { if (!settingsLangOpen && editLangRef.current) { const r = editLangRef.current.getBoundingClientRect(); setEditLangPos({ top: r.bottom + 4, left: r.right - 180, width: 180 }); } setSettingsLangOpen((v) => !v); setSettingsCommOpen(false); setSettingsAttemptsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
+                          <button type="button" onClick={() => { setSettingsLangOpen((v) => !v); setSettingsCommOpen(false); setSettingsAttemptsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
                             <span className="text-white text-xs font-medium">{editForm.language}</span>
                             <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
                           </button>
-                          {settingsLangOpen && editLangPos ? (
-                            <div style={{ position: 'fixed', top: editLangPos.top, left: editLangPos.left, width: editLangPos.width, zIndex: 1000, background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
-                              {LANGUAGE_OPTIONS.map((lang) => {
-                                const isEnglish = lang === 'English';
-                                return (
-                                  <button key={lang} type="button" disabled={!isEnglish} onClick={() => { if (isEnglish) { setEditForm((f) => ({ ...f, language: lang })); setSettingsLangOpen(false); } }} className="w-full text-left px-4 py-2.5 text-xs font-medium transition-colors" style={{ color: !isEnglish ? 'rgba(255,255,255,0.25)' : editForm.language === lang ? '#f97316' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent', cursor: isEnglish ? 'pointer' : 'default' }}>
-                                    {lang}
-                                  </button>
-                                );
-                              })}
+                          {settingsLangOpen ? (
+                            <div className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}>
+                              {LANGUAGE_OPTIONS.map((lang) => lang === 'English' ? (
+                                <button key={lang} type="button" onClick={() => { setEditForm((f) => ({ ...f, language: lang })); setSettingsLangOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: editForm.language === lang ? '#f97316' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
+                                  {lang}
+                                </button>
+                              ) : (
+                                <button key={lang} type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>{lang}</button>
+                              ))}
                             </div>
                           ) : null}
                         </div>
@@ -397,16 +387,16 @@ export default function AccountContributorsAccordion({
                       <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                         <span className="text-sm text-white/70">Communication Preference</span>
                         <div className="relative">
-                          <button ref={settingsCommRef} type="button" onClick={() => { if (!settingsCommOpen && settingsCommRef.current) { const r = settingsCommRef.current.getBoundingClientRect(); setSettingsCommPos({ top: r.bottom + 4, left: r.right - 180, width: 180 }); } setSettingsCommOpen((v) => !v); setSettingsLangOpen(false); setSettingsAttemptsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
+                          <button type="button" onClick={() => { setSettingsCommOpen((v) => !v); setSettingsLangOpen(false); setSettingsAttemptsOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
                             <span className="text-white text-xs font-medium">{settingsPreferredComm === 'call' ? 'Phone Call' : settingsPreferredComm === 'sms' ? 'Text Message' : settingsPreferredComm === 'email' ? 'Email' : 'WhatsApp'}</span>
                             <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
                           </button>
-                          {settingsCommOpen && settingsCommPos ? (
-                            <div style={{ position: 'fixed', top: settingsCommPos.top, left: settingsCommPos.left, width: settingsCommPos.width, zIndex: 1000, background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+                          {settingsCommOpen ? (
+                            <div className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}>
                               <button type="button" onClick={() => { setSettingsPreferredComm('call'); setSettingsCommOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: settingsPreferredComm === 'call' ? '#f97316' : 'var(--text-primary)', background: settingsPreferredComm === 'call' ? 'rgba(249,115,22,0.08)' : 'transparent' }}>Phone Call</button>
-                              {['Text Message', 'Email', 'WhatsApp'].map((label) => (
-                                <button key={label} type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>{label}</button>
-                              ))}
+                              <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>Text Message</button>
+                              <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>Email</button>
+                              <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>WhatsApp</button>
                             </div>
                           ) : null}
                         </div>
@@ -415,12 +405,12 @@ export default function AccountContributorsAccordion({
                       <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                         <span className="text-sm text-white/70">Communication Attempts</span>
                         <div className="relative">
-                          <button ref={settingsAttemptsRef} type="button" onClick={() => { if (!settingsAttemptsOpen && settingsAttemptsRef.current) { const r = settingsAttemptsRef.current.getBoundingClientRect(); setSettingsAttemptsPos({ top: r.bottom + 4, left: r.right - 220, width: 220 }); } setSettingsAttemptsOpen((v) => !v); setSettingsLangOpen(false); setSettingsCommOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
+                          <button type="button" onClick={() => { setSettingsAttemptsOpen((v) => !v); setSettingsLangOpen(false); setSettingsCommOpen(false); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}>
                             <span className="text-white text-xs font-medium">{settingsAttempts === 'once' ? 'Once' : settingsAttempts === 'twice' ? 'Twice' : settingsAttempts === 'three' ? 'Three Times' : 'Keep Trying'}</span>
                             <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
                           </button>
-                          {settingsAttemptsOpen && settingsAttemptsPos ? (
-                            <div style={{ position: 'fixed', top: settingsAttemptsPos.top, left: settingsAttemptsPos.left, width: settingsAttemptsPos.width, zIndex: 1000, background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}>
+                          {settingsAttemptsOpen ? (
+                            <div className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 200 }}>
                               {([['once', 'Once'], ['twice', 'Twice'], ['three', 'Three Times'], ['forever', 'Keep Trying Until Successful']] as const).map(([val, label]) => (
                                 <button key={val} type="button" onClick={() => { setSettingsAttempts(val); setSettingsAttemptsOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: settingsAttempts === val ? '#f97316' : 'var(--text-primary)', background: settingsAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
                                   {label}
@@ -483,40 +473,29 @@ export default function AccountContributorsAccordion({
           ))}
           <div className="relative">
             <button
-              ref={addLangRef}
               type="button"
-              onClick={() => {
-                if (!addLangOpen && addLangRef.current) {
-                  const r = addLangRef.current.getBoundingClientRect();
-                  setAddLangPos({ top: r.bottom + 4, left: r.right - 200, width: 200 });
-                }
-                setAddLangOpen((v) => !v);
-              }}
+              onClick={() => setAddLangOpen((v) => !v)}
               className="w-full h-12 rounded-xl px-4 flex items-center justify-between cursor-pointer"
               style={fieldStyle}
             >
               <span className="text-sm text-white">{addForm.language}</span>
               <ChevronDown size={15} color="rgba(255,255,255,0.5)" strokeWidth={2} />
             </button>
-            {addLangOpen && addLangPos ? (
-              <div
-                style={{ position: 'fixed', top: addLangPos.top, left: addLangPos.left, width: addLangPos.width, zIndex: 1000, background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', borderRadius: 12, overflow: 'hidden' }}
-              >
-                {LANGUAGE_OPTIONS.map((lang) => {
-                  const isEnglish = lang === 'English';
-                  return (
-                    <button
-                      key={lang}
-                      type="button"
-                      disabled={!isEnglish}
-                      onClick={() => { if (isEnglish) { setAddForm((f) => ({ ...f, language: lang })); setAddLangOpen(false); } }}
-                      className="w-full text-left px-4 py-2.5 text-sm transition-colors"
-                      style={{ color: !isEnglish ? 'rgba(255,255,255,0.25)' : addForm.language === lang ? '#f97316' : 'var(--text-primary)', background: addForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent', cursor: isEnglish ? 'pointer' : 'default' }}
-                    >
-                      {lang}
-                    </button>
-                  );
-                })}
+            {addLangOpen ? (
+              <div className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}>
+                {LANGUAGE_OPTIONS.map((lang) => lang === 'English' ? (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => { setAddForm((f) => ({ ...f, language: lang })); setAddLangOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm cursor-pointer transition-colors"
+                    style={{ color: addForm.language === lang ? '#f97316' : 'var(--text-primary)', background: addForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                  >
+                    {lang}
+                  </button>
+                ) : (
+                  <button key={lang} type="button" disabled className="w-full text-left px-4 py-2.5 text-sm" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>{lang}</button>
+                ))}
               </div>
             ) : null}
           </div>
@@ -552,20 +531,16 @@ export default function AccountContributorsAccordion({
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="rounded-xl flex items-center justify-center gap-2 text-white text-sm font-medium can-hover"
-          style={{
-            background: 'transparent',
-            border: '1px dashed var(--border-subtle)',
-            minHeight: 56,
-            cursor: 'pointer',
-          }}
-        >
-          <Plus size={16} strokeWidth={1.8} />
-          Add Contributor
-        </button>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="w-1/2 flex items-center justify-center rounded-full text-white text-sm font-medium cursor-pointer"
+            style={{ background: '#f97316', minHeight: 44 }}
+          >
+            Add Contributor
+          </button>
+        </div>
       )}
     </div>
   );

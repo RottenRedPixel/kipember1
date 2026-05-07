@@ -954,21 +954,17 @@ export default function ContributorsSlider({
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          disabled={!canManageContributors}
-          className="rounded-xl flex items-center justify-center gap-2 text-white text-sm font-medium can-hover disabled:opacity-50"
-          style={{
-            background: 'transparent',
-            border: '1px dashed var(--border-subtle)',
-            minHeight: 56,
-            cursor: 'pointer',
-          }}
-        >
-          <Plus size={16} strokeWidth={1.8} />
-          Add Contributor
-        </button>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            disabled={!canManageContributors}
+            className="w-1/2 flex items-center justify-center rounded-full text-white text-sm font-medium cursor-pointer disabled:opacity-50"
+            style={{ background: '#f97316', minHeight: 44 }}
+          >
+            Add Contributor
+          </button>
+        </div>
       )}
     </div>
   );
