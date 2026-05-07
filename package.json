@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "prisma db push && next start",
+    "build": "next build && tsc --project tsconfig.server.json",
+    "start": "prisma db push && node .server/server.js",
     "db:import:sqlite": "node scripts/import-sqlite-to-postgres.mjs",
     "uploads:sync:r2": "node scripts/sync-uploads-to-r2.mjs",
     "lint": "eslint",
