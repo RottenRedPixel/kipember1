@@ -788,6 +788,7 @@ export async function startVoiceCallForContributor({
   const call = await createRetellPhoneCall({
     toNumber: user.phoneNumber,
     useBetaAgent,
+    role: initiatedBy,
     metadata: {
       emberContributorId: emberContributor.id,
       emberSessionId: session.id,
@@ -837,6 +838,7 @@ export async function startWebVoiceCallForContributor({
 
   const call = await createRetellWebCall({
     useBetaAgent,
+    role: initiatedBy,
     metadata: {
       emberContributorId: emberContributor.id,
       emberSessionId: session.id,
