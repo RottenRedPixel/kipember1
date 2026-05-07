@@ -82,10 +82,10 @@ async function generateTitles({
   const noneSelected = preferredPeople.length === 0;
 
   const preferredPeopleHint = noneSelected
-    ? 'No names selected — do NOT include any person\'s name in the title.'
+    ? 'No names selected — do NOT include any person\'s name in any title.'
     : allSelected
-      ? `All names selected — you MUST include ALL of these names in the title: ${preferredPeople.join(', ')}`
-      : `Only these names selected — include ONLY these names, no others: ${preferredPeople.join(', ')}`;
+      ? `All names selected — you MUST include ALL of these names in every title: ${preferredPeople.join(', ')}. Do not omit any of them.`
+      : `Only ${preferredPeople.join(' and ')} is selected — you MUST include the name "${preferredPeople.join('" and "')}" in every title. Do not include ${optional.join(', ') || 'any other names'}.`;
 
   const systemPrompt = await renderPromptTemplate('title_generation.regenerate', '', {
     fullContext,

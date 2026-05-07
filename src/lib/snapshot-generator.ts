@@ -45,8 +45,8 @@ export async function generateSnapshotScript({
   const peopleHint = noneSelected
     ? 'No names selected — do NOT include any person\'s name in the narration.'
     : allSelected
-      ? `All names selected — you MUST include ALL of these names in the narration: ${requiredPeople.join(', ')}`
-      : `Only these names selected — include ONLY these names, no others: ${requiredPeople.join(', ')}`;
+      ? `All names selected — you MUST include ALL of these names in the narration: ${requiredPeople.join(', ')}. Do not omit any of them.`
+      : `Only ${requiredPeople.join(' and ')} is selected — you MUST include the name "${requiredPeople.join('" and "')}" in the narration. Do not include ${optionalTaggedPeople.join(', ') || 'any other names'}.`;
 
   const context = [
     `MEMORY TITLE\n${title}`,
