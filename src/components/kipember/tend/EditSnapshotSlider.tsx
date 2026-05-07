@@ -105,6 +105,11 @@ export default function EditSnapshotSlider({
   // successful save we snap back to 'view'.
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [savedMessage, setSavedMessage] = useState('');
+  useEffect(() => {
+    if (!savedMessage) return;
+    const t = setTimeout(() => setSavedMessage(''), 3000);
+    return () => clearTimeout(t);
+  }, [savedMessage]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const emberTitle = detail?.title || (detail ? stripExtension(detail.originalName) : 'Ember');
@@ -169,8 +174,7 @@ export default function EditSnapshotSlider({
 
       const updated = payload?.snapshot;
       if (updated?.script) setScriptDraft(updated.script);
-      onStatus?.('Snapshot saved.');
-      setSavedMessage('Snapshot Saved');
+      setSavedMessage('Snapshot saved.');
       setMode('view');
       await refreshDetail();
     } catch (err) {
@@ -203,7 +207,7 @@ export default function EditSnapshotSlider({
 
       const generated = payload?.snapshot;
       if (generated?.script) setScriptDraft(generated.script);
-      onStatus?.('Snapshot regenerated.');
+      setSavedMessage('Snapshot regenerated.');
       await refreshDetail();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to regenerate snapshot';
@@ -223,6 +227,7 @@ export default function EditSnapshotSlider({
   }
 
   return (
+    <>
     <div className="flex flex-col gap-6">
       {/* Snapshot Text */}
       <SnapshotSection icon={<ScanEye size={17} />} title="Snapshot">
@@ -361,5 +366,14 @@ export default function EditSnapshotSlider({
         )}
       </div>
     </div>
+    {savedMessage ? (
+      <div
+        className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm text-white font-medium"
+        style={{ background: 'rgba(34,197,94,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap' }}
+      >
+        {savedMessage}
+      </div>
+    ) : null}
+    </>
   );
 }

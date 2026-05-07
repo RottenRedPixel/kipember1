@@ -3410,7 +3410,7 @@ export default function KipemberWikiContent({
                 <X size={20} color="var(--text-primary)" strokeWidth={1.8} />
               </button>
             </div>
-            <div className="flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
+            <div className="relative flex-1 px-5 min-h-0 flex flex-col overflow-y-auto no-scrollbar py-4 gap-4">
               {editingSlug === 'title' ? (
                 <EditTitleSlider
                   detail={detail}

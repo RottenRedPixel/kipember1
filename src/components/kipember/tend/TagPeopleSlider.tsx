@@ -100,6 +100,11 @@ export default function TagPeopleSlider({
   const [aiSuggestionsByTagId, setAiSuggestionsByTagId] = useState<Record<string, AiSuggestion[]>>({});
   const [aiLoadingTagId, setAiLoadingTagId] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState('');
+  useEffect(() => {
+    if (!savedMessage) return;
+    const t = setTimeout(() => setSavedMessage(''), 3000);
+    return () => clearTimeout(t);
+  }, [savedMessage]);
   const [taggedComplete, setTaggedComplete] = useState(false);
 
   const imageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -804,6 +809,14 @@ export default function TagPeopleSlider({
           </>
         )}
       </div>
+      {savedMessage ? (
+        <div
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm text-white font-medium"
+          style={{ background: 'rgba(34,197,94,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap' }}
+        >
+          {savedMessage}
+        </div>
+      ) : null}
     </>
   );
 }

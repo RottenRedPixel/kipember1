@@ -55,6 +55,11 @@ export default function EditTitleSlider({
   // successful save we snap back to 'view'.
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [savedMessage, setSavedMessage] = useState('');
+  useEffect(() => {
+    if (!savedMessage) return;
+    const t = setTimeout(() => setSavedMessage(''), 3000);
+    return () => clearTimeout(t);
+  }, [savedMessage]);
 
   // Sync the input value from the loaded detail. Also default the people
   // checklist to "all selected" so the first batch of ideas already follows
@@ -157,9 +162,11 @@ export default function EditTitleSlider({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: titleValue }),
     });
-    onStatus?.(response.ok ? 'Title saved.' : 'Failed to save title.');
     if (response.ok) {
+      setSavedMessage('Title saved.');
       setMode('view');
+    } else {
+      onStatus?.('Failed to save title.');
     }
     await refreshDetail();
   }
@@ -358,6 +365,14 @@ export default function EditTitleSlider({
           </>
         )}
       </div>
+      {savedMessage ? (
+        <div
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-sm text-white font-medium"
+          style={{ background: 'rgba(34,197,94,0.9)', pointerEvents: 'none', whiteSpace: 'nowrap' }}
+        >
+          {savedMessage}
+        </div>
+      ) : null}
     </>
   );
 }
