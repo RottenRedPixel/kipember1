@@ -39,6 +39,15 @@ export async function generateSnapshotScript({
   const requiredPeopleSet = new Set(requiredPeople);
   const optionalTaggedPeople = taggedPeople.filter((person) => !requiredPeopleSet.has(person));
 
+  const allSelected = requiredPeople.length === taggedPeople.length && taggedPeople.length > 0;
+  const noneSelected = requiredPeople.length === 0;
+
+  const peopleHint = noneSelected
+    ? 'No names selected — do NOT include any person\'s name in the narration.'
+    : allSelected
+      ? `All names selected — you MUST include ALL of these names in the narration: ${requiredPeople.join(', ')}`
+      : `Only these names selected — include ONLY these names, no others: ${requiredPeople.join(', ')}`;
+
   const context = [
     `MEMORY TITLE\n${title}`,
     taggedPeople.length > 0
@@ -66,6 +75,7 @@ export async function generateSnapshotScript({
     peopleInstruction: taggedPeople.join(', '),
     requiredPeopleInstruction: requiredPeople.join(', '),
     optionalTaggedPeopleInstruction: optionalTaggedPeople.join(', '),
+    peopleHint,
   });
 
   return chat(systemPrompt, [
