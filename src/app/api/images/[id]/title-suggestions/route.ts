@@ -6,7 +6,7 @@ import {
   renderPromptTemplate,
 } from '@/lib/control-plane';
 import { ensureEmberOwnerAccess } from '@/lib/ember';
-import { getConfiguredOpenAIModel, getOpenAIClient, getWikiModel } from '@/lib/openai';
+import { chat } from '@/lib/claude';
 import { loadEmberSetupContext } from '@/lib/ember-setup-context';
 import { prisma } from '@/lib/db';
 
@@ -73,27 +73,18 @@ async function generateTitles({
   const preferredSet = new Set(preferredPeople);
   const optional = taggedPeople.filter((p) => !preferredSet.has(p));
 
-  const prompt = await renderPromptTemplate('title_generation.regenerate', '', {
+  const systemPrompt = await renderPromptTemplate('title_generation.regenerate', '', {
     fullContext,
     peopleInstruction: taggedPeople.join(', '),
     preferredPeopleInstruction: preferredPeople.join(', '),
     optionalTaggedPeopleInstruction: optional.join(', '),
   });
 
-  const openai = getOpenAIClient();
-  const response = await openai.responses.create({
-    model: await getConfiguredOpenAIModel('title_suggestions', getWikiModel()),
-    input: [
-      {
-        role: 'user',
-        type: 'message',
-        content: [{ type: 'input_text', text: prompt }],
-      },
-    ],
-    text: { verbosity: 'low' },
-  });
+  const response = await chat(systemPrompt, [
+    { role: 'user', content: fullContext },
+  ], { maxTokens: 120 });
 
-  return parseTitleList(response.output_text || '');
+  return parseTitleList(response || '');
 }
 
 export async function GET(
