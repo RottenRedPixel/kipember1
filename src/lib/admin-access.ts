@@ -7,6 +7,8 @@
  * etc.), migrate to a `role` column on User and update isAdmin() to
  * read it. Keep the env var as a bootstrap fallback.
  */
+import { normalizePhone } from '@/lib/auth-server';
+
 export function isAdmin(user: { email: string | null; phoneNumber?: string | null } | null | undefined): boolean {
   if (!user) return false;
 
@@ -21,10 +23,10 @@ export function isAdmin(user: { email: string | null; phoneNumber?: string | nul
   if (user.phoneNumber) {
     const allowPhones = (process.env.ADMIN_PHONES || '')
       .split(',')
-      .map((p) => p.trim().replace(/\D/g, ''))
-      .filter(Boolean);
-    const normalized = user.phoneNumber.replace(/\D/g, '');
-    if (allowPhones.includes(normalized)) return true;
+      .map((p) => normalizePhone(p))
+      .filter((p): p is string => p !== null);
+    const normalized = normalizePhone(user.phoneNumber);
+    if (normalized && allowPhones.includes(normalized)) return true;
   }
 
   return false;

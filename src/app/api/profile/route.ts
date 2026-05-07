@@ -5,6 +5,7 @@ import {
   normalizePhone,
   requireApiUser,
 } from '@/lib/auth-server';
+import { isAdmin } from '@/lib/admin-access';
 import { prisma } from '@/lib/db';
 
 export async function GET() {
@@ -28,6 +29,7 @@ export async function GET() {
       phoneNumber: auth.user.phoneNumber,
       avatarUrl: userRecord?.avatarFilename ? `/api/uploads/${userRecord.avatarFilename}` : null,
       createdAt: userRecord?.createdAt?.toISOString() ?? null,
+      canAccessAdmin: isAdmin(auth.user),
     },
   });
 }

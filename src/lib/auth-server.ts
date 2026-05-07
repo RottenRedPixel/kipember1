@@ -18,16 +18,12 @@ export function normalizeEmail(value: string): string {
 }
 
 export function normalizePhone(value: string | null | undefined): string | null {
-  if (!value) {
-    return null;
-  }
-
+  if (!value) return null;
   const digits = value.replace(/\D/g, '');
-  if (!digits) {
-    return null;
-  }
-
-  return digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
+  if (!digits) return null;
+  const ten = digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
+  if (ten.length !== 10) return null;
+  return `+1${ten}`;
 }
 
 function hashSessionToken(token: string): string {
@@ -66,7 +62,7 @@ export function createTemporaryPasswordHash(): string {
 }
 
 export function getPhoneAccountEmail(phoneNumber: string): string {
-  return `phone-${phoneNumber}@${PHONE_ACCOUNT_EMAIL_DOMAIN}`;
+  return `phone-${phoneNumber.replace(/\D/g, '')}@${PHONE_ACCOUNT_EMAIL_DOMAIN}`;
 }
 
 export function isPhoneAccountEmail(value: string | null | undefined): boolean {
