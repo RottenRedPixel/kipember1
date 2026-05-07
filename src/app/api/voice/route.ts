@@ -10,7 +10,7 @@ import {
 } from '@/lib/ember-sessions';
 import { getEmberAccessType } from '@/lib/ember';
 import { generateEmberVoiceReply } from '@/lib/ember-voice-reply';
-import { extractAllClaimsFromContent, reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { extractAllClaimsFromContent } from '@/lib/memory-reconciliation';
 import { getUserDisplayName } from '@/lib/user-name';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import {
@@ -159,8 +159,6 @@ export async function POST(request: NextRequest) {
       trigger: 'mic_message',
       transcript,
     });
-
-    reconcileEmberMessageSafely(userMessage.id, 'voice housekeeping');
 
     if (transcript) {
       extractAllClaimsFromContent(
