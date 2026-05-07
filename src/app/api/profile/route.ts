@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   claimMemoriesForUser,
-  normalizeEmail,
   normalizePhone,
   requireApiUser,
 } from '@/lib/auth-server';
@@ -42,28 +41,21 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { firstName, lastName, email, phoneNumber } = await request.json();
+    const { firstName, lastName, phoneNumber } = await request.json();
 
-    if (!email || typeof email !== 'string') {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
-    }
-
-    const normalizedEmail = normalizeEmail(email);
     const normalizedPhone = normalizePhone(phoneNumber);
 
+    if (!normalizedPhone) {
+      return NextResponse.json({ error: 'A valid phone number is required' }, { status: 400 });
+    }
+
     const existingUser = await prisma.user.findFirst({
-      where: {
-        email: normalizedEmail,
-        id: { not: auth.user.id },
-      },
+      where: { phoneNumber: normalizedPhone, id: { not: auth.user.id } },
       select: { id: true },
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'That email is already in use' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'That phone number is already in use' }, { status: 400 });
     }
 
     const user = await prisma.user.update({
@@ -71,7 +63,6 @@ export async function PATCH(request: NextRequest) {
       data: {
         firstName: typeof firstName === 'string' && firstName.trim() ? firstName.trim() : null,
         lastName: typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null,
-        email: normalizedEmail,
         phoneNumber: normalizedPhone,
       },
       select: {
@@ -97,7 +88,6 @@ export async function PATCH(request: NextRequest) {
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
-        email: user.email,
         phoneNumber: user.phoneNumber,
         avatarUrl: user.avatarFilename ? `/api/uploads/${user.avatarFilename}` : null,
       },
