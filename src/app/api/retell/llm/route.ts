@@ -34,7 +34,6 @@ import {
   isPromptRemovedError,
   renderPromptTemplate,
 } from '@/lib/control-plane';
-import { loadEmberContext } from '@/lib/ember-context';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -113,22 +112,20 @@ export async function POST(request: NextRequest) {
   // prompt — the wiki text just won't refresh during the call.
   let renderedSystemPrompt = '';
   try {
-    let context: Awaited<ReturnType<typeof loadEmberContext>> | null = null;
-    if (imageId) {
-      context = await loadEmberContext(imageId);
-    }
+    // All wiki/context data is pre-loaded at call-start and passed as dynamic
+    // variables — no DB round-trip needed on each turn, which reduces latency.
     renderedSystemPrompt = await renderPromptTemplate(
       promptKey,
       '',
       {
         contributor_name: dynamicVars.contributor_name ?? '',
-        image_title: dynamicVars.image_title ?? context?.title ?? '',
+        image_title: dynamicVars.image_title ?? '',
         image_description: dynamicVars.image_description ?? '',
-        captured_at: dynamicVars.captured_at ?? context?.capturedAt ?? '',
-        tagged_people: context?.taggedPeople ?? dynamicVars.tagged_people ?? '',
-        location: context?.location ?? dynamicVars.location ?? '',
-        claims: context?.claims ?? dynamicVars.claims ?? '',
-        wiki: context?.wiki ?? dynamicVars.wiki ?? '',
+        captured_at: dynamicVars.captured_at ?? '',
+        tagged_people: dynamicVars.tagged_people ?? '',
+        location: dynamicVars.location ?? '',
+        claims: dynamicVars.claims ?? '',
+        wiki: dynamicVars.wiki ?? '',
         previous_memory_summary: dynamicVars.previous_memory_summary ?? '',
         follow_up_focus: dynamicVars.follow_up_focus ?? '',
         prior_interview_count: dynamicVars.prior_interview_count ?? '',
