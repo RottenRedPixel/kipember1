@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-const DEBUG = true;
+const DEBUG = false;
 
 function DebugPage({ log }: { log: string[] }) {
   return (
