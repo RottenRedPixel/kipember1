@@ -8,6 +8,8 @@ import {
   ArrowRightLeft,
   Check,
   ChevronDown,
+  CircleCheckBig,
+  CircleHelp,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -22,6 +24,7 @@ import {
   LockKeyhole,
   Map as MapIcon,
   MessageCircle,
+  MessageSquareShare,
   MessagesSquare,
   Mic,
   PencilLine,
@@ -127,6 +130,7 @@ export type KipemberContributor = {
     email: string;
     phoneNumber: string | null;
     avatarFilename?: string | null;
+    hasPassword?: boolean;
   } | null;
   voiceCalls?: ContributorVoiceCall[];
   conversation: {
@@ -2454,6 +2458,20 @@ export default function KipemberWikiContent({
     [wikiClaims]
   );
   const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
+
+  const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
+  async function callContributor(contributorId: string) {
+    setCallingContributorId(contributorId);
+    try {
+      await fetch('/api/voice/call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contributorId }),
+      });
+    } finally {
+      setCallingContributorId(null);
+    }
+  }
   // A real pending contributor has at least one identifier (name / email /
   // phoneNumber). Rows with all identity fields null are share-link
   // placeholders that anchor the share token — never surface them.
@@ -2765,20 +2783,25 @@ export default function KipemberWikiContent({
         loading={wikiClaimsLoading}
         id="tracker-contributors"
       >
-        <WikiCard>
-          {activeContributors.length === 0 && pendingContributors.length === 0 ? (
+        {activeContributors.length === 0 && pendingContributors.length === 0 ? (
+          <WikiCard>
             <p className="text-white/30 text-sm">No contributors yet.</p>
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {activeContributors.map((contributor) => {
-                const contributorName =
-                  contributor.name ||
-                  getUserDisplayName(contributor.user) ||
-                  contributor.phoneNumber ||
-                  contributor.user?.phoneNumber ||
-                  'Contributor';
-                return (
-                  <div key={contributor.id} className="flex items-center gap-3">
+          </WikiCard>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {activeContributors.map((contributor) => {
+              const contributorName =
+                contributor.name ||
+                getUserDisplayName(contributor.user) ||
+                contributor.phoneNumber ||
+                contributor.user?.phoneNumber ||
+                'Contributor';
+              const chatCount = contributor.conversation?.messages.filter((m) => m.role === 'user').length ?? 0;
+              const callCount = contributor.voiceCalls?.length ?? 0;
+              const totalContributions = chatCount + callCount;
+              return (
+                <WikiCard key={contributor.id}>
+                  <div className="flex items-center gap-3">
                     <AvatarCircle
                       name={contributorName}
                       avatarUrl={contributor.user?.avatarFilename ? `/api/uploads/${contributor.user.avatarFilename}` : null}
@@ -2789,13 +2812,40 @@ export default function KipemberWikiContent({
                         id: contributor.id,
                       })}
                     />
-                    <span className="text-white text-sm font-medium">{contributorName}</span>
-                    <span className="ml-auto text-white/30 text-xs">Viewer</span>
+                    <span className="text-white text-sm font-medium flex-1 min-w-0 truncate">
+                      {contributorName}
+                      <span className="font-normal ml-1 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>(<span style={{ color: totalContributions > 0 ? '#22c55e' : 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{totalContributions}</span>)</span>
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]" style={{ width: 30, height: 30 }}>
+                        <MessageSquareShare size={14} color="rgba(255,255,255,0.45)" />
+                      </div>
+                      <div
+                        className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
+                        style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
+                        onClick={() => void callContributor(contributor.id)}
+                      >
+                        <Phone size={14} color="rgba(255,255,255,0.45)" />
+                      </div>
+                      <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>|</span>
+                      <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
+                        {contributor.user?.hasPassword
+                          ? <CircleCheckBig size={17} color="rgba(34,197,94,0.7)" />
+                          : <CircleHelp size={17} color="rgba(255,255,255,0.45)" />
+                        }
+                      </div>
+                    </div>
                   </div>
-                );
-              })}
-              {pendingContributors.map((contributor) => (
-                <div key={contributor.id} className="flex items-center gap-3">
+                </WikiCard>
+              );
+            })}
+            {pendingContributors.map((contributor) => {
+              const pendingChatCount = contributor.conversation?.messages.filter((m) => m.role === 'user').length ?? 0;
+              const pendingCallCount = contributor.voiceCalls?.length ?? 0;
+              const pendingTotal = pendingChatCount + pendingCallCount;
+              return (
+              <WikiCard key={contributor.id}>
+                <div className="flex items-center gap-3">
                   <AvatarCircle
                     name={contributor.name || contributor.phoneNumber || '?'}
                     bgColor={contributor.avatarColor ?? pastelForContributorIdentity({
@@ -2805,13 +2855,32 @@ export default function KipemberWikiContent({
                       id: contributor.id,
                     })}
                   />
-                  <span className="text-white/60 text-sm">{contributor.name || contributor.phoneNumber || 'Pending'}</span>
-                  <span className="ml-auto text-white/30 text-xs">Invited</span>
+                  <span className="text-white/60 text-sm flex-1 min-w-0 truncate">
+                    {contributor.name || contributor.phoneNumber || 'Pending'}
+                    <span className="font-normal ml-1 text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>(<span style={{ color: pendingTotal > 0 ? '#22c55e' : 'rgba(255,255,255,0.2)', fontWeight: 600 }}>{pendingTotal}</span>)</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]" style={{ width: 30, height: 30 }}>
+                      <MessageSquareShare size={14} color="rgba(255,255,255,0.25)" />
+                    </div>
+                    <div
+                      className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
+                      style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
+                      onClick={() => void callContributor(contributor.id)}
+                    >
+                      <Phone size={14} color="rgba(255,255,255,0.25)" />
+                    </div>
+                    <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>|</span>
+                    <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
+                      <CircleHelp size={17} color="rgba(255,255,255,0.25)" />
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </WikiCard>
+              </WikiCard>
+              );
+            })}
+          </div>
+        )}
       </WikiSection>
 
       {(() => {

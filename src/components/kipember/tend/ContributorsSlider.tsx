@@ -783,27 +783,12 @@ export default function ContributorsSlider({
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => emberContributorId && void callContributor(emberContributorId)}
-                      disabled={callingContributor}
-                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium cursor-pointer can-hover-dim"
-                      style={{
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border-subtle)',
-                        minHeight: 44,
-                        opacity: callingContributor ? 0.6 : 1,
-                        cursor: callingContributor ? 'default' : 'pointer',
-                      }}
-                    >
-                      {callingContributor ? 'Calling…' : 'Call Now'}
-                    </button>
+                  <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={() => emberContributorId && void updateContributor(emberContributorId)}
                       disabled={savingContributor || !isDirty || !canManageContributors}
-                      className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
+                      className="w-1/2 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
                       style={{
                         background: isDirty ? '#f97316' : 'var(--bg-surface)',
                         border: isDirty ? 'none' : '1px solid var(--border-subtle)',
@@ -815,8 +800,8 @@ export default function ContributorsSlider({
                       {savingContributor ? 'Saving…' : 'Save'}
                     </button>
                   </div>
-                  {(callMessage || status) ? (
-                    <p className="text-xs text-white/50 text-center">{callMessage ?? status}</p>
+                  {status ? (
+                    <p className="text-xs text-white/50 text-center">{status}</p>
                   ) : null}
                 </div>
 

@@ -37,6 +37,13 @@ function mergeNoContributors(metadataJson: string | null | undefined, value: boo
   return JSON.stringify(parsed);
 }
 
+/** Strip passwordHash, expose hasPassword boolean instead. */
+function sanitizeContributorUser<T extends { passwordHash?: string | null } | null | undefined>(user: T) {
+  if (!user) return user;
+  const { passwordHash, ...rest } = user;
+  return { ...rest, hasPassword: Boolean(passwordHash) };
+}
+
 function safeParseJson<T>(value: string | null | undefined, fallback: T): T {
   if (!value) {
     return fallback;
@@ -180,6 +187,7 @@ export async function GET(
                     lastName: true,
                     email: true,
                     phoneNumber: true,
+                    passwordHash: true,
                   },
                 },
                 emberSession: {
@@ -261,7 +269,7 @@ export async function GET(
           email: ec.user?.email ?? null,
           phoneNumber: ec.user?.phoneNumber ?? null,
           avatarColor: null,
-          user: ec.user,
+          user: sanitizeContributorUser(ec.user),
           emberSession: ec.emberSession,
           voiceCalls: ec.voiceCalls,
         };
@@ -328,6 +336,7 @@ export async function GET(
                   email: true,
                   phoneNumber: true,
                   avatarFilename: true,
+                  passwordHash: true,
                 },
               },
               emberSession: {
@@ -1025,7 +1034,7 @@ export async function GET(
           email: ec.user?.email ?? null,
           phoneNumber: ec.user?.phoneNumber ?? null,
           avatarColor: null,
-          user: ec.user,
+          user: sanitizeContributorUser(ec.user),
           emberSession: ec.emberSession,
           voiceCalls: ec.voiceCalls,
         };
@@ -1049,7 +1058,7 @@ export async function GET(
                 email: ec.user?.email ?? null,
                 phoneNumber: ec.user?.phoneNumber ?? null,
                 avatarColor: null,
-                user: ec.user,
+                user: sanitizeContributorUser(ec.user),
                 emberSession: ec.emberSession,
                 voiceCalls: ec.voiceCalls,
               };
