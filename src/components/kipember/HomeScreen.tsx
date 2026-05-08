@@ -1058,7 +1058,7 @@ export default function HomeScreen({
           <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#f97316' }}>
             <Hand size={23} color="#fff" strokeWidth={1.8} />
           </div>
-          <span className="text-white text-xs font-medium lowercase">welcome</span>
+          <span className="text-white text-xs font-medium lowercase">hello!</span>
         </button>
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
         {displayEmber?.accessType !== 'contributor' && (
