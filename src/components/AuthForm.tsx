@@ -7,13 +7,25 @@ import { useState } from 'react';
 
 type AuthMode = 'login' | 'signup';
 
-export default function AuthForm({ mode }: { mode: AuthMode }) {
+export default function AuthForm({
+  mode,
+  defaultPhone,
+  next,
+}: {
+  mode: AuthMode;
+  defaultPhone?: string;
+  next?: string;
+}) {
   const router = useRouter();
   const isSignup = mode === 'signup';
+  // Strip +1 country code if present so PhoneField (which shows +1 prefix) works correctly
+  const normalizedDefault = defaultPhone
+    ? defaultPhone.replace(/^\+1/, '').replace(/\D/g, '')
+    : '';
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
-    phoneNumber: '',
+    phoneNumber: normalizedDefault,
     password: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +60,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
         );
       }
 
-      router.push(isSignup ? '/home?mode=first-ember' : '/home');
+      router.push(next ?? (isSignup ? '/home?mode=first-ember' : '/home'));
       router.refresh();
     } catch (submitError) {
       setError(
@@ -103,6 +115,7 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
           <PhoneField
             value={form.phoneNumber}
             onChange={(v) => setForm((prev) => ({ ...prev, phoneNumber: v }))}
+            locked={!!defaultPhone}
           />
           <Field
             label="Password"
@@ -162,9 +175,11 @@ export default function AuthForm({ mode }: { mode: AuthMode }) {
 function PhoneField({
   value,
   onChange,
+  locked,
 }: {
   value: string;
   onChange: (value: string) => void;
+  locked?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
@@ -172,21 +187,25 @@ function PhoneField({
       <div
         className="flex items-center w-full h-12 rounded-xl text-sm text-white outline-none transition-colors"
         style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-        onFocusCapture={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(249,115,22,0.6)')}
+        onFocusCapture={(e) => { if (!locked) (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(249,115,22,0.6)'; }}
         onBlurCapture={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-input)')}
       >
         <span className="pl-4 pr-2 text-white/50 select-none shrink-0">+1</span>
         <div className="w-px h-5 bg-white/15 shrink-0" />
-        <input
-          name="phoneNumber"
-          type="tel"
-          placeholder="(xxx) xxx-xxxx"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          required
-          autoComplete="tel-national"
-          className="flex-1 min-w-0 h-full bg-transparent px-3 text-sm text-white placeholder-white/30 outline-none"
-        />
+        {locked ? (
+          <span className="flex-1 min-w-0 px-3 text-sm text-white/50">{value}</span>
+        ) : (
+          <input
+            name="phoneNumber"
+            type="tel"
+            placeholder="(xxx) xxx-xxxx"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            required
+            autoComplete="tel-national"
+            className="flex-1 min-w-0 h-full bg-transparent px-3 text-sm text-white placeholder-white/30 outline-none"
+          />
+        )}
       </div>
     </div>
   );

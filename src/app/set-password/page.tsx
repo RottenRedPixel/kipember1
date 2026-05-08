@@ -7,7 +7,7 @@ export default async function SetPasswordPage() {
   const auth = await getCurrentAuth();
 
   if (!auth) {
-    redirect('/signin');
+    redirect('/login?next=/set-password');
   }
 
   if (auth.user.passwordHash) {

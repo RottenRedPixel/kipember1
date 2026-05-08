@@ -465,7 +465,7 @@ export default function GuestEmberScreen({
             <div className="px-5 py-5">
               {data?.contributor && !data.contributor.hasPassword ? (
                 <Link
-                  href="/set-password"
+                  href={`/login?next=/set-password${data.contributor.phoneNumber ? `&phone=${encodeURIComponent(data.contributor.phoneNumber)}` : ''}`}
                   className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
