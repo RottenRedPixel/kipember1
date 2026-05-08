@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { sendSMS } from '@/lib/twilio';
-import { getUserDisplayName } from '@/lib/user-name';
+import { createSmsSigninChallenge } from '@/lib/auth-challenges';
 
 const BASE_URL = getAppBaseUrl();
 
@@ -33,6 +33,7 @@ export async function sendContributorSmsInvite(
     select: {
       id: true,
       token: true,
+      userId: true,
       user: {
         select: {
           firstName: true,
@@ -42,6 +43,7 @@ export async function sendContributorSmsInvite(
       },
       image: {
         select: {
+          id: true,
           owner: {
             select: {
               firstName: true,
@@ -61,7 +63,12 @@ export async function sendContributorSmsInvite(
     throw new Error('Contributor does not have a phone number for SMS invites');
   }
 
-  const inviteUrl = buildContributorInviteUrl(emberContributor.token);
+  const magicToken = await createSmsSigninChallenge({
+    userId: emberContributor.userId,
+    redirectPath: `/ember/${emberContributor.image.id}?ember=contributor`,
+  });
+  const inviteUrl = `${BASE_URL}/api/m/${magicToken}`;
+
   const contributorFirstName = emberContributor.user.firstName || 'there';
   const ownerFirstName = emberContributor.image.owner.firstName || 'Someone';
   const message = `Hi ${contributorFirstName}, this is ember. ${ownerFirstName} invited you to help build a memory: ${inviteUrl}`;

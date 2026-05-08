@@ -215,6 +215,61 @@ export async function createPhoneSigninChallenge({
   return code;
 }
 
+export async function createSmsSigninChallenge({
+  userId,
+  redirectPath,
+}: {
+  userId: string;
+  redirectPath: string;
+}) {
+  const rawToken = randomBytes(16).toString('base64url');
+
+  await prisma.authChallenge.updateMany({
+    where: { type: 'sms_signin', userId, consumedAt: null },
+    data: { consumedAt: new Date() },
+  });
+
+  await prisma.authChallenge.create({
+    data: {
+      type: 'sms_signin',
+      tokenHash: hashAuthSecret(rawToken),
+      userId,
+      metadataJson: JSON.stringify({ redirectPath }),
+      expiresAt: getExpiry(24 * 60),
+    },
+  });
+
+  return rawToken;
+}
+
+export async function consumeSmsSigninChallenge(rawToken: string) {
+  const challenge = await prisma.authChallenge.findUnique({
+    where: { tokenHash: hashAuthSecret(rawToken) },
+  });
+
+  if (
+    !challenge ||
+    challenge.type !== 'sms_signin' ||
+    challenge.consumedAt ||
+    challenge.expiresAt.getTime() <= Date.now()
+  ) {
+    return null;
+  }
+
+  await prisma.authChallenge.update({
+    where: { id: challenge.id },
+    data: { consumedAt: new Date() },
+  });
+
+  let redirectPath = '/home';
+  try {
+    const meta = JSON.parse(challenge.metadataJson ?? '{}') as { redirectPath?: string };
+    if (meta.redirectPath) redirectPath = meta.redirectPath;
+  } catch { /* use default */ }
+
+  return { userId: challenge.userId, redirectPath };
+}
+
 export async function consumePhoneSigninChallenge({
   phoneNumber,
   code,
