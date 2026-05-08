@@ -103,6 +103,9 @@ export default function AppHeader({
           <Link href="/embers" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isEmbersList ? '#ffffff' : '#6b7280' }}>
             EMBERS
           </Link>
+          <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
+            ABOUT
+          </Link>
         </>
       ) : (
         <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
