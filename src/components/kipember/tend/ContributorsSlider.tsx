@@ -352,7 +352,7 @@ export default function ContributorsSlider({
               border: 'none',
             }}
           >
-            All
+            Contacts
           </button>
         </div>
 
