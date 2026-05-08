@@ -74,7 +74,11 @@ export default function HeaderMenu({
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [open]);
 
-  const menuItems = useMemo(() => {
+  type LinkItem = { key: string; label: string; href: string };
+  type ActionItem = { key: string; label: string; action: () => Promise<void>; disabled: boolean };
+  type MenuItem = LinkItem | ActionItem;
+
+  const menuItems = useMemo((): MenuItem[] => {
     if (resolvedAuthMode === 'signed-in') {
       return [
         {
