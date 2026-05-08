@@ -416,12 +416,14 @@ export default function GuestEmberScreen({
               <span className="text-white text-xs font-medium lowercase">more</span>
             </button>
           ) : null}
-          <Link href={buildHref({ m: 'hello' })} className="flex flex-col items-center gap-1 p-2 rounded-xl">
-            <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#f97316' }}>
-              <Hand size={23} color="#fff" strokeWidth={1.8} />
-            </div>
-            <span className="text-white text-xs font-medium lowercase">hello!</span>
-          </Link>
+          {!helloDismissed ? (
+            <Link href={buildHref({ m: 'hello' })} className="flex flex-col items-center gap-1 p-2 rounded-xl">
+              <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#f97316' }}>
+                <Hand size={23} color="#fff" strokeWidth={1.8} />
+              </div>
+              <span className="text-white text-xs font-medium lowercase">hello!</span>
+            </Link>
+          ) : null}
           <RailBtn icon={Share2} label="share" href={buildHref({ m: 'share' })} />
           <RailBtn icon={ScanEye} label="view" href={buildHref({ m: 'play' })} />
         </div>
