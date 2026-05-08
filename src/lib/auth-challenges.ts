@@ -242,7 +242,7 @@ export async function createSmsSigninChallenge({
   return rawToken;
 }
 
-export async function consumeSmsSigninChallenge(rawToken: string) {
+export async function findSmsSigninChallenge(rawToken: string) {
   const challenge = await prisma.authChallenge.findUnique({
     where: { tokenHash: hashAuthSecret(rawToken) },
   });
@@ -256,18 +256,20 @@ export async function consumeSmsSigninChallenge(rawToken: string) {
     return null;
   }
 
-  await prisma.authChallenge.update({
-    where: { id: challenge.id },
-    data: { consumedAt: new Date() },
-  });
-
   let redirectPath = '/home';
   try {
     const meta = JSON.parse(challenge.metadataJson ?? '{}') as { redirectPath?: string };
     if (meta.redirectPath) redirectPath = meta.redirectPath;
   } catch { /* use default */ }
 
-  return { userId: challenge.userId, redirectPath };
+  return { id: challenge.id, userId: challenge.userId, redirectPath };
+}
+
+export async function markSmsSigninChallengeConsumed(id: string) {
+  await prisma.authChallenge.update({
+    where: { id },
+    data: { consumedAt: new Date() },
+  });
 }
 
 export async function consumePhoneSigninChallenge({
