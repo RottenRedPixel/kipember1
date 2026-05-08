@@ -271,6 +271,7 @@ export async function GET(
           avatarColor: null,
           user: sanitizeContributorUser(ec.user),
           emberSession: ec.emberSession,
+          conversation: ec.emberSession ?? null,
           voiceCalls: ec.voiceCalls,
         };
       });
@@ -1036,6 +1037,7 @@ export async function GET(
           avatarColor: null,
           user: sanitizeContributorUser(ec.user),
           emberSession: ec.emberSession,
+          conversation: ec.emberSession ?? null,
           voiceCalls: ec.voiceCalls,
         };
       }),
@@ -1060,6 +1062,7 @@ export async function GET(
                 avatarColor: null,
                 user: sanitizeContributorUser(ec.user),
                 emberSession: ec.emberSession,
+                conversation: ec.emberSession ?? null,
                 voiceCalls: ec.voiceCalls,
               };
             })()
