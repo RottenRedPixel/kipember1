@@ -257,11 +257,13 @@ export default function HomeScreen({
   initialEmbers = [],
   initialEmberId,
   initialAvatarUrl,
+  hasPassword = true,
 }: {
   initialProfile?: AuthUser | null;
   initialEmbers?: EmberSummary[];
   initialEmberId?: string;
   initialAvatarUrl?: string | null;
+  hasPassword?: boolean;
 }) {
   const params = useSearchParams();
   const router = useRouter();
@@ -1148,9 +1150,19 @@ export default function HomeScreen({
               </>
             )}
           </div>
-          <div className="mx-5 mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-          <div className="px-5 pb-5">
-            <p className="text-white/40 text-xs text-center">More personalised content coming soon.</p>
+          <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
+          <div className="px-5 py-5">
+            {displayEmber?.accessType === 'contributor' && !hasPassword ? (
+              <Link
+                href="/set-password"
+                className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
+                style={{ background: '#f97316', minHeight: 44 }}
+              >
+                Create Account
+              </Link>
+            ) : (
+              <p className="text-white/40 text-xs text-center">More personalised content coming soon.</p>
+            )}
           </div>
         </Modal>
       ) : null}

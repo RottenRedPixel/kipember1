@@ -28,6 +28,7 @@ export default async function EmberViewPage({
         initialEmbers={initialEmbers}
         initialEmberId={id}
         initialAvatarUrl={initialAvatarUrl}
+        hasPassword={!!auth.user.passwordHash}
       />
     </Suspense>
   );
