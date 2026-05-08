@@ -172,6 +172,18 @@ export default function GuestEmberScreen({
     void fetchData();
   }, [fetchData]);
 
+  // Must be before early returns — hooks can't be called conditionally
+  useEffect(() => {
+    if (modal === 'hello' && typeof window !== 'undefined') {
+      if (localStorage.getItem(`hello-dismissed-${token}`)) {
+        const p = new URLSearchParams(params.toString());
+        p.delete('m');
+        const q = p.toString();
+        router.replace(q ? `/guest/${token}?${q}` : `/guest/${token}`);
+      }
+    }
+  }, [modal, token, params, router]);
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
@@ -242,18 +254,6 @@ export default function GuestEmberScreen({
   const chatTabHref = buildHref({ chat: null });
   const voiceTabHref = buildHref({ chat: 'voice' });
   const shareUrl = typeof window !== 'undefined' ? window.location.origin + base : base;
-
-  // Auto-dismiss hello modal if the user previously chose "Don't show again"
-  useEffect(() => {
-    if (modal === 'hello' && typeof window !== 'undefined') {
-      if (localStorage.getItem(`hello-dismissed-${token}`)) {
-        const p = new URLSearchParams(params.toString());
-        p.delete('m');
-        const q = p.toString();
-        router.replace(q ? `${base}?${q}` : base);
-      }
-    }
-  }, [modal, token, base, params, router]);
 
   // The right rail must hide whenever the Ember modal is open or any other
   // overlay is showing — same rule HomeScreen uses for the rail.
