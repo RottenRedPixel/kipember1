@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import AppHeader from '@/components/kipember/AppHeader';
+import { getCurrentAuth } from '@/lib/auth-server';
 
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
@@ -143,14 +144,22 @@ function EmberDiagram() {
   );
 }
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const auth = await getCurrentAuth();
+  const avatarUrl = auth
+    ? (auth.user.avatarFilename ? `/api/uploads/${auth.user.avatarFilename}` : null)
+    : undefined;
+  const initials = [auth?.user.firstName, auth?.user.lastName]
+    .filter(Boolean).join(' ').trim()
+    .split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || undefined;
+
   return (
     <Suspense>
       <div
         className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4"
         style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
       >
-        <AppHeader />
+        <AppHeader avatarUrl={avatarUrl} userInitials={initials} />
         <div className="flex w-full max-w-xl flex-col gap-6 pt-6 pb-16 fade-in">
           <div className="flex flex-col gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-white">
