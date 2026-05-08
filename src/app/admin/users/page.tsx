@@ -65,7 +65,7 @@ export default async function AdminUsersPage() {
                     <dd className="text-gray-700 truncate">{u.phoneNumber || '—'}</dd>
                     <dt className="text-gray-500">Embers</dt>
                     <dd className="text-gray-700 tabular-nums">{u._count.ownedImages}</dd>
-                    <dt className="text-gray-500">Password</dt>
+                    <dt className="text-gray-500">Account</dt>
                     <dd>{u.passwordHash ? <span className="text-green-600 font-bold">✓</span> : <span className="text-red-500 font-bold">✗</span>}</dd>
                     <dt className="text-gray-500">Joined</dt>
                     <dd className="text-gray-700">{formatJoinedDate(u.createdAt)}</dd>
@@ -84,7 +84,7 @@ export default async function AdminUsersPage() {
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Phone</th>
                   <th className="px-4 py-3 font-medium tabular-nums">Embers</th>
-                  <th className="px-4 py-3 font-medium">Password</th>
+                  <th className="px-4 py-3 font-medium">Account</th>
                   <th className="px-4 py-3 font-medium">Joined</th>
                   <th className="px-4 py-3 w-12"><span className="sr-only">Actions</span></th>
                 </tr>
@@ -101,8 +101,8 @@ export default async function AdminUsersPage() {
                       <td className="px-4 py-3 tabular-nums">{u._count.ownedImages}</td>
                       <td className="px-4 py-3 text-center">
                         {u.passwordHash
-                          ? <span className="text-green-600 font-bold">✓</span>
-                          : <span className="text-red-500 font-bold">✗</span>}
+                          ? <span className="text-green-600 font-medium text-xs">Yes</span>
+                          : <span className="text-red-500 font-medium text-xs">No</span>}
                       </td>
                       <td className="px-4 py-3 text-gray-500">{formatJoinedDate(u.createdAt)}</td>
                       <td className="px-2 py-3 text-right">
