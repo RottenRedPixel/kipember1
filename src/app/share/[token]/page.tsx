@@ -14,6 +14,7 @@ export default async function PublicSharePage({
         token={token}
         dataApiPath="/api/share"
         chatApiPath="/api/share"
+        basePath="/share"
       />
     </Suspense>
   );
