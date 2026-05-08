@@ -10,7 +10,7 @@
 //  - No conversation-state callback because the parent shell doesn't act
 //    on it for guests.
 
-import { ImagePlus, Mic, SendHorizontal, Square } from 'lucide-react';
+import { ImagePlus, Mic, Pause, SendHorizontal, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
@@ -208,13 +208,13 @@ export default function GuestFlow({
           </div>
           <button
             type="button"
-            onClick={voice.isRecording ? voice.stopRecording : () => void voice.startRecording()}
+            onClick={voice.isRecording ? voice.stopRecording : voice.isPlayingBack ? voice.stopPlayback : () => void voice.startRecording()}
             disabled={voice.isUploading}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
-            style={{ background: voice.isRecording ? '#16a34a' : '#22c55e' }}
-            aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
+            style={{ background: (voice.isRecording || voice.isPlayingBack) ? '#16a34a' : '#22c55e' }}
+            aria-label={voice.isRecording ? 'Stop recording' : voice.isPlayingBack ? 'Stop playback' : 'Record voice message'}
           >
-            {voice.isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
+            {voice.isRecording ? <Square size={14} fill="currentColor" /> : voice.isPlayingBack ? <Pause size={14} fill="currentColor" /> : <Mic size={18} />}
           </button>
         </div>
       ) : (

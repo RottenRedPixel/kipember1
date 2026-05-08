@@ -25,6 +25,7 @@ export function useGuestVoiceRecording(token: string) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const recorderRef = useRef<RecorderHandle | null>(null);
   const lastPlayedAssistantRef = useRef<string | null>(null);
+  const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,9 +75,11 @@ export function useGuestVoiceRecording(token: string) {
     lastPlayedAssistantRef.current = last.audioUrl;
 
     const audio = new Audio(last.audioUrl);
+    playbackAudioRef.current = audio;
     let audioCtx: AudioContext | null = null;
 
     const cleanup = () => {
+      playbackAudioRef.current = null;
       setIsPlayingBack(false);
       setPlaybackAnalyser(null);
       if (audioCtx) { try { void audioCtx.close(); } catch { /* noop */ } audioCtx = null; }
@@ -224,6 +227,11 @@ export function useGuestVoiceRecording(token: string) {
     }
   }
 
+  function stopPlayback() {
+    const audio = playbackAudioRef.current;
+    if (audio) audio.pause(); // onpause triggers cleanup
+  }
+
   function stopRecording() {
     const handle = recorderRef.current;
     if (!handle) return;
@@ -307,5 +315,6 @@ export function useGuestVoiceRecording(token: string) {
     stream,
     startRecording,
     stopRecording,
+    stopPlayback,
   };
 }

@@ -281,13 +281,13 @@ export default function ContributorFlow({
           </div>
           <button
             type="button"
-            onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
+            onClick={voice.isRecording ? voice.stopRecording : voice.isPlayingBack ? voice.stopPlayback : voice.startRecording}
             disabled={voice.isUploading}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
-            style={{ background: voice.isRecording ? '#16a34a' : '#22c55e' }}
-            aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
+            style={{ background: (voice.isRecording || voice.isPlayingBack) ? '#16a34a' : '#22c55e' }}
+            aria-label={voice.isRecording ? 'Stop recording' : voice.isPlayingBack ? 'Stop playback' : 'Record voice message'}
           >
-            {voice.isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
+            {voice.isRecording ? <Square size={14} fill="currentColor" /> : voice.isPlayingBack ? <Pause size={14} fill="currentColor" /> : <Mic size={18} />}
           </button>
         </div>
       ) : emberModalSurface === 'calls' ? (
