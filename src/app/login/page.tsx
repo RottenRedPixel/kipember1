@@ -1,18 +1,5 @@
-import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
-import AuthForm from '@/components/AuthForm';
-import { getCurrentAuth } from '@/lib/auth-server';
+import { notFound } from 'next/navigation';
 
-export default async function LoginPage() {
-  const auth = await getCurrentAuth();
-
-  if (auth) {
-    redirect('/home');
-  }
-
-  return (
-    <Suspense>
-      <AuthForm mode="login" />
-    </Suspense>
-  );
+export default function LoginPage() {
+  notFound();
 }
