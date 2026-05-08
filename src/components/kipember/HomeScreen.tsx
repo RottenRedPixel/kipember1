@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import {
+  Check,
   ChevronLeft,
   Copy,
   Hand,
@@ -305,6 +306,12 @@ export default function HomeScreen({
   const pendingEntryRef = useRef(0);
 
   const selectedEmberId = initialEmberId || params.get('id') || embers[0]?.id || null;
+  const [helloDismissed, setHelloDismissed] = useState(false);
+  useEffect(() => {
+    if (selectedEmberId && typeof window !== 'undefined') {
+      setHelloDismissed(!!localStorage.getItem(`hello-dismissed-${selectedEmberId}`));
+    }
+  }, [selectedEmberId]);
   const hasExistingEmbers = embers.length > 0;
   const selectedSummary = embers.find((ember) => ember.id === selectedEmberId) || null;
   const displayEmber = selectedEmber || selectedSummary;
@@ -1160,7 +1167,7 @@ export default function HomeScreen({
             )}
           </div>
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-          <div className="px-5 py-5">
+          <div className="px-5 pt-3 pb-4">
             {displayEmber?.accessType === 'contributor' && !hasPassword ? (
               <Link
                 href="/set-password"
@@ -1173,13 +1180,25 @@ export default function HomeScreen({
               <button
                 type="button"
                 onClick={() => {
-                  if (selectedEmberId) localStorage.setItem(`hello-dismissed-${selectedEmberId}`, '1');
-                  router.replace(buildHomeHref({ m: null }));
+                  const next = !helloDismissed;
+                  setHelloDismissed(next);
+                  if (next && selectedEmberId) {
+                    localStorage.setItem(`hello-dismissed-${selectedEmberId}`, '1');
+                  } else if (selectedEmberId) {
+                    localStorage.removeItem(`hello-dismissed-${selectedEmberId}`);
+                  }
                 }}
                 className="flex items-center justify-center gap-2 w-full cursor-pointer"
-                style={{ minHeight: 44 }}
+                style={{ padding: '6px 0' }}
               >
-                <div style={{ width: 16, height: 16, border: '1px solid rgba(255,255,255,0.25)', borderRadius: 4, flexShrink: 0 }} />
+                <div style={{
+                  width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                  border: `1px solid ${helloDismissed ? '#f97316' : 'rgba(255,255,255,0.25)'}`,
+                  background: helloDismissed ? '#f97316' : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {helloDismissed ? <Check size={10} color="#fff" strokeWidth={3} /> : null}
+                </div>
                 <span className="text-white/40 text-xs">Don't show again</span>
               </button>
             )}

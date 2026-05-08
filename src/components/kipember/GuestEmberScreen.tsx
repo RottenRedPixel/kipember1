@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import {
+  Check,
   Hand,
   Home,
   Link2,
@@ -144,6 +145,13 @@ export default function GuestEmberScreen({
   const [error, setError] = useState('');
   const [photoIndex, setPhotoIndex] = useState(0);
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  const [helloDismissed, setHelloDismissed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHelloDismissed(!!localStorage.getItem(`hello-dismissed-${token}`));
+    }
+  }, [token]);
 
   const copyShareLink = useCallback(async (url: string) => {
     try {
@@ -475,7 +483,7 @@ export default function GuestEmberScreen({
               </p>
             </div>
             <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-            <div className="px-5 py-5">
+            <div className="px-5 pt-3 pb-4">
               {data?.contributor && !data.contributor.hasPassword ? (
                 <Link
                   href={`/login?next=/set-password${data.contributor.phoneNumber ? `&phone=${encodeURIComponent(data.contributor.phoneNumber)}` : ''}`}
@@ -488,13 +496,25 @@ export default function GuestEmberScreen({
                 <button
                   type="button"
                   onClick={() => {
-                    localStorage.setItem(`hello-dismissed-${token}`, '1');
-                    router.replace(buildHref({ m: null }));
+                    const next = !helloDismissed;
+                    setHelloDismissed(next);
+                    if (next) {
+                      localStorage.setItem(`hello-dismissed-${token}`, '1');
+                    } else {
+                      localStorage.removeItem(`hello-dismissed-${token}`);
+                    }
                   }}
                   className="flex items-center justify-center gap-2 w-full cursor-pointer"
-                  style={{ minHeight: 44 }}
+                  style={{ padding: '6px 0' }}
                 >
-                  <div style={{ width: 16, height: 16, border: '1px solid rgba(255,255,255,0.25)', borderRadius: 4, flexShrink: 0 }} />
+                  <div style={{
+                    width: 16, height: 16, borderRadius: 4, flexShrink: 0,
+                    border: `1px solid ${helloDismissed ? '#f97316' : 'rgba(255,255,255,0.25)'}`,
+                    background: helloDismissed ? '#f97316' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {helloDismissed ? <Check size={10} color="#fff" strokeWidth={3} /> : null}
+                  </div>
                   <span className="text-white/40 text-xs">Don't show again</span>
                 </button>
               )}
