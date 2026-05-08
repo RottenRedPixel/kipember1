@@ -91,7 +91,7 @@ export async function loadPromptVariables(imageId: string) {
   };
 }
 
-async function loadHistory(sessionId: string | undefined) {
+export async function loadHistory(sessionId: string | undefined) {
   if (!sessionId) return [];
   const rows = await prisma.emberMessage.findMany({
     where: { sessionId },

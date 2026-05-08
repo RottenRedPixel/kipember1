@@ -195,6 +195,7 @@ export async function POST(
         role: replyRole,
         trigger: 'mic_message',
         transcript,
+        sessionId: session.id,
       }),
       reconcileEmberMessageSafely(userMessage.id, 'guest voice housekeeping'),
     ]);

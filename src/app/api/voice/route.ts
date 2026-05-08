@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
       role: participant.participantType,
       trigger: 'mic_message',
       transcript,
+      sessionId: session.id,
     });
 
     if (transcript) {
