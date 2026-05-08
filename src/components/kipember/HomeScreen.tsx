@@ -322,7 +322,7 @@ export default function HomeScreen({
   const rawChatParam = params.get('chat');
   const emberModalSurface: EmberModalSurface =
     rawChatParam === 'voice' ? 'voice' : rawChatParam === 'calls' ? 'calls' : 'chats';
-  const railHidden = firstEmber || emberModalOpen || modal === 'share' || modal === 'play';
+  const railHidden = firstEmber || emberModalOpen || (modal === 'share' && !!shareToken) || modal === 'play' || modal === 'hello';
   // Enable the swipe wrapper when either axis is usable: vertical needs more
   // than one ember in the carousel, horizontal needs at least one attachment
   // beyond the cover photo. The per-axis handlers below still gate on the
@@ -1054,12 +1054,12 @@ export default function HomeScreen({
             <span className="text-white text-xs font-medium lowercase">more</span>
           </button>
         ) : null}
-        <button type="button" className="flex flex-col items-center gap-1 p-2 rounded-xl cursor-pointer" style={{ cursor: 'pointer' }}>
+        <Link href={buildHomeHref({ m: 'hello' })} className="flex flex-col items-center gap-1 p-2 rounded-xl">
           <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#f97316' }}>
             <Hand size={23} color="#fff" strokeWidth={1.8} />
           </div>
           <span className="text-white text-xs font-medium lowercase">hello!</span>
-        </button>
+        </Link>
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
         {displayEmber?.accessType !== 'contributor' && (
           <RailBtn
@@ -1122,6 +1122,35 @@ export default function HomeScreen({
                 </button>
               ) : null}
             </div>
+          </div>
+        </Modal>
+      ) : null}
+
+      {modal === 'hello' ? (
+        <Modal closeHref={buildHomeHref({ m: null })}>
+          <div className="flex flex-col items-center pt-6 pb-4 gap-2">
+            <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#f97316' }}>
+              <Hand size={28} color="#fff" strokeWidth={1.6} />
+            </div>
+            {displayEmber?.accessType === 'contributor' ? (
+              <>
+                <span className="text-white text-base font-medium">Hello {profile?.firstName ?? 'there'}!</span>
+                <p className="text-white/60 text-sm text-center px-6 pb-2">
+                  You've been invited to help build this memory. Add photos, share stories, and contribute what you remember.
+                </p>
+              </>
+            ) : (
+              <>
+                <span className="text-white text-base font-medium">Hello {profile?.firstName ?? 'there'}!</span>
+                <p className="text-white/60 text-sm text-center px-6 pb-2">
+                  This is your ember. Tend it, share it, and invite contributors to help bring the memory to life.
+                </p>
+              </>
+            )}
+          </div>
+          <div className="mx-5 mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
+          <div className="px-5 pb-5">
+            <p className="text-white/40 text-xs text-center">More personalised content coming soon.</p>
           </div>
         </Modal>
       ) : null}

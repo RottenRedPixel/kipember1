@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import {
+  Hand,
   Home,
   Link2,
   Mail,
@@ -233,7 +234,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
 
   // The right rail must hide whenever the Ember modal is open or any other
   // overlay is showing — same rule HomeScreen uses for the rail.
-  const railHidden = emberModalOpen || modal === 'share' || modal === 'play';
+  const railHidden = emberModalOpen || modal === 'share' || modal === 'play' || modal === 'hello';
 
   return (
     <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
@@ -384,6 +385,12 @@ export default function GuestEmberScreen({ token }: { token: string }) {
               <span className="text-white text-xs font-medium lowercase">more</span>
             </button>
           ) : null}
+          <Link href={buildHref({ m: 'hello' })} className="flex flex-col items-center gap-1 p-2 rounded-xl">
+            <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#f97316' }}>
+              <Hand size={23} color="#fff" strokeWidth={1.8} />
+            </div>
+            <span className="text-white text-xs font-medium lowercase">hello!</span>
+          </Link>
           <RailBtn icon={Share2} label="share" href={buildHref({ m: 'share' })} />
           <RailBtn icon={ScanEye} label="view" href={buildHref({ m: 'play' })} />
         </div>
@@ -426,6 +433,25 @@ export default function GuestEmberScreen({ token }: { token: string }) {
                   {copyStatus === 'copied' ? 'Copied!' : 'Copy'}
                 </button>
               </div>
+            </div>
+          </Modal>
+        ) : null}
+
+        {/* Hello modal — guest variant */}
+        {modal === 'hello' ? (
+          <Modal closeHref={buildHref({ m: null })}>
+            <div className="flex flex-col items-center pt-6 pb-4 gap-2">
+              <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#f97316' }}>
+                <Hand size={28} color="#fff" strokeWidth={1.6} />
+              </div>
+              <span className="text-white text-base font-medium">Hello there!</span>
+              <p className="text-white/60 text-sm text-center px-6 pb-2">
+                You're viewing a shared memory. Chat with Ember, explore the story, and sign up to save your own.
+              </p>
+            </div>
+            <div className="mx-5 mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
+            <div className="px-5 pb-5">
+              <p className="text-white/40 text-xs text-center">More personalised content coming soon.</p>
             </div>
           </Modal>
         ) : null}
