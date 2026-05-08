@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess } from '@/lib/ember';
+import { getEmberAccessType } from '@/lib/ember-access';
 import { prisma } from '@/lib/db';
 
 export async function POST(
@@ -15,8 +15,8 @@ export async function POST(
 
     const { id: imageId } = await params;
 
-    const image = await ensureEmberOwnerAccess(auth.user.id, imageId);
-    if (!image) {
+    const accessType = await getEmberAccessType(auth.user.id, imageId);
+    if (accessType !== 'owner' && accessType !== 'contributor') {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
