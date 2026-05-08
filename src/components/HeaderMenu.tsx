@@ -78,6 +78,11 @@ export default function HeaderMenu({
     if (resolvedAuthMode === 'signed-in') {
       return [
         {
+          key: 'about',
+          label: 'About',
+          href: '/about',
+        },
+        {
           key: 'logout',
           label: loggingOut ? 'Logging out...' : 'Logout',
           action: async () => {
