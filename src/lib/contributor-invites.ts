@@ -65,7 +65,7 @@ export async function sendContributorSmsInvite(
 
   const magicToken = await createSmsSigninChallenge({
     userId: emberContributor.userId,
-    redirectPath: `/guest/${emberContributor.token}?m=hello`,
+    redirectPath: `/home?id=${emberContributor.image.id}&m=hello`,
   });
   const inviteUrl = `${BASE_URL}/m/${magicToken}`;
 
