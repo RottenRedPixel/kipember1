@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { createHash } from 'crypto';
 import { claimMemoriesForUser, createUserSession, setUserSessionCookie } from '@/lib/auth-server';
 import { consumeSmsSigninChallenge } from '@/lib/auth-challenges';
 import { prisma } from '@/lib/db';
@@ -9,7 +10,7 @@ const DEBUG = true;
 
 function DebugPage({ log }: { log: string[] }) {
   return (
-    <div style={{ background: '#111', color: '#0f0', fontFamily: 'monospace', fontSize: 14, padding: 24, minHeight: '100dvh' }}>
+    <div style={{ background: '#111', color: '#0f0', fontFamily: 'monospace', fontSize: 13, padding: 24, minHeight: '100dvh', wordBreak: 'break-all' }}>
       <h2 style={{ color: '#fff', marginBottom: 16 }}>/m/[token] debug</h2>
       {log.map((line, i) => (
         <div key={i} style={{ marginBottom: 6 }}>{line}</div>
@@ -26,59 +27,60 @@ export default async function SmsSigninPage({
   const { token } = await params;
   const log: string[] = [];
 
-  log.push(`✓ token received: ${token.slice(0, 8)}...`);
+  const computedHash = createHash('sha256').update(token).digest('hex');
+  log.push(`token (full): ${token}`);
+  log.push(`hash: ${computedHash}`);
 
-  let challenge: { userId: string | null; redirectPath: string } | null = null;
-  try {
-    challenge = await consumeSmsSigninChallenge(token);
-    log.push(`✓ challenge result: ${JSON.stringify(challenge)}`);
-  } catch (err) {
-    log.push(`✗ consumeSmsSigninChallenge threw: ${err instanceof Error ? err.message : String(err)}`);
-    if (DEBUG) return <DebugPage log={log} />;
-    redirect('/');
+  // Raw DB lookup — bypass consumeSmsSigninChallenge to see exactly what's there
+  const raw = await prisma.authChallenge.findUnique({
+    where: { tokenHash: computedHash },
+  }).catch((e: unknown) => { log.push(`raw lookup error: ${e instanceof Error ? e.message : String(e)}`); return undefined; });
+
+  if (raw === undefined) {
+    // error already logged
+  } else if (!raw) {
+    log.push(`✗ no AuthChallenge row found with this hash`);
+
+    // Show recent sms_signin challenges so we can compare
+    const recent = await prisma.authChallenge.findMany({
+      where: { type: 'sms_signin' },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: { tokenHash: true, consumedAt: true, expiresAt: true, createdAt: true, userId: true },
+    }).catch(() => []);
+    log.push(`recent sms_signin challenges (${recent.length}):`);
+    for (const r of recent) {
+      log.push(`  hash: ${r.tokenHash}`);
+      log.push(`  userId: ${r.userId}`);
+      log.push(`  consumed: ${r.consumedAt ?? 'no'}`);
+      log.push(`  expires: ${r.expiresAt.toISOString()}`);
+      log.push(`  created: ${r.createdAt.toISOString()}`);
+      log.push('---');
+    }
+  } else {
+    log.push(`✓ raw row found:`);
+    log.push(`  type: ${raw.type}`);
+    log.push(`  userId: ${raw.userId}`);
+    log.push(`  consumed: ${raw.consumedAt ?? 'no'}`);
+    log.push(`  expires: ${raw.expiresAt.toISOString()}`);
+    log.push(`  metadata: ${raw.metadataJson}`);
   }
 
-  const userId = challenge?.userId;
-  if (!userId) {
-    log.push(`✗ no userId — challenge was null or userId missing`);
-    if (DEBUG) return <DebugPage log={log} />;
-    redirect('/');
-  }
-  log.push(`✓ userId: ${userId}`);
-
-  let user: { id: string; firstName: string | null; lastName: string | null; email: string | null; phoneNumber: string | null } | null = null;
-  try {
-    user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
-    });
-    log.push(`✓ user found: ${user ? user.firstName : 'null'}`);
-  } catch (err) {
-    log.push(`✗ prisma.user.findUnique threw: ${err instanceof Error ? err.message : String(err)}`);
-    if (DEBUG) return <DebugPage log={log} />;
-    redirect('/');
-  }
-
-  if (!user) {
-    log.push(`✗ user not found in DB for userId: ${userId}`);
-    if (DEBUG) return <DebugPage log={log} />;
-    redirect('/');
-  }
-
-  try {
-    await claimMemoriesForUser(user);
-    log.push(`✓ claimMemoriesForUser done`);
-    const sessionToken = await createUserSession(user.id);
-    log.push(`✓ session created`);
-    await setUserSessionCookie(sessionToken);
-    log.push(`✓ cookie set`);
-  } catch (err) {
-    log.push(`✗ session/cookie error: ${err instanceof Error ? err.message : String(err)}`);
-    if (DEBUG) return <DebugPage log={log} />;
-    redirect('/');
-  }
-
-  log.push(`✓ all done — redirecting to: ${challenge?.redirectPath}`);
   if (DEBUG) return <DebugPage log={log} />;
+
+  // Production path
+  const challenge = await consumeSmsSigninChallenge(token);
+  const userId = challenge?.userId;
+  if (!userId) redirect('/');
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
+  });
+  if (!user) redirect('/');
+
+  await claimMemoriesForUser(user);
+  const sessionToken = await createUserSession(user.id);
+  await setUserSessionCookie(sessionToken);
   redirect(challenge?.redirectPath ?? '/home');
 }
