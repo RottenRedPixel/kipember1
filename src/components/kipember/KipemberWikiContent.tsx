@@ -122,6 +122,7 @@ export type KipemberContributor = {
   email: string | null;
   phoneNumber: string | null;
   avatarColor?: string | null;
+  inviteSent?: boolean;
   createdAt: string;
   user?: {
     id: string;
@@ -2460,10 +2461,12 @@ export default function KipemberWikiContent({
   const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
 
   const [sendingSmsContributorId, setSendingSmsContributorId] = useState<string | null>(null);
+  const [sentSmsIds, setSentSmsIds] = useState<Set<string>>(new Set());
   async function sendInviteSms(contributorId: string) {
     setSendingSmsContributorId(contributorId);
     try {
-      await fetch(`/api/contributors/${contributorId}/send-invite-sms`, { method: 'POST' });
+      const res = await fetch(`/api/contributors/${contributorId}/send-invite-sms`, { method: 'POST' });
+      if (res.ok) setSentSmsIds((prev) => new Set(prev).add(contributorId));
     } finally {
       setSendingSmsContributorId(null);
     }
@@ -2832,7 +2835,7 @@ export default function KipemberWikiContent({
                         style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
                         onClick={() => void sendInviteSms(contributor.id)}
                       >
-                        <MessageSquareShare size={14} color="rgba(255,255,255,0.45)" />
+                        <MessageSquareShare size={14} color={contributor.inviteSent || sentSmsIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.45)'} />
                       </div>
                       <div
                         className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
@@ -2879,7 +2882,7 @@ export default function KipemberWikiContent({
                       style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
                       onClick={() => void sendInviteSms(contributor.id)}
                     >
-                      <MessageSquareShare size={14} color="rgba(255,255,255,0.25)" />
+                      <MessageSquareShare size={14} color={contributor.inviteSent || sentSmsIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.25)'} />
                     </div>
                     <div
                       className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
