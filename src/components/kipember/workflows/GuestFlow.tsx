@@ -193,12 +193,14 @@ export default function GuestFlow({
             <div
               className="flex h-11 w-full items-center rounded-full px-4"
               style={{
-                background: voice.isRecording ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
-                border: `1px solid ${voice.isRecording ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
+                background: (voice.isRecording || voice.isPlayingBack) ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
+                border: `1px solid ${(voice.isRecording || voice.isPlayingBack) ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
               }}
             >
               {voice.isRecording ? (
                 <MicLevelMeter stream={voice.stream} className="h-5 w-full" color="#22c55e" />
+              ) : voice.isPlayingBack ? (
+                <MicLevelMeter analyser={voice.playbackAnalyser} className="h-5 w-full" color="#22c55e" />
               ) : (
                 <div className="h-5 w-full" />
               )}
@@ -241,7 +243,7 @@ export default function GuestFlow({
               {voice.isRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
             </button>
           </div>
-          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#2563eb' }} aria-label="Send message">
+          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
             <SendHorizontal size={18} />
           </button>
         </form>

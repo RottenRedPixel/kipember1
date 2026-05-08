@@ -133,13 +133,13 @@ export default function VoiceMessageList({
             }}
           >
             <div className="flex gap-1">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]" />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-[#22c55e]" />
               <span
-                className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]"
+                className="h-2 w-2 animate-bounce rounded-full bg-[#22c55e]"
                 style={{ animationDelay: '0.1s' }}
               />
               <span
-                className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]"
+                className="h-2 w-2 animate-bounce rounded-full bg-[#22c55e]"
                 style={{ animationDelay: '0.2s' }}
               />
             </div>

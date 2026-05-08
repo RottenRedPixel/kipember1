@@ -10,27 +10,6 @@ import EmberChatMessages, { type EmberChatMessage } from '@/components/kipember/
 
 type Message = EmberChatMessage;
 
-type BrowserSpeechRecognition = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: { error?: string }) => void) | null;
-  onend: (() => void) | null;
-};
-
-type SpeechRecognitionEventLike = {
-  results: ArrayLike<{ isFinal?: boolean; 0: { transcript: string } }>;
-};
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => BrowserSpeechRecognition;
-    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
-  }
-}
 
 export default function ContributorFlow({
   emberId,
@@ -47,14 +26,15 @@ export default function ContributorFlow({
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [callBlocks, setCallBlocks] = useState<EmberCallBlock[]>([]);
   const [firstName, setFirstName] = useState<string>('you');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
+  const [isCalling, setIsCalling] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
-  const transcriptRef = useRef('');
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -69,6 +49,8 @@ export default function ContributorFlow({
         if (cancelled) return;
         const fn = (data?.user?.firstName || '').trim();
         if (fn) setFirstName(fn);
+        const rawPhone = typeof data?.user?.phoneNumber === 'string' ? data.user.phoneNumber.trim() : '';
+        setPhoneNumber(rawPhone);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -120,9 +102,6 @@ export default function ContributorFlow({
     return () => { cancelled = true; };
   }, [emberId, onConversationStateChange]);
 
-  useEffect(() => {
-    return () => { if (recognitionRef.current) { recognitionRef.current.stop(); recognitionRef.current = null; } };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -203,35 +182,36 @@ export default function ContributorFlow({
     }
   }
 
-  function startVoiceRecording() {
-    setError(''); setStatus('');
-    const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!RecognitionCtor) { setError('Voice chat is not available in this browser.'); return; }
-    transcriptRef.current = '';
-    try {
-      if (recognitionRef.current) { recognitionRef.current.stop(); recognitionRef.current = null; }
-      const recognition = new RecognitionCtor();
-      recognition.lang = 'en-US'; recognition.continuous = false; recognition.interimResults = true;
-      recognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i += 1) transcript += event.results[i][0]?.transcript || '';
-        transcriptRef.current = transcript.trim(); setInput(transcriptRef.current);
-      };
-      recognition.onerror = (event) => { setError(event.error || 'Voice chat failed.'); setIsRecording(false); recognitionRef.current = null; };
-      recognition.onend = () => {
-        setIsRecording(false); recognitionRef.current = null;
-        const transcript = transcriptRef.current.trim(); transcriptRef.current = '';
-        if (transcript) void sendMessage(transcript, 'voice');
-      };
-      recognitionRef.current = recognition; setIsRecording(true); recognition.start();
-    } catch (voiceError) {
-      setError(voiceError instanceof Error ? voiceError.message : 'Unable to start voice chat.'); setIsRecording(false); recognitionRef.current = null;
+
+  function formatPhone(raw: string): string {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && digits[0] === '1') {
+      return `+1 ${digits.slice(1, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
     }
+    if (digits.length === 10) {
+      return `+1 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+    }
+    return raw;
   }
 
-  function stopVoiceRecording() {
-    if (recognitionRef.current) recognitionRef.current.stop();
-    setIsRecording(false);
+  async function triggerSelfInvite() {
+    if (isCalling) return;
+    setIsCalling(true);
+    try {
+      const response = await fetch(`/api/images/${encodeURIComponent(emberId)}/self-invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'call' }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || 'Could not start the call.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } finally {
+      setIsCalling(false);
+    }
   }
 
   return (
@@ -254,8 +234,8 @@ export default function ContributorFlow({
         </div>
       ) : emberModalSurface === 'calls' ? (
         callBlocks.length === 0 ? (
-          <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar flex items-center justify-center">
-            <p className="text-white/30 text-sm">No calls yet.</p>
+          <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
+            <p className="text-white/40 text-sm text-center mt-8 px-6">Tap the phone icon on the bottom to have ember call you.</p>
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
@@ -286,12 +266,14 @@ export default function ContributorFlow({
             <div
               className="flex h-11 w-full items-center rounded-full px-4"
               style={{
-                background: voice.isRecording ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
-                border: `1px solid ${voice.isRecording ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
+                background: (voice.isRecording || voice.isPlayingBack) ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
+                border: `1px solid ${(voice.isRecording || voice.isPlayingBack) ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
               }}
             >
               {voice.isRecording ? (
                 <MicLevelMeter stream={voice.stream} className="h-5 w-full" color="#22c55e" />
+              ) : voice.isPlayingBack ? (
+                <MicLevelMeter analyser={voice.playbackAnalyser} className="h-5 w-full" color="#22c55e" />
               ) : (
                 <div className="h-5 w-full" />
               )}
@@ -308,8 +290,37 @@ export default function ContributorFlow({
             {voice.isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
           </button>
         </div>
+      ) : emberModalSurface === 'calls' ? (
+        /* Calls toolbar — phone number display + phone button */
+        <div className="flex items-end gap-2 flex-shrink-0">
+          <div className="flex-1 min-w-0">
+            <div className="w-full rounded-full bg-white/8 px-4 py-3 text-sm flex items-center gap-1">
+              {isCalling ? (
+                <>
+                  <span style={{ color: '#2563eb' }}>Calling</span>
+                  <span className="text-white">{formatPhone(phoneNumber)}</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-white/50">The number ember will call:</span>
+                  <span className="text-white">{formatPhone(phoneNumber)}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void triggerSelfInvite()}
+            disabled={isCalling}
+            className="flex h-11 w-11 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
+            style={{ background: '#2563eb', color: 'white' }}
+            aria-label="Call my phone"
+          >
+            <Phone size={18} />
+          </button>
+        </div>
       ) : (
-        /* Chat / Calls toolbar — unchanged */
+        /* Chat toolbar */
         <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2 flex-shrink-0">
           <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isSending} className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer" style={{ background: 'rgba(255,255,255,0.08)' }} aria-label="Add photo">
             <ImagePlus size={18} />
@@ -317,7 +328,7 @@ export default function ContributorFlow({
           <div className="relative min-w-0 flex-1">
             <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Share your memory with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
           </div>
-          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#2563eb' }} aria-label="Send message">
+          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
             <SendHorizontal size={18} />
           </button>
         </form>

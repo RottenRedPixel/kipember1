@@ -3,7 +3,8 @@
 import { useEffect, useRef } from 'react';
 
 type Props = {
-  stream: MediaStream | null;
+  stream?: MediaStream | null;
+  analyser?: AnalyserNode | null;
   className?: string;
   color?: string;
   bars?: number;
@@ -11,6 +12,7 @@ type Props = {
 
 export default function MicLevelMeter({
   stream,
+  analyser: externalAnalyser,
   className,
   color = '#f97316',
   bars = 28,
@@ -18,7 +20,7 @@ export default function MicLevelMeter({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!stream) return;
+    if (!stream && !externalAnalyser) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -32,20 +34,29 @@ export default function MicLevelMeter({
     };
     resize();
 
-    const AudioCtor: typeof AudioContext | undefined =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext?: typeof AudioContext })
-        .webkitAudioContext;
-    if (!AudioCtor) return;
+    // Use the external analyser (playback) if provided, otherwise build one
+    // from the MediaStream (recording).
+    let analyserNode: AnalyserNode | null = externalAnalyser ?? null;
+    let audioCtx: AudioContext | null = null;
+    let streamSource: MediaStreamAudioSourceNode | null = null;
 
-    const audioCtx = new AudioCtor();
-    const source = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    analyser.smoothingTimeConstant = 0.7;
-    source.connect(analyser);
+    if (!analyserNode && stream) {
+      const AudioCtor: typeof AudioContext | undefined =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioCtor) return;
+      audioCtx = new AudioCtor();
+      streamSource = audioCtx.createMediaStreamSource(stream);
+      analyserNode = audioCtx.createAnalyser();
+      analyserNode.fftSize = 256;
+      analyserNode.smoothingTimeConstant = 0.7;
+      streamSource.connect(analyserNode);
+    }
 
-    const data = new Uint8Array(analyser.frequencyBinCount);
+    if (!analyserNode) return;
+
+    const data = new Uint8Array(analyserNode.frequencyBinCount);
     const step = Math.max(1, Math.floor(data.length / bars));
 
     let raf = 0;
@@ -57,7 +68,7 @@ export default function MicLevelMeter({
       const minBar = 2 * dpr;
       const radius = barWidth / 2;
 
-      analyser.getByteFrequencyData(data);
+      analyserNode!.getByteFrequencyData(data);
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = color;
 
@@ -82,18 +93,12 @@ export default function MicLevelMeter({
 
     return () => {
       cancelAnimationFrame(raf);
-      try {
-        source.disconnect();
-      } catch {
-        /* noop */
-      }
-      try {
-        void audioCtx.close();
-      } catch {
-        /* noop */
-      }
+      // Only tear down AudioContext if we created it (stream mode).
+      // External analyser lifetime is managed by the hook.
+      if (streamSource) { try { streamSource.disconnect(); } catch { /* noop */ } }
+      if (audioCtx) { try { void audioCtx.close(); } catch { /* noop */ } }
     };
-  }, [stream, color, bars]);
+  }, [stream, externalAnalyser, color, bars]);
 
   return <canvas ref={canvasRef} className={className} />;
 }

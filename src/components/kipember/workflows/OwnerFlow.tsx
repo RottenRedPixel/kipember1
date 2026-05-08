@@ -10,27 +10,6 @@ import EmberChatMessages, { type EmberChatMessage } from '@/components/kipember/
 
 type Message = EmberChatMessage;
 
-type BrowserSpeechRecognition = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: { error?: string }) => void) | null;
-  onend: (() => void) | null;
-};
-
-type SpeechRecognitionEventLike = {
-  results: ArrayLike<{ isFinal?: boolean; 0: { transcript: string } }>;
-};
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => BrowserSpeechRecognition;
-    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
-  }
-}
 
 type EmberModalSurface = 'chats' | 'voice' | 'calls';
 
@@ -50,7 +29,7 @@ export default function OwnerFlow({
   const [isLoadingWelcome, setIsLoadingWelcome] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [hasPhoneNumber, setHasPhoneNumber] = useState<boolean | null>(null);
@@ -59,8 +38,7 @@ export default function OwnerFlow({
   const [isCalling, setIsCalling] = useState(false);
   const [callBlocks, setCallBlocks] = useState<EmberCallBlock[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
-  const transcriptRef = useRef('');
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -121,9 +99,6 @@ export default function OwnerFlow({
     return () => { cancelled = true; };
   }, [emberId, onConversationStateChange]);
 
-  useEffect(() => {
-    return () => { if (recognitionRef.current) { recognitionRef.current.stop(); recognitionRef.current = null; } };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -253,36 +228,6 @@ export default function OwnerFlow({
     }
   }
 
-  function startVoiceRecording() {
-    setError(''); setStatus('');
-    const RecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!RecognitionCtor) { setError('Voice chat is not available in this browser.'); return; }
-    transcriptRef.current = '';
-    try {
-      if (recognitionRef.current) { recognitionRef.current.stop(); recognitionRef.current = null; }
-      const recognition = new RecognitionCtor();
-      recognition.lang = 'en-US'; recognition.continuous = false; recognition.interimResults = true;
-      recognition.onresult = (event) => {
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i += 1) transcript += event.results[i][0]?.transcript || '';
-        transcriptRef.current = transcript.trim(); setInput(transcriptRef.current);
-      };
-      recognition.onerror = (event) => { setError(event.error || 'Voice chat failed.'); setIsRecording(false); recognitionRef.current = null; };
-      recognition.onend = () => {
-        setIsRecording(false); recognitionRef.current = null;
-        const transcript = transcriptRef.current.trim(); transcriptRef.current = '';
-        if (transcript) void sendMessage(transcript, 'voice');
-      };
-      recognitionRef.current = recognition; setIsRecording(true); recognition.start();
-    } catch (voiceError) {
-      setError(voiceError instanceof Error ? voiceError.message : 'Unable to start voice chat.'); setIsRecording(false); recognitionRef.current = null;
-    }
-  }
-
-  function stopVoiceRecording() {
-    if (recognitionRef.current) recognitionRef.current.stop();
-    setIsRecording(false);
-  }
 
   return (
     <div className="relative z-[1] flex flex-col flex-1 min-h-0 px-4 pb-4 pt-1">
@@ -336,12 +281,14 @@ export default function OwnerFlow({
             <div
               className="flex h-11 w-full items-center rounded-full px-4"
               style={{
-                background: voice.isRecording ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
-                border: `1px solid ${voice.isRecording ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
+                background: (voice.isRecording || voice.isPlayingBack) ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
+                border: `1px solid ${(voice.isRecording || voice.isPlayingBack) ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
               }}
             >
               {voice.isRecording ? (
                 <MicLevelMeter stream={voice.stream} className="h-5 w-full" color="#22c55e" />
+              ) : voice.isPlayingBack ? (
+                <MicLevelMeter analyser={voice.playbackAnalyser} className="h-5 w-full" color="#22c55e" />
               ) : (
                 <div className="h-5 w-full" />
               )}

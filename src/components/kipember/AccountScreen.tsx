@@ -247,7 +247,7 @@ export default function AccountScreen({
   // Section header config
   const SECTIONS: { key: Exclude<Section, null>; icon: React.ReactNode; label: string }[] = [
     { key: 'profile',      icon: <User size={20} strokeWidth={1.6} />,         label: 'Profile' },
-    { key: 'contributors', icon: <Users size={20} strokeWidth={1.6} />,        label: 'Contributors' },
+    { key: 'contributors', icon: <Users size={20} strokeWidth={1.6} />,        label: 'Contacts' },
     { key: 'preferences',  icon: <Settings size={20} strokeWidth={1.6} />,     label: 'Preferences' },
     { key: 'password',     icon: <KeyRound size={20} strokeWidth={1.6} />,     label: 'Password' },
     { key: 'settings',     icon: <ShieldAlert size={20} strokeWidth={1.6} />,  label: 'Settings' },
