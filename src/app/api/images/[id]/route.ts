@@ -253,11 +253,51 @@ export async function GET(
       const viewerContributor =
         image.emberContributors.find((ec) => ec.userId === auth.user.id) || null;
 
+      // Load all chat sessions for this image in one query so we can match
+      // them to contributors below. The Prisma EmberContributor.emberSession
+      // relation only joins on emberContributorId, which is null on sessions
+      // created before that field was populated — so we query directly.
+      const chatSessions = await prisma.emberSession.findMany({
+        where: { imageId: id, sessionType: 'chat' },
+        select: {
+          id: true,
+          userId: true,
+          emberContributorId: true,
+          participantId: true,
+          participantType: true,
+          status: true,
+          currentStep: true,
+          messages: {
+            orderBy: { createdAt: 'asc' },
+            select: {
+              id: true,
+              role: true,
+              content: true,
+              source: true,
+              question: true,
+              questionType: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+      function findChatSession(ec: { id: string; userId: string | null }) {
+        return chatSessions.find(
+          (s) =>
+            s.emberContributorId === ec.id ||
+            s.participantId === ec.id ||
+            (ec.userId !== null &&
+              (s.userId === ec.userId || s.participantId === ec.userId))
+        ) ?? null;
+      }
+
       // Flatten EmberContributors into the legacy contributor shape for the
       // client. `id` is the EmberContributor.id (per-ember row), pool fields
       // hoisted to the top level.
       const flattenedContributors = image.emberContributors.map((ec) => {
         const displayName = [ec.user?.firstName, ec.user?.lastName].filter(Boolean).join(' ') || null;
+        const chatSession = findChatSession(ec);
         return {
           id: ec.id,
           token: ec.token,
@@ -270,8 +310,8 @@ export async function GET(
           phoneNumber: ec.user?.phoneNumber ?? null,
           avatarColor: null,
           user: sanitizeContributorUser(ec.user),
-          emberSession: ec.emberSession,
-          conversation: ec.emberSession ?? null,
+          emberSession: chatSession ?? ec.emberSession,
+          conversation: chatSession ?? ec.emberSession ?? null,
           voiceCalls: ec.voiceCalls,
         };
       });
@@ -589,6 +629,45 @@ export async function GET(
     const friends = accessType === 'owner' ? await getAcceptedFriends(auth.user.id) : [];
     const viewerContributor =
       image.emberContributors.find((ec) => ec.userId === auth.user.id) || null;
+
+    // Load all chat sessions for this image to correctly populate conversation
+    // counts. The Prisma EmberContributor.emberSession relation only joins on
+    // emberContributorId, which is null on sessions created before that field
+    // was populated — so we query directly and match by multiple identifiers.
+    const chatSessionsForImage = await prisma.emberSession.findMany({
+      where: { imageId: id, sessionType: 'chat' },
+      select: {
+        id: true,
+        userId: true,
+        emberContributorId: true,
+        participantId: true,
+        participantType: true,
+        status: true,
+        currentStep: true,
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            role: true,
+            content: true,
+            source: true,
+            question: true,
+            questionType: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    function findChatSessionForContributor(ec: { id: string; userId: string | null }) {
+      return chatSessionsForImage.find(
+        (s) =>
+          s.emberContributorId === ec.id ||
+          s.participantId === ec.id ||
+          (ec.userId !== null &&
+            (s.userId === ec.userId || s.participantId === ec.userId))
+      ) ?? null;
+    }
     const tagIdentityMap = new Map<
       string,
       {
@@ -1024,6 +1103,7 @@ export async function GET(
       viewerCanLeave: accessType === 'contributor' && Boolean(viewerContributor),
       contributors: image.emberContributors.map((ec) => {
         const displayName = [ec.user?.firstName, ec.user?.lastName].filter(Boolean).join(' ') || null;
+        const chatSession = findChatSessionForContributor(ec);
         return {
           id: ec.id,
           token: ec.token,
@@ -1036,8 +1116,8 @@ export async function GET(
           phoneNumber: ec.user?.phoneNumber ?? null,
           avatarColor: null,
           user: sanitizeContributorUser(ec.user),
-          emberSession: ec.emberSession,
-          conversation: ec.emberSession ?? null,
+          emberSession: chatSession ?? ec.emberSession,
+          conversation: chatSession ?? ec.emberSession ?? null,
           voiceCalls: ec.voiceCalls,
         };
       }),
@@ -1049,6 +1129,7 @@ export async function GET(
               );
               if (!ec) return null;
               const displayName = [ec.user?.firstName, ec.user?.lastName].filter(Boolean).join(' ') || null;
+              const chatSession = findChatSessionForContributor(ec);
               return {
                 id: ec.id,
                 token: ec.token,
@@ -1061,8 +1142,8 @@ export async function GET(
                 phoneNumber: ec.user?.phoneNumber ?? null,
                 avatarColor: null,
                 user: sanitizeContributorUser(ec.user),
-                emberSession: ec.emberSession,
-                conversation: ec.emberSession ?? null,
+                emberSession: chatSession ?? ec.emberSession,
+                conversation: chatSession ?? ec.emberSession ?? null,
                 voiceCalls: ec.voiceCalls,
               };
             })()
