@@ -24,6 +24,7 @@ export default async function AdminUsersPage() {
       lastName: true,
       email: true,
       phoneNumber: true,
+      passwordHash: true,
       createdAt: true,
       _count: { select: { ownedImages: true } },
     },
@@ -64,6 +65,8 @@ export default async function AdminUsersPage() {
                     <dd className="text-gray-700 truncate">{u.phoneNumber || '—'}</dd>
                     <dt className="text-gray-500">Embers</dt>
                     <dd className="text-gray-700 tabular-nums">{u._count.ownedImages}</dd>
+                    <dt className="text-gray-500">Account</dt>
+                    <dd className="text-gray-700">{u.passwordHash ? 'Password set' : 'No password'}</dd>
                     <dt className="text-gray-500">Joined</dt>
                     <dd className="text-gray-700">{formatJoinedDate(u.createdAt)}</dd>
                   </dl>
@@ -81,6 +84,7 @@ export default async function AdminUsersPage() {
                   <th className="px-4 py-3 font-medium">Email</th>
                   <th className="px-4 py-3 font-medium">Phone</th>
                   <th className="px-4 py-3 font-medium tabular-nums">Embers</th>
+                  <th className="px-4 py-3 font-medium">Account</th>
                   <th className="px-4 py-3 font-medium">Joined</th>
                   <th className="px-4 py-3 w-12"><span className="sr-only">Actions</span></th>
                 </tr>
@@ -95,6 +99,11 @@ export default async function AdminUsersPage() {
                       <td className="px-4 py-3 text-gray-600">{u.email}</td>
                       <td className="px-4 py-3 text-gray-600">{u.phoneNumber || '—'}</td>
                       <td className="px-4 py-3 tabular-nums">{u._count.ownedImages}</td>
+                      <td className="px-4 py-3">
+                        {u.passwordHash
+                          ? <span className="text-green-600 font-medium text-xs">✓ Password set</span>
+                          : <span className="text-gray-400 text-xs">No password</span>}
+                      </td>
                       <td className="px-4 py-3 text-gray-500">{formatJoinedDate(u.createdAt)}</td>
                       <td className="px-2 py-3 text-right">
                         <DeleteUserButton
