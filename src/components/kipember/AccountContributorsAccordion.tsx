@@ -538,7 +538,7 @@ export default function AccountContributorsAccordion({
             className="w-1/2 flex items-center justify-center rounded-full text-white text-sm font-medium cursor-pointer"
             style={{ background: '#f97316', minHeight: 44 }}
           >
-            Add Contributor
+            Add Contact
           </button>
         </div>
       ))}
