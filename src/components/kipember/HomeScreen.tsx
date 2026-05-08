@@ -575,6 +575,25 @@ export default function HomeScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Re-fetch avatar when account modal closes so a newly uploaded avatar
+  // appears in the header without a full page reload
+  const prevModalRef = useRef(modal);
+  useEffect(() => {
+    const prev = prevModalRef.current;
+    prevModalRef.current = modal;
+    if (prev === 'account' && modal !== 'account') {
+      void fetch('/api/profile', { cache: 'no-store' })
+        .then(async (res) => {
+          if (!res.ok) return;
+          const payload = await res.json();
+          if (typeof payload?.user?.avatarUrl === 'string') {
+            setAvatarUrl(payload.user.avatarUrl);
+          }
+        })
+        .catch(() => undefined);
+    }
+  }, [modal]);
+
   useEffect(() => {
     void fetch('/api/images', { cache: 'no-store' })
       .then(async (response) => {
