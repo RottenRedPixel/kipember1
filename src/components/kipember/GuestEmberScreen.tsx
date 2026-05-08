@@ -34,8 +34,10 @@ type GuestData = {
   contributor: {
     id: string;
     name: string | null;
+    firstName: string | null;
     phoneNumber: string | null;
-  };
+    hasPassword: boolean;
+  } | null;
   image: {
     id: string;
     filename: string;
@@ -445,21 +447,33 @@ export default function GuestEmberScreen({
           </Modal>
         ) : null}
 
-        {/* Hello modal — guest variant */}
+        {/* Hello modal — contributor variant */}
         {modal === 'hello' ? (
           <Modal closeHref={buildHref({ m: null })}>
             <div className="flex flex-col items-center pt-6 pb-4 gap-2">
               <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#f97316' }}>
                 <Hand size={28} color="#fff" strokeWidth={1.6} />
               </div>
-              <span className="text-white text-base font-medium">Hello there!</span>
+              <span className="text-white text-base font-medium">
+                Hello {data?.contributor?.firstName ?? 'there'}!
+              </span>
               <p className="text-white/60 text-sm text-center px-6 pb-2">
-                You're viewing a shared memory. Chat with Ember, explore the story, and sign up to save your own.
+                You've been invited to help build this memory. Add photos, share stories, and contribute what you remember.
               </p>
             </div>
-            <div className="mx-5 mb-5" style={{ borderTop: '1px solid var(--border-default)' }} />
-            <div className="px-5 pb-5">
-              <p className="text-white/40 text-xs text-center">More personalised content coming soon.</p>
+            <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
+            <div className="px-5 py-5">
+              {data?.contributor && !data.contributor.hasPassword ? (
+                <Link
+                  href="/set-password"
+                  className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Create Account
+                </Link>
+              ) : (
+                <p className="text-white/40 text-xs text-center">More personalised content coming soon.</p>
+              )}
             </div>
           </Modal>
         ) : null}

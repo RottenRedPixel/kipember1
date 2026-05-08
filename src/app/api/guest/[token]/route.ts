@@ -115,7 +115,9 @@ export async function GET(
         contributor: {
           id: refreshedContributor.id,
           name: [refreshedContributor.user.firstName, refreshedContributor.user.lastName].filter(Boolean).join(' ') || null,
+          firstName: refreshedContributor.user.firstName,
           phoneNumber: refreshedContributor.user.phoneNumber,
+          hasPassword: !!refreshedContributor.user.passwordHash,
         },
         image: {
           id: refreshedContributor.image.id,

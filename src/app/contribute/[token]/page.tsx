@@ -12,5 +12,5 @@ export default async function ContributeRedirect({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  redirect(`/guest/${token}`);
+  redirect(`/guest/${token}?m=hello`);
 }
