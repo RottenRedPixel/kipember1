@@ -692,7 +692,11 @@ async function prepareVoiceCallContext(emberContributorId: string) {
     where: { id: emberContributorId },
     include: {
       user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
-      image: true,
+      image: {
+        include: {
+          owner: { select: { firstName: true, lastName: true } },
+        },
+      },
       voiceCalls: {
         orderBy: { createdAt: 'desc' },
         take: 1,
@@ -740,8 +744,10 @@ async function prepareVoiceCallContext(emberContributorId: string) {
 
   const contributorName =
     getUserDisplayName(user)?.trim() || user?.email?.trim() || user?.phoneNumber?.trim() || 'Contributor';
+  const ownerName = getUserDisplayName(image.owner)?.trim() || 'Someone';
   const dynamicVariables = pickDynamicVariables({
     contributor_name: contributorName,
+    owner_name: ownerName,
     image_title: getEmberTitle(image),
     image_description: image.description,
     prior_interview_count:
