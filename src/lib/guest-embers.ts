@@ -1,16 +1,9 @@
-import { randomBytes, randomUUID, scryptSync } from 'crypto';
 import { prisma } from '@/lib/db';
 
 const GUEST_EMAIL_DOMAIN = 'guest.ember.local';
 
 export function isGuestUserEmail(value: string | null | undefined): boolean {
   return typeof value === 'string' && value.toLowerCase().endsWith(`@${GUEST_EMAIL_DOMAIN}`);
-}
-
-function hashGuestPassword(password: string): string {
-  const salt = randomBytes(16).toString('hex');
-  const derived = scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${derived}`;
 }
 
 function normalizeGuestPhone(value: string | null | undefined): string | null {
@@ -24,25 +17,6 @@ function normalizeGuestPhone(value: string | null | undefined): string | null {
   }
 
   return digits.startsWith('1') && digits.length === 11 ? digits.slice(1) : digits;
-}
-
-export async function createGuestOwnerUser() {
-  return prisma.user.create({
-    data: {
-      email: `guest-${randomUUID()}@${GUEST_EMAIL_DOMAIN}`,
-      passwordHash: hashGuestPassword(randomUUID()),
-      firstName: null,
-      lastName: null,
-      phoneNumber: null,
-    },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      phoneNumber: true,
-    },
-  });
 }
 
 export async function claimGuestMemoriesForUser({
