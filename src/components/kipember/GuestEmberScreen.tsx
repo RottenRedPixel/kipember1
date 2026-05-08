@@ -488,7 +488,7 @@ export default function GuestEmberScreen({
             <div className="px-5 pt-3 pb-4">
               {data?.contributor && !data.contributor.hasPassword ? (
                 <Link
-                  href={`/login?next=/set-password${data.contributor.phoneNumber ? `&phone=${encodeURIComponent(data.contributor.phoneNumber)}` : ''}`}
+                  href={`/api/contribute/${token}/claim`}
                   className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
                   style={{ background: '#f97316', minHeight: 44 }}
                 >
