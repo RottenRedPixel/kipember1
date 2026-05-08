@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {
   ChevronLeft,
   Copy,
+  Hand,
   LogOut,
   MapPin,
   Moon,
@@ -1053,6 +1054,12 @@ export default function HomeScreen({
             <span className="text-white text-xs font-medium lowercase">more</span>
           </button>
         ) : null}
+        <button type="button" className="flex flex-col items-center gap-1 p-2 rounded-xl cursor-pointer" style={{ cursor: 'pointer' }}>
+          <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#f97316' }}>
+            <Hand size={23} color="#fff" strokeWidth={1.8} />
+          </div>
+          <span className="text-white text-xs font-medium lowercase">welcome</span>
+        </button>
         <RailBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
         {displayEmber?.accessType !== 'contributor' && (
           <RailBtn
