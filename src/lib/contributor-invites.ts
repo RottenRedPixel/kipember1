@@ -67,7 +67,7 @@ export async function sendContributorSmsInvite(
     userId: emberContributor.userId,
     redirectPath: `/ember/${emberContributor.image.id}?ember=contributor`,
   });
-  const inviteUrl = `${BASE_URL}/api/m/${magicToken}`;
+  const inviteUrl = `${BASE_URL}/m/${magicToken}`;
 
   const contributorFirstName = emberContributor.user.firstName || 'there';
   const ownerFirstName = emberContributor.image.owner.firstName || 'Someone';
