@@ -2473,14 +2473,16 @@ export default function KipemberWikiContent({
   }
 
   const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
+  const [calledIds, setCalledIds] = useState<Set<string>>(new Set());
   async function callContributor(contributorId: string) {
     setCallingContributorId(contributorId);
     try {
-      await fetch('/api/voice/call', {
+      const res = await fetch('/api/voice/call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contributorId }),
       });
+      if (res.ok) setCalledIds((prev) => new Set(prev).add(contributorId));
     } finally {
       setCallingContributorId(null);
     }
@@ -2842,7 +2844,7 @@ export default function KipemberWikiContent({
                         style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
                         onClick={() => void callContributor(contributor.id)}
                       >
-                        <Phone size={14} color="rgba(255,255,255,0.45)" />
+                        <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.45)'} />
                       </div>
                       <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>|</span>
                       <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
@@ -2889,7 +2891,7 @@ export default function KipemberWikiContent({
                       style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
                       onClick={() => void callContributor(contributor.id)}
                     >
-                      <Phone size={14} color="rgba(255,255,255,0.25)" />
+                      <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.25)'} />
                     </div>
                     <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>|</span>
                     <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
