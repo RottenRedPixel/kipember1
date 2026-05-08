@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/kipember/AppHeader';
 import { useState } from 'react';
+import { Send } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup';
 
@@ -30,6 +31,20 @@ export default function AuthForm({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [magicLinkState, setMagicLinkState] = useState<'idle' | 'sending' | 'sent'>('idle');
+
+  async function handleMagicLink() {
+    if (!form.phoneNumber || magicLinkState !== 'idle') return;
+    setMagicLinkState('sending');
+    try {
+      await fetch('/api/auth/sms-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: form.phoneNumber, next }),
+      });
+    } catch { /* silent */ }
+    setMagicLinkState('sent');
+  }
 
   function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
@@ -156,6 +171,19 @@ export default function AuthForm({
                 ? 'Sign Up'
                 : 'Login'}
           </button>
+
+          {!isSignup ? (
+            <button
+              type="button"
+              onClick={handleMagicLink}
+              disabled={!form.phoneNumber || magicLinkState !== 'idle'}
+              className="flex items-center justify-center gap-2 w-full text-sm transition-opacity disabled:cursor-default"
+              style={{ color: magicLinkState === 'sent' ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.4)', minHeight: 44, cursor: magicLinkState === 'idle' && form.phoneNumber ? 'pointer' : 'default' }}
+            >
+              <Send size={13} />
+              {magicLinkState === 'sent' ? 'Link sent!' : magicLinkState === 'sending' ? 'Sending…' : 'Send me a sign-in link'}
+            </button>
+          ) : null}
         </form>
 
         <p className="text-center text-white/60 text-sm">
