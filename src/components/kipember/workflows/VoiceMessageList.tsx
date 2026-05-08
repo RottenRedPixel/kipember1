@@ -101,6 +101,12 @@ export default function VoiceMessageList({
   emberLabel?: string;
   onPlaybackChange?: (analyser: AnalyserNode | null) => void;
 }) {
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isUploading]);
+
   return (
     <div className="flex flex-col gap-4">
       {messages.length === 0 && !isUploading ? (
@@ -186,6 +192,8 @@ export default function VoiceMessageList({
           </div>
         </div>
       ) : null}
+
+      <div ref={endRef} />
     </div>
   );
 }
