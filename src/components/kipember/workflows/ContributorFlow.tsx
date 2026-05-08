@@ -1,6 +1,6 @@
 'use client';
 
-import { ImagePlus, Mic, Pause, Phone, Play, SendHorizontal, Square } from 'lucide-react';
+import { ImagePlus, Mic, Phone, SendHorizontal, Square } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
@@ -29,6 +29,7 @@ export default function ContributorFlow({
 
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const [manualAnalyser, setManualAnalyser] = useState<AnalyserNode | null>(null);
   const [callBlocks, setCallBlocks] = useState<EmberCallBlock[]>([]);
   const [firstName, setFirstName] = useState<string>('you');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
@@ -230,7 +231,7 @@ export default function ContributorFlow({
 
       {emberModalSurface === 'voice' ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
-          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} selfLabel={firstName} />
+          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} selfLabel={firstName} onPlaybackChange={setManualAnalyser} />
         </div>
       ) : emberModalSurface === 'calls' ? (
         callBlocks.length === 0 ? (
@@ -266,14 +267,14 @@ export default function ContributorFlow({
             <div
               className="flex h-11 w-full items-center rounded-full px-4"
               style={{
-                background: (voice.isRecording || voice.isPlayingBack) ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
-                border: `1px solid ${(voice.isRecording || voice.isPlayingBack) ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
+                background: (voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
+                border: `1px solid ${(voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
               }}
             >
               {voice.isRecording ? (
                 <MicLevelMeter stream={voice.stream} className="h-5 w-full" color="#22c55e" />
-              ) : voice.isPlayingBack ? (
-                <MicLevelMeter analyser={voice.playbackAnalyser} className="h-5 w-full" color="#22c55e" />
+              ) : (voice.playbackAnalyser ?? manualAnalyser) ? (
+                <MicLevelMeter analyser={voice.playbackAnalyser ?? manualAnalyser} className="h-5 w-full" color="#22c55e" />
               ) : (
                 <div className="h-5 w-full" />
               )}
@@ -281,13 +282,13 @@ export default function ContributorFlow({
           </div>
           <button
             type="button"
-            onClick={voice.isRecording ? voice.stopRecording : voice.isPlayingBack ? voice.stopPlayback : voice.startRecording}
+            onClick={voice.isRecording ? voice.stopRecording : voice.startRecording}
             disabled={voice.isUploading}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
-            style={{ background: (voice.isRecording || voice.isPlayingBack) ? '#16a34a' : '#22c55e' }}
-            aria-label={voice.isRecording ? 'Stop recording' : voice.isPlayingBack ? 'Stop playback' : 'Record voice message'}
+            style={{ background: voice.isRecording ? '#16a34a' : '#22c55e' }}
+            aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
           >
-            {voice.isRecording ? <Square size={14} fill="currentColor" /> : voice.isPlayingBack ? <Pause size={14} fill="currentColor" /> : <Mic size={18} />}
+            {voice.isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
           </button>
         </div>
       ) : emberModalSurface === 'calls' ? (

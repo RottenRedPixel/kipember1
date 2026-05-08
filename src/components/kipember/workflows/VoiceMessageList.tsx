@@ -1,6 +1,6 @@
 'use client';
 
-import { Play } from 'lucide-react';
+import { Pause, Play } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export type VoiceMessage = {
@@ -10,9 +10,43 @@ export type VoiceMessage = {
   createdAt: string;
 };
 
-function AudioPlayButton({ src }: { src: string }) {
+function AudioPlayButton({
+  src,
+  onPlaybackChange,
+}: {
+  src: string;
+  onPlaybackChange?: (analyser: AnalyserNode | null) => void;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const [playing, setPlaying] = useState(false);
+
+  // Build the AudioContext + AnalyserNode once per element (lazy).
+  // createMediaElementSource can only be called once per HTMLAudioElement.
+  function ensureAnalyser(): AnalyserNode | null {
+    if (analyserRef.current) return analyserRef.current;
+    const audio = audioRef.current;
+    if (!audio) return null;
+    const AudioCtor: typeof AudioContext | undefined =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtor) return null;
+    try {
+      const ctx = new AudioCtor();
+      const source = ctx.createMediaElementSource(audio);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.7;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+      audioCtxRef.current = ctx;
+      analyserRef.current = analyser;
+      return analyser;
+    } catch {
+      return null;
+    }
+  }
 
   function toggle() {
     const audio = audioRef.current;
@@ -20,7 +54,11 @@ function AudioPlayButton({ src }: { src: string }) {
     if (playing) {
       audio.pause();
     } else {
+      const analyser = ensureAnalyser();
+      const ctx = audioCtxRef.current;
+      if (ctx?.state === 'suspended') void ctx.resume();
       void audio.play();
+      onPlaybackChange?.(analyser);
     }
   }
 
@@ -31,8 +69,8 @@ function AudioPlayButton({ src }: { src: string }) {
         ref={audioRef}
         src={src}
         onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
+        onPause={() => { setPlaying(false); onPlaybackChange?.(null); }}
+        onEnded={() => { setPlaying(false); onPlaybackChange?.(null); }}
       />
       <button
         type="button"
@@ -41,9 +79,9 @@ function AudioPlayButton({ src }: { src: string }) {
         style={{ background: 'rgba(34,197,94,0.85)' }}
         aria-label={playing ? 'Pause' : 'Play'}
       >
-        <Play size={9} className="text-white" />
+        {playing ? <Pause size={9} className="text-white" /> : <Play size={9} className="text-white" />}
       </button>
-      <span className="text-white/30 text-xs">Voice recording</span>
+      <span className="text-white/30 text-xs">{playing ? 'Playing…' : 'Voice recording'}</span>
     </div>
   );
 }
@@ -54,12 +92,14 @@ export default function VoiceMessageList({
   emptyHint = 'Tap the green mic to start a voice conversation.',
   selfLabel = 'you',
   emberLabel = 'ember',
+  onPlaybackChange,
 }: {
   messages: VoiceMessage[];
   isUploading: boolean;
   emptyHint?: string;
   selfLabel?: string;
   emberLabel?: string;
+  onPlaybackChange?: (analyser: AnalyserNode | null) => void;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -108,7 +148,7 @@ export default function VoiceMessageList({
                 <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
                   {message.content || (isUser ? 'Recording…' : '')}
                 </p>
-                {message.audioUrl ? <AudioPlayButton src={message.audioUrl} /> : null}
+                {message.audioUrl ? <AudioPlayButton src={message.audioUrl} onPlaybackChange={onPlaybackChange} /> : null}
               </div>
               {timeLabel ? (
                 <span
