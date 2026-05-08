@@ -16,7 +16,7 @@ import {
 import EmberModalShell, { type EmberModalSurface } from '@/components/kipember/EmberModalShell';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
 import GuestFlow from '@/components/kipember/workflows/GuestFlow';
@@ -123,6 +123,7 @@ export default function GuestEmberScreen({
   dataApiPath?: string;
   chatApiPath?: string;
 }) {
+  const router = useRouter();
   const params = useSearchParams();
   const rawFlow = params.get('ember');
   const view = params.get('view');
@@ -241,6 +242,18 @@ export default function GuestEmberScreen({
   const chatTabHref = buildHref({ chat: null });
   const voiceTabHref = buildHref({ chat: 'voice' });
   const shareUrl = typeof window !== 'undefined' ? window.location.origin + base : base;
+
+  // Auto-dismiss hello modal if the user previously chose "Don't show again"
+  useEffect(() => {
+    if (modal === 'hello' && typeof window !== 'undefined') {
+      if (localStorage.getItem(`hello-dismissed-${token}`)) {
+        const p = new URLSearchParams(params.toString());
+        p.delete('m');
+        const q = p.toString();
+        router.replace(q ? `${base}?${q}` : base);
+      }
+    }
+  }, [modal, token, base, params, router]);
 
   // The right rail must hide whenever the Ember modal is open or any other
   // overlay is showing — same rule HomeScreen uses for the rail.
@@ -472,7 +485,18 @@ export default function GuestEmberScreen({
                   Create Account
                 </Link>
               ) : (
-                <p className="text-white/40 text-xs text-center">More personalised content coming soon.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem(`hello-dismissed-${token}`, '1');
+                    router.replace(buildHref({ m: null }));
+                  }}
+                  className="flex items-center justify-center gap-2 w-full cursor-pointer"
+                  style={{ minHeight: 44 }}
+                >
+                  <div style={{ width: 16, height: 16, border: '1px solid rgba(255,255,255,0.25)', borderRadius: 4, flexShrink: 0 }} />
+                  <span className="text-white/40 text-xs">Don't show again</span>
+                </button>
               )}
             </div>
           </Modal>

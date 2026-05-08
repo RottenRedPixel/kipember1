@@ -384,6 +384,15 @@ export default function HomeScreen({
     }
     return query ? `/home?${query}` : '/home';
   }, [params, selectedEmberId]);
+  // Auto-dismiss hello modal if the user previously chose "Don't show again"
+  useEffect(() => {
+    if (modal === 'hello' && selectedEmberId && typeof window !== 'undefined') {
+      if (localStorage.getItem(`hello-dismissed-${selectedEmberId}`)) {
+        router.replace(buildHomeHref({ m: null }));
+      }
+    }
+  }, [modal, selectedEmberId, buildHomeHref, router]);
+
   const isDarkTheme = params.get('theme')
     ? params.get('theme') !== 'light'
     : storedTheme !== 'light';
@@ -1161,7 +1170,18 @@ export default function HomeScreen({
                 Create Account
               </Link>
             ) : (
-              <p className="text-white/40 text-xs text-center">More personalised content coming soon.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedEmberId) localStorage.setItem(`hello-dismissed-${selectedEmberId}`, '1');
+                  router.replace(buildHomeHref({ m: null }));
+                }}
+                className="flex items-center justify-center gap-2 w-full cursor-pointer"
+                style={{ minHeight: 44 }}
+              >
+                <div style={{ width: 16, height: 16, border: '1px solid rgba(255,255,255,0.25)', borderRadius: 4, flexShrink: 0 }} />
+                <span className="text-white/40 text-xs">Don't show again</span>
+              </button>
             )}
           </div>
         </Modal>
