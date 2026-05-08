@@ -62,22 +62,13 @@ export async function sendContributorSmsInvite(
   }
 
   const inviteUrl = buildContributorInviteUrl(emberContributor.token);
-  const ownerName = getUserDisplayName(emberContributor.image.owner) || 'Someone';
-  const intro = `${ownerName} needs your help to complete a memory shared with you.`;
-  const linkMessage = `Go to ${inviteUrl} to start!`;
-  const emberMessage =
-    'Ember is a memory app that helps preserve moments through guided conversations.';
-  const combinedMessage = `${intro} ${linkMessage} ${emberMessage}`;
+  const contributorFirstName = emberContributor.user.firstName || 'there';
+  const ownerFirstName = emberContributor.image.owner.firstName || 'Someone';
+  const message = `Hi ${contributorFirstName}, this is ember. ${ownerFirstName} invited you to help build an interactive memory. Go to this link to learn more: ${inviteUrl}`;
   const phone = formatPhoneNumber(emberContributor.user.phoneNumber);
 
   try {
-    if (combinedMessage.length <= 160) {
-      await sendSMS(phone, combinedMessage);
-    } else {
-      await sendSMS(phone, intro);
-      await sendSMS(phone, linkMessage);
-      await sendSMS(phone, emberMessage);
-    }
+    await sendSMS(phone, message);
 
     await prisma.emberContributor.update({
       where: { id: emberContributorId },

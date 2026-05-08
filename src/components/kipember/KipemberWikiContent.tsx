@@ -2459,6 +2459,16 @@ export default function KipemberWikiContent({
   );
   const activeContributors = contributors.filter((contributor) => (contributor.userId || contributor.user) && contributor.userId !== ownerUserId && contributor.user?.id !== ownerUserId);
 
+  const [sendingSmsContributorId, setSendingSmsContributorId] = useState<string | null>(null);
+  async function sendInviteSms(contributorId: string) {
+    setSendingSmsContributorId(contributorId);
+    try {
+      await fetch(`/api/contributors/${contributorId}/send-invite-sms`, { method: 'POST' });
+    } finally {
+      setSendingSmsContributorId(null);
+    }
+  }
+
   const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
   async function callContributor(contributorId: string) {
     setCallingContributorId(contributorId);
@@ -2817,7 +2827,11 @@ export default function KipemberWikiContent({
                       <span className="font-normal ml-1 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>(<span style={{ color: totalContributions > 0 ? '#22c55e' : 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{totalContributions}</span>)</span>
                     </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <div className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]" style={{ width: 30, height: 30 }}>
+                      <div
+                        className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
+                        style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
+                        onClick={() => void sendInviteSms(contributor.id)}
+                      >
                         <MessageSquareShare size={14} color="rgba(255,255,255,0.45)" />
                       </div>
                       <div
@@ -2860,7 +2874,11 @@ export default function KipemberWikiContent({
                     <span className="font-normal ml-1 text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>(<span style={{ color: pendingTotal > 0 ? '#22c55e' : 'rgba(255,255,255,0.2)', fontWeight: 600 }}>{pendingTotal}</span>)</span>
                   </span>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <div className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]" style={{ width: 30, height: 30 }}>
+                    <div
+                      className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
+                      style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
+                      onClick={() => void sendInviteSms(contributor.id)}
+                    >
                       <MessageSquareShare size={14} color="rgba(255,255,255,0.25)" />
                     </div>
                     <div
