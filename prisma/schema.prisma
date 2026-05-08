@@ -27,6 +27,7 @@ model Image {
   shareToNetwork Boolean     @default(false)
   keepPrivate    Boolean     @default(false)
   noContributors Boolean     @default(false)
+  shareToken     String?     @unique @default(cuid())
   cropX          Float?
   cropY          Float?
   cropWidth      Float?

@@ -112,7 +112,15 @@ function RailBtn({
   );
 }
 
-export default function GuestEmberScreen({ token }: { token: string }) {
+export default function GuestEmberScreen({
+  token,
+  dataApiPath = '/api/guest',
+  chatApiPath = '/api/contribute',
+}: {
+  token: string;
+  dataApiPath?: string;
+  chatApiPath?: string;
+}) {
   const params = useSearchParams();
   const rawFlow = params.get('ember');
   const view = params.get('view');
@@ -146,7 +154,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
 
   const fetchData = useCallback(async () => {
     try {
-      const response = await fetch(`/api/guest/${token}`, { cache: 'no-store' });
+      const response = await fetch(`${dataApiPath}/${token}`, { cache: 'no-store' });
       if (!response.ok) throw new Error('Unable to load this memory');
       const payload = (await response.json()) as GuestData;
       setData(payload);
@@ -479,7 +487,7 @@ export default function GuestEmberScreen({ token }: { token: string }) {
             { label: 'Voice', surface: 'voice', href: voiceTabHref },
           ]}
         >
-          <GuestFlow token={token} emberModalSurface={emberModalSurface} />
+          <GuestFlow token={token} emberModalSurface={emberModalSurface} chatApiPath={chatApiPath} />
         </EmberModalShell>
       </div>
     </div>

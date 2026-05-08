@@ -1085,7 +1085,7 @@ export default function HomeScreen({
           <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
           <div className="p-5 grid grid-cols-3 gap-1">
             {(() => {
-              const shareUrl = shareToken ? `${window.location.origin}/guest/${shareToken}` : null;
+              const shareUrl = shareToken ? `${window.location.origin}/share/${shareToken}` : null;
               return (
                 <>
                   <button type="button" className="flex flex-col items-center gap-2 p-3 rounded-xl opacity-60 can-hover" onClick={() => shareUrl ? void copyShareLink(shareUrl) : undefined}><div className="w-11 h-11 flex items-center justify-center"><Link2 size={26} color="var(--text-primary)" strokeWidth={1.6} /></div><span className="text-white text-xs font-medium tracking-wide">Copy Link</span></button>
@@ -1112,12 +1112,12 @@ export default function HomeScreen({
               style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
             >
               <span className="flex-1 text-xs text-white/50 truncate">
-                {shareToken ? `${window.location.origin}/guest/${shareToken}` : 'Generating link…'}
+                {shareToken ? `${window.location.origin}/share/${shareToken}` : 'Generating link…'}
               </span>
               {shareToken ? (
                 <button
                   type="button"
-                  onClick={() => void copyShareLink(`${window.location.origin}/guest/${shareToken}`)}
+                  onClick={() => void copyShareLink(`${window.location.origin}/share/${shareToken}`)}
                   className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-md cursor-pointer"
                 >
                   <Copy size={16} color="white" strokeWidth={1.8} />

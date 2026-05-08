@@ -27,9 +27,11 @@ type EmberModalSurface = 'chats' | 'voice';
 export default function GuestFlow({
   token,
   emberModalSurface = 'chats',
+  chatApiPath = '/api/contribute',
 }: {
   token: string;
   emberModalSurface?: EmberModalSurface;
+  chatApiPath?: string;
 }) {
   const voice = useGuestVoiceRecording(token);
   const [manualAnalyser, setManualAnalyser] = useState<AnalyserNode | null>(null);
@@ -48,7 +50,7 @@ export default function GuestFlow({
     let cancelled = false;
     async function loadWelcome() {
       try {
-        const response = await fetch(`/api/contribute/${token}`, {
+        const response = await fetch(`${chatApiPath}/${token}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: '__START__' }),
@@ -86,7 +88,7 @@ export default function GuestFlow({
     setIsSending(true);
 
     try {
-      const response = await fetch(`/api/contribute/${token}`, {
+      const response = await fetch(`${chatApiPath}/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: trimmed }),

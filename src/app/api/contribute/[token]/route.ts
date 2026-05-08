@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/db';
 import {
   emberSessionParticipantWhere,
   ensureEmberSession,
 } from '@/lib/ember-sessions';
-
-// One cookie per browser visiting via a guest share link. Lets each browser
-// have its own EmberSession (chat history) so multiple guests sharing the
-// same link don't read or contaminate each other's conversation.
-const GUEST_BROWSER_COOKIE = 'kb-guest-browser';
-const GUEST_BROWSER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 import { generateEmberChatReply } from '@/lib/ember-chat-reply';
 import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
 import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
@@ -189,55 +182,15 @@ export async function POST(
     const contributor = {
       id: emberContributor.id,
       imageId: emberContributor.imageId,
-      name: [emberContributor.user?.firstName, emberContributor.user?.lastName].filter(Boolean).join(' ') || null,
-      phoneNumber: emberContributor.user?.phoneNumber ?? null,
-      email: emberContributor.user?.email ?? null,
       userId: emberContributor.userId,
     };
 
-    // A share-link placeholder has an anonymous User with all identity fields null.
-    const isGuestShareLink =
-      !contributor.name &&
-      !contributor.phoneNumber &&
-      !contributor.email;
-    const chatRole = isGuestShareLink ? ('guest' as const) : ('contributor' as const);
-
-    // Each guest browser gets its own session keyed by a per-browser cookie,
-    // so two people clicking the same share link never see or influence each
-    // other's chat. Logged-in contributors keep the original identity.
-    const existingGuestBrowserId = request.cookies.get(GUEST_BROWSER_COOKIE)?.value;
-    const guestBrowserId =
-      chatRole === 'guest' ? existingGuestBrowserId || randomUUID() : null;
-
-    // Helper: wrap any guest response with the browser cookie if we just
-    // minted a new one. Owners/contributors never get this cookie.
-    const withGuestCookie = (response: NextResponse) => {
-      if (guestBrowserId && !existingGuestBrowserId) {
-        response.cookies.set(GUEST_BROWSER_COOKIE, guestBrowserId, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          maxAge: GUEST_BROWSER_COOKIE_MAX_AGE,
-          path: '/',
-        });
-      }
-      return response;
+    const sessionIdentity = {
+      imageId: contributor.imageId,
+      sessionType: 'chat' as const,
+      participantType: 'contributor' as const,
+      participantId: contributor.id,
     };
-
-    const sessionIdentity =
-      chatRole === 'guest' && guestBrowserId
-        ? {
-            imageId: contributor.imageId,
-            sessionType: 'chat' as const,
-            participantType: 'guest' as const,
-            participantId: guestBrowserId,
-          }
-        : {
-            imageId: contributor.imageId,
-            sessionType: 'chat' as const,
-            participantType: 'contributor' as const,
-            participantId: contributor.id,
-          };
 
     let session = await prisma.emberSession.findUnique({
       where: emberSessionParticipantWhere(sessionIdentity),
@@ -248,54 +201,25 @@ export async function POST(
     if (!session) {
       session = await ensureEmberSession({
         ...sessionIdentity,
-        // Don't claim the share-link EmberContributor row for guest sessions —
-        // that row's emberContributorId is @unique and would conflict across
-        // multiple guest browsers visiting the same link.
-        emberContributorId: chatRole === 'guest' ? null : contributor.id,
-        browserId: guestBrowserId,
+        emberContributorId: contributor.id,
+        browserId: null,
         status: 'active',
       });
 
       const welcome = await generateEmberChatReply({
         imageId: contributor.imageId,
         sessionId: session.id,
-        role: chatRole,
+        role: 'contributor',
         trigger: 'welcome_first_open',
       });
       await prisma.emberMessage.create({
-        data: {
-          sessionId: session.id,
-          role: 'assistant',
-          content: welcome,
-          source: 'web',
-        },
+        data: { sessionId: session.id, role: 'assistant', content: welcome, source: 'web' },
       });
 
       if (isStart) {
-        return withGuestCookie(NextResponse.json({ response: welcome }));
+        return NextResponse.json({ response: welcome });
       }
     } else if (isStart) {
-      // Guests always start fresh with the static welcome — no replay of the
-      // previous conversation, no Claude call. They followed a share link to
-      // look at this memory; the welcome is consistent and predictable.
-      if (chatRole === 'guest') {
-        const welcome = await generateEmberChatReply({
-          imageId: contributor.imageId,
-          sessionId: session.id,
-          role: chatRole,
-          trigger: 'welcome_returning',
-        });
-        await prisma.emberMessage.create({
-          data: {
-            sessionId: session.id,
-            role: 'assistant',
-            content: welcome,
-            source: 'web',
-          },
-        });
-        return withGuestCookie(NextResponse.json({ response: welcome }));
-      }
-
       const userReplyCount = await prisma.emberMessage.count({
         where: { sessionId: session.id, role: 'user' },
       });
@@ -309,7 +233,6 @@ export async function POST(
           return NextResponse.json({ response: latest.content });
         }
       } else {
-        // Drop any prior unanswered welcomes so the next one reads the latest wiki.
         await prisma.emberMessage.deleteMany({
           where: { sessionId: session.id, role: 'assistant' },
         });
@@ -318,16 +241,11 @@ export async function POST(
       const welcome = await generateEmberChatReply({
         imageId: contributor.imageId,
         sessionId: session.id,
-        role: chatRole,
+        role: 'contributor',
         trigger: 'welcome_returning',
       });
       await prisma.emberMessage.create({
-        data: {
-          sessionId: session.id,
-          role: 'assistant',
-          content: welcome,
-          source: 'web',
-        },
+        data: { sessionId: session.id, role: 'assistant', content: welcome, source: 'web' },
       });
       return NextResponse.json({ response: welcome });
     }
@@ -345,7 +263,7 @@ export async function POST(
       generateEmberChatReply({
         imageId: contributor.imageId,
         sessionId: session.id,
-        role: chatRole,
+        role: 'contributor',
         trigger: 'message',
       }),
       reconcileEmberMessageSafely(userMessage.id, 'contribute housekeeping'),
@@ -360,7 +278,7 @@ export async function POST(
       },
     });
 
-    return withGuestCookie(NextResponse.json({ response: reply }));
+    return NextResponse.json({ response: reply });
   } catch (error) {
     console.error('Chat error:', error);
     if (isPromptRemovedError(error)) {
