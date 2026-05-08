@@ -12,23 +12,44 @@ export default async function SmsSigninPage({
 }) {
   const { token } = await params;
 
-  const challenge = await consumeSmsSigninChallenge(token);
-  if (!challenge?.userId) {
-    redirect('/signin?error=link-expired');
+  let challenge: { userId: string | null; redirectPath: string } | null = null;
+  try {
+    challenge = await consumeSmsSigninChallenge(token);
+  } catch (err) {
+    console.error('[/m] consumeSmsSigninChallenge error:', err);
+    redirect('/');
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: challenge.userId },
-    select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
-  });
+  const userId = challenge?.userId;
+  if (!userId) {
+    console.error('[/m] no userId in challenge, token:', token);
+    redirect('/');
+  }
+
+  let user: { id: string; firstName: string | null; lastName: string | null; email: string | null; phoneNumber: string | null } | null = null;
+  try {
+    user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
+    });
+  } catch (err) {
+    console.error('[/m] user lookup error:', err);
+    redirect('/');
+  }
 
   if (!user) {
-    redirect('/signin?error=link-expired');
+    console.error('[/m] user not found for userId:', userId);
+    redirect('/');
   }
 
-  await claimMemoriesForUser(user);
+  try {
+    await claimMemoriesForUser(user);
+    const sessionToken = await createUserSession(user.id);
+    await setUserSessionCookie(sessionToken);
+  } catch (err) {
+    console.error('[/m] session creation error:', err);
+    redirect('/');
+  }
 
-  const sessionToken = await createUserSession(user.id);
-  await setUserSessionCookie(sessionToken);
-  redirect(challenge.redirectPath);
+  redirect(challenge?.redirectPath ?? '/home');
 }
