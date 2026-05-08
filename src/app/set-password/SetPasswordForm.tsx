@@ -8,9 +8,11 @@ import { useState } from 'react';
 export default function SetPasswordForm({
   firstName,
   lastName,
+  phoneNumber,
 }: {
   firstName: string;
   lastName: string;
+  phoneNumber: string;
 }) {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -77,6 +79,18 @@ export default function SetPasswordForm({
               </div>
             </div>
           </div>
+
+          {phoneNumber ? (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-white/60 text-xs font-medium">Phone Number</label>
+              <div
+                className="w-full h-12 rounded-xl px-4 flex items-center text-sm text-white/50"
+                style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
+              >
+                {phoneNumber}
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex flex-col gap-1.5">
             <label className="text-white/60 text-xs font-medium">Password</label>

@@ -19,6 +19,7 @@ export default async function SetPasswordPage() {
       <SetPasswordForm
         firstName={auth.user.firstName ?? ''}
         lastName={auth.user.lastName ?? ''}
+        phoneNumber={auth.user.phoneNumber ?? ''}
       />
     </Suspense>
   );
