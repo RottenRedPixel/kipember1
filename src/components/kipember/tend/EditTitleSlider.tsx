@@ -35,12 +35,12 @@ function WikiCard({ children }: { children: React.ReactNode }) {
 
 export default function EditTitleSlider({
   detail,
-  imageId,
+  emberId,
   refreshDetail,
   onStatus,
 }: {
   detail: TitleDetail | null;
-  imageId: string | null;
+  emberId: string | null;
   refreshDetail: () => Promise<unknown>;
   onStatus?: (message: string) => void;
 }) {
@@ -78,23 +78,23 @@ export default function EditTitleSlider({
   // only read from the DB cache when the user actually enters Edit mode
   // (loadCachedSuggestions below), and only generate on Regen Ideas.
   useEffect(() => {
-    if (!imageId || !detail) {
+    if (!emberId || !detail) {
       setSuggestions(null);
       setLoading(false);
       setRefreshing(false);
       setError('');
     }
-  }, [imageId, detail]);
+  }, [emberId, detail]);
 
   // One-shot read of any cached title ideas already in the DB. Never
   // triggers a generation. Called when the user enters Edit mode.
   async function loadCachedSuggestions() {
-    if (!imageId) return;
+    if (!emberId) return;
     setLoading(true);
     setError('');
     try {
       const response = await fetch(
-        `/api/images/${imageId}/title-suggestions?cachedOnly=1`,
+        `/api/embers/${emberId}/title-suggestions?cachedOnly=1`,
         { cache: 'no-store' }
       );
       const payload = (await response.json().catch(() => null)) as
@@ -114,7 +114,7 @@ export default function EditTitleSlider({
   }
 
   async function handleRegenIdeas() {
-    if (!imageId) return;
+    if (!emberId) return;
 
     setRefreshing(true);
     setError('');
@@ -126,7 +126,7 @@ export default function EditTitleSlider({
         .filter(Boolean);
       if (preferredNames.length > 0) params.set('preferredPeople', preferredNames.join(','));
       const response = await fetch(
-        `/api/images/${imageId}/title-suggestions?${params.toString()}`,
+        `/api/embers/${emberId}/title-suggestions?${params.toString()}`,
         { cache: 'no-store' }
       );
       const payload = (await response.json().catch(() => null)) as
@@ -156,8 +156,8 @@ export default function EditTitleSlider({
   }
 
   async function handleSave() {
-    if (!imageId) return;
-    const response = await fetch(`/api/images/${imageId}`, {
+    if (!emberId) return;
+    const response = await fetch(`/api/embers/${emberId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: titleValue }),
@@ -180,7 +180,7 @@ export default function EditTitleSlider({
   // Match the Snapshot slider — wait for the ember to load before rendering
   // the form so the title input, ideas card, and People list all appear at
   // once instead of the People section popping in after the title input.
-  if (!detail || !imageId) {
+  if (!detail || !emberId) {
     return (
       <WikiCard>
         <p className="text-white/60 text-sm">Loading title...</p>

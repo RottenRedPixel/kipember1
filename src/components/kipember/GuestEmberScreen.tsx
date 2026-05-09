@@ -39,7 +39,7 @@ type GuestData = {
     phoneNumber: string | null;
     hasPassword: boolean;
   } | null;
-  image: {
+  ember: {
     id: string;
     filename: string;
     mediaType: 'IMAGE' | 'VIDEO';
@@ -119,10 +119,12 @@ export default function GuestEmberScreen({
   token,
   dataApiPath = '/api/guest',
   chatApiPath = '/api/contribute',
+  basePath = '/guest',
 }: {
   token: string;
   dataApiPath?: string;
   chatApiPath?: string;
+  basePath?: string;
 }) {
   const router = useRouter();
   const params = useSearchParams();
@@ -187,10 +189,11 @@ export default function GuestEmberScreen({
         const p = new URLSearchParams(params.toString());
         p.delete('m');
         const q = p.toString();
-        router.replace(q ? `/guest/${token}?${q}` : `/guest/${token}`);
+        const dest = `${basePath}/${token}`;
+        router.replace(q ? `${dest}?${q}` : dest);
       }
     }
-  }, [modal, token, params, router]);
+  }, [modal, token, basePath, params, router]);
 
   if (isLoading) {
     return (
@@ -220,14 +223,14 @@ export default function GuestEmberScreen({
     );
   }
 
-  const title = getEmberTitle({ title: data.image.title, originalName: data.image.originalName });
-  const subtitle = data.image.createdAt
-    ? new Date(data.image.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const title = getEmberTitle({ title: data.ember.title, originalName: data.ember.originalName });
+  const subtitle = data.ember.createdAt
+    ? new Date(data.ember.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : '';
   const mainUrl = getPreviewMediaUrl({
-    mediaType: data.image.mediaType,
-    filename: data.image.filename,
-    posterFilename: data.image.posterFilename,
+    mediaType: data.ember.mediaType,
+    filename: data.ember.filename,
+    posterFilename: data.ember.posterFilename,
   });
 
   const allMedia = [
@@ -239,7 +242,7 @@ export default function GuestEmberScreen({
   const currentPhotoUrl = allMedia[photoIndex]?.url ?? mainUrl;
   const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
 
-  const base = `/guest/${token}`;
+  const base = `${basePath}/${token}`;
   // Centralised URL builder mirrors HomeScreen.buildHomeHref so the modal
   // open/close/expand/collapse and surface tabs follow the same query-param
   // contract. Setting a key to null deletes it.
@@ -470,7 +473,7 @@ export default function GuestEmberScreen({
           </Modal>
         ) : null}
 
-        {/* Hello modal — contributor variant */}
+        {/* Hello modal */}
         {modal === 'hello' ? (
           <Modal closeHref={buildHref({ m: null })}>
             <div className="flex flex-col items-center pt-6 pb-4 gap-2">
@@ -478,10 +481,12 @@ export default function GuestEmberScreen({
                 <Hand size={28} color="#fff" strokeWidth={1.6} />
               </div>
               <span className="text-white text-base font-medium">
-                Hello {data?.contributor?.firstName ?? 'there'}!
+                {data?.contributor ? `Hello ${data.contributor.firstName ?? 'there'}!` : 'Welcome!'}
               </span>
               <p className="text-white/60 text-sm text-center px-6 pb-2">
-                You've been invited to help build this memory. Add photos, share stories, and contribute what you remember.
+                {data?.contributor
+                  ? "You've been invited to help build this memory. Add photos, share stories, and contribute what you remember."
+                  : "You're viewing a shared memory. Explore the story, chat with Ember, and see what others have shared."}
               </p>
             </div>
             <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
@@ -528,7 +533,7 @@ export default function GuestEmberScreen({
         {modal === 'play' ? (
           <KipemberPlayOverlay
             closeHref={buildHref({ m: null })}
-            imageId={data.image.id}
+            emberId={data.ember.id}
             storyScript={data.snapshotScript}
             guestToken={token}
           />

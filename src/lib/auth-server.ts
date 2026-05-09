@@ -77,7 +77,7 @@ export async function transferLegacyOwnerImagesIfNeeded(user: {
     return;
   }
 
-  await prisma.image.updateMany({
+  await prisma.ember.updateMany({
     where: { ownerId: LEGACY_OWNER_USER_ID },
     data: { ownerId: user.id },
   });

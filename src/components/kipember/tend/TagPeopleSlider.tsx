@@ -80,11 +80,11 @@ const TAG_COLORS = [
 
 export default function TagPeopleSlider({
   detail,
-  imageId,
+  emberId,
   coverPhotoUrl,
 }: {
   detail: TagPeopleDetail | null;
-  imageId: string | null;
+  emberId: string | null;
   coverPhotoUrl: string | null;
 }) {
   const [faceTags, setFaceTags] = useState<FaceTag[]>([]);
@@ -125,11 +125,11 @@ export default function TagPeopleSlider({
   }, [faceTags]);
 
   // Re-bind savePositionRef every render so it always captures the latest
-  // imgAspectRatio + imageId.
+  // imgAspectRatio + emberId.
   savePositionRef.current = (tagId: string) => {
     const tag = faceTagsRef.current.find((t) => t.id === tagId);
-    if (!tag?.dbId || !imageId) return;
-    fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
+    if (!tag?.dbId || !emberId) return;
+    fetch(`/api/embers/${emberId}/tags/${tag.dbId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -223,9 +223,9 @@ export default function TagPeopleSlider({
     setEditingTagId(tempId);
     setEditingName(defaultName);
 
-    if (imageId) {
+    if (emberId) {
       const ar = imgAspectRatio;
-      const res = await fetch(`/api/images/${imageId}/tags`, {
+      const res = await fetch(`/api/embers/${emberId}/tags`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -266,8 +266,8 @@ export default function TagPeopleSlider({
     const tag = faceTags.find((t) => t.id === id);
     setFaceTags((prev) => prev.filter((t) => t.id !== id));
     if (editingTagId === id) setEditingTagId(null);
-    if (tag?.dbId && imageId) {
-      await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, { method: 'DELETE' });
+    if (tag?.dbId && emberId) {
+      await fetch(`/api/embers/${emberId}/tags/${tag.dbId}`, { method: 'DELETE' });
     }
   }
 
@@ -282,10 +282,10 @@ export default function TagPeopleSlider({
     setFaceTags((prev) => prev.map((t) => (t.id === id ? { ...t, name } : t)));
     setEditingTagId(null);
     setHasChanges(true);
-    if (tag?.dbId && imageId) {
+    if (tag?.dbId && emberId) {
       // Free-text save: keep label, clear any prior FK linkage so the tag
       // doesn't claim to be a contributor it isn't.
-      await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
+      await fetch(`/api/embers/${emberId}/tags/${tag.dbId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -301,9 +301,9 @@ export default function TagPeopleSlider({
   // ---- Picker: invited contributors + AI face-match suggestions ----------
 
   const refreshPeopleSuggestions = useCallback(async () => {
-    if (!imageId) return;
+    if (!emberId) return;
     try {
-      const res = await fetch(`/api/images/${imageId}/people-suggestions`);
+      const res = await fetch(`/api/embers/${emberId}/people-suggestions`);
       if (!res.ok) return;
       const payload = await res.json().catch(() => ({}));
       if (Array.isArray(payload?.contributors)) {
@@ -312,18 +312,18 @@ export default function TagPeopleSlider({
     } catch {
       // silent
     }
-  }, [imageId]);
+  }, [emberId]);
 
   useEffect(() => {
     void refreshPeopleSuggestions();
   }, [refreshPeopleSuggestions]);
 
   async function loadAiSuggestionsForTag(tag: FaceTag) {
-    if (!imageId || aiLoadingTagId) return;
+    if (!emberId || aiLoadingTagId) return;
     const ar = imgAspectRatio;
     setAiLoadingTagId(tag.id);
     try {
-      const res = await fetch(`/api/images/${imageId}/tag-suggestions`, {
+      const res = await fetch(`/api/embers/${emberId}/tag-suggestions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -357,12 +357,12 @@ export default function TagPeopleSlider({
 
   async function handleSelectContributor(tagId: string, person: PeopleContributor) {
     const tag = faceTags.find((t) => t.id === tagId);
-    if (!tag?.dbId || !imageId) return;
+    if (!tag?.dbId || !emberId) return;
     setFaceTags((prev) => prev.map((t) => (t.id === tagId ? { ...t, name: person.name } : t)));
     setEditingTagId(null);
     setEditingName('');
     setHasChanges(true);
-    await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
+    await fetch(`/api/embers/${emberId}/tags/${tag.dbId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -377,12 +377,12 @@ export default function TagPeopleSlider({
 
   async function handleSelectAiSuggestion(tagId: string, suggestion: AiSuggestion) {
     const tag = faceTags.find((t) => t.id === tagId);
-    if (!tag?.dbId || !imageId) return;
+    if (!tag?.dbId || !emberId) return;
     setFaceTags((prev) => prev.map((t) => (t.id === tagId ? { ...t, name: suggestion.label } : t)));
     setEditingTagId(null);
     setEditingName('');
     setHasChanges(true);
-    await fetch(`/api/images/${imageId}/tags/${tag.dbId}`, {
+    await fetch(`/api/embers/${emberId}/tags/${tag.dbId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -405,7 +405,7 @@ export default function TagPeopleSlider({
   // placeholder that the owner can identify via the per-tag picker.
   async function handleAutoDetect() {
     const img = tagImgRef.current;
-    if (!img || !imageId || detectingFaces) return;
+    if (!img || !emberId || detectingFaces) return;
     setDetectingFaces(true);
     setImgAspectRatio(img.naturalWidth / img.naturalHeight);
     try {
@@ -418,7 +418,7 @@ export default function TagPeopleSlider({
 
       let faces: AutoTagFace[] = [];
       try {
-        const res = await fetch(`/api/images/${imageId}/auto-tag`, { method: 'POST' });
+        const res = await fetch(`/api/embers/${emberId}/auto-tag`, { method: 'POST' });
         const payload = await res.json().catch(() => ({}));
         if (Array.isArray(payload?.faces)) {
           faces = payload.faces as AutoTagFace[];
@@ -441,7 +441,7 @@ export default function TagPeopleSlider({
         const color = TAG_COLORS[(existing.length + created.length) % TAG_COLORS.length];
         const tagName = face.label ?? `Person ${existing.length + created.length + 1}`;
         try {
-          const res = await fetch(`/api/images/${imageId}/tags`, {
+          const res = await fetch(`/api/embers/${emberId}/tags`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -786,7 +786,7 @@ export default function TagPeopleSlider({
             <button
               type="button"
               onClick={() => void handleAutoDetect()}
-              disabled={detectingFaces || !imageId}
+              disabled={detectingFaces || !emberId}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary disabled:opacity-50"
               style={{ border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: detectingFaces ? 'default' : 'pointer' }}
             >

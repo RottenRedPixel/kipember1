@@ -85,13 +85,13 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
   const sinceWiki = user?.lastSeenWikiAt ?? null;
   const sinceGuestViews = user?.lastSeenGuestViewsAt ?? null;
 
-  // --- Contributions: fetch raw messages + session + image, group by ember in JS ---
+  // --- Contributions: fetch raw messages + session + ember, group by ember in JS ---
   const messages = await prisma.emberMessage.findMany({
     where: {
       role: 'user',
       session: {
         participantType: { not: 'owner' },
-        image: { ownerId: userId },
+        ember: { ownerId: userId },
       },
       ...(sinceContributions ? { createdAt: { gt: sinceContributions } } : {}),
     },
@@ -112,7 +112,7 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
             },
           },
           user: { select: { id: true, firstName: true, lastName: true, email: true, avatarFilename: true } },
-          image: {
+          ember: {
             select: { id: true, title: true, mediaType: true, filename: true, posterFilename: true },
           },
         },
@@ -132,7 +132,7 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
   const buckets = new Map<string, EmberBucket>();
 
   for (const m of messages) {
-    const img = m.session.image;
+    const img = m.session.ember;
     let bucket = buckets.get(img.id);
     if (!bucket) {
       bucket = {
@@ -194,25 +194,25 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
   // --- Wiki updates: one row per ember whose wiki was updated since lastSeenWikiAt ---
   const wikis = await prisma.wiki.findMany({
     where: {
-      image: { ownerId: userId },
+      ember: { ownerId: userId },
       ...(sinceWiki ? { updatedAt: { gt: sinceWiki } } : {}),
     },
     orderBy: { updatedAt: 'desc' },
     select: {
       updatedAt: true,
-      image: {
+      ember: {
         select: { id: true, title: true, mediaType: true, filename: true, posterFilename: true },
       },
     },
   });
 
   const wikiItems: HomeActivityItem[] = wikis.map((w) => ({
-    emberId: w.image.id,
-    emberTitle: w.image.title,
+    emberId: w.ember.id,
+    emberTitle: w.ember.title,
     thumb: {
-      mediaType: w.image.mediaType,
-      filename: w.image.filename,
-      posterFilename: w.image.posterFilename,
+      mediaType: w.ember.mediaType,
+      filename: w.ember.filename,
+      posterFilename: w.ember.posterFilename,
     },
     count: 1,
     at: w.updatedAt,
@@ -221,7 +221,7 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
   // --- Guest views: GuestView rows on EmberContributors on embers owned by this user.
   const guestViews = await prisma.guestView.findMany({
     where: {
-      emberContributor: { image: { ownerId: userId } },
+      emberContributor: { ember: { ownerId: userId } },
       ...(sinceGuestViews ? { viewedAt: { gt: sinceGuestViews } } : {}),
     },
     orderBy: { viewedAt: 'desc' },
@@ -230,7 +230,7 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
       viewedAt: true,
       emberContributor: {
         select: {
-          image: {
+          ember: {
             select: { id: true, title: true, mediaType: true, filename: true, posterFilename: true },
           },
         },
@@ -241,7 +241,7 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
   type GuestBucket = { emberId: string; emberTitle: string | null; thumb: HomeActivityThumb; count: number; at: Date };
   const guestBuckets = new Map<string, GuestBucket>();
   for (const gv of guestViews) {
-    const img = gv.emberContributor.image;
+    const img = gv.emberContributor.ember;
     let bucket = guestBuckets.get(img.id);
     if (!bucket) {
       bucket = {

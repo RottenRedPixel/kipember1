@@ -12,7 +12,7 @@ async function main() {
 
   const claims = await prisma.memoryClaim.findMany({
     where: { claimType: 'person' },
-    select: { id: true, subject: true, value: true, imageId: true },
+    select: { id: true, subject: true, value: true, emberId: true },
   });
 
   const bad = claims.filter((c) => {
@@ -23,7 +23,7 @@ async function main() {
   console.log(`Inspected ${claims.length} person claim(s).`);
   console.log(`Flagging ${bad.length} as meta-paraphrase:`);
   for (const c of bad) {
-    console.log(`  - ${c.id} on ${c.imageId}: subject="${c.subject}" value="${c.value}"`);
+    console.log(`  - ${c.id} on ${c.emberId}: subject="${c.subject}" value="${c.value}"`);
   }
 
   if (bad.length === 0) {

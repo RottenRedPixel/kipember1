@@ -8,13 +8,13 @@ export type EmberVoiceTrigger =
   | 'mic_message';
 
 export async function generateEmberVoiceReply({
-  imageId,
+  emberId,
   role,
   trigger,
   transcript,
   sessionId,
 }: {
-  imageId: string;
+  emberId: string;
   role: EmberChatRole;
   trigger: EmberVoiceTrigger;
   transcript: string;
@@ -28,7 +28,7 @@ export async function generateEmberVoiceReply({
         : 'ember_voice.owner_style';
 
   const [vars, history] = await Promise.all([
-    loadPromptVariables(imageId),
+    loadPromptVariables(emberId),
     loadHistory(sessionId),
   ]);
 

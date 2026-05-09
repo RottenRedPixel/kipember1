@@ -18,10 +18,10 @@ import KipemberWikiContent, {
 // instead of navigating immediately, we run the slide-out transition
 // first and then push to closeHref.
 export default function KipemberWikiOverlay({
-  imageId,
+  emberId,
   closeHref,
 }: {
-  imageId: string | null;
+  emberId: string | null;
   closeHref: string;
 }) {
   const router = useRouter();
@@ -38,9 +38,9 @@ export default function KipemberWikiOverlay({
   const [overlayOpen, setOverlayOpen] = useState(false);
 
   const refreshDetail = useCallback(async () => {
-    if (!imageId) return;
+    if (!emberId) return;
     try {
-      const response = await fetch(`/api/images/${imageId}`, { cache: 'no-store' });
+      const response = await fetch(`/api/embers/${emberId}`, { cache: 'no-store' });
       if (!response.ok) return;
       const payload = (await response.json()) as KipemberWikiDetail;
       setDetail(payload);
@@ -48,12 +48,12 @@ export default function KipemberWikiOverlay({
       // Silently keep the previous detail — the wiki UI tolerates a
       // stale snapshot better than flashing an error toast.
     }
-  }, [imageId]);
+  }, [emberId]);
 
   useEffect(() => {
-    if (!imageId) return;
+    if (!emberId) return;
     void refreshDetail();
-  }, [imageId, refreshDetail]);
+  }, [emberId, refreshDetail]);
 
   // Trigger the slide-in transition on mount.
   useEffect(() => {

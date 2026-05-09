@@ -511,7 +511,7 @@ function normalizeVisionAnalysis(raw: unknown): ParsedVisionAnalysis {
       'A concise visual summary of the uploaded photo.',
     visualDescription:
       sanitizeString(record.visualDescription) ||
-      'A visually grounded description of the uploaded image.',
+      'A visually grounded description of the uploaded ember.',
     mood: sanitizeString(record.mood) || 'reflective',
     peopleObserved: sanitizeEntityList(record.peopleObserved),
     placeSignals: sanitizeEntityList(record.placeSignals),
@@ -1157,52 +1157,52 @@ async function analyzeImageVisually({
   throw lastError || new Error('Visual analysis was not completed');
 }
 
-export async function ensureImageAnalysisForImage(imageId: string) {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+export async function ensureImageAnalysisForImage(emberId: string) {
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     include: { analysis: true },
   });
 
-  if (!image) {
+  if (!ember) {
     throw new Error('Image not found');
   }
 
-  const hasStoredEmberTitle = Boolean(image.title?.trim());
+  const hasStoredEmberTitle = Boolean(ember.title?.trim());
   const shouldReuseExistingAnalysis =
     hasStoredEmberTitle &&
-    (image.analysis?.status === 'ready' ||
-      (image.analysis?.status === 'partial' &&
-        !!image.analysis.visualDescription &&
-        !image.analysis.errorMessage?.includes('does not support output format')));
+    (ember.analysis?.status === 'ready' ||
+      (ember.analysis?.status === 'partial' &&
+        !!ember.analysis.visualDescription &&
+        !ember.analysis.errorMessage?.includes('does not support output format')));
 
   if (shouldReuseExistingAnalysis) {
-    return image.analysis;
+    return ember.analysis;
   }
 
   const analysisFilename =
-    image.mediaType === 'VIDEO' ? image.posterFilename || image.filename : image.filename;
+    ember.mediaType === 'VIDEO' ? ember.posterFilename || ember.filename : ember.filename;
   const filePath = getUploadPath(analysisFilename);
   const buffer = await readFile(filePath);
-  const mimeType = inferImageMimeType(analysisFilename) || inferImageMimeType(image.originalName);
+  const mimeType = inferImageMimeType(analysisFilename) || inferImageMimeType(ember.originalName);
 
-  const existing = image.analysis
-    ? await prisma.imageAnalysis.update({
-        where: { id: image.analysis.id },
+  const existing = ember.analysis
+    ? await prisma.emberAnalysis.update({
+        where: { id: ember.analysis.id },
         data: {
           status: 'processing',
           errorMessage: null,
         },
       })
-    : await prisma.imageAnalysis.create({
+    : await prisma.emberAnalysis.create({
         data: {
-          imageId,
+          emberId,
           status: 'processing',
         },
       });
 
   try {
     const metadata =
-      image.mediaType === 'VIDEO'
+      ember.mediaType === 'VIDEO'
         ? {
             capturedAt: null,
             latitude: null,
@@ -1223,10 +1223,10 @@ export async function ensureImageAnalysisForImage(imageId: string) {
         : await extractPhotoMetadata(buffer);
     const baseMetadataSummary = buildMetadataSummary(metadata);
     const metadataSummary =
-      image.mediaType === 'VIDEO'
+      ember.mediaType === 'VIDEO'
         ? [
-            image.durationSeconds
-              ? `Video duration: ${Math.max(1, Math.round(image.durationSeconds))} seconds.`
+            ember.durationSeconds
+              ? `Video duration: ${Math.max(1, Math.round(ember.durationSeconds))} seconds.`
               : null,
             'Visual analysis is based on a poster frame extracted from the uploaded video.',
             baseMetadataSummary,
@@ -1244,8 +1244,8 @@ export async function ensureImageAnalysisForImage(imageId: string) {
         vision = await analyzeImageVisually({
           buffer,
           mimeType,
-          originalName: image.originalName,
-          userDescription: image.description,
+          originalName: ember.originalName,
+          userDescription: ember.description,
           metadataSummary,
           promptKey: 'image_analysis.initial_photo',
         });
@@ -1264,15 +1264,15 @@ export async function ensureImageAnalysisForImage(imageId: string) {
 
     return prisma.$transaction(async (tx) => {
       if (generatedTitle) {
-        await tx.image.update({
-          where: { id: image.id },
+        await tx.ember.update({
+          where: { id: ember.id },
           data: {
             title: generatedTitle,
           },
         });
       }
 
-      return tx.imageAnalysis.update({
+      return tx.emberAnalysis.update({
         where: { id: existing.id },
         data: {
           status,
@@ -1320,7 +1320,7 @@ export async function ensureImageAnalysisForImage(imageId: string) {
       });
     });
   } catch (error) {
-    await prisma.imageAnalysis.update({
+    await prisma.emberAnalysis.update({
       where: { id: existing.id },
       data: {
         status: 'error',

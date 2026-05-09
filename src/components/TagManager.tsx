@@ -52,14 +52,14 @@ function tagCanInvite(tag: Tag): boolean {
 }
 
 export default function TagManager({
-  imageId,
+  emberId,
   tags,
   contributors,
   friends,
   canManage,
   onUpdate,
 }: {
-  imageId: string;
+  emberId: string;
   tags: Tag[];
   contributors: Array<{
     id: string;
@@ -117,7 +117,7 @@ export default function TagManager({
     setNotice('');
 
     try {
-      const response = await fetch(`/api/images/${imageId}/tags`, {
+      const response = await fetch(`/api/embers/${emberId}/tags`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -151,7 +151,7 @@ export default function TagManager({
     setNotice('');
 
     try {
-      const response = await fetch(`/api/images/${imageId}/tags/${editor.tagId}`, {
+      const response = await fetch(`/api/embers/${emberId}/tags/${editor.tagId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -183,7 +183,7 @@ export default function TagManager({
     setNotice('');
 
     try {
-      const response = await fetch(`/api/images/${imageId}/tags/${tag.id}/invite`, {
+      const response = await fetch(`/api/embers/${emberId}/tags/${tag.id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -212,7 +212,7 @@ export default function TagManager({
     setNotice('');
 
     try {
-      const response = await fetch(`/api/images/${imageId}/tags/${tagId}`, {
+      const response = await fetch(`/api/embers/${emberId}/tags/${tagId}`, {
         method: 'DELETE',
       });
 

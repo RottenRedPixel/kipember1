@@ -34,7 +34,7 @@ export async function GET(
           memorySyncedAt: true,
         },
       },
-      image: {
+      ember: {
         include: {
           analysis: {
             select: {
@@ -69,7 +69,7 @@ export async function GET(
       );
     }
 
-    if (emberContributor.image.keepPrivate) {
+    if (emberContributor.ember.keepPrivate) {
       return NextResponse.json(
         { error: 'This ember is private.' },
         { status: 403, headers: { 'Cache-Control': 'no-store' } }
@@ -119,18 +119,18 @@ export async function GET(
           phoneNumber: refreshedContributor.user.phoneNumber,
           hasPassword: !!refreshedContributor.user.passwordHash,
         },
-        image: {
-          id: refreshedContributor.image.id,
-          filename: refreshedContributor.image.filename,
-          mediaType: refreshedContributor.image.mediaType,
-          posterFilename: refreshedContributor.image.posterFilename,
-          durationSeconds: refreshedContributor.image.durationSeconds,
-          originalName: refreshedContributor.image.originalName,
-          title: refreshedContributor.image.title,
-          description: refreshedContributor.image.description,
-          createdAt: refreshedContributor.image.createdAt,
+        ember: {
+          id: refreshedContributor.ember.id,
+          filename: refreshedContributor.ember.filename,
+          mediaType: refreshedContributor.ember.mediaType,
+          posterFilename: refreshedContributor.ember.posterFilename,
+          durationSeconds: refreshedContributor.ember.durationSeconds,
+          originalName: refreshedContributor.ember.originalName,
+          title: refreshedContributor.ember.title,
+          description: refreshedContributor.ember.description,
+          createdAt: refreshedContributor.ember.createdAt,
         },
-        analysis: refreshedContributor.image.analysis,
+        analysis: refreshedContributor.ember.analysis,
         conversation: refreshedContributor.emberSession
           ? {
               status: refreshedContributor.emberSession.status,
@@ -139,16 +139,16 @@ export async function GET(
             }
           : null,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
-        wiki: refreshedContributor.image.wiki,
-        attachments: await prisma.imageAttachment
+        wiki: refreshedContributor.ember.wiki,
+        attachments: await prisma.emberAttachment
           .findMany({
-            where: { imageId: refreshedContributor.image.id },
+            where: { emberId: refreshedContributor.ember.id },
             select: { id: true, filename: true, mediaType: true, posterFilename: true },
             orderBy: { createdAt: 'asc' },
           })
           .catch(() => []),
         snapshotScript: await prisma.snapshot
-          .findUnique({ where: { imageId: refreshedContributor.image.id }, select: { script: true } })
+          .findUnique({ where: { emberId: refreshedContributor.ember.id }, select: { script: true } })
           .then((sc) => sc?.script ?? null)
           .catch(() => null),
       },

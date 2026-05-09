@@ -13,7 +13,7 @@ const PLAY_BAR_DURATIONS = PLAY_BAR_HEIGHTS.map((_, index) =>
 
 type KipemberPlayOverlayProps = {
   closeHref: string;
-  imageId: string | null;
+  emberId: string | null;
   storyScript: string | null;
   guestToken?: string | null;
 };
@@ -84,7 +84,7 @@ function resetAudioPosition(audio: HTMLAudioElement) {
 
 export default function KipemberPlayOverlay({
   closeHref,
-  imageId,
+  emberId,
   storyScript,
   guestToken,
 }: KipemberPlayOverlayProps) {
@@ -153,13 +153,13 @@ export default function KipemberPlayOverlay({
   }, [fading, storyLines.length]);
 
   const fetchAudioBlob = useCallback(async () => {
-    if (!imageId || !storyScript) {
+    if (!emberId || !storyScript) {
       throw new Error('This ember does not have a snapshot yet.');
     }
 
     const audioUrl = guestToken
-      ? `/api/images/${imageId}/snapshot-audio?token=${encodeURIComponent(guestToken)}`
-      : `/api/images/${imageId}/snapshot-audio`;
+      ? `/api/embers/${emberId}/snapshot-audio?token=${encodeURIComponent(guestToken)}`
+      : `/api/embers/${emberId}/snapshot-audio`;
     const response = await fetch(audioUrl, {
       cache: 'no-store',
     });
@@ -172,7 +172,7 @@ export default function KipemberPlayOverlay({
     throw new Error(
       typeof payload?.error === 'string' ? payload.error : 'Story audio is not available yet.'
     );
-  }, [imageId, storyScript]);
+  }, [emberId, storyScript]);
 
   const buildAudio = useCallback(async () => {
     const audioBlob = await fetchAudioBlob();
@@ -203,7 +203,7 @@ export default function KipemberPlayOverlay({
 
   const startPlayback = useCallback(
     async ({ restart = false, allowAutoplay = false }: { restart?: boolean; allowAutoplay?: boolean } = {}) => {
-      if (!imageId || !hasPlayableContent) {
+      if (!emberId || !hasPlayableContent) {
         return;
       }
 
@@ -236,18 +236,18 @@ export default function KipemberPlayOverlay({
         }
       }
     },
-    [buildAudio, imageId]
+    [buildAudio, emberId]
   );
 
   // Silently pre-fetch audio in the background so playback starts instantly on user press
   useEffect(() => {
-    if (prepareAttemptedRef.current || !imageId || !hasPlayableContent) {
+    if (prepareAttemptedRef.current || !emberId || !hasPlayableContent) {
       return;
     }
 
     prepareAttemptedRef.current = true;
     void buildAudio().catch(() => undefined);
-  }, [imageId, hasPlayableContent, buildAudio]);
+  }, [emberId, hasPlayableContent, buildAudio]);
 
   const handleToggle = useCallback(() => {
     const audio = audioRef.current;

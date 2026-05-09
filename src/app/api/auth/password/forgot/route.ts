@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhone } from '@/lib/auth-server';
 import { getRequestBaseUrl } from '@/lib/app-url';
 import { createPasswordResetChallenge, getPasswordResetTtlMinutes } from '@/lib/auth-challenges';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/sms';
 import { prisma } from '@/lib/db';
 
 function formatPhone(phoneNumber: string): string {
@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
       const ttl = getPasswordResetTtlMinutes();
       const message = `Reset your Ember password: ${resetUrl} (expires in ${ttl} min)`;
 
-      await sendSMS(formatPhone(normalizedPhone), message);
+      await sendSMS(formatPhone(normalizedPhone), message).catch((err) => {
+        console.error('Forgot password SMS send failed:', err);
+      });
     }
 
     return NextResponse.json({

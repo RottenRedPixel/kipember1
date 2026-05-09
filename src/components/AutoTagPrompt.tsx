@@ -84,7 +84,7 @@ function getSuggestionCopy(suggestion: Pick<MatchSuggestion, 'label' | 'confiden
 }
 
 export default function AutoTagPrompt({
-  imageId,
+  emberId,
   imageName,
   mediaUrl,
   enabled,
@@ -93,7 +93,7 @@ export default function AutoTagPrompt({
   onAddManualTags,
   onDismiss,
 }: {
-  imageId: string;
+  emberId: string;
   imageName: string;
   mediaUrl: string | null;
   enabled: boolean;
@@ -178,7 +178,7 @@ export default function AutoTagPrompt({
       setStatus('matching');
 
       try {
-        const response = await fetch(`/api/images/${imageId}/tag-suggestions`, {
+        const response = await fetch(`/api/embers/${emberId}/tag-suggestions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ autoDetect: true }),
@@ -222,7 +222,7 @@ export default function AutoTagPrompt({
       cancelled = true;
       controller.abort();
     };
-  }, [enabled, existingTagCount, imageId, mediaUrl, onDismiss]);
+  }, [enabled, existingTagCount, emberId, mediaUrl, onDismiss]);
 
   const labelList = useMemo(
     () => Array.from(new Set(suggestions.map((suggestion) => suggestion.label))).slice(0, 4),
@@ -248,7 +248,7 @@ export default function AutoTagPrompt({
   const persistSuggestions = async (items: MatchSuggestion[]) => {
     const results = await Promise.allSettled(
       items.map(async (suggestion) => {
-        const response = await fetch(`/api/images/${imageId}/tags`, {
+        const response = await fetch(`/api/embers/${emberId}/tags`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

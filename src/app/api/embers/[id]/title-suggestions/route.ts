@@ -1,0 +1,179 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { requireApiUser } from '@/lib/auth-server';
+import {
+  PROMPT_REMOVED_MESSAGE,
+  isPromptRemovedError,
+  renderPromptTemplate,
+} from '@/lib/control-plane';
+import { ensureEmberOwnerAccess } from '@/lib/ember';
+import { chat } from '@/lib/claude';
+import { loadEmberSetupContext } from '@/lib/ember-setup-context';
+import { prisma } from '@/lib/db';
+
+type SmartTitleSuggestionCache = {
+  suggestions: string[];
+  preferredPeople: string[];
+};
+
+function normalizeTitleLine(value: string) {
+  return value
+    .replace(/^[-*\d.\s"]+/, '')
+    .replace(/^['"]|['"]$/g, '')
+    .trim();
+}
+
+function parseTitleList(value: string) {
+  const seen = new Set<string>();
+  const titles: string[] = [];
+
+  for (const rawLine of value.split(/\r?\n/)) {
+    const line = normalizeTitleLine(rawLine);
+    if (!line) continue;
+    // Skip lines that are clearly reasoning/preamble — too long to be a title
+    // (hard limit is 40 chars; allow a little slack for parsing edge cases)
+    if (line.length > 60) continue;
+    // Skip lines that end with a colon — those are section headers or preamble
+    if (line.endsWith(':')) continue;
+    const key = line.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    titles.push(line);
+  }
+
+  return titles.slice(0, 3);
+}
+
+function parseCache(value: string | null | undefined): SmartTitleSuggestionCache | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<SmartTitleSuggestionCache>;
+    const suggestions = Array.isArray(parsed?.suggestions)
+      ? parsed.suggestions.filter((s): s is string => typeof s === 'string')
+      : [];
+    const preferredPeople = Array.isArray(parsed?.preferredPeople)
+      ? parsed.preferredPeople.filter((s): s is string => typeof s === 'string')
+      : [];
+    if (suggestions.length === 0) return null;
+    return { suggestions, preferredPeople };
+  } catch {
+    return null;
+  }
+}
+
+// Order-insensitive, case-insensitive signature so the cache hits whether the
+// UI sends "Zia,Luca" or "luca, zia".
+function preferredPeopleSignature(names: string[]) {
+  return [...names].map((n) => n.trim().toLowerCase()).filter(Boolean).sort().join('|');
+}
+
+async function generateTitles({
+  fullContext,
+  taggedPeople,
+  preferredPeople,
+}: {
+  fullContext: string;
+  taggedPeople: string[];
+  preferredPeople: string[];
+}) {
+  const preferredSet = new Set(preferredPeople);
+  const optional = taggedPeople.filter((p) => !preferredSet.has(p));
+
+  const allSelected = preferredPeople.length === taggedPeople.length && taggedPeople.length > 0;
+  const noneSelected = preferredPeople.length === 0;
+
+  const preferredPeopleHint = noneSelected
+    ? 'No names selected — do NOT include any person\'s name in any title.'
+    : allSelected
+      ? `All names selected — you MUST include ALL of these names in every title: ${preferredPeople.join(', ')}. Do not omit any of them.`
+      : `Only ${preferredPeople.join(' and ')} is selected — you MUST include the name "${preferredPeople.join('" and "')}" in every title. Do not include ${optional.join(', ') || 'any other names'}.`;
+
+  const systemPrompt = await renderPromptTemplate('title_generation.regenerate', '', {
+    fullContext,
+    peopleInstruction: taggedPeople.join(', '),
+    preferredPeopleHint,
+    optionalTaggedPeopleInstruction: optional.join(', '),
+  });
+
+  const response = await chat(systemPrompt, [
+    { role: 'user', content: fullContext },
+  ], { maxTokens: 120 });
+
+  return parseTitleList(response || '');
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await requireApiUser();
+    if (!auth) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+    const ember = await ensureEmberOwnerAccess(auth.user.id, id);
+    if (!ember) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
+
+    const forceRefresh = request.nextUrl.searchParams.get('refresh') === '1';
+    const cachedOnly = request.nextUrl.searchParams.get('cachedOnly') === '1';
+    const preferredPeopleParam = request.nextUrl.searchParams.get('preferredPeople');
+    const preferredPeople = preferredPeopleParam
+      ? preferredPeopleParam.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const requestedSig = preferredPeopleSignature(preferredPeople);
+
+    const cachedImage = await prisma.ember.findUnique({
+      where: { id },
+      select: { smartTitleSuggestionsJson: true },
+    });
+
+    // Cache-only mode: return whatever is in the DB without ever generating.
+    // The Edit Title slider uses this on Edit-mode entry so the user sees
+    // the last set of ideas instantly; Regen Ideas is the only path that
+    // triggers a new generation.
+    if (cachedOnly) {
+      const cached = parseCache(cachedImage?.smartTitleSuggestionsJson);
+      return NextResponse.json({ suggestions: cached?.suggestions ?? [] });
+    }
+
+    if (!forceRefresh) {
+      const cached = parseCache(cachedImage?.smartTitleSuggestionsJson);
+      if (cached && preferredPeopleSignature(cached.preferredPeople) === requestedSig) {
+        return NextResponse.json({ suggestions: cached.suggestions });
+      }
+    }
+
+    const context = await loadEmberSetupContext(id);
+    if (!context) {
+      return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
+    }
+
+    const suggestions = await generateTitles({
+      fullContext: context.promptContext,
+      taggedPeople: context.confirmedPeople,
+      preferredPeople,
+    });
+
+    await prisma.ember.update({
+      where: { id },
+      data: {
+        smartTitleSuggestionsJson: JSON.stringify({ suggestions, preferredPeople }),
+        smartTitleSuggestionsUpdatedAt: new Date(),
+      },
+    });
+
+    return NextResponse.json({ suggestions });
+  } catch (error) {
+    console.error('Title suggestion error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
+    return NextResponse.json(
+      { error: 'Failed to generate title suggestions' },
+      { status: 500 }
+    );
+  }
+}

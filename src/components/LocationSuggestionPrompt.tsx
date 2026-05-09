@@ -16,13 +16,13 @@ type LocationSuggestion = {
 };
 
 export default function LocationSuggestionPrompt({
-  imageId,
+  emberId,
   imageName,
   enabled,
   onApplied,
   onDismiss,
 }: {
-  imageId: string;
+  emberId: string;
   imageName: string;
   enabled: boolean;
   onApplied: (locationLabel: string) => Promise<void> | void;
@@ -50,7 +50,7 @@ export default function LocationSuggestionPrompt({
       setError('');
 
       try {
-        const response = await fetch(`/api/images/${imageId}/location-suggestions`, {
+        const response = await fetch(`/api/embers/${emberId}/location-suggestions`, {
           signal: controller.signal,
         });
 
@@ -89,7 +89,7 @@ export default function LocationSuggestionPrompt({
       cancelled = true;
       controller.abort();
     };
-  }, [enabled, imageId, onDismiss]);
+  }, [enabled, emberId, onDismiss]);
 
   const selectedSuggestion = useMemo(
     () => suggestions.find((suggestion) => suggestion.id === selectedId) || null,
@@ -105,7 +105,7 @@ export default function LocationSuggestionPrompt({
     setError('');
 
     try {
-      const response = await fetch(`/api/images/${imageId}/location-suggestions`, {
+      const response = await fetch(`/api/embers/${emberId}/location-suggestions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -10,7 +10,7 @@ datasource db {
   provider = "postgresql"
 }
 
-model Image {
+model Ember {
   id           String        @id @default(cuid())
   filename     String
   mediaType    MediaType     @default(IMAGE)
@@ -33,14 +33,14 @@ model Image {
   cropWidth      Float?
   cropHeight     Float?
   createdAt    DateTime      @default(now())
-  owner        User          @relation("OwnedImages", fields: [ownerId], references: [id], onDelete: Cascade)
-  analysis     ImageAnalysis?
+  owner        User          @relation("OwnedEmbers", fields: [ownerId], references: [id], onDelete: Cascade)
+  analysis     EmberAnalysis?
   emberContributors EmberContributor[]
   wiki         Wiki?
   snapshot     Snapshot?
   emberSessions EmberSession[]
-  tags         ImageTag[]
-  attachments  ImageAttachment[]
+  tags         EmberTag[]
+  attachments  EmberAttachment[]
   voiceCallClips VoiceCallClip[]
   memoryClaims MemoryClaim[]
   memoryConflicts MemoryConflict[]
@@ -49,9 +49,9 @@ model Image {
   @@index([shareToNetwork, createdAt])
 }
 
-model ImageAttachment {
+model EmberAttachment {
   id              String    @id @default(cuid())
-  imageId         String
+  emberId         String
   filename        String
   mediaType       MediaType @default(IMAGE)
   posterFilename  String?
@@ -61,15 +61,15 @@ model ImageAttachment {
   analysisText    String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  image           Image     @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  ember           Ember     @relation(fields: [emberId], references: [id], onDelete: Cascade)
 
-  @@index([imageId, createdAt])
+  @@index([emberId, createdAt])
 }
 
-model ImageAnalysis {
+model EmberAnalysis {
   id                String   @id @default(cuid())
-  imageId           String   @unique
-  image             Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberId           String   @unique
+  ember             Ember    @relation(fields: [emberId], references: [id], onDelete: Cascade)
   status            String   @default("pending") // pending, processing, ready, partial, error
   errorMessage      String?
   summary           String?
@@ -93,9 +93,10 @@ model ImageAnalysis {
   lensModel         String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
 }
 
-// Per-ember attachment of a User to an Image as a contributor. Holds
+// Per-ember attachment of a User to an Ember as a contributor. Holds
 // the share token (per-ember access link) and per-ember invite state,
 // and is the FK target for everything scoped to (this contributor, this
 // ember): the chat session, voice calls, tags, and memory claims.
@@ -103,8 +104,8 @@ model EmberContributor {
   id            String        @id @default(cuid())
   userId        String
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  imageId       String
-  image         Image         @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberId       String
+  ember         Ember         @relation(fields: [emberId], references: [id], onDelete: Cascade)
   token              String        @unique @default(cuid())
   tokenCreatedAt     DateTime?
   tokenCreatedByUserId String?
@@ -112,13 +113,13 @@ model EmberContributor {
   emberSession       EmberSession?
   voiceCalls         VoiceCall[]
   voiceCallClips     VoiceCallClip[]
-  tags               ImageTag[]
+  tags               EmberTag[]
   memoryClaims       MemoryClaim[]
   guestViews         GuestView[]
   createdAt          DateTime      @default(now())
 
-  @@unique([userId, imageId])
-  @@index([imageId, createdAt])
+  @@unique([userId, emberId])
+  @@index([emberId, createdAt])
   @@index([userId, createdAt])
 }
 
@@ -133,8 +134,8 @@ model GuestView {
 
 model EmberSession {
   id               String         @id @default(cuid())
-  imageId          String
-  image            Image          @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberId          String
+  ember            Ember          @relation(fields: [emberId], references: [id], onDelete: Cascade)
   userId           String?
   user             User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   emberContributorId String?       @unique
@@ -155,12 +156,12 @@ model EmberSession {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  @@unique([imageId, sessionType, participantType, participantId])
-  @@index([imageId])
+  @@unique([emberId, sessionType, participantType, participantId])
+  @@index([emberId])
   @@index([userId])
-  @@index([userId, imageId])
-  @@index([browserId, imageId])
-  @@index([sessionType, imageId])
+  @@index([userId, emberId])
+  @@index([browserId, emberId])
+  @@index([sessionType, emberId])
   @@index([participantType, participantId])
 }
 
@@ -183,8 +184,8 @@ model EmberMessage {
 
 model MemoryClaim {
   id              String                @id @default(cuid())
-  imageId         String
-  image           Image                 @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberId         String
+  ember           Ember                 @relation(fields: [emberId], references: [id], onDelete: Cascade)
   emberMessageId  String?
   emberMessage    EmberMessage?         @relation(fields: [emberMessageId], references: [id], onDelete: SetNull)
   emberContributorId String?
@@ -209,8 +210,8 @@ model MemoryClaim {
   updatedAt       DateTime              @updatedAt
   conflicts       MemoryConflictClaim[]
 
-  @@index([imageId, claimType, subject])
-  @@index([imageId, status])
+  @@index([emberId, claimType, subject])
+  @@index([emberId, status])
   @@index([emberMessageId])
   @@index([sourceSessionId, createdAt])
   @@index([emberContributorId, createdAt])
@@ -219,8 +220,8 @@ model MemoryClaim {
 
 model MemoryConflict {
   id               String                @id @default(cuid())
-  imageId          String
-  image            Image                 @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberId          String
+  ember            Ember                 @relation(fields: [emberId], references: [id], onDelete: Cascade)
   claimType        String
   subject          String                @default("")
   summary          String
@@ -236,8 +237,8 @@ model MemoryConflict {
   updatedAt        DateTime              @updatedAt
   claims           MemoryConflictClaim[]
 
-  @@index([imageId, status])
-  @@index([imageId, claimType, subject])
+  @@index([emberId, status])
+  @@index([emberId, claimType, subject])
 }
 
 model MemoryConflictClaim {
@@ -254,8 +255,8 @@ model MemoryConflictClaim {
 
 model Wiki {
   id        String   @id @default(cuid())
-  imageId   String   @unique
-  image     Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberId   String   @unique
+  ember     Ember    @relation(fields: [emberId], references: [id], onDelete: Cascade)
   content   String   // Markdown content
   version   Int      @default(1)
   createdAt DateTime @default(now())
@@ -264,8 +265,8 @@ model Wiki {
 
 model Snapshot {
   id                      String   @id @default(cuid())
-  imageId                 String   @unique
-  image                   Image    @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  emberId                 String   @unique
+  ember                   Ember    @relation(fields: [emberId], references: [id], onDelete: Cascade)
   title                   String
   style                   String
   focus                   String?
@@ -331,13 +332,13 @@ model User {
   passwordHash         String?
   sessions             UserSession[]
   authChallenges       AuthChallenge[]
-  ownedImages          Image[]      @relation("OwnedImages")
+  ownedEmbers          Ember[]      @relation("OwnedEmbers")
   // Embers this user is a contributor on (one row per ember)
   emberContributors    EmberContributor[]
   sentFriendships      Friendship[] @relation("FriendshipRequester")
   receivedFriendships  Friendship[] @relation("FriendshipAddressee")
-  createdTags          ImageTag[]   @relation("CreatedImageTags")
-  taggedImages         ImageTag[]   @relation("TaggedUserImages")
+  createdTags          EmberTag[]   @relation("CreatedEmberTags")
+  taggedEmbers         EmberTag[]   @relation("TaggedUserEmbers")
   emberSessions        EmberSession[]
   memoryClaims         MemoryClaim[]
   lastSeenContributionsAt DateTime?
@@ -419,9 +420,9 @@ model Friendship {
   @@index([addresseeId, status])
 }
 
-model ImageTag {
+model EmberTag {
   id                 String            @id @default(cuid())
-  imageId            String
+  emberId            String
   userId             String?
   emberContributorId String?
   createdByUserId    String
@@ -433,12 +434,12 @@ model ImageTag {
   widthPct           Float?
   heightPct          Float?
   createdAt          DateTime          @default(now())
-  image              Image             @relation(fields: [imageId], references: [id], onDelete: Cascade)
-  user               User?             @relation("TaggedUserImages", fields: [userId], references: [id], onDelete: SetNull)
+  ember              Ember             @relation(fields: [emberId], references: [id], onDelete: Cascade)
+  user               User?             @relation("TaggedUserEmbers", fields: [userId], references: [id], onDelete: SetNull)
   emberContributor   EmberContributor? @relation(fields: [emberContributorId], references: [id], onDelete: SetNull)
-  createdByUser      User              @relation("CreatedImageTags", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdByUser      User              @relation("CreatedEmberTags", fields: [createdByUserId], references: [id], onDelete: Cascade)
 
-  @@index([imageId, createdAt])
+  @@index([emberId, createdAt])
   @@index([userId, createdAt])
   @@index([emberContributorId, createdAt])
 }
@@ -488,7 +489,7 @@ model VoiceCall {
 
 model VoiceCallClip {
   id                 String      @id @default(cuid())
-  imageId            String
+  emberId            String
   emberContributorId String
   voiceCallId        String
   sortOrder     Int         @default(0)
@@ -502,11 +503,11 @@ model VoiceCallClip {
   canUseForTitle Boolean    @default(false)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-  image            Image            @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  ember            Ember            @relation(fields: [emberId], references: [id], onDelete: Cascade)
   emberContributor EmberContributor @relation(fields: [emberContributorId], references: [id], onDelete: Cascade)
   voiceCall        VoiceCall        @relation(fields: [voiceCallId], references: [id], onDelete: Cascade)
 
-  @@index([imageId, createdAt])
+  @@index([emberId, createdAt])
   @@index([emberContributorId, createdAt])
   @@index([voiceCallId, createdAt])
 }

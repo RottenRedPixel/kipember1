@@ -52,11 +52,11 @@ async function transcribeUploadedAudio(file: File) {
   }
 }
 
-async function ensureContributorSession(emberContributorId: string, imageId: string) {
+async function ensureContributorSession(emberContributorId: string, emberId: string) {
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { id: emberContributorId },
     include: {
-      image: {
+      ember: {
         select: {
           ownerId: true,
         },
@@ -67,15 +67,15 @@ async function ensureContributorSession(emberContributorId: string, imageId: str
   if (!emberContributor) {
     throw new Error('Contributor not found');
   }
-  if (emberContributor.imageId !== imageId) {
+  if (emberContributor.emberId !== emberId) {
     throw new Error('Contributor does not belong to this image');
   }
 
   const participantInput = {
     id: emberContributor.id,
     userId: emberContributor.userId,
-    imageId: emberContributor.imageId,
-    image: { ownerId: emberContributor.image.ownerId },
+    emberId: emberContributor.emberId,
+    ember: { ownerId: emberContributor.ember.ownerId },
   };
   const identity = contributorChatSessionIdentity(participantInput);
 
@@ -96,16 +96,16 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const imageId = typeof formData.get('imageId') === 'string' ? String(formData.get('imageId')) : '';
+    const emberId = typeof formData.get('emberId') === 'string' ? String(formData.get('emberId')) : '';
     const transcript =
       typeof formData.get('transcript') === 'string' ? String(formData.get('transcript')).trim() : '';
     const file = formData.get('file');
 
-    if (!imageId || !(file instanceof File)) {
-      return NextResponse.json({ error: 'imageId and file are required' }, { status: 400 });
+    if (!emberId || !(file instanceof File)) {
+      return NextResponse.json({ error: 'emberId and file are required' }, { status: 400 });
     }
 
-    const accessType = await getEmberAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, emberId);
     if (!accessType) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
@@ -129,9 +129,9 @@ export async function POST(request: NextRequest) {
       ? await transcribeUploadedAudio(file)
       : null) || '';
 
-    const attachment = await prisma.imageAttachment.create({
+    const attachment = await prisma.emberAttachment.create({
       data: {
-        imageId,
+        emberId,
         filename: persistedMedia.filename,
         mediaType: persistedMedia.mediaType,
         posterFilename: persistedMedia.posterFilename,
@@ -155,9 +155,9 @@ export async function POST(request: NextRequest) {
     const storedTranscript = trimStoredTranscript(resolvedTranscript || null);
     if (storedTranscript) {
       try {
-        const contributor = await ensureUserContributorForImage(imageId, auth.user.id);
+        const contributor = await ensureUserContributorForImage(emberId, auth.user.id);
         if (contributor) {
-          const session = await ensureContributorSession(contributor.id, imageId);
+          const session = await ensureContributorSession(contributor.id, emberId);
 
           if (session) {
             const memoryMessage = await prisma.emberMessage.create({

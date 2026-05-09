@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 type ClipAudioPlayerProps = {
   src: string;
-  imageId?: string | null;
+  emberId?: string | null;
   mediaId?: string | null;
   startMs?: number | null;
   endMs?: number | null;
@@ -24,7 +24,7 @@ function formatTime(valueMs?: number | null) {
 
 export default function ClipAudioPlayer({
   src,
-  imageId,
+  emberId,
   mediaId,
   startMs,
   endMs,
@@ -35,7 +35,7 @@ export default function ClipAudioPlayer({
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const usesServerSegment = Boolean(
-    imageId &&
+    emberId &&
       mediaId &&
       typeof startMs === 'number' &&
       Number.isFinite(startMs) &&
@@ -71,11 +71,11 @@ export default function ClipAudioPlayer({
         startMs: String(startMs),
         endMs: String(endMs),
       });
-      return `/api/images/${imageId}/audio-segment?${params.toString()}`;
+      return `/api/embers/${emberId}/audio-segment?${params.toString()}`;
     }
 
     return src;
-  }, [endMs, imageId, mediaId, src, startMs, usesServerSegment]);
+  }, [endMs, emberId, mediaId, src, startMs, usesServerSegment]);
 
   useEffect(() => {
     const audio = new Audio(resolvedSrc);

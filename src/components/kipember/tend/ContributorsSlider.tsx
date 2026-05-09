@@ -105,13 +105,13 @@ const fieldStyle = {
 // context with the memory rather than buried under each contributor.
 export default function ContributorsSlider({
   detail,
-  imageId,
+  emberId,
   refreshDetail,
   onStatus,
   status,
 }: {
   detail: ContributorsDetail | null;
-  imageId: string | null;
+  emberId: string | null;
   refreshDetail: () => Promise<unknown>;
   onStatus?: (message: string) => void;
   status?: string;
@@ -158,9 +158,9 @@ export default function ContributorsSlider({
   // the new entry needs to land in the unified pool before the list
   // re-renders with it.
   const refreshPool = useCallback(async () => {
-    if (!imageId) return;
+    if (!emberId) return;
     try {
-      const response = await fetch(`/api/contributors/pool?emberId=${imageId}`, { cache: 'no-store' });
+      const response = await fetch(`/api/contributors/pool?emberId=${emberId}`, { cache: 'no-store' });
       if (!response.ok) return;
       const payload = (await response.json()) as { contributors?: UnifiedContributor[] };
       if (payload?.contributors) {
@@ -169,7 +169,7 @@ export default function ContributorsSlider({
     } catch {
       // Silently fall back to existing pool data — better than flashing an error.
     }
-  }, [imageId]);
+  }, [emberId]);
   useEffect(() => {
     void refreshPool();
   }, [refreshPool]);
@@ -213,13 +213,13 @@ export default function ContributorsSlider({
   }
 
   async function addExistingToEmber(sourceKey: string) {
-    if (!imageId) return;
+    if (!emberId) return;
     setAddingToEmber((prev) => new Set(prev).add(sourceKey));
     try {
       const response = await fetch('/api/contributors/add-existing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageId, sourceKey }),
+        body: JSON.stringify({ emberId, sourceKey }),
       });
       const payload = await response.json().catch(() => ({}));
       if (response.ok) {
@@ -241,11 +241,11 @@ export default function ContributorsSlider({
   }
 
   async function toggleNoContributors(value: boolean) {
-    if (!imageId) return;
+    if (!emberId) return;
     setSavingNoContributors(true);
     setNoContributors(value);
     try {
-      await fetch(`/api/images/${imageId}`, {
+      await fetch(`/api/embers/${emberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ noContributors: value }),
@@ -257,12 +257,12 @@ export default function ContributorsSlider({
   }
 
   async function addContributor() {
-    if (!imageId) return;
+    if (!emberId) return;
     const response = await fetch('/api/contributors', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        imageId,
+        emberId,
         name: `${addForm.firstName} ${addForm.lastName}`.trim(),
         phoneNumber: addForm.phone,
       }),
@@ -467,7 +467,7 @@ export default function ContributorsSlider({
               editForm.language !== savedForm.language);
           const expandable = onThisEmber && Boolean(emberContributorId);
           const isAdding = addingToEmber.has(contributor.key);
-          const canAdd = !onThisEmber && canManageContributors && Boolean(imageId);
+          const canAdd = !onThisEmber && canManageContributors && Boolean(emberId);
           const isPoolExpanded = !onThisEmber && expandedPoolKey === contributor.key;
         return (
           <div

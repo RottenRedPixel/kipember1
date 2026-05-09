@@ -36,7 +36,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="h-full w-full">{children}</body>
+      <body className="h-full w-full" style={{ background: '#171515' }}>{children}</body>
     </html>
   );
 }

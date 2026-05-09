@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhone } from '@/lib/auth-server';
 import { createSmsSigninChallenge } from '@/lib/auth-challenges';
 import { prisma } from '@/lib/db';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/sms';
 import { getAppBaseUrl } from '@/lib/app-url';
 
 const BASE_URL = getAppBaseUrl();

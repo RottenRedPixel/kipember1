@@ -54,7 +54,7 @@ export async function getTotalContributorsForUser(userId: string) {
   // excluding the owner themselves.
   const contributors = await prisma.emberContributor.findMany({
     where: {
-      image: { ownerId: userId },
+      ember: { ownerId: userId },
       NOT: { userId: userId },
     },
     select: { userId: true },
@@ -76,14 +76,14 @@ export type ContributorSummary = {
 export async function getContributorsListForUser(userId: string): Promise<ContributorSummary[]> {
   const rows = await prisma.emberContributor.findMany({
     where: {
-      image: { ownerId: userId },
+      ember: { ownerId: userId },
       NOT: { userId: userId },
     },
     orderBy: { createdAt: 'asc' },
     select: {
       id: true,
       userId: true,
-      imageId: true,
+      emberId: true,
       createdAt: true,
       user: { select: { firstName: true, lastName: true, email: true, phoneNumber: true, avatarFilename: true } },
     },
@@ -102,7 +102,7 @@ export async function getContributorsListForUser(userId: string): Promise<Contri
     byKey.set(key, {
       key,
       contributorId: r.id,
-      emberId: r.imageId,
+      emberId: r.emberId,
       name,
       avatarUrl,
       joinedAt: r.createdAt,
@@ -122,7 +122,7 @@ export async function getAccessibleEmbersForUser(userId: string) {
 
   const friendIds = await getAcceptedFriendIds(userId);
 
-  const images = await prisma.image.findMany({
+  const images = await prisma.ember.findMany({
     where: {
       OR: [
         { ownerId: userId },
@@ -169,37 +169,37 @@ export async function getAccessibleEmbersForUser(userId: string) {
     },
   });
 
-  const value = images.map<EmberSummary>((image) => {
-    const nonOwnerContributors = image.emberContributors.filter(
-      (c) => c.userId !== image.ownerId
+  const value = images.map<EmberSummary>((ember) => {
+    const nonOwnerContributors = ember.emberContributors.filter(
+      (c) => c.userId !== ember.ownerId
     );
     return {
-      id: image.id,
-      filename: image.filename,
-      mediaType: image.mediaType,
-      posterFilename: image.posterFilename,
-      durationSeconds: image.durationSeconds,
-      originalName: image.originalName,
-      title: image.title,
-      description: image.description,
-      createdAt: image.createdAt,
-      capturedAt: image.analysis?.capturedAt ?? null,
-      shareToNetwork: image.shareToNetwork,
-      photoCount: 1 + image.attachments.length,
+      id: ember.id,
+      filename: ember.filename,
+      mediaType: ember.mediaType,
+      posterFilename: ember.posterFilename,
+      durationSeconds: ember.durationSeconds,
+      originalName: ember.originalName,
+      title: ember.title,
+      description: ember.description,
+      createdAt: ember.createdAt,
+      capturedAt: ember.analysis?.capturedAt ?? null,
+      shareToNetwork: ember.shareToNetwork,
+      photoCount: 1 + ember.attachments.length,
       contributorCount: nonOwnerContributors.length,
-      hasWiki: image.wiki != null,
-      hasLocation: image.analysis?.latitude != null,
-      hasVoiceCall: image.emberContributors.some((c) => c.voiceCalls.length > 0),
+      hasWiki: ember.wiki != null,
+      hasLocation: ember.analysis?.latitude != null,
+      hasVoiceCall: ember.emberContributors.some((c) => c.voiceCalls.length > 0),
       accessType:
-        image.ownerId === userId
+        ember.ownerId === userId
           ? 'owner'
-          : image.emberContributors.some((c) => c.userId === userId)
+          : ember.emberContributors.some((c) => c.userId === userId)
             ? 'contributor'
             : 'network',
-      cropX: image.cropX ?? null,
-      cropY: image.cropY ?? null,
-      cropWidth: image.cropWidth ?? null,
-      cropHeight: image.cropHeight ?? null,
+      cropX: ember.cropX ?? null,
+      cropY: ember.cropY ?? null,
+      cropWidth: ember.cropWidth ?? null,
+      cropHeight: ember.cropHeight ?? null,
     };
   });
 

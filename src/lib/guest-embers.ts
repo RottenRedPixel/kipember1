@@ -52,7 +52,7 @@ export async function claimGuestMemoriesForUser({
   }
 
   const guestOwnerIds = guestOwners.map((owner) => owner.id);
-  const guestImages = await prisma.image.findMany({
+  const guestImages = await prisma.ember.findMany({
     where: {
       ownerId: {
         in: guestOwnerIds,
@@ -67,10 +67,10 @@ export async function claimGuestMemoriesForUser({
     return 0;
   }
 
-  const imageIds = guestImages.map((image) => image.id);
+  const imageIds = guestImages.map((ember) => ember.id);
 
   await prisma.$transaction(async (tx) => {
-    await tx.image.updateMany({
+    await tx.ember.updateMany({
       where: {
         id: {
           in: imageIds,

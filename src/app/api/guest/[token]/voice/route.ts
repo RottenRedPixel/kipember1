@@ -31,7 +31,7 @@ import { synthesizeSpeech } from '@/lib/tts';
 const HISTORY_LIMIT = 30;
 
 type ResolvedToken = {
-  imageId: string;
+  emberId: string;
   emberContributorId: string;
   imageIsPrivate: boolean;
 };
@@ -40,16 +40,16 @@ async function resolveToken(token: string): Promise<ResolvedToken | null> {
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { token },
     include: {
-      image: { select: { id: true, keepPrivate: true } },
+      ember: { select: { id: true, keepPrivate: true } },
     },
   });
 
   if (!emberContributor) return null;
 
   return {
-    imageId: emberContributor.image.id,
+    emberId: emberContributor.ember.id,
     emberContributorId: emberContributor.id,
-    imageIsPrivate: emberContributor.image.keepPrivate ?? false,
+    imageIsPrivate: emberContributor.ember.keepPrivate ?? false,
   };
 }
 
@@ -96,7 +96,7 @@ export async function POST(
     }
 
     const session = await ensureEmberSession({
-      imageId: resolved.imageId,
+      emberId: resolved.emberId,
       sessionType: 'voice',
       participantType: 'contributor',
       participantId: resolved.emberContributorId,
@@ -134,7 +134,7 @@ export async function POST(
 
     const [replyText] = await Promise.all([
       generateEmberVoiceReply({
-        imageId: resolved.imageId,
+        emberId: resolved.emberId,
         role: 'contributor',
         trigger: 'mic_message',
         transcript,
@@ -197,7 +197,7 @@ export async function GET(
 
     const session = await prisma.emberSession.findUnique({
       where: emberSessionParticipantWhere({
-        imageId: resolved.imageId,
+        emberId: resolved.emberId,
         sessionType: 'voice',
         participantType: 'contributor',
         participantId: resolved.emberContributorId,

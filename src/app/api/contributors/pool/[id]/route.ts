@@ -19,7 +19,7 @@ export async function PATCH(
     const isContributorOnOwnersEmber = await prisma.emberContributor.findFirst({
       where: {
         userId,
-        image: { ownerId: auth.user.id },
+        ember: { ownerId: auth.user.id },
       },
       select: { id: true },
     });

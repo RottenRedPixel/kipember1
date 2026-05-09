@@ -83,12 +83,12 @@ function formatDate(value: string | null | undefined) {
 
 export default function EditSnapshotSlider({
   detail,
-  imageId,
+  emberId,
   refreshDetail,
   onStatus,
 }: {
   detail: SnapshotDetail | null;
-  imageId: string | null;
+  emberId: string | null;
   refreshDetail: () => Promise<unknown>;
   onStatus?: (message: string) => void;
 }) {
@@ -144,7 +144,7 @@ export default function EditSnapshotSlider({
   }, [scriptDraft]);
 
   async function handleSave() {
-    if (!imageId || !detail?.canManage || saving) return;
+    if (!emberId || !detail?.canManage || saving) return;
     const next = scriptDraft.trim();
     if (!next) {
       setError('Snapshot text cannot be empty.');
@@ -164,7 +164,7 @@ export default function EditSnapshotSlider({
       const method = detail.snapshot ? 'PATCH' : 'POST';
       const body = JSON.stringify({ title: emberTitle, script: next, durationSeconds, style, emberVoiceId: voiceId || null });
 
-      const response = await fetch(`/api/images/${imageId}/snapshot`, {
+      const response = await fetch(`/api/embers/${emberId}/snapshot`, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body,
@@ -187,7 +187,7 @@ export default function EditSnapshotSlider({
   }
 
   async function handleRegenerate() {
-    if (!imageId || !detail?.canManage || regenerating) return;
+    if (!emberId || !detail?.canManage || regenerating) return;
     setRegenerating(true);
     setError('');
     onStatus?.('');
@@ -197,7 +197,7 @@ export default function EditSnapshotSlider({
         .filter((t) => requiredPeopleIds.has(t.id))
         .map((t) => t.label);
 
-      const response = await fetch(`/api/images/${imageId}/snapshot`, {
+      const response = await fetch(`/api/embers/${emberId}/snapshot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: emberTitle, regenerate: true, durationSeconds, style, emberVoiceId: voiceId || null, requiredPeople }),
@@ -218,7 +218,7 @@ export default function EditSnapshotSlider({
     }
   }
 
-  if (!detail || !imageId) {
+  if (!detail || !emberId) {
     return (
       <SnapshotCard>
         <p className="text-white/60 text-sm">Loading snapshot...</p>

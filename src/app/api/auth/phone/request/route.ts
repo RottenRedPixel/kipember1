@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhone } from '@/lib/auth-server';
 import { createPhoneSigninChallenge, getPhoneCodeTtlMinutes } from '@/lib/auth-challenges';
 import { findUserByPhone } from '@/lib/auth-users';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/sms';
 
 export async function POST(request: NextRequest) {
   try {

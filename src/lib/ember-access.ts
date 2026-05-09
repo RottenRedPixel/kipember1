@@ -70,10 +70,10 @@ async function isAcceptedFriend(userId: string, otherUserId: string) {
 
 export async function getEmberAccessType(
   userId: string,
-  imageId: string
+  emberId: string
 ): Promise<EmberAccessType | null> {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     select: {
       ownerId: true,
       shareToNetwork: true,
@@ -85,36 +85,36 @@ export async function getEmberAccessType(
     },
   });
 
-  if (!image) {
+  if (!ember) {
     return null;
   }
 
-  if (image.ownerId === userId) {
+  if (ember.ownerId === userId) {
     return 'owner';
   }
 
-  if (image.emberContributors.length > 0) {
+  if (ember.emberContributors.length > 0) {
     return 'contributor';
   }
 
-  if (!image.shareToNetwork) {
+  if (!ember.shareToNetwork) {
     return null;
   }
 
-  return (await isAcceptedFriend(userId, image.ownerId)) ? 'network' : null;
+  return (await isAcceptedFriend(userId, ember.ownerId)) ? 'network' : null;
 }
 
-export async function ensureEmberOwnerAccess(userId: string, imageId: string) {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+export async function ensureEmberOwnerAccess(userId: string, emberId: string) {
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     select: { id: true, ownerId: true },
   });
 
-  if (!image || image.ownerId !== userId) {
+  if (!ember || ember.ownerId !== userId) {
     return null;
   }
 
-  return image;
+  return ember;
 }
 
 /**
@@ -125,7 +125,7 @@ export async function ensureOwnedContributorAccess(userId: string, emberContribu
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { id: emberContributorId },
     include: {
-      image: {
+      ember: {
         select: {
           id: true,
           ownerId: true,
@@ -143,7 +143,7 @@ export async function ensureOwnedContributorAccess(userId: string, emberContribu
     },
   });
 
-  if (!emberContributor || emberContributor.image.ownerId !== userId) {
+  if (!emberContributor || emberContributor.ember.ownerId !== userId) {
     return null;
   }
 
@@ -154,7 +154,7 @@ export async function ensureContributorRemovalAccess(userId: string, emberContri
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { id: emberContributorId },
     include: {
-      image: {
+      ember: {
         select: {
           id: true,
           ownerId: true,
@@ -176,7 +176,7 @@ export async function ensureContributorRemovalAccess(userId: string, emberContri
     return null;
   }
 
-  const canManageAsOwner = emberContributor.image.ownerId === userId;
+  const canManageAsOwner = emberContributor.ember.ownerId === userId;
   const canRemoveSelf = emberContributor.userId === userId;
 
   if (!canManageAsOwner && !canRemoveSelf) {

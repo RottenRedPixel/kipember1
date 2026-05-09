@@ -27,26 +27,26 @@ export class VectorRetriever implements ContextRetriever {
   }
 
   /**
-   * Index content for an image
+   * Index content for an ember
    * Chunks content, generates embeddings, stores in vector DB
    */
-  async indexContent(imageId: string, content: ContextContent[]): Promise<void> {
+  async indexContent(emberId: string, content: ContextContent[]): Promise<void> {
     // TODO: Implement
     // 1. Chunk content into ~500 token segments
     // 2. Generate embeddings for each chunk
-    // 3. Store in Chroma with metadata (imageId, type, etc.)
-    console.log(`Would index ${content.length} items for image ${imageId}`);
+    // 3. Store in Chroma with metadata (emberId, type, etc.)
+    console.log(`Would index ${content.length} items for ember ${emberId}`);
   }
 
   /**
    * Retrieve relevant context using semantic search
    */
-  async retrieve(imageId: string, query: string, limit: number = 10): Promise<string> {
+  async retrieve(emberId: string, query: string, limit: number = 10): Promise<string> {
     // TODO: Implement
     // 1. Generate embedding for query
-    // 2. Search Chroma for similar chunks with imageId filter
+    // 2. Search Chroma for similar chunks with emberId filter
     // 3. Return top-k results concatenated
-    console.log(`Would search for "${query}" in image ${imageId}, limit ${limit}`);
+    console.log(`Would search for "${query}" in ember ${emberId}, limit ${limit}`);
     return '';
   }
 }
@@ -74,7 +74,7 @@ IMPLEMENTATION GUIDE:
 
 5. Metadata to store:
    {
-     imageId: string,
+     emberId: string,
      type: 'wiki' | 'response',
      contributorId?: string,
      questionType?: string,
@@ -83,7 +83,7 @@ IMPLEMENTATION GUIDE:
 6. Search with filter:
    collection.query({
      queryEmbeddings: [queryEmbedding],
-     where: { imageId: imageId },
+     where: { emberId: emberId },
      nResults: limit,
    });
 */

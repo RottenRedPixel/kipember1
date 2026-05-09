@@ -39,7 +39,10 @@ export async function GET(
 
     // 200 + meta-refresh so the Set-Cookie lands on mobile (cookies on
     // redirect responses are silently dropped by some mobile browsers)
-    const html = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/set-password"></head><body>Setting up your account...</body></html>`;
+    // After setting a password, /contribute/[token] detects the session and
+    // routes them into the full ContributorFlow instead of the guest shell.
+    const next = encodeURIComponent(`/contribute/${token}`);
+    const html = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=/set-password?next=${next}"></head><body>Setting up your account...</body></html>`;
     const response = new NextResponse(html, {
       status: 200,
       headers: { 'Content-Type': 'text/html' },

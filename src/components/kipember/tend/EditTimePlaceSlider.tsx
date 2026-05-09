@@ -80,12 +80,12 @@ type TimePlaceDetail = {
 
 export default function EditTimePlaceSlider({
   detail,
-  imageId,
+  emberId,
   refreshDetail,
   onStatus,
 }: {
   detail: TimePlaceDetail | null;
-  imageId: string | null;
+  emberId: string | null;
   refreshDetail: () => Promise<unknown>;
   onStatus?: (message: string) => void;
 }) {
@@ -157,7 +157,7 @@ export default function EditTimePlaceSlider({
 
   useEffect(() => {
     placePrefilledRef.current = false;
-  }, [imageId]);
+  }, [emberId]);
 
   useEffect(() => {
     if (!detail) return;
@@ -196,9 +196,9 @@ export default function EditTimePlaceSlider({
   }, [detail, placeResolution]);
 
   async function saveTimeDate(): Promise<boolean> {
-    if (!imageId || !timeDateValue) return false;
+    if (!emberId || !timeDateValue) return false;
     try {
-      const response = await fetch(`/api/images/${imageId}`, {
+      const response = await fetch(`/api/embers/${emberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ capturedAt: new Date(timeDateValue).toISOString() }),
@@ -214,7 +214,7 @@ export default function EditTimePlaceSlider({
   }
 
   async function saveLocation(): Promise<boolean> {
-    if (!imageId || !locationLabel.trim()) return false;
+    if (!emberId || !locationLabel.trim()) return false;
     try {
       const composedDetail = [locationAddress, locationCityStateZip, locationCountry]
         .map((s) => s.trim())
@@ -230,7 +230,7 @@ export default function EditTimePlaceSlider({
       if (!Number.isNaN(lat)) body.latitude = lat;
       if (!Number.isNaN(lng)) body.longitude = lng;
 
-      const response = await fetch(`/api/images/${imageId}/location-suggestions`, {
+      const response = await fetch(`/api/embers/${emberId}/location-suggestions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -242,7 +242,7 @@ export default function EditTimePlaceSlider({
         setSavedLocationCountry(locationCountry.trim());
         setSavedLocationLat(locationLatitude);
         setSavedLocationLng(locationLongitude);
-        clearPlaceResolutionCache(imageId);
+        clearPlaceResolutionCache(emberId);
         return true;
       }
       return false;

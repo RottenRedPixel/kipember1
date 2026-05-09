@@ -8,13 +8,13 @@ export async function POST(request: NextRequest) {
     const auth = await requireApiUser();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { imageId, phoneNumber, email, name, firstName, lastName } = await request.json();
+    const { emberId, phoneNumber, email, name, firstName, lastName } = await request.json();
 
-    const hasImageId = typeof imageId === 'string' && imageId.length > 0;
-    let image: { ownerId: string } | null = null;
+    const hasImageId = typeof emberId === 'string' && emberId.length > 0;
+    let ember: { ownerId: string } | null = null;
     if (hasImageId) {
-      image = await ensureEmberOwnerAccess(auth.user.id, imageId);
-      if (!image) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      ember = await ensureEmberOwnerAccess(auth.user.id, emberId);
+      if (!ember) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
     const normalizedPhone = normalizePhone(phoneNumber);
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       });
       return NextResponse.json({
         id: null,
-        imageId: null,
+        emberId: null,
         token: null,
         inviteSent: false,
         createdAt: user.createdAt,
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Check if already attached to this ember.
     const existing = await prisma.emberContributor.findUnique({
-      where: { userId_imageId: { userId: user.id, imageId } },
+      where: { userId_emberId: { userId: user.id, emberId } },
     });
     if (existing) {
       return NextResponse.json(
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     const emberContributor = await prisma.emberContributor.create({
-      data: { userId: user.id, imageId },
+      data: { userId: user.id, emberId },
       include: {
         user: {
           select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       id: emberContributor.id,
-      imageId: emberContributor.imageId,
+      emberId: emberContributor.emberId,
       token: emberContributor.token,
       inviteSent: emberContributor.inviteSent,
       createdAt: emberContributor.createdAt,
@@ -134,7 +134,7 @@ export async function DELETE(request: NextRequest) {
 
     const { contributor: emberContributor, removalMode } = removalAccess;
 
-    if (emberContributor.userId === emberContributor.image.ownerId) {
+    if (emberContributor.userId === emberContributor.ember.ownerId) {
       return NextResponse.json(
         { error: 'The Ember creator is automatically kept as a contributor' },
         { status: 400 }

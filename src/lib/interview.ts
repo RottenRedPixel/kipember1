@@ -1,6 +1,6 @@
 import { prisma } from './db';
 import { generateFollowUpQuestion } from './claude';
-import { sendSMS } from './twilio';
+import { sendSMS } from './sms';
 import {
   contributorChatSessionIdentity,
   emberSessionParticipantWhere,
@@ -48,7 +48,7 @@ export async function startConversation(emberContributorId: string): Promise<str
     where: { id: emberContributorId },
     include: {
       user: { select: { id: true, phoneNumber: true } },
-      image: true,
+      ember: true,
     },
   });
 
@@ -58,8 +58,8 @@ export async function startConversation(emberContributorId: string): Promise<str
   const participantInput = {
     id: emberContributor.id,
     userId: emberContributor.userId,
-    imageId: emberContributor.imageId,
-    image: { ownerId: emberContributor.image.ownerId },
+    emberId: emberContributor.emberId,
+    ember: { ownerId: emberContributor.ember.ownerId },
   };
   const identity = contributorChatSessionIdentity(participantInput);
   const session = await ensureEmberSession({
@@ -99,7 +99,7 @@ export async function handleIncomingMessage(
     orderBy: { createdAt: 'desc' },
     include: {
       user: { select: { id: true, phoneNumber: true } },
-      image: true,
+      ember: true,
     },
   });
 
@@ -110,8 +110,8 @@ export async function handleIncomingMessage(
   const participantInput = {
     id: emberContributor.id,
     userId: emberContributor.userId,
-    imageId: emberContributor.imageId,
-    image: { ownerId: emberContributor.image.ownerId },
+    emberId: emberContributor.emberId,
+    ember: { ownerId: emberContributor.ember.ownerId },
   };
   const identity = contributorChatSessionIdentity(participantInput);
   let session = await prisma.emberSession.findUnique({
@@ -181,7 +181,7 @@ export async function handleIncomingMessage(
     }));
 
     const followUp = await generateFollowUpQuestion(conversationHistory, structuredResponses, {
-      imageId: emberContributor.imageId,
+      emberId: emberContributor.emberId,
     });
 
     if (followUp) {
@@ -220,7 +220,7 @@ export async function handleIncomingMessage(
       }));
 
       const followUp = await generateFollowUpQuestion(conversationHistory, structuredResponses, {
-        imageId: emberContributor.imageId,
+        emberId: emberContributor.emberId,
       });
 
       if (followUp) {

@@ -49,7 +49,7 @@ type EmberSummary = BaseEmberSummary & {
   capturedAt: string | Date | null;
 };
 
-type ImageAttachment = {
+type EmberAttachment = {
   id: string;
   filename: string;
   mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
@@ -83,7 +83,7 @@ type CreateEmberResponse = {
   mediaType?: string;
   warning?: string | null;
   error?: string;
-  image?: EmberSummary;
+  ember?: EmberSummary;
 };
 
 type HomeEmberFlow = 'owner' | 'contributor' | null;
@@ -287,7 +287,7 @@ export default function HomeScreen({
   const [uploadError, setUploadError] = useState('');
   const [storedTheme, setStoredTheme] = useState<string | null>(null);
   const [hasConversationHistory, setHasConversationHistory] = useState(false);
-  const [attachments, setAttachments] = useState<ImageAttachment[]>([]);
+  const [attachments, setAttachments] = useState<EmberAttachment[]>([]);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [photoOpacity, setPhotoOpacity] = useState(1);
   const [photoFadeMs, setPhotoFadeMs] = useState(900);
@@ -638,7 +638,7 @@ export default function HomeScreen({
       return;
     }
 
-    void fetch(`/api/images/${selectedEmberId}?scope=play`)
+    void fetch(`/api/embers/${selectedEmberId}?scope=play`)
       .then(async (response) => {
         if (!response.ok) {
           return;
@@ -656,10 +656,10 @@ export default function HomeScreen({
       setAttachments([]);
       return;
     }
-    void fetch(`/api/images/${encodeURIComponent(selectedEmberId)}/attachments`, { cache: 'no-store' })
+    void fetch(`/api/embers/${encodeURIComponent(selectedEmberId)}/attachments`, { cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) return;
-        const payload = await r.json() as { attachments: ImageAttachment[] };
+        const payload = await r.json() as { attachments: EmberAttachment[] };
         setAttachments(payload.attachments ?? []);
       })
       .catch(() => undefined);
@@ -673,7 +673,7 @@ export default function HomeScreen({
 
     let cancelled = false;
 
-    void fetch(`/api/chat?imageId=${encodeURIComponent(selectedEmberId)}`, {
+    void fetch(`/api/chat?emberId=${encodeURIComponent(selectedEmberId)}`, {
       cache: 'no-store',
     })
       .then(async (response) => {
@@ -715,7 +715,7 @@ export default function HomeScreen({
       setShareToken(null);
       return;
     }
-    void fetch(`/api/images/${selectedEmberId}/share-token`, { method: 'POST' })
+    void fetch(`/api/embers/${selectedEmberId}/share-token`, { method: 'POST' })
       .then(async (res) => {
         const payload = await res.json().catch(() => null);
         if (typeof payload?.token === 'string') {
@@ -770,7 +770,7 @@ export default function HomeScreen({
       if (!response.ok || typeof payload?.id !== 'string') {
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
       }
-      const createdSummary = payload.image;
+      const createdSummary = payload.ember;
       if (createdSummary) {
         setEmbers((current) => [
           createdSummary,
@@ -1236,7 +1236,7 @@ export default function HomeScreen({
         <KipemberPlayOverlay
           key={`${selectedEmberId || 'empty'}:${selectedEmber?.wiki?.updatedAt || 'wiki'}:${selectedEmber?.snapshot?.script ? 'snapshot' : 'fallback'}`}
           closeHref={buildHomeHref({ m: null })}
-          imageId={selectedEmberId}
+          emberId={selectedEmberId}
           storyScript={selectedEmber?.snapshot?.script || null}
         />
       ) : null}
@@ -1277,7 +1277,7 @@ export default function HomeScreen({
         <KipemberWikiOverlay
           key={selectedEmberId || 'empty'}
           closeHref={buildHomeHref({ m: null })}
-          imageId={selectedEmberId}
+          emberId={selectedEmberId}
         />
       ) : null}
 

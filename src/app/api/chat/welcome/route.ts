@@ -12,9 +12,9 @@ import { getEmberAccessType } from '@/lib/ember';
 
 const COOKIE_NAME = 'kb-chat-browser';
 
-async function resolveParticipant(userId: string, imageId: string) {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+async function resolveParticipant(userId: string, emberId: string) {
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     select: {
       ownerId: true,
       emberContributors: {
@@ -24,10 +24,10 @@ async function resolveParticipant(userId: string, imageId: string) {
       },
     },
   });
-  if (!image) return null;
+  if (!ember) return null;
 
   const participantType: EmberParticipantType =
-    image.ownerId === userId ? 'owner' : image.emberContributors.length ? 'contributor' : 'guest';
+    ember.ownerId === userId ? 'owner' : ember.emberContributors.length ? 'contributor' : 'guest';
 
   return { participantType };
 }
@@ -38,25 +38,25 @@ export async function POST(request: NextRequest) {
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json().catch(() => null);
-    const imageId = typeof body?.imageId === 'string' ? body.imageId : '';
+    const emberId = typeof body?.emberId === 'string' ? body.emberId : '';
     const situation: 'first_open' | 'returning' =
       body?.situation === 'returning' ? 'returning' : 'first_open';
 
-    if (!imageId) {
-      return NextResponse.json({ error: 'imageId is required' }, { status: 400 });
+    if (!emberId) {
+      return NextResponse.json({ error: 'emberId is required' }, { status: 400 });
     }
 
-    const accessType = await getEmberAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, emberId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
-    const participant = await resolveParticipant(auth.user.id, imageId);
+    const participant = await resolveParticipant(auth.user.id, emberId);
     if (!participant) return NextResponse.json({ error: 'Image not found' }, { status: 404 });
 
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
 
     const session = await ensureEmberSession({
-      imageId,
+      emberId,
       sessionType: 'chat',
       participantType: participant.participantType,
       participantId: auth.user.id,
@@ -105,13 +105,13 @@ export async function POST(request: NextRequest) {
         where: { id: auth.user.id },
         select: { firstName: true },
       }),
-      prisma.image.count({ where: { ownerId: auth.user.id } }),
+      prisma.ember.count({ where: { ownerId: auth.user.id } }),
     ]);
     const userFirstName = userRecord?.firstName?.trim() || '';
     const isFirstEmber = ownedEmberCount <= 1;
 
     const welcome = await generateEmberChatReply({
-      imageId,
+      emberId,
       sessionId: session.id,
       role: participant.participantType,
       trigger: situation === 'returning' ? 'welcome_returning' : 'welcome_first_open',

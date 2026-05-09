@@ -11,7 +11,7 @@ export async function GET() {
   // across embers for display. Contributors are fetched via the direct User relation.
   const emberContributors = await prisma.emberContributor.findMany({
     where: {
-      image: { ownerId: auth.user.id },
+      ember: { ownerId: auth.user.id },
       // Exclude the owner's own contributor rows
       NOT: { userId: auth.user.id },
     },
@@ -29,7 +29,7 @@ export async function GET() {
           avatarFilename: true,
         },
       },
-      image: { select: { id: true, title: true, originalName: true } },
+      ember: { select: { id: true, title: true, originalName: true } },
       voiceCalls: { select: { id: true } },
       emberSession: {
         select: {
@@ -48,7 +48,7 @@ export async function GET() {
 
   for (const c of emberContributors) {
     const key = c.userId ?? c.id;
-    const emberTitle = c.image.title || c.image.originalName.replace(/\.[^.]+$/, '');
+    const emberTitle = c.ember.title || c.ember.originalName.replace(/\.[^.]+$/, '');
     if (seen.has(key)) {
       seen.get(key)!.emberTitles.push(emberTitle);
     } else {
@@ -83,7 +83,7 @@ export async function GET() {
   const contacts = Array.from(seen.values())
     .map((c) => ({
       id: c.id,
-      emberId: c.image.id,
+      emberId: c.ember.id,
       name: getUserDisplayName(c.user) || null,
       phoneNumber: c.user?.phoneNumber ?? null,
       email: c.user?.email ?? null,

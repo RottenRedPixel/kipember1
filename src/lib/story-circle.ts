@@ -26,7 +26,7 @@ export type StoryCircleEntry = {
 };
 
 export type StoryCircleData = {
-  image: {
+  ember: {
     id: string;
     filename: string;
     mediaType: 'IMAGE' | 'VIDEO' | 'AUDIO';
@@ -58,9 +58,9 @@ function normalizeStoryEntryText(value: string | null | undefined) {
   return value?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
 }
 
-export async function getStoryCircleForImage(imageId: string): Promise<StoryCircleData | null> {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+export async function getStoryCircleForImage(emberId: string): Promise<StoryCircleData | null> {
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     include: {
       emberContributors: {
         orderBy: { createdAt: 'asc' },
@@ -94,13 +94,13 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
     },
   });
 
-  if (!image) {
+  if (!ember) {
     return null;
   }
 
   const entries: StoryCircleInternalEntry[] = [];
 
-  image.emberContributors.forEach((ec, contributorIndex) => {
+  ember.emberContributors.forEach((ec, contributorIndex) => {
     const ecDisplayName = getUserDisplayName(ec.user) ?? ec.user?.email ?? ec.user?.phoneNumber ?? null;
     const contributorLabel = getContributorLabel(ecDisplayName, contributorIndex);
     const existingConversationKeys = new Set<string>();
@@ -202,15 +202,15 @@ export async function getStoryCircleForImage(imageId: string): Promise<StoryCirc
   });
 
   return {
-    image: {
-      id: image.id,
-      filename: image.filename,
-      mediaType: image.mediaType,
-      posterFilename: image.posterFilename,
-      originalName: image.originalName,
-      description: image.description,
+    ember: {
+      id: ember.id,
+      filename: ember.filename,
+      mediaType: ember.mediaType,
+      posterFilename: ember.posterFilename,
+      originalName: ember.originalName,
+      description: ember.description,
     },
-    contributorCount: image.emberContributors.length,
+    contributorCount: ember.emberContributors.length,
     entryCount: entries.length,
     entries: entries.map((entry) => ({
       id: entry.id,

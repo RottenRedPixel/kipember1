@@ -8,7 +8,7 @@ import { renderPromptTemplate } from '@/lib/control-plane';
  * overlay. This function takes the assembled memory context (title, photo
  * summary, wiki, contributor memories, voice-call data) and returns the
  * spoken script. The script is then stored on the `Snapshot` Prisma model
- * and rendered to audio by /api/images/[id]/snapshot-audio.
+ * and rendered to audio by /api/embers/[id]/snapshot-audio.
  */
 export async function generateSnapshotScript({
   title,

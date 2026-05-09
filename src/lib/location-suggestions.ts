@@ -894,15 +894,15 @@ function safeParseJson<T>(value: string | null | undefined, fallback: T): T {
 }
 
 // Idempotent: runs the geocode + Claude ranking once for an ember and writes
-// the result to ImageAnalysis.metadataJson under suggestionsCache. Subsequent
+// the result to EmberAnalysis.metadataJson under suggestionsCache. Subsequent
 // calls (same lat/lng) early-return without burning Google or Claude tokens.
 //
 // Called from the ember-creation background work so the Place card on the
 // wiki opens with data already resolved instead of triggering the lookup
 // lazily on first wiki view.
-export async function cacheLocationSuggestionsForImage(imageId: string) {
-  const analysis = await prisma.imageAnalysis.findUnique({
-    where: { imageId },
+export async function cacheLocationSuggestionsForImage(emberId: string) {
+  const analysis = await prisma.emberAnalysis.findUnique({
+    where: { emberId },
     select: {
       metadataJson: true,
       metadataSummary: true,
@@ -944,8 +944,8 @@ export async function cacheLocationSuggestionsForImage(imageId: string) {
     },
   });
 
-  await prisma.imageAnalysis.update({
-    where: { imageId },
+  await prisma.emberAnalysis.update({
+    where: { emberId },
     data: {
       metadataJson: mergeLocationSuggestionsCache({
         metadataJson: analysis.metadataJson,
