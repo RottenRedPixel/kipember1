@@ -2839,7 +2839,7 @@ export default function KipemberWikiContent({
                       })}
                     />
                     <span className="text-white text-sm font-medium flex-1 min-w-0 truncate">
-                      {contributorName}
+                      {contributorName.length > 15 ? contributorName.slice(0, 15).trimEnd() + '…' : contributorName}
                       <span className="font-normal ml-1 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>(<span style={{ color: totalContributions > 0 ? '#22c55e' : 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{totalContributions}</span>)</span>
                     </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -2895,7 +2895,7 @@ export default function KipemberWikiContent({
                     })}
                   />
                   <span className="text-white/60 text-sm flex-1 min-w-0 truncate">
-                    {contributor.name || contributor.phoneNumber || 'Pending'}
+                    {((n) => n.length > 15 ? n.slice(0, 15).trimEnd() + '…' : n)(contributor.name || contributor.phoneNumber || 'Pending')}
                     <span className="font-normal ml-1 text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>(<span style={{ color: pendingTotal > 0 ? '#22c55e' : 'rgba(255,255,255,0.2)', fontWeight: 600 }}>{pendingTotal}</span>)</span>
                   </span>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
