@@ -8,6 +8,8 @@ import {
 } from '@/lib/ember';
 import { getAvatarUrl } from '@/lib/avatar';
 import { getHomeActivity } from '@/lib/home-activity';
+import { getEmberChecklist } from '@/lib/home-checklist';
+import type { ChecklistItem } from '@/lib/home-checklist';
 
 export default async function HomePage({
   searchParams,
@@ -41,11 +43,12 @@ export default async function HomePage({
     redirect(query ? `/ember/${legacyId}?${query}` : `/ember/${legacyId}`);
   }
 
-  const [initialEmbers, initialAvatarUrl, initialTotalContributors, initialHomeActivity] = await Promise.all([
+  const [initialEmbers, initialAvatarUrl, initialTotalContributors, initialHomeActivity, initialChecklist] = await Promise.all([
     getAccessibleEmbersForUser(auth.user.id),
     getAvatarUrl(auth.user.id),
     getTotalContributorsForUser(auth.user.id),
     getHomeActivity(auth.user.id),
+    getEmberChecklist(auth.user.id),
   ]);
 
   return (
@@ -56,6 +59,7 @@ export default async function HomePage({
         initialAvatarUrl={initialAvatarUrl}
         initialTotalContributors={initialTotalContributors}
         initialHomeActivity={initialHomeActivity}
+        initialChecklist={initialChecklist}
         hasPassword={!!auth.user.passwordHash}
       />
     </Suspense>

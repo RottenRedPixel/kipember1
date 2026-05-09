@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Activity, ChevronRight, Star } from 'lucide-react';
+import { Activity, ClipboardList, ChevronRight, Star } from 'lucide-react';
 import AppHeader from '@/components/kipember/AppHeader';
 import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
@@ -212,12 +212,22 @@ type HomeActivityItemProp = {
   faces?: Array<{ key: string; name: string; initials: string; color: string; avatarUrl: string | null }>;
 };
 
+type ChecklistItemProp = {
+  emberId: string;
+  emberTitle: string | null;
+  thumb: { mediaType: string; filename: string; posterFilename: string | null };
+  slug: string;
+  label: string;
+  deepLink: string;
+};
+
 export default function UserHomeScreen({
   initialProfile,
   initialEmbers,
   initialAvatarUrl,
   initialTotalContributors,
   initialHomeActivity,
+  initialChecklist,
   hasPassword = true,
 }: {
   initialProfile: { firstName: string | null; lastName: string | null; email: string | null } | null;
@@ -234,7 +244,9 @@ export default function UserHomeScreen({
     contributions: { items: HomeActivityItemProp[] };
     wikiUpdates:   { items: HomeActivityItemProp[] };
     guestViews:    { items: HomeActivityItemProp[] };
+    calls:         { items: HomeActivityItemProp[] };
   };
+  initialChecklist?: ChecklistItemProp[];
 }) {
   const totalEmbers = initialEmbers?.filter((ember) => ember.accessType === 'owner').length ?? 0;
   const totalContributors = initialTotalContributors ?? 0;
@@ -244,6 +256,7 @@ export default function UserHomeScreen({
   const [createFile, setCreateFile] = useState<File | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const [dismissedActivity, setDismissedActivity] = useState<Set<string>>(new Set());
+  const [dismissedChecklist, setDismissedChecklist] = useState<Set<string>>(new Set());
 
   // Account modal — clicking the avatar appends ?m=account to the
   // current URL so the overlay opens on top of /home (matching the
@@ -453,6 +466,71 @@ export default function UserHomeScreen({
                           {item.kind === 'contributions' && item.faces && item.faces.length > 0 && (
                             <Facepile people={item.faces} size={36} overlap={11} />
                           )}
+                        </Link>
+                      </SwipeDismiss>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* d) Your Checklist */}
+        {(() => {
+          const allItems = initialChecklist ?? [];
+          const visible = allItems.filter((item) => !dismissedChecklist.has(`${item.slug}:${item.emberId}`));
+          const displayed = visible.slice(0, 4);
+          const hasMore = visible.length > 4;
+          if (allItems.length === 0) return null;
+          return (
+            <div className="mt-5">
+              <div className="flex items-center gap-2 mb-3">
+                <ClipboardList size={18} strokeWidth={2} color="white" />
+                <p className="text-base font-bold text-white">Your Checklist</p>
+                {hasMore ? (
+                  <Link href="/embers" className="ml-auto text-xs font-medium can-hover" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    View all →
+                  </Link>
+                ) : null}
+              </div>
+              {visible.length === 0 ? (
+                <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>All embers are up to date.</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {displayed.map((item) => {
+                    const dismissKey = `${item.slug}:${item.emberId}`;
+                    return (
+                      <SwipeDismiss
+                        key={dismissKey}
+                        onDismiss={() => setDismissedChecklist((p) => new Set([...p, dismissKey]))}
+                      >
+                        <Link
+                          href={item.deepLink}
+                          draggable={false}
+                          className="flex items-center gap-3 px-3 rounded-2xl can-hover-card"
+                          style={{ height: 72, background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                        >
+                          <div className="flex-shrink-0 rounded-xl overflow-hidden" style={{ width: 48, height: 48, background: 'linear-gradient(135deg, #d97706 0%, #92400e 100%)' }}>
+                            <img
+                              src={getPreviewMediaUrl({
+                                mediaType: item.thumb.mediaType as EmberMediaType,
+                                filename: item.thumb.filename,
+                                posterFilename: item.thumb.posterFilename,
+                              })}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                              {item.label}
+                            </p>
+                            <p className="text-xs leading-snug mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                              {item.emberTitle || 'Untitled'}
+                            </p>
+                          </div>
+                          <ChevronRight size={16} color="rgba(255,255,255,0.25)" />
                         </Link>
                       </SwipeDismiss>
                     );
