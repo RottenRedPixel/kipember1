@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleIncomingMessage } from '@/lib/interview';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/sms';
 
 // Handle both GET and POST for voip.ms compatibility
 export async function GET(request: NextRequest) {

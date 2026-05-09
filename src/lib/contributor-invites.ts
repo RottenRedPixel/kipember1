@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { getAppBaseUrl } from '@/lib/app-url';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/sms';
 
 const BASE_URL = getAppBaseUrl();
 

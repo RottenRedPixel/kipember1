@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhone } from '@/lib/auth-server';
 import { getRequestBaseUrl } from '@/lib/app-url';
 import { createPasswordResetChallenge, getPasswordResetTtlMinutes } from '@/lib/auth-challenges';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/sms';
 import { prisma } from '@/lib/db';
 
 function formatPhone(phoneNumber: string): string {

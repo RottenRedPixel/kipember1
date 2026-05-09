@@ -82,4 +82,4 @@ export function validateWebhookRequest(): boolean {
   return true;
 }
 
-export { voipmsPhoneNumber as twilioPhoneNumber };
+export { voipmsPhoneNumber };

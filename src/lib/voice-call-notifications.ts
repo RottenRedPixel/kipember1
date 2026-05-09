@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/sms';
 import { sendEmail, isEmailConfigured } from '@/lib/email';
 import { getAppBaseUrl } from '@/lib/app-url';
 import { getEmberTitle } from '@/lib/ember-title';

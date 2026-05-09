@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { buildContributorInviteUrl } from '@/lib/contributor-invites';
-import { sendSMS } from '@/lib/twilio';
+import { sendSMS } from '@/lib/sms';
 
 function formatPhoneForSms(phoneNumber: string): string {
   if (phoneNumber.startsWith('+')) return phoneNumber;
