@@ -170,7 +170,6 @@ export default function KipemberStoriesOverlay({
     audio.addEventListener('ended', () => { setPlaybackState('paused'); setDone(true); });
     audio.addEventListener('error', () => {
       setPlaybackState('paused');
-      setError('Audio could not be played on this device.');
     });
 
     audioRef.current = audio;
