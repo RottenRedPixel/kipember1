@@ -40,7 +40,9 @@ export async function POST(request: NextRequest) {
       const ttl = getPasswordResetTtlMinutes();
       const message = `Reset your Ember password: ${resetUrl} (expires in ${ttl} min)`;
 
-      await sendSMS(formatPhone(normalizedPhone), message);
+      await sendSMS(formatPhone(normalizedPhone), message).catch((err) => {
+        console.error('Forgot password SMS send failed:', err);
+      });
     }
 
     return NextResponse.json({
