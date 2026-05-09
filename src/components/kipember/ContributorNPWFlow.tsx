@@ -902,22 +902,24 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
           />
         ) : null}
 
-        <EmberModalShell
-          isOpen={emberModalOpen}
-          isExpanded={emberModalExpanded}
-          openHref={openHref}
-          closeHref={closeHref}
-          expandHref={expandHref}
-          collapseHref={collapseHref}
-          surface={emberModalSurface}
-          tabs={[
-            { label: 'Chat', surface: 'chats', href: chatTabHref },
-            { label: 'Voice', surface: 'voice', href: voiceTabHref },
-            { label: 'Call', surface: 'calls', href: callTabHref },
-          ]}
-        >
-          <ContributorWorkflow token={token} phoneNumber={phoneNumber} surface={emberModalSurface} />
-        </EmberModalShell>
+        {modal !== 'stories' ? (
+          <EmberModalShell
+            isOpen={emberModalOpen}
+            isExpanded={emberModalExpanded}
+            openHref={openHref}
+            closeHref={closeHref}
+            expandHref={expandHref}
+            collapseHref={collapseHref}
+            surface={emberModalSurface}
+            tabs={[
+              { label: 'Chat', surface: 'chats', href: chatTabHref },
+              { label: 'Voice', surface: 'voice', href: voiceTabHref },
+              { label: 'Call', surface: 'calls', href: callTabHref },
+            ]}
+          >
+            <ContributorWorkflow token={token} phoneNumber={phoneNumber} surface={emberModalSurface} />
+          </EmberModalShell>
+        ) : null}
       </div>
     </div>
   );

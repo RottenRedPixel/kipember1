@@ -552,21 +552,23 @@ export default function GuestEmberScreen({
           />
         ) : null}
 
-        <EmberModalShell
-          isOpen={emberModalOpen}
-          isExpanded={emberModalExpanded}
-          openHref={openHref}
-          closeHref={closeHref}
-          expandHref={expandHref}
-          collapseHref={collapseHref}
-          surface={emberModalSurface}
-          tabs={[
-            { label: 'Chat', surface: 'chats', href: chatTabHref },
-            { label: 'Voice', surface: 'voice', href: voiceTabHref },
-          ]}
-        >
-          <GuestFlow token={token} emberModalSurface={emberModalSurface} chatApiPath={chatApiPath} />
-        </EmberModalShell>
+        {modal !== 'stories' ? (
+          <EmberModalShell
+            isOpen={emberModalOpen}
+            isExpanded={emberModalExpanded}
+            openHref={openHref}
+            closeHref={closeHref}
+            expandHref={expandHref}
+            collapseHref={collapseHref}
+            surface={emberModalSurface}
+            tabs={[
+              { label: 'Chat', surface: 'chats', href: chatTabHref },
+              { label: 'Voice', surface: 'voice', href: voiceTabHref },
+            ]}
+          >
+            <GuestFlow token={token} emberModalSurface={emberModalSurface} chatApiPath={chatApiPath} />
+          </EmberModalShell>
+        ) : null}
       </div>
     </div>
   );
