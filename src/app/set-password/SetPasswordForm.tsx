@@ -9,10 +9,12 @@ export default function SetPasswordForm({
   firstName,
   lastName,
   phoneNumber,
+  next,
 }: {
   firstName: string;
   lastName: string;
   phoneNumber: string;
+  next?: string;
 }) {
   const router = useRouter();
   const [password, setPassword] = useState('');
@@ -37,7 +39,7 @@ export default function SetPasswordForm({
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create account');
       }
 
-      router.push('/home');
+      router.push(next ?? '/home');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create account');
