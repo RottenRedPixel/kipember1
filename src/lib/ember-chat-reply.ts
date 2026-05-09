@@ -100,7 +100,7 @@ export async function loadHistory(sessionId: string | undefined) {
     select: { role: true, content: true },
   });
   return rows
-    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content.trim())
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 }
 
