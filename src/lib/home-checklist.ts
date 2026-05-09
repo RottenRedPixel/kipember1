@@ -16,6 +16,7 @@ const STEP_META: Record<string, { label: string }> = {
   contributors:   { label: 'Invite a contributor' },
   'time-place':   { label: 'Set time & place' },
   'image-analysis': { label: 'Run image analysis' },
+  'tag-people':   { label: 'Tag people in your ember' },
 };
 
 export async function getEmberChecklist(userId: string): Promise<ChecklistItem[]> {
@@ -36,6 +37,7 @@ export async function getEmberChecklist(userId: string): Promise<ChecklistItem[]
         select: { id: true },
         take: 1,
       },
+      tags: { select: { id: true }, take: 1 },
     },
   });
 
@@ -59,6 +61,7 @@ export async function getEmberChecklist(userId: string): Promise<ChecklistItem[]
     if (ember.emberContributors.length === 0 && !ember.noContributors) push('contributors');
     if (!ember.analysis?.capturedAt && !ember.analysis?.latitude) push('time-place');
     if (ember.analysis?.status && ember.analysis.status !== 'ready') push('image-analysis');
+    if (ember.tags.length === 0) push('tag-people');
   }
 
   return items;
