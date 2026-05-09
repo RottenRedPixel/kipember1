@@ -9,6 +9,7 @@ import { getUserDisplayName } from '@/lib/user-name';
 export default async function MyEmbersPage() {
   const auth = await getCurrentAuth();
   if (!auth) redirect('/signin');
+  if (!auth.user.passwordHash) redirect('/signup');
 
   const [initialEmbers, avatarUrl] = await Promise.all([
     getAccessibleEmbersForUser(auth.user.id),
@@ -29,6 +30,7 @@ export default async function MyEmbersPage() {
         initialEmbers={initialEmbers}
         avatarUrl={avatarUrl}
         userInitials={userInitials}
+        hasPassword={!!auth.user.passwordHash}
       />
     </Suspense>
   );

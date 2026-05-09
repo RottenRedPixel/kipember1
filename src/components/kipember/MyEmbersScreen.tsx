@@ -31,10 +31,12 @@ export default function MyEmbersScreen({
   initialEmbers = [],
   avatarUrl,
   userInitials,
+  hasPassword = true,
 }: {
   initialEmbers?: EmberSummary[];
   avatarUrl?: string | null;
   userInitials?: string;
+  hasPassword?: boolean;
 }) {
   const searchParams = useSearchParams();
   const modal = searchParams.get('m');
@@ -107,6 +109,7 @@ export default function MyEmbersScreen({
         file={createFile}
         avatarUrl={avatarUrl}
         userInitials={userInitials}
+        hasPassword={hasPassword}
         onCancel={() => setCreateFile(null)}
       />
     );
@@ -114,7 +117,7 @@ export default function MyEmbersScreen({
 
   return (
     <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
-      <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref={accountOpenHref} />
+      <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref={accountOpenHref} hasPassword={hasPassword} />
       <input
         ref={fileInputRef}
         type="file"
