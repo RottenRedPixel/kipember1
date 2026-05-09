@@ -195,7 +195,7 @@ export type KipemberWikiDetail = {
   canManage?: boolean;
   createdAt: string;
   // Per-ember privacy / sharing flags. Surfaced by the wiki's Control
-  // group as inline toggles — flipping either calls PATCH /api/images
+  // group as inline toggles — flipping either calls PATCH /api/embers
   // immediately and the parent refreshes detail.
   shareToNetwork?: boolean;
   keepPrivate?: boolean;

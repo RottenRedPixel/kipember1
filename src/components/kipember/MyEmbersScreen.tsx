@@ -63,7 +63,7 @@ export default function MyEmbersScreen({
 
   useEffect(() => {
     if (initialEmbers.length > 0) return;
-    void fetch('/api/images')
+    void fetch('/api/embers')
       .then(async (res) => {
         if (!res.ok) return;
         setEmbers((await res.json()) as EmberSummary[]);
