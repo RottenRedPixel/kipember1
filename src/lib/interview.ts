@@ -1,6 +1,6 @@
 import { prisma } from './db';
 import { generateFollowUpQuestion } from './claude';
-import { sendSMS } from './twilio';
+import { sendSMS } from './sms';
 import {
   contributorChatSessionIdentity,
   emberSessionParticipantWhere,
