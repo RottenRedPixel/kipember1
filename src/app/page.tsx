@@ -44,14 +44,17 @@ export default async function LandingPage() {
         ) : (
           <div className="flex flex-col items-center gap-4">
             <Link
-              href="/signup"
+              href="/about"
               className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white transition-opacity hover:opacity-80 btn-primary"
               style={{ background: '#f97316', minHeight: 44 }}
             >
-              Sign Up
+              Learn More
             </Link>
             <p className="text-center text-white/60 text-sm">
-              Already have an account?{' '}
+              <Link href="/signup" className="text-white font-medium hover:opacity-70 transition-opacity">
+                Sign Up
+              </Link>
+              {' '}or{' '}
               <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
                 Login
               </Link>
