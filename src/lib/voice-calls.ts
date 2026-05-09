@@ -390,7 +390,9 @@ async function ensureCallEmberSession({
     sessionType: 'call',
     ...participant,
     userId: participant.participantType === 'owner' ? contributor.userId : null,
-    emberContributorId: contributor.id,
+    // Don't set emberContributorId — it has a global @unique on EmberSession and
+    // the contributor's chat session already holds that slot. Call sessions are
+    // reachable via VoiceCall.emberSessionId instead.
     status: 'active',
     currentStep: 'context',
   });
