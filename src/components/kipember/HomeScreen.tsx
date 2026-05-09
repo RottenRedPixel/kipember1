@@ -1253,7 +1253,7 @@ export default function HomeScreen({
         />
       ) : null}
 
-      {!firstEmber ? (
+      {!firstEmber && modal !== 'stories' ? (
         <EmberModalShell
           isOpen={emberModalOpen}
           isExpanded={emberModalExpanded}

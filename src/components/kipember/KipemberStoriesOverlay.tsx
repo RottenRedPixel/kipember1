@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Heart, MapPinned, ScanEye, Smile, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 
 
 type KipemberStoriesOverlayProps = {
@@ -60,6 +61,8 @@ export default function KipemberStoriesOverlay({
 }: KipemberStoriesOverlayProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
   const prepareAttemptedRef = useRef(false);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [error, setError] = useState('');
@@ -83,6 +86,12 @@ export default function KipemberStoriesOverlay({
     if (audioUrlRef.current) {
       URL.revokeObjectURL(audioUrlRef.current);
       audioUrlRef.current = null;
+    }
+
+    analyserRef.current = null;
+    if (audioCtxRef.current) {
+      void audioCtxRef.current.close().catch(() => undefined);
+      audioCtxRef.current = null;
     }
   }, []);
 
@@ -169,6 +178,25 @@ export default function KipemberStoriesOverlay({
     audioRef.current = audio;
     audioUrlRef.current = audioUrl;
 
+    try {
+      const AudioCtor: typeof AudioContext | undefined =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtor) {
+        const ctx = new AudioCtor();
+        const source = ctx.createMediaElementSource(audio);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        source.connect(analyser);
+        analyser.connect(ctx.destination);
+        audioCtxRef.current = ctx;
+        analyserRef.current = analyser;
+      }
+    } catch {
+      // Web Audio not available — visualizer won't show but playback still works
+    }
+
     return audio;
   }, [fetchAudioBlob]);
 
@@ -233,26 +261,34 @@ export default function KipemberStoriesOverlay({
     void startPlayback();
   }, [playbackState, startPlayback]);
 
+  const isPlaying = playbackState === 'playing';
+
   return (
     <>
       <Link href={closeHref} className="fixed inset-0" style={{ zIndex: 29 }} aria-label="Close" />
-      <div className="absolute left-0 right-0 z-30 flex flex-col items-center px-4 gap-3" style={{ bottom: 88 }}>
-        <div className="w-full max-w-sm text-center px-2" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}>
+      <div className="absolute left-0 right-0 z-30 flex flex-col items-center px-4 gap-3" style={{ bottom: 24 }}>
+        <div className="w-full max-w-md text-center px-2">
           <p
             className="font-medium leading-snug w-full truncate"
-            style={{ fontSize: '1.3rem', color: playbackState === 'playing' && !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
+            style={{
+              fontSize: '1.43rem',
+              color: isPlaying && !fading ? '#ffffff' : 'transparent',
+              textShadow: isPlaying ? '0 1px 8px rgba(0,0,0,0.9)' : 'none',
+              transition: 'color 0.8s ease',
+            }}
           >
-            {storyLines[lineIndex] ?? ' '}
+            {storyLines[lineIndex] ?? ' '}
           </p>
           <p
             className="font-medium leading-snug w-full truncate"
             style={{
-              fontSize: '1.3rem',
-              color: playbackState === 'playing' && !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent',
+              fontSize: '1.43rem',
+              color: isPlaying && !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent',
+              textShadow: isPlaying ? '0 1px 8px rgba(0,0,0,0.9)' : 'none',
               transition: 'color 0.8s ease',
             }}
           >
-            {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
+            {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
           </p>
         </div>
 
@@ -276,7 +312,7 @@ export default function KipemberStoriesOverlay({
                   style={{
                     width: 42,
                     height: 42,
-                    top: 4,
+                    top: 7,
                     left: [
                       '4px',
                       'calc(29px + (100% - 100px) / 6)',
@@ -312,7 +348,7 @@ export default function KipemberStoriesOverlay({
                         }
                       }
                     }}
-                    className="relative flex items-center justify-center py-[16px] cursor-pointer"
+                    className="relative flex items-center justify-center py-[18px] cursor-pointer"
                   >
                     <Icon
                       size={18}
@@ -323,9 +359,18 @@ export default function KipemberStoriesOverlay({
                   </button>
                 ))}
               </div>
-              <p className="w-full text-center text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                {selectedBadge === 4 && playbackState === 'loading' ? 'preparing audio…' : BADGES[selectedBadge].label}
-              </p>
+              {selectedBadge === 4 && playbackState === 'playing' ? (
+                <MicLevelMeter
+                  analyser={analyserRef.current}
+                  color="#f97316"
+                  bars={22}
+                  className="w-[70%] mx-auto h-5"
+                />
+              ) : (
+                <p className="w-full text-center text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  {selectedBadge === 4 && playbackState === 'loading' ? 'preparing audio…' : BADGES[selectedBadge].label}
+                </p>
+              )}
               {error ? (
                 <p className="w-full text-center text-xs" style={{ color: 'rgba(255,100,100,0.8)' }}>
                   {error}
