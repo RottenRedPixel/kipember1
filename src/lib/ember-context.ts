@@ -33,7 +33,7 @@ export type EmberContext = {
    * Extra story / Place), with attribution. Empty when no claims exist.
    */
   claims: string;
-  /** The wiki markdown as-stored in image.wiki.content. */
+  /** The wiki markdown as-stored in ember.wiki.content. */
   wikiRaw: string;
   /**
    * The wiki Claude (and any other surface) should actually read. This is
@@ -219,9 +219,9 @@ function composeMergedWiki({
   return sections.join('\n\n');
 }
 
-export async function loadEmberContext(imageId: string): Promise<EmberContext> {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+export async function loadEmberContext(emberId: string): Promise<EmberContext> {
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     select: {
       title: true,
       originalName: true,
@@ -262,27 +262,27 @@ export async function loadEmberContext(imageId: string): Promise<EmberContext> {
     },
   });
 
-  if (!image) return EMPTY_CONTEXT;
+  if (!ember) return EMPTY_CONTEXT;
 
-  const capturedAt = image.analysis?.capturedAt ? image.analysis.capturedAt.toISOString() : '';
+  const capturedAt = ember.analysis?.capturedAt ? ember.analysis.capturedAt.toISOString() : '';
   const location = formatLocation(
-    image.analysis?.metadataJson,
-    image.analysis?.latitude ?? null,
-    image.analysis?.longitude ?? null
+    ember.analysis?.metadataJson,
+    ember.analysis?.latitude ?? null,
+    ember.analysis?.longitude ?? null
   );
-  const taggedPeople = formatTaggedPeople(image.tags);
-  const claims = formatClaims(image.memoryClaims);
-  const wikiRaw = image.wiki?.content ?? '';
+  const taggedPeople = formatTaggedPeople(ember.tags);
+  const claims = formatClaims(ember.memoryClaims);
+  const wikiRaw = ember.wiki?.content ?? '';
   const wiki = composeMergedWiki({ wikiRaw, location, taggedPeople, claims });
 
   return {
-    title: getEmberTitle(image),
-    snapshot: image.snapshot?.script ?? '',
+    title: getEmberTitle(ember),
+    snapshot: ember.snapshot?.script ?? '',
     capturedAt,
     location,
     taggedPeople,
-    visualScene: image.analysis?.summary ?? '',
-    emotionalContext: extractEmotionalContext(image.analysis?.sceneInsightsJson),
+    visualScene: ember.analysis?.summary ?? '',
+    emotionalContext: extractEmotionalContext(ember.analysis?.sceneInsightsJson),
     claims,
     wikiRaw,
     wiki,
@@ -291,9 +291,9 @@ export async function loadEmberContext(imageId: string): Promise<EmberContext> {
 
 // Re-export the active claim types so callers can compute interview
 // coverage without re-fetching the claims.
-export async function loadActiveClaimTypes(imageId: string): Promise<Set<string>> {
+export async function loadActiveClaimTypes(emberId: string): Promise<Set<string>> {
   const claims = await prisma.memoryClaim.findMany({
-    where: { imageId, status: 'active' },
+    where: { emberId, status: 'active' },
     select: { claimType: true },
   });
   return new Set(claims.map((c) => c.claimType));

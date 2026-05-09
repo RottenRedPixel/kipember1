@@ -17,13 +17,13 @@ type CroppedArea = {
 
 export default function FrameSlider({
   detail,
-  imageId,
+  emberId,
   coverPhotoUrl,
   refreshDetail,
   onStatus,
 }: {
   detail: FrameDetail | null;
-  imageId: string | null;
+  emberId: string | null;
   coverPhotoUrl: string | null;
   refreshDetail: () => Promise<unknown>;
   onStatus?: (message: string) => void;
@@ -63,7 +63,7 @@ export default function FrameSlider({
   }, []);
 
   async function handleSave() {
-    if (!imageId) return;
+    if (!emberId) return;
     if (!resetPending && !frameCroppedArea) return;
     setSaving(true);
     try {
@@ -77,7 +77,7 @@ export default function FrameSlider({
               height: parseFloat(frameCroppedArea!.height.toFixed(2)),
             },
           };
-      const response = await fetch(`/api/images/${imageId}`, {
+      const response = await fetch(`/api/embers/${emberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

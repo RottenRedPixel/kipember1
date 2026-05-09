@@ -229,7 +229,7 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
       emberContributor: {
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
-          image: {
+          ember: {
             include: {
               owner: true,
             },
@@ -274,8 +274,8 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
 
   const { emberContributor } = voiceCall;
   const ecUser = emberContributor.user;
-  const owner = emberContributor.image.owner;
-  const emberTitle = getEmberTitle(emberContributor.image);
+  const owner = emberContributor.ember.owner;
+  const emberTitle = getEmberTitle(emberContributor.ember);
   const ownerFirstName = getFirstName(owner.firstName, 'Someone');
   const contributorDisplayName =
     getUserDisplayName(ecUser)?.trim() || ecUser?.email?.trim() || ecUser?.phoneNumber?.trim() || 'there';

@@ -265,7 +265,7 @@ async function createConflictForClaim(
 
   const relatedClaims = await prisma.memoryClaim.findMany({
     where: {
-      imageId: claim.imageId,
+      emberId: claim.emberId,
       claimType: claim.claimType,
       subject: claim.subject,
       status: 'active',
@@ -312,7 +312,7 @@ async function createConflictForClaim(
   const conflict =
     (await prisma.memoryConflict.findFirst({
       where: {
-        imageId: claim.imageId,
+        emberId: claim.emberId,
         claimType: claim.claimType,
         subject: claim.subject,
         status: 'open',
@@ -320,7 +320,7 @@ async function createConflictForClaim(
     })) ||
     (await prisma.memoryConflict.create({
       data: {
-        imageId: claim.imageId,
+        emberId: claim.emberId,
         claimType: claim.claimType,
         subject: claim.subject,
         summary,
@@ -414,7 +414,7 @@ export async function reconcileEmberMessage(messageId: string) {
               },
             },
           },
-          image: {
+          ember: {
             include: {
               analysis: true,
             },
@@ -452,17 +452,17 @@ export async function reconcileEmberMessage(messageId: string) {
     source: message.source,
   };
 
-  const image = message.session.image;
+  const ember = message.session.ember;
   const systemPrompt = await renderPromptTemplate('x_housekeeping.memory_extract');
   const extractionContext = compactLines([
-    `EMBER TITLE\n${getEmberTitle(image)}`,
-    image.description ? `CAPTION\n${image.description}` : null,
-    image.analysis?.summary ? `IMAGE SUMMARY\n${image.analysis.summary}` : null,
-    image.analysis?.visualDescription
-      ? `VISUAL DESCRIPTION\n${image.analysis.visualDescription}`
+    `EMBER TITLE\n${getEmberTitle(ember)}`,
+    ember.description ? `CAPTION\n${ember.description}` : null,
+    ember.analysis?.summary ? `IMAGE SUMMARY\n${ember.analysis.summary}` : null,
+    ember.analysis?.visualDescription
+      ? `VISUAL DESCRIPTION\n${ember.analysis.visualDescription}`
       : null,
-    image.analysis?.sceneInsightsJson
-      ? `SCENE INSIGHTS JSON\n${image.analysis.sceneInsightsJson}`
+    ember.analysis?.sceneInsightsJson
+      ? `SCENE INSIGHTS JSON\n${ember.analysis.sceneInsightsJson}`
       : null,
     `CONTRIBUTOR\n${getSourceLabel(source)}`,
     `QUESTION TYPE\n${message.questionType}`,
@@ -508,7 +508,7 @@ export async function reconcileEmberMessage(messageId: string) {
     uniqueExtractedClaims.map((claim) =>
       prisma.memoryClaim.create({
         data: {
-          imageId: image.id,
+          emberId: ember.id,
           emberMessageId: message.id,
           emberContributorId: source.emberContributorId,
           userId: source.userId,
@@ -585,7 +585,7 @@ type ClassificationPromptKey =
 type ClassificationClaimType = 'why' | 'emotion' | 'extra_story' | 'place' | 'person';
 
 export type ClassificationContext = {
-  imageId: string;
+  emberId: string;
   sessionId: string;
   emberContributorId: string | null;
   userId: string | null;
@@ -611,8 +611,8 @@ async function runClassificationFromContext({
     return { claimsCreated: 0 };
   }
 
-  const image = await prisma.image.findUnique({
-    where: { id: context.imageId },
+  const ember = await prisma.ember.findUnique({
+    where: { id: context.emberId },
     include: {
       analysis: true,
       wiki: { select: { content: true } },
@@ -626,21 +626,21 @@ async function runClassificationFromContext({
     },
   });
 
-  if (!image) {
+  if (!ember) {
     return { claimsCreated: 0 };
   }
 
   const taggedPeople = Array.from(
     new Set(
-      image.tags
+      ember.tags
         .map((t) => (getUserDisplayName(t.user) || getUserDisplayName(t.emberContributor?.user) || t.label || '').trim())
         .filter(Boolean)
     )
   ).join(', ');
 
   const systemPrompt = await renderPromptTemplate(promptKey, '', {
-    title: getEmberTitle(image),
-    wiki: image.wiki?.content ?? '',
+    title: getEmberTitle(ember),
+    wiki: ember.wiki?.content ?? '',
     taggedPeople,
     contributorName: context.sourceLabel,
     question: context.question ?? '',
@@ -662,7 +662,7 @@ async function runClassificationFromContext({
     extracted.map((item) =>
       prisma.memoryClaim.create({
         data: {
-          imageId: context.imageId,
+          emberId: context.emberId,
           emberMessageId: context.emberMessageId,
           emberContributorId: context.emberContributorId,
           userId: context.userId,
@@ -717,7 +717,7 @@ async function runClassificationExtractor({
               },
             },
           },
-          image: { select: { id: true } },
+          ember: { select: { id: true } },
         },
       },
     },
@@ -743,7 +743,7 @@ async function runClassificationExtractor({
 
   return runClassificationFromContext({
     context: {
-      imageId: message.session.image.id,
+      emberId: message.session.ember.id,
       sessionId: message.sessionId,
       emberContributorId: message.session.emberContributorId,
       userId: message.session.userId,
@@ -869,15 +869,15 @@ export async function extractAllClaimsFromContent(
   );
 }
 
-export async function refreshMemoryReconciliationForImage(imageId: string) {
+export async function refreshMemoryReconciliationForImage(emberId: string) {
   await prisma.memoryConflict.deleteMany({
     where: {
-      imageId,
+      emberId,
     },
   });
   await prisma.memoryClaim.deleteMany({
     where: {
-      imageId,
+      emberId,
     },
   });
 
@@ -891,7 +891,7 @@ export async function refreshMemoryReconciliationForImage(imageId: string) {
         not: null,
       },
       session: {
-        imageId,
+        emberId,
       },
     },
     orderBy: {
@@ -908,7 +908,7 @@ export async function refreshMemoryReconciliationForImage(imageId: string) {
   for (const message of messages) {
     const result = await reconcileEmberMessageSafely(
       message.id,
-      `memory reconciliation refresh for ${imageId}`
+      `memory reconciliation refresh for ${emberId}`
     );
     claimsCreated += result.claimsCreated;
     conflictsCreated += result.conflictsCreated;
@@ -916,7 +916,7 @@ export async function refreshMemoryReconciliationForImage(imageId: string) {
 
   const openConflictCount = await prisma.memoryConflict.count({
     where: {
-      imageId,
+      emberId,
       status: 'open',
     },
   });

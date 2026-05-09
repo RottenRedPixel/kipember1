@@ -13,7 +13,7 @@ export async function POST(
     const emberContributor = await prisma.emberContributor.findUnique({
       where: { token },
       include: {
-        image: true,
+        ember: true,
       },
     });
 

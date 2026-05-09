@@ -8,7 +8,7 @@ type RecorderHandle = {
   stream: MediaStream;
 };
 
-export function useVoiceRecording(imageId: string) {
+export function useVoiceRecording(emberId: string) {
   const [messages, setMessages] = useState<VoiceMessage[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
@@ -26,7 +26,7 @@ export function useVoiceRecording(imageId: string) {
     async function loadHistory() {
       setIsLoadingHistory(true);
       try {
-        const res = await fetch(`/api/voice?imageId=${encodeURIComponent(imageId)}`, {
+        const res = await fetch(`/api/voice?emberId=${encodeURIComponent(emberId)}`, {
           cache: 'no-store',
         });
         if (!res.ok) {
@@ -58,7 +58,7 @@ export function useVoiceRecording(imageId: string) {
     return () => {
       cancelled = true;
     };
-  }, [imageId]);
+  }, [emberId]);
 
   // Auto-play newest assistant audio and drive the visualiser during playback.
   useEffect(() => {
@@ -208,7 +208,7 @@ export function useVoiceRecording(imageId: string) {
         type: blob.type || 'audio/webm',
       });
       const formData = new FormData();
-      formData.append('imageId', imageId);
+      formData.append('emberId', emberId);
       formData.append('audio', file);
       const res = await fetch('/api/voice', { method: 'POST', body: formData });
       const payload = await res.json().catch(() => null);

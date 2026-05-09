@@ -734,12 +734,12 @@ ${JSON.stringify(structuredMemory, null, 2)}`,
 export async function generateFollowUpQuestion(
   conversationHistory: { role: 'user' | 'assistant'; content: string }[],
   collectedResponses: { questionType: string; answer: string }[],
-  { imageId }: { imageId: string }
+  { emberId }: { emberId: string }
 ): Promise<string | null> {
   // Same merged-wiki context the chat / voice prompts get, so SMS can answer
   // and probe with the same picture of "what we know" as the rest of the
   // conversational surfaces.
-  const ctx = await loadEmberContext(imageId);
+  const ctx = await loadEmberContext(emberId);
 
   const systemPrompt = await renderPromptTemplate('ember_sms.style', '', {
     role: 'contributor',

@@ -21,7 +21,7 @@ export type EmberChatPromptKey =
   | 'ember_sms.style';
 
 export type EmberChatContext = {
-  imageId: string;
+  emberId: string;
   sessionId?: string;
   role: EmberChatRole;
   trigger: EmberChatTrigger;
@@ -62,10 +62,10 @@ function computeInterviewCoverage({
   };
 }
 
-export async function loadPromptVariables(imageId: string) {
+export async function loadPromptVariables(emberId: string) {
   const [context, claimTypes] = await Promise.all([
-    loadEmberContext(imageId),
-    loadActiveClaimTypes(imageId),
+    loadEmberContext(emberId),
+    loadActiveClaimTypes(emberId),
   ]);
   const coverage = computeInterviewCoverage({
     capturedAt: context.capturedAt,
@@ -158,7 +158,7 @@ export async function generateEmberChatReply(ctx: EmberChatContext): Promise<str
   // share the same /guest/[token] link. Owners and contributors get full
   // session history so multi-turn flows still work for them.
   const [vars, history] = await Promise.all([
-    loadPromptVariables(ctx.imageId),
+    loadPromptVariables(ctx.emberId),
     ctx.role === 'guest'
       ? loadCurrentUserMessage(ctx.sessionId)
       : loadHistory(ctx.sessionId),

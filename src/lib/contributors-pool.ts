@@ -59,13 +59,13 @@ export async function getUnifiedContributorsForUser(
   // the owner themselves (they own, not contribute).
   const rows = await prisma.emberContributor.findMany({
     where: {
-      image: { ownerId },
+      ember: { ownerId },
       NOT: { userId: ownerId },
     },
     orderBy: { createdAt: 'asc' },
     select: {
       id: true,
-      imageId: true,
+      emberId: true,
       inviteSent: true,
       userId: true,
       user: {
@@ -79,7 +79,7 @@ export async function getUnifiedContributorsForUser(
           avatarColor: true,
         },
       },
-      image: { select: { id: true, title: true, originalName: true } },
+      ember: { select: { id: true, title: true, originalName: true } },
     },
   });
 
@@ -91,8 +91,8 @@ export async function getUnifiedContributorsForUser(
     const userId = r.userId;
     emberContribIdToUserId.set(r.id, userId);
 
-    const title = r.image.title || r.image.originalName.replace(/\.[^.]+$/, '');
-    emberTitles.set(r.image.id, title);
+    const title = r.ember.title || r.ember.originalName.replace(/\.[^.]+$/, '');
+    emberTitles.set(r.ember.id, title);
 
     let entry = byUserId.get(userId);
     if (!entry) {
@@ -116,10 +116,10 @@ export async function getUnifiedContributorsForUser(
       byUserId.set(userId, entry);
     }
 
-    entry.embers.push({ id: r.image.id, title, contributorId: r.id });
+    entry.embers.push({ id: r.ember.id, title, contributorId: r.id });
     entry.emberCount += 1;
 
-    if (currentEmberId && r.imageId === currentEmberId) {
+    if (currentEmberId && r.emberId === currentEmberId) {
       entry.onThisEmber = true;
       entry.currentEmberContributorId = r.id;
       entry.inviteSent = r.inviteSent;
@@ -135,9 +135,9 @@ export async function getUnifiedContributorsForUser(
     if (allEmberContribIds.length > 0) tagFilters.push({ emberContributorId: { in: allEmberContribIds } });
     if (allUserIds.length > 0) tagFilters.push({ userId: { in: allUserIds } });
 
-    const tags = await prisma.imageTag.findMany({
+    const tags = await prisma.emberTag.findMany({
       where: {
-        image: { ownerId },
+        ember: { ownerId },
         leftPct: { not: null },
         topPct: { not: null },
         widthPct: { not: null },
@@ -148,12 +148,12 @@ export async function getUnifiedContributorsForUser(
         id: true,
         emberContributorId: true,
         userId: true,
-        imageId: true,
+        emberId: true,
         leftPct: true,
         topPct: true,
         widthPct: true,
         heightPct: true,
-        image: { select: { filename: true, mediaType: true, posterFilename: true } },
+        ember: { select: { filename: true, mediaType: true, posterFilename: true } },
       },
     });
 
@@ -168,17 +168,17 @@ export async function getUnifiedContributorsForUser(
       if (!entry) continue;
 
       const seen = seenTagPerUser.get(userId) ?? new Set<string>();
-      if (seen.has(t.imageId)) continue;
-      seen.add(t.imageId);
+      if (seen.has(t.emberId)) continue;
+      seen.add(t.emberId);
       seenTagPerUser.set(userId, seen);
 
       entry.taggedPhotos.push({
         tagId: t.id,
-        emberId: t.imageId,
-        emberTitle: emberTitles.get(t.imageId) ?? 'Ember',
-        filename: t.image.filename,
-        posterFilename: t.image.posterFilename,
-        mediaType: t.image.mediaType,
+        emberId: t.emberId,
+        emberTitle: emberTitles.get(t.emberId) ?? 'Ember',
+        filename: t.ember.filename,
+        posterFilename: t.ember.posterFilename,
+        mediaType: t.ember.mediaType,
         leftPct: t.leftPct ?? 0,
         topPct: t.topPct ?? 0,
         widthPct: t.widthPct ?? 0,

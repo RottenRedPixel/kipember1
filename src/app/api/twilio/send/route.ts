@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { imageId, contributorId } = await request.json();
+    const { emberId, contributorId } = await request.json();
 
     if (contributorId) {
       // Send to single contributor
@@ -31,16 +31,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, sent: 1 });
     }
 
-    if (imageId) {
-      const image = await ensureEmberOwnerAccess(auth.user.id, imageId);
-      if (!image) {
+    if (emberId) {
+      const ember = await ensureEmberOwnerAccess(auth.user.id, emberId);
+      if (!ember) {
         return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
       }
 
-      // Send to all ember-contributors who haven't been invited yet for this image
+      // Send to all ember-contributors who haven't been invited yet for this ember
       const emberContributors = await prisma.emberContributor.findMany({
         where: {
-          imageId,
+          emberId,
           inviteSent: false,
           user: {
             phoneNumber: {
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'imageId or contributorId is required' },
+      { error: 'emberId or contributorId is required' },
       { status: 400 }
     );
   } catch (error) {

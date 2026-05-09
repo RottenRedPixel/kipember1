@@ -181,10 +181,10 @@ const ENDED_REFRESH_WINDOW_MS = 90 * 1000;
 type CallSessionContributor = {
   /** EmberContributor.id (per-ember row). */
   id: string;
-  imageId: string;
+  emberId: string;
   /** The User account this contributor maps to. */
   userId: string;
-  image: {
+  ember: {
     ownerId: string;
   };
 };
@@ -386,7 +386,7 @@ async function ensureCallEmberSession({
   const participant = contributorParticipant(contributor);
 
   return ensureEmberSession({
-    imageId: contributor.imageId,
+    emberId: contributor.emberId,
     sessionType: 'call',
     ...participant,
     userId: participant.participantType === 'owner' ? contributor.userId : null,
@@ -506,7 +506,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
       emberContributor: {
         include: {
           user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
-          image: true,
+          ember: true,
         },
       },
     },
@@ -519,10 +519,10 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
   const session = await ensureCallEmberSession({
     contributor: {
       id: voiceCall.emberContributorId,
-      imageId: voiceCall.emberContributor.imageId,
+      emberId: voiceCall.emberContributor.emberId,
       userId: voiceCall.emberContributor.userId,
-      image: {
-        ownerId: voiceCall.emberContributor.image.ownerId,
+      ember: {
+        ownerId: voiceCall.emberContributor.ember.ownerId,
       },
     },
     emberSessionId: voiceCall.emberSessionId,
@@ -540,7 +540,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     contributorName: contributorLabel,
   });
   const extractedClips = await extractImportantVoiceCallClips({
-    imageTitle: getEmberTitle(voiceCall.emberContributor.image),
+    imageTitle: getEmberTitle(voiceCall.emberContributor.ember),
     contributorName: contributorLabel,
     transcript: voiceCall.transcript,
     segments: transcriptSegments,
@@ -580,7 +580,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
   if (userTurnsText) {
     await extractAllClaimsFromContent(
       {
-        imageId: voiceCall.emberContributor.imageId,
+        emberId: voiceCall.emberContributor.emberId,
         sessionId: session.id,
         emberContributorId: voiceCall.emberContributorId,
         userId: voiceCall.emberContributor.userId,
@@ -619,7 +619,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
   if (extractedClips.length > 0) {
     await prisma.voiceCallClip.createMany({
       data: extractedClips.map((clip) => ({
-        imageId: voiceCall.emberContributor.imageId,
+        emberId: voiceCall.emberContributor.emberId,
         emberContributorId: voiceCall.emberContributorId,
         voiceCallId: voiceCall.id,
         sortOrder: clip.sortOrder,
@@ -637,7 +637,7 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
 
   if (userTurnsText) {
     try {
-      await generateWikiForImage(voiceCall.emberContributor.imageId);
+      await generateWikiForImage(voiceCall.emberContributor.emberId);
     } catch (error) {
       console.error('Failed to auto-generate wiki after voice sync:', error);
     }
@@ -692,7 +692,7 @@ async function prepareVoiceCallContext(emberContributorId: string) {
     where: { id: emberContributorId },
     include: {
       user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
-      image: {
+      ember: {
         include: {
           owner: { select: { firstName: true, lastName: true } },
         },
@@ -708,7 +708,7 @@ async function prepareVoiceCallContext(emberContributorId: string) {
     throw new Error('Contributor not found');
   }
 
-  const { user, image } = emberContributor;
+  const { user, ember } = emberContributor;
 
   if (!user?.phoneNumber) {
     throw new Error('Contributor does not have a phone number for voice calls');
@@ -726,10 +726,10 @@ async function prepareVoiceCallContext(emberContributorId: string) {
   const session = await ensureCallEmberSession({
     contributor: {
       id: emberContributor.id,
-      imageId: emberContributor.imageId,
+      emberId: emberContributor.emberId,
       userId: emberContributor.userId,
-      image: {
-        ownerId: image.ownerId,
+      ember: {
+        ownerId: ember.ownerId,
       },
     },
   });
@@ -739,17 +739,17 @@ async function prepareVoiceCallContext(emberContributorId: string) {
       emberContributorId: emberContributor.id,
       emberSessionId: session.id,
     }),
-    loadEmberContext(emberContributor.imageId),
+    loadEmberContext(emberContributor.emberId),
   ]);
 
   const contributorName =
     getUserDisplayName(user)?.trim() || user?.email?.trim() || user?.phoneNumber?.trim() || 'Contributor';
-  const ownerName = getUserDisplayName(image.owner)?.trim() || 'Someone';
+  const ownerName = getUserDisplayName(ember.owner)?.trim() || 'Someone';
   const dynamicVariables = pickDynamicVariables({
     contributor_name: contributorName,
     owner_name: ownerName,
-    image_title: getEmberTitle(image),
-    image_description: image.description,
+    image_title: getEmberTitle(ember),
+    image_description: ember.description,
     prior_interview_count:
       priorMemoryContext.priorInterviewCount > 0
         ? String(priorMemoryContext.priorInterviewCount)
@@ -769,7 +769,7 @@ async function prepareVoiceCallContext(emberContributorId: string) {
   return {
     emberContributor,
     user,
-    image,
+    ember,
     session,
     dynamicVariables,
   };
@@ -798,7 +798,7 @@ export async function startVoiceCallForContributor({
     metadata: {
       emberContributorId: emberContributor.id,
       emberSessionId: session.id,
-      imageId: emberContributor.imageId,
+      emberId: emberContributor.emberId,
       initiatedBy,
     },
     dynamicVariables,
@@ -848,7 +848,7 @@ export async function startWebVoiceCallForContributor({
     metadata: {
       emberContributorId: emberContributor.id,
       emberSessionId: session.id,
-      imageId: emberContributor.imageId,
+      emberId: emberContributor.emberId,
       initiatedBy,
     },
     dynamicVariables,

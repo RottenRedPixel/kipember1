@@ -26,14 +26,14 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const HISTORY_LIMIT = 30;
 
 async function resolveUserVoiceParticipant({
-  imageId,
+  emberId,
   userId,
 }: {
-  imageId: string;
+  emberId: string;
   userId: string;
 }) {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     select: {
       ownerId: true,
       emberContributors: {
@@ -45,14 +45,14 @@ async function resolveUserVoiceParticipant({
   });
 
   const participantType: EmberParticipantType =
-    image?.ownerId === userId
+    ember?.ownerId === userId
       ? 'owner'
-      : image?.emberContributors.length
+      : ember?.emberContributors.length
         ? 'contributor'
         : 'guest';
 
   return {
-    imageId,
+    emberId,
     sessionType: 'voice' as const,
     participantType,
     participantId: userId,
@@ -61,14 +61,14 @@ async function resolveUserVoiceParticipant({
 
 async function ensureVoiceSession({
   browserId,
-  imageId,
+  emberId,
   userId,
 }: {
   browserId: string;
-  imageId: string;
+  emberId: string;
   userId: string;
 }) {
-  const participant = await resolveUserVoiceParticipant({ imageId, userId });
+  const participant = await resolveUserVoiceParticipant({ emberId, userId });
   return ensureEmberSession({
     ...participant,
     browserId,
@@ -105,26 +105,26 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const imageId =
-      typeof formData.get('imageId') === 'string' ? String(formData.get('imageId')) : '';
+    const emberId =
+      typeof formData.get('emberId') === 'string' ? String(formData.get('emberId')) : '';
     const audio = formData.get('audio');
 
-    if (!imageId || !(audio instanceof File)) {
+    if (!emberId || !(audio instanceof File)) {
       return NextResponse.json(
-        { error: 'imageId and audio are required' },
+        { error: 'emberId and audio are required' },
         { status: 400 }
       );
     }
 
-    const accessType = await getEmberAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, emberId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
     const userId = auth.user.id;
 
-    const participant = await resolveUserVoiceParticipant({ imageId, userId });
-    const session = await ensureVoiceSession({ browserId, imageId, userId });
+    const participant = await resolveUserVoiceParticipant({ emberId, userId });
+    const session = await ensureVoiceSession({ browserId, emberId, userId });
 
     let persistedAudio;
     try {
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
     });
 
     const replyText = await generateEmberVoiceReply({
-      imageId,
+      emberId,
       role: participant.participantType,
       trigger: 'mic_message',
       transcript,
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     if (transcript) {
       extractAllClaimsFromContent(
         {
-          imageId,
+          emberId,
           sessionId: session.id,
           emberContributorId: session.emberContributorId ?? null,
           userId,
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
           sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
         },
         'voice housekeeping'
-      ).then(() => generateWikiForImage(imageId)).catch((err) => {
+      ).then(() => generateWikiForImage(emberId)).catch((err) => {
         console.error('Voice housekeeping extraction error:', err);
       });
     }
@@ -236,14 +236,14 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const imageId = searchParams.get('imageId');
-    if (!imageId) return NextResponse.json({ error: 'imageId is required' }, { status: 400 });
+    const emberId = searchParams.get('emberId');
+    if (!emberId) return NextResponse.json({ error: 'emberId is required' }, { status: 400 });
 
-    const accessType = await getEmberAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, emberId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;
-    const participant = await resolveUserVoiceParticipant({ imageId, userId });
+    const participant = await resolveUserVoiceParticipant({ emberId, userId });
 
     const session = await prisma.emberSession.findUnique({
       where: emberSessionParticipantWhere(participant),

@@ -23,7 +23,7 @@ export async function POST(
     const emberContributor = await prisma.emberContributor.findUnique({
       where: { token },
       include: {
-        image: {
+        ember: {
           include: {
             owner: {
               select: {
@@ -36,12 +36,12 @@ export async function POST(
       },
     });
 
-    if (!emberContributor || !isGuestUserEmail(emberContributor.image.owner.email)) {
+    if (!emberContributor || !isGuestUserEmail(emberContributor.ember.owner.email)) {
       return NextResponse.json({ error: 'Guest memory not found' }, { status: 404 });
     }
 
     await prisma.user.update({
-      where: { id: emberContributor.image.owner.id },
+      where: { id: emberContributor.ember.owner.id },
       data: { phoneNumber: normalizedPhone },
     });
 

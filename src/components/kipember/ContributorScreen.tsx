@@ -44,7 +44,7 @@ type ContributorData = {
     phoneNumber: string | null;
     hasPassword: boolean;
   } | null;
-  image: {
+  ember: {
     id: string;
     filename: string;
     mediaType: 'IMAGE' | 'VIDEO';
@@ -538,14 +538,14 @@ export default function ContributorScreen({ token }: { token: string }) {
     );
   }
 
-  const title = getEmberTitle({ title: data.image.title, originalName: data.image.originalName });
-  const subtitle = data.image.createdAt
-    ? new Date(data.image.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const title = getEmberTitle({ title: data.ember.title, originalName: data.ember.originalName });
+  const subtitle = data.ember.createdAt
+    ? new Date(data.ember.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     : '';
   const mainUrl = getPreviewMediaUrl({
-    mediaType: data.image.mediaType,
-    filename: data.image.filename,
-    posterFilename: data.image.posterFilename,
+    mediaType: data.ember.mediaType,
+    filename: data.ember.filename,
+    posterFilename: data.ember.posterFilename,
   });
 
   const allMedia = [
@@ -826,7 +826,7 @@ export default function ContributorScreen({ token }: { token: string }) {
         {modal === 'play' ? (
           <KipemberPlayOverlay
             closeHref={buildHref({ m: null })}
-            imageId={data.image.id}
+            emberId={data.ember.id}
             storyScript={data.snapshotScript}
             guestToken={token}
           />

@@ -153,7 +153,7 @@ export default function ContributorsListView({
       const res = await fetch('/api/contributors/add-existing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageId: context.emberId, sourceKey }),
+        body: JSON.stringify({ emberId: context.emberId, sourceKey }),
       });
       const payload = await res.json().catch(() => ({} as { error?: string }));
       if (!res.ok) {

@@ -9,10 +9,10 @@ import { prisma } from '../src/lib/db';
 import { extractPeopleForMessage } from '../src/lib/memory-reconciliation';
 
 async function main() {
-  const imageId = 'cmoqbq8nr004w4xn473le6279';
+  const emberId = 'cmoqbq8nr004w4xn473le6279';
   const message = await prisma.emberMessage.findFirst({
     where: {
-      session: { imageId },
+      session: { emberId },
       role: 'user',
       content: { contains: 'Seth' },
     },
@@ -20,7 +20,7 @@ async function main() {
     select: { id: true, content: true, createdAt: true },
   });
   if (!message) {
-    console.log('No Seth message found on image', imageId);
+    console.log('No Seth message found on image', emberId);
     await prisma.$disconnect();
     return;
   }

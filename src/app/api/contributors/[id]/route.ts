@@ -126,7 +126,7 @@ export async function PATCH(
 
     return NextResponse.json({
       id: emberContributor.id,
-      imageId: emberContributor.imageId,
+      emberId: emberContributor.emberId,
       token: emberContributor.token,
       inviteSent: emberContributor.inviteSent,
       name: displayName || null,

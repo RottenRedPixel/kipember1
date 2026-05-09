@@ -34,14 +34,14 @@ async function resolvePlayableUpload(filename: string) {
 
   if (shouldNormalizeVideoForBrowser(filename)) {
     const [attachment, image] = await Promise.all([
-      prisma.imageAttachment.findFirst({
+      prisma.emberAttachment.findFirst({
         where: {
           filename,
           mediaType: 'VIDEO',
         },
         select: { id: true },
       }),
-      prisma.image.findFirst({
+      prisma.ember.findFirst({
         where: {
           filename,
           mediaType: 'VIDEO',
@@ -88,14 +88,14 @@ async function resolvePlayableUpload(filename: string) {
   }
 
   const [attachment, image] = await Promise.all([
-    prisma.imageAttachment.findFirst({
+    prisma.emberAttachment.findFirst({
       where: {
         filename,
         mediaType: 'AUDIO',
       },
       select: { id: true },
     }),
-    prisma.image.findFirst({
+    prisma.ember.findFirst({
       where: {
         filename,
         mediaType: 'AUDIO',

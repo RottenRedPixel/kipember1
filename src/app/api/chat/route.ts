@@ -19,14 +19,14 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 const HISTORY_LIMIT = 30;
 
 async function resolveUserChatParticipant({
-  imageId,
+  emberId,
   userId,
 }: {
-  imageId: string;
+  emberId: string;
   userId: string;
 }) {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     select: {
       ownerId: true,
       emberContributors: {
@@ -38,14 +38,14 @@ async function resolveUserChatParticipant({
   });
 
   const participantType: EmberParticipantType =
-    image?.ownerId === userId
+    ember?.ownerId === userId
       ? 'owner'
-      : image?.emberContributors.length
+      : ember?.emberContributors.length
         ? 'contributor'
         : 'guest';
 
   return {
-    imageId,
+    emberId,
     sessionType: 'chat' as const,
     participantType,
     participantId: userId,
@@ -80,19 +80,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ask Ember is currently disabled' }, { status: 503 });
     }
 
-    const { imageId, message } = await request.json();
-    if (!imageId || !message) {
-      return NextResponse.json({ error: 'imageId and message are required' }, { status: 400 });
+    const { emberId, message } = await request.json();
+    if (!emberId || !message) {
+      return NextResponse.json({ error: 'emberId and message are required' }, { status: 400 });
     }
 
-    const accessType = await getEmberAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, emberId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
     const userId = auth.user.id;
 
-    const participant = await resolveUserChatParticipant({ imageId, userId });
+    const participant = await resolveUserChatParticipant({ emberId, userId });
     const session = await ensureChatSessionForParticipant({ participant, browserId, userId });
 
     const userMessage = await prisma.emberMessage.create({
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
     });
 
     const response = await generateEmberChatReply({
-      imageId,
+      emberId,
       sessionId: session.id,
       role: participant.participantType,
       trigger: 'message',
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     // so the HTTP response is not held up by 5+ extra AI calls.
     extractAllClaimsFromContent(
       {
-        imageId,
+        emberId,
         sessionId: session.id,
         emberContributorId: session.emberContributorId ?? null,
         userId,
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
       },
       'chat housekeeping'
-    ).then(() => generateWikiForImage(imageId)).catch((err) => {
+    ).then(() => generateWikiForImage(emberId)).catch((err) => {
       console.error('Chat housekeeping extraction error:', err);
     });
 
@@ -165,14 +165,14 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const imageId = searchParams.get('imageId');
-    if (!imageId) return NextResponse.json({ error: 'imageId is required' }, { status: 400 });
+    const emberId = searchParams.get('emberId');
+    if (!emberId) return NextResponse.json({ error: 'emberId is required' }, { status: 400 });
 
-    const accessType = await getEmberAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, emberId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;
-    const participant = await resolveUserChatParticipant({ imageId, userId });
+    const participant = await resolveUserChatParticipant({ emberId, userId });
 
     const session = await prisma.emberSession.findUnique({
       where: emberSessionParticipantWhere(participant),
@@ -207,19 +207,19 @@ export async function PATCH(request: NextRequest) {
     const auth = await requireApiUser();
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { imageId, imageFilename } = await request.json();
-    if (!imageId || !imageFilename) {
-      return NextResponse.json({ error: 'imageId and imageFilename are required' }, { status: 400 });
+    const { emberId, imageFilename } = await request.json();
+    if (!emberId || !imageFilename) {
+      return NextResponse.json({ error: 'emberId and imageFilename are required' }, { status: 400 });
     }
 
-    const accessType = await getEmberAccessType(auth.user.id, imageId);
+    const accessType = await getEmberAccessType(auth.user.id, emberId);
     if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
 
     const userId = auth.user.id;
     const existingBrowserId = request.cookies.get(COOKIE_NAME)?.value;
     const browserId = existingBrowserId || randomUUID();
 
-    const participant = await resolveUserChatParticipant({ imageId, userId });
+    const participant = await resolveUserChatParticipant({ emberId, userId });
     const session = await ensureChatSessionForParticipant({ participant, browserId, userId });
 
     await prisma.emberMessage.create({
@@ -227,7 +227,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     const reply = await generateEmberChatReply({
-      imageId,
+      emberId,
       sessionId: session.id,
       role: participant.participantType,
       trigger: 'photo_upload',
@@ -248,7 +248,7 @@ export async function PATCH(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error('Chat image record error:', error);
+    console.error('Chat ember record error:', error);
     if (isPromptRemovedError(error)) {
       return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
     }

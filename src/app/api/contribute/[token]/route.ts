@@ -29,7 +29,7 @@ export async function GET(
           phoneNumber: true,
         },
       },
-      image: {
+      ember: {
         include: {
           owner: {
             select: {
@@ -112,15 +112,15 @@ export async function GET(
           name: [refreshedContributor.user?.firstName, refreshedContributor.user?.lastName].filter(Boolean).join(' ') || refreshedContributor.user?.email || refreshedContributor.user?.phoneNumber || null,
           phoneNumber: refreshedContributor.user?.phoneNumber ?? null,
         },
-        image: {
-          id: refreshedContributor.image.id,
-          filename: refreshedContributor.image.filename,
-          mediaType: refreshedContributor.image.mediaType,
-          posterFilename: refreshedContributor.image.posterFilename,
-          durationSeconds: refreshedContributor.image.durationSeconds,
-          originalName: refreshedContributor.image.originalName,
-          title: refreshedContributor.image.title,
-          description: refreshedContributor.image.description,
+        ember: {
+          id: refreshedContributor.ember.id,
+          filename: refreshedContributor.ember.filename,
+          mediaType: refreshedContributor.ember.mediaType,
+          posterFilename: refreshedContributor.ember.posterFilename,
+          durationSeconds: refreshedContributor.ember.durationSeconds,
+          originalName: refreshedContributor.ember.originalName,
+          title: refreshedContributor.ember.title,
+          description: refreshedContributor.ember.description,
         },
         conversation: refreshedContributor.emberSession,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
@@ -162,7 +162,7 @@ export async function POST(
       where: { token },
       select: {
         id: true,
-        imageId: true,
+        emberId: true,
         userId: true,
         user: {
           select: {
@@ -181,12 +181,12 @@ export async function POST(
 
     const contributor = {
       id: emberContributor.id,
-      imageId: emberContributor.imageId,
+      emberId: emberContributor.emberId,
       userId: emberContributor.userId,
     };
 
     const sessionIdentity = {
-      imageId: contributor.imageId,
+      emberId: contributor.emberId,
       sessionType: 'chat' as const,
       participantType: 'contributor' as const,
       participantId: contributor.id,
@@ -207,7 +207,7 @@ export async function POST(
       });
 
       const welcome = await generateEmberChatReply({
-        imageId: contributor.imageId,
+        emberId: contributor.emberId,
         sessionId: session.id,
         role: 'contributor',
         trigger: 'welcome_first_open',
@@ -239,7 +239,7 @@ export async function POST(
       }
 
       const welcome = await generateEmberChatReply({
-        imageId: contributor.imageId,
+        emberId: contributor.emberId,
         sessionId: session.id,
         role: 'contributor',
         trigger: 'welcome_returning',
@@ -261,7 +261,7 @@ export async function POST(
 
     const [reply] = await Promise.all([
       generateEmberChatReply({
-        imageId: contributor.imageId,
+        emberId: contributor.emberId,
         sessionId: session.id,
         role: 'contributor',
         trigger: 'message',

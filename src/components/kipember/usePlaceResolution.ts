@@ -43,32 +43,32 @@ export type PlaceResolution = {
 
 const suggestionCache = new Map<string, Promise<LocationSuggestion[]>>();
 
-function cacheKey(imageId: string, latitude: number, longitude: number) {
-  return `${imageId}|${latitude.toFixed(5)}|${longitude.toFixed(5)}`;
+function cacheKey(emberId: string, latitude: number, longitude: number) {
+  return `${emberId}|${latitude.toFixed(5)}|${longitude.toFixed(5)}`;
 }
 
-export function clearPlaceResolutionCache(imageId: string | null | undefined) {
-  if (!imageId) return;
+export function clearPlaceResolutionCache(emberId: string | null | undefined) {
+  if (!emberId) return;
   for (const key of suggestionCache.keys()) {
-    if (key.startsWith(`${imageId}|`)) {
+    if (key.startsWith(`${emberId}|`)) {
       suggestionCache.delete(key);
     }
   }
 }
 
 function fetchSuggestions(
-  imageId: string,
+  emberId: string,
   latitude: number,
   longitude: number,
   signal: AbortSignal
 ): Promise<LocationSuggestion[]> {
-  const key = cacheKey(imageId, latitude, longitude);
+  const key = cacheKey(emberId, latitude, longitude);
   const existing = suggestionCache.get(key);
   if (existing) {
     return existing;
   }
 
-  const promise = fetch(`/api/images/${imageId}/location-suggestions`, { signal })
+  const promise = fetch(`/api/embers/${emberId}/location-suggestions`, { signal })
     .then((response) => {
       if (!response.ok) {
         throw new Error('Failed to load location suggestions');
@@ -204,7 +204,7 @@ export function formatUsPostalAddress(detail: string | null | undefined): string
 export function usePlaceResolution(
   detail: PlaceResolutionDetail
 ): PlaceResolution {
-  const imageId = detail?.id || null;
+  const emberId = detail?.id || null;
   const confirmed = detail?.analysis?.confirmedLocation || null;
 
   const latitude =
@@ -220,7 +220,7 @@ export function usePlaceResolution(
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!imageId || latitude == null || longitude == null) {
+    if (!emberId || latitude == null || longitude == null) {
       setSuggestions([]);
       setIsLoading(false);
       return;
@@ -230,7 +230,7 @@ export function usePlaceResolution(
     const controller = new AbortController();
     setIsLoading(true);
 
-    fetchSuggestions(imageId, latitude, longitude, controller.signal)
+    fetchSuggestions(emberId, latitude, longitude, controller.signal)
       .then((result) => {
         if (cancelled) return;
         setSuggestions(result);
@@ -251,7 +251,7 @@ export function usePlaceResolution(
       cancelled = true;
       controller.abort();
     };
-  }, [imageId, latitude, longitude]);
+  }, [emberId, latitude, longitude]);
 
   const exactAddressSuggestion =
     suggestions.find((suggestion) => suggestion.kind === 'address') || null;

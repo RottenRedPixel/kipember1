@@ -5,7 +5,7 @@ export type EmberParticipantType = 'owner' | 'contributor' | 'guest';
 export type EmberSessionType = 'chat' | 'call' | 'voice';
 
 export type EmberSessionIdentity = {
-  imageId: string;
+  emberId: string;
   sessionType: EmberSessionType;
   participantType: EmberParticipantType;
   participantId: string;
@@ -14,7 +14,7 @@ export type EmberSessionIdentity = {
 export type ContributorParticipantInput = {
   id: string;
   userId: string | null;
-  image: {
+  ember: {
     ownerId: string;
   };
 };
@@ -33,8 +33,8 @@ function isUniqueConstraintError(error: unknown) {
 
 export function emberSessionParticipantWhere(identity: EmberSessionIdentity) {
   return {
-    imageId_sessionType_participantType_participantId: {
-      imageId: identity.imageId,
+    emberId_sessionType_participantType_participantId: {
+      emberId: identity.emberId,
       sessionType: identity.sessionType,
       participantType: identity.participantType,
       participantId: identity.participantId,
@@ -45,7 +45,7 @@ export function emberSessionParticipantWhere(identity: EmberSessionIdentity) {
 export function contributorParticipant(
   contributor: ContributorParticipantInput
 ): Pick<EmberSessionIdentity, 'participantType' | 'participantId'> {
-  if (contributor.userId && contributor.userId === contributor.image.ownerId) {
+  if (contributor.userId && contributor.userId === contributor.ember.ownerId) {
     return {
       participantType: 'owner',
       participantId: contributor.userId,
@@ -59,10 +59,10 @@ export function contributorParticipant(
 }
 
 export function contributorChatSessionIdentity(
-  contributor: ContributorParticipantInput & { imageId: string }
+  contributor: ContributorParticipantInput & { emberId: string }
 ): EmberSessionIdentity {
   return {
-    imageId: contributor.imageId,
+    emberId: contributor.emberId,
     sessionType: 'chat',
     ...contributorParticipant(contributor),
   };
@@ -76,7 +76,7 @@ export async function findEmberSessionByParticipant(identity: EmberSessionIdenti
 
 export async function ensureEmberSession(input: EnsureEmberSessionInput) {
   const identity: EmberSessionIdentity = {
-    imageId: input.imageId,
+    emberId: input.emberId,
     sessionType: input.sessionType,
     participantType: input.participantType,
     participantId: input.participantId,
@@ -108,7 +108,7 @@ export async function ensureEmberSession(input: EnsureEmberSessionInput) {
   }
 
   const data = {
-    imageId: input.imageId,
+    emberId: input.emberId,
     sessionType: input.sessionType,
     participantType: input.participantType,
     participantId: input.participantId,

@@ -9,11 +9,11 @@ import { prisma } from '../src/lib/db';
 async function main() {
   const before = await prisma.memoryClaim.findMany({
     where: { claimType: 'person' },
-    select: { id: true, subject: true, value: true, imageId: true },
+    select: { id: true, subject: true, value: true, emberId: true },
   });
   console.log(`Found ${before.length} person claim(s):`);
   for (const c of before) {
-    console.log(`  - ${c.id} on ${c.imageId}: subject="${c.subject}" value="${c.value}"`);
+    console.log(`  - ${c.id} on ${c.emberId}: subject="${c.subject}" value="${c.value}"`);
   }
   if (before.length === 0) {
     await prisma.$disconnect();

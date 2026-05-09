@@ -73,30 +73,30 @@ export function formatCapturedAtForInterview(value: Date | null | undefined) {
 }
 
 export function buildInterviewKnownContextFromImage(
-  image: InterviewContextImage
+  ember: InterviewContextImage
 ): InterviewKnownContext {
   const confirmedPeople = Array.from(
     new Set(
-      image.tags
+      ember.tags
         .map((tag) => getUserDisplayName(tag.user) || getUserDisplayName(tag.emberContributor?.user) || tag.label)
         .map((value) => value?.trim())
         .filter((value): value is string => Boolean(value))
     )
   );
 
-  const confirmedLocation = parseConfirmedLocationContext(image.analysis?.metadataJson);
+  const confirmedLocation = parseConfirmedLocationContext(ember.analysis?.metadataJson);
   const knownWhere = confirmedLocation
     ? [confirmedLocation.label, confirmedLocation.detail].filter(Boolean).join(', ')
-    : image.analysis?.latitude != null && image.analysis?.longitude != null
-      ? `GPS metadata already places this photo near ${image.analysis.latitude.toFixed(5)}, ${image.analysis.longitude.toFixed(5)}.`
+    : ember.analysis?.latitude != null && ember.analysis?.longitude != null
+      ? `GPS metadata already places this photo near ${ember.analysis.latitude.toFixed(5)}, ${ember.analysis.longitude.toFixed(5)}.`
       : null;
 
   return {
-    imageTitle: getEmberTitle(image),
-    imageDescription: image.description,
-    analysisSummary: image.analysis?.visualDescription || image.analysis?.summary || null,
+    imageTitle: getEmberTitle(ember),
+    imageDescription: ember.description,
+    analysisSummary: ember.analysis?.visualDescription || ember.analysis?.summary || null,
     confirmedPeople,
-    knownWhen: formatCapturedAtForInterview(image.analysis?.capturedAt),
+    knownWhen: formatCapturedAtForInterview(ember.analysis?.capturedAt),
     knownWhere,
   };
 }

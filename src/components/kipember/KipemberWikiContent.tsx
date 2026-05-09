@@ -554,17 +554,17 @@ function useTrackerConfig() {
   return config;
 }
 
-function useReconciliationClaims(imageId: string | null | undefined) {
+function useReconciliationClaims(emberId: string | null | undefined) {
   const [claims, setClaims] = useState<ReconciliationClaim[] | null>(null);
 
   useEffect(() => {
-    if (!imageId) {
+    if (!emberId) {
       setClaims(null);
       return;
     }
 
     let cancelled = false;
-    fetch(`/api/images/${imageId}/reconciliation`, { cache: 'no-store' })
+    fetch(`/api/embers/${emberId}/reconciliation`, { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : null))
       .then((data: ReconciliationResponse | null) => {
         if (cancelled) return;
@@ -577,7 +577,7 @@ function useReconciliationClaims(imageId: string | null | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [imageId]);
+  }, [emberId]);
 
   return claims;
 }
@@ -1325,13 +1325,13 @@ function PrivacyToggle({
 }
 
 function PrivacyToggles({
-  imageId,
+  emberId,
   shareToNetwork,
   keepPrivate,
   refreshDetail,
   onStatus,
 }: {
-  imageId: string | null;
+  emberId: string | null;
   shareToNetwork: boolean;
   keepPrivate: boolean;
   refreshDetail?: () => Promise<unknown> | unknown;
@@ -1348,9 +1348,9 @@ function PrivacyToggles({
   }, [keepPrivate]);
 
   async function patch(next: { shareToNetwork: boolean; keepPrivate: boolean }) {
-    if (!imageId) return;
+    if (!emberId) return;
     try {
-      const response = await fetch(`/api/images/${imageId}`, {
+      const response = await fetch(`/api/embers/${emberId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(next),
@@ -1408,11 +1408,11 @@ function PrivacyToggles({
 }
 
 function DeleteEmberCard({
-  imageId,
+  emberId,
   canManage,
   onStatus,
 }: {
-  imageId: string | null;
+  emberId: string | null;
   canManage: boolean;
   onStatus?: (message: string) => void;
 }) {
@@ -1421,10 +1421,10 @@ function DeleteEmberCard({
   const [deleting, setDeleting] = useState(false);
 
   async function performDelete() {
-    if (!imageId || !canManage || deleting) return;
+    if (!emberId || !canManage || deleting) return;
     setDeleting(true);
     try {
-      const response = await fetch(`/api/images/${imageId}`, { method: 'DELETE' });
+      const response = await fetch(`/api/embers/${emberId}`, { method: 'DELETE' });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         onStatus?.(payload?.error || 'Failed to delete ember.');
@@ -2281,8 +2281,8 @@ function ReconciliationPill({
   );
 }
 
-async function fetchReconciliationState(imageId: string, signal?: AbortSignal): Promise<ReconciliationResponse> {
-  const response = await fetch(`/api/images/${imageId}/reconciliation`, {
+async function fetchReconciliationState(emberId: string, signal?: AbortSignal): Promise<ReconciliationResponse> {
+  const response = await fetch(`/api/embers/${emberId}/reconciliation`, {
     signal,
   });
 
@@ -2314,7 +2314,7 @@ export default function KipemberWikiContent({
 }) {
   const placeResolution = usePlaceResolution(detail);
   const contributors = detail?.contributors || [];
-  const imageId = detail?.id || null;
+  const emberId = detail?.id || null;
   const ownerName = getUserDisplayName(detail?.owner) || null;
   const ownerUserId = detail?.owner?.id;
   // In-page edit overlay state — keeps the wiki (and the ember view
@@ -2437,7 +2437,7 @@ export default function KipemberWikiContent({
     [findPerson]
   );
 
-  const wikiClaims = useReconciliationClaims(imageId);
+  const wikiClaims = useReconciliationClaims(emberId);
   // null = still fetching; used to keep tracker badges grey until resolved
   const wikiClaimsLoading = wikiClaims === null;
   const whyClaims = useMemo(
@@ -3427,7 +3427,7 @@ export default function KipemberWikiContent({
 
       <WikiSection icon={<Lock size={17} />} title="Privacy Setting" complete={false} hideBadge>
         <PrivacyToggles
-          imageId={imageId}
+          emberId={emberId}
           shareToNetwork={Boolean(detail?.shareToNetwork)}
           keepPrivate={Boolean(detail?.keepPrivate)}
           refreshDetail={refreshDetail}
@@ -3482,7 +3482,7 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection icon={<Trash2 size={17} />} title="Delete Ember" complete={false} hideBadge>
-        <DeleteEmberCard imageId={imageId} canManage={Boolean(detail?.canManage)} onStatus={onStatus} />
+        <DeleteEmberCard emberId={emberId} canManage={Boolean(detail?.canManage)} onStatus={onStatus} />
       </WikiSection>
       </WikiGroup>
 
@@ -3495,7 +3495,7 @@ export default function KipemberWikiContent({
         to the viewport rather than the wiki's transform-containing
         block (the wiki's slide-in-right transform would otherwise
         capture our `fixed` and shift the peek off-axis). */}
-    {editingSlug && imageId && activeEditMeta && refreshDetail && typeof document !== 'undefined'
+    {editingSlug && emberId && activeEditMeta && refreshDetail && typeof document !== 'undefined'
       ? createPortal(
       <div className="fixed inset-0 z-50 flex justify-center">
         <div className="relative w-full max-w-xl h-full flex">
@@ -3535,7 +3535,7 @@ export default function KipemberWikiContent({
               {editingSlug === 'title' ? (
                 <EditTitleSlider
                   detail={detail}
-                  imageId={imageId}
+                  emberId={emberId}
                   refreshDetail={async () => {
                     await refreshDetail();
                   }}
@@ -3545,7 +3545,7 @@ export default function KipemberWikiContent({
               {editingSlug === 'snapshot' ? (
                 <EditSnapshotSlider
                   detail={detail}
-                  imageId={imageId}
+                  emberId={emberId}
                   refreshDetail={async () => {
                     await refreshDetail();
                   }}
@@ -3555,7 +3555,7 @@ export default function KipemberWikiContent({
               {editingSlug === 'time-place' ? (
                 <EditTimePlaceSlider
                   detail={detail}
-                  imageId={imageId}
+                  emberId={emberId}
                   refreshDetail={async () => {
                     await refreshDetail();
                   }}
@@ -3565,7 +3565,7 @@ export default function KipemberWikiContent({
               {editingSlug === 'contributors' ? (
                 <ContributorsSlider
                   detail={detail}
-                  imageId={imageId}
+                  emberId={emberId}
                   refreshDetail={async () => {
                     await refreshDetail();
                   }}
@@ -3576,7 +3576,7 @@ export default function KipemberWikiContent({
                 <TagPeopleSlider
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   detail={detail as any}
-                  imageId={imageId}
+                  emberId={emberId}
                   coverPhotoUrl={getPreviewMediaUrl({
                     mediaType: detail.mediaType,
                     filename: detail.filename,

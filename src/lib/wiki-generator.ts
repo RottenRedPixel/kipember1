@@ -294,9 +294,9 @@ function formatAudioRange(startMs: number | null | undefined, endMs: number | nu
   return start || end || null;
 }
 
-async function fetchImageForWiki(imageId: string) {
-  return prisma.image.findUnique({
-    where: { id: imageId },
+async function fetchImageForWiki(emberId: string) {
+  return prisma.ember.findUnique({
+    where: { id: emberId },
     include: {
       owner: {
         select: {
@@ -399,18 +399,18 @@ async function fetchImageForWiki(imageId: string) {
   });
 }
 
-export async function generateWikiForImage(imageId: string): Promise<string> {
-  await ensureImageAnalysisForImage(imageId).catch((error) => {
+export async function generateWikiForImage(emberId: string): Promise<string> {
+  await ensureImageAnalysisForImage(emberId).catch((error) => {
     console.error('Image analysis failed during wiki generation:', error);
   });
 
-  const image = await fetchImageForWiki(imageId);
+  const ember = await fetchImageForWiki(emberId);
 
-  if (!image) {
+  if (!ember) {
     throw new Error('Image not found');
   }
 
-  type EmberContributorWithRels = (typeof image.emberContributors)[number];
+  type EmberContributorWithRels = (typeof ember.emberContributors)[number];
   const getContributorLabel = (ec: EmberContributorWithRels) =>
     cleanInlineText(getUserDisplayName(ec.user)) ||
     cleanInlineText(ec.user?.email) ||
@@ -418,7 +418,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     'Contributor';
 
   const getContributorKind = (ec: EmberContributorWithRels) => {
-    if (ec.userId === image.ownerId) {
+    if (ec.userId === ember.ownerId) {
       return 'owner' as const;
     }
 
@@ -432,7 +432,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   const renderSection = (title: string, body: string) => `## ${title}\n\n${body}`;
 
-  const voiceCallIds = image.emberContributors.flatMap((ec) =>
+  const voiceCallIds = ember.emberContributors.flatMap((ec) =>
     ec.voiceCalls.map((voiceCall) => voiceCall.id)
   );
   const voiceCallClipsByVoiceCallId = new Map<
@@ -530,9 +530,9 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       createdAt: Date;
     }>;
   }> = [];
-  const ownerStoryLabel = cleanInlineText(getUserDisplayName(image.owner)) || image.owner.email || 'Owner';
+  const ownerStoryLabel = cleanInlineText(getUserDisplayName(ember.owner)) || ember.owner.email || 'Owner';
 
-  for (const ec of image.emberContributors) {
+  for (const ec of ember.emberContributors) {
     const contributorLabel = getContributorLabel(ec);
     const contributorSessionMessages = [
       ...(ec.emberSession?.messages || []),
@@ -691,7 +691,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       .filter((value) => Boolean(value))
   );
 
-  const askVoiceAttachmentNotes = image.attachments
+  const askVoiceAttachmentNotes = ember.attachments
     .filter((attachment) => attachment.mediaType === 'AUDIO')
     .map((attachment) => {
       const transcript = extractAskVoiceNoteText(attachment.description);
@@ -739,7 +739,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     storyCircleEntries.push({
       contributorLabel: ownerStoryLabel,
       kind: 'owner',
-      createdAt: askVoiceAttachmentNotes[askVoiceAttachmentNotes.length - 1]?.createdAt || image.createdAt,
+      createdAt: askVoiceAttachmentNotes[askVoiceAttachmentNotes.length - 1]?.createdAt || ember.createdAt,
       summary: 'Additional memory details captured through Ask Ember voice notes.',
       transcript: null,
       recordingUrl: null,
@@ -758,25 +758,25 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   }
 
   if (
-    !image.analysis &&
+    !ember.analysis &&
     allResponses.length === 0 &&
     callHighlights.length === 0 &&
-    !image.description?.trim() &&
-    image.attachments.every((attachment) => !attachment.description?.trim())
+    !ember.description?.trim() &&
+    ember.attachments.every((attachment) => !attachment.description?.trim())
   ) {
-    throw new Error('No image analysis or contributor memories available to generate a wiki');
+    throw new Error('No ember analysis or contributor memories available to generate a wiki');
   }
 
-  const imageTitle = getEmberTitle(image);
+  const imageTitle = getEmberTitle(ember);
   const confirmedPeople = Array.from(
     new Set(
-      image.tags
+      ember.tags
         .map((tag) => getUserDisplayName(tag.user) || getUserDisplayName(tag.emberContributor?.user) || tag.label)
         .map((label) => label?.trim())
         .filter((label): label is string => Boolean(label))
     )
   );
-  const confirmedTags = image.tags
+  const confirmedTags = ember.tags
     .map((tag) => ({
       label: (getUserDisplayName(tag.user) || getUserDisplayName(tag.emberContributor?.user) || tag.label || '').trim(),
       userId: tag.userId,
@@ -787,36 +787,36 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       heightPct: tag.heightPct,
     }))
     .filter((tag) => tag.label);
-  const confirmedLocation = parseConfirmedLocationContext(image.analysis?.metadataJson);
-  const analysisContext = image.analysis
+  const confirmedLocation = parseConfirmedLocationContext(ember.analysis?.metadataJson);
+  const analysisContext = ember.analysis
     ? {
-        status: image.analysis.status,
-        errorMessage: image.analysis.errorMessage,
-        summary: image.analysis.summary,
-        visualDescription: image.analysis.visualDescription,
-        metadataSummary: image.analysis.metadataSummary,
-        mood: image.analysis.mood,
-        capturedAt: image.analysis.capturedAt?.toISOString() || null,
-        latitude: image.analysis.latitude,
-        longitude: image.analysis.longitude,
-        cameraMake: image.analysis.cameraMake,
-        cameraModel: image.analysis.cameraModel,
-        lensModel: image.analysis.lensModel,
-        people: parseJsonArray<ParsedEntity>(image.analysis.peopleJson),
-        places: parseJsonArray<ParsedEntity>(image.analysis.placesJson),
-        things: parseJsonArray<ParsedEntity>(image.analysis.thingsJson),
-        activities: parseJsonArray<string>(image.analysis.activitiesJson),
-        visibleText: parseJsonArray<string>(image.analysis.visibleTextJson),
-        keywords: parseJsonArray<string>(image.analysis.keywordsJson),
-        openQuestions: parseJsonArray<string>(image.analysis.openQuestionsJson),
-        sceneInsights: parseSceneInsights(image.analysis.sceneInsightsJson),
+        status: ember.analysis.status,
+        errorMessage: ember.analysis.errorMessage,
+        summary: ember.analysis.summary,
+        visualDescription: ember.analysis.visualDescription,
+        metadataSummary: ember.analysis.metadataSummary,
+        mood: ember.analysis.mood,
+        capturedAt: ember.analysis.capturedAt?.toISOString() || null,
+        latitude: ember.analysis.latitude,
+        longitude: ember.analysis.longitude,
+        cameraMake: ember.analysis.cameraMake,
+        cameraModel: ember.analysis.cameraModel,
+        lensModel: ember.analysis.lensModel,
+        people: parseJsonArray<ParsedEntity>(ember.analysis.peopleJson),
+        places: parseJsonArray<ParsedEntity>(ember.analysis.placesJson),
+        things: parseJsonArray<ParsedEntity>(ember.analysis.thingsJson),
+        activities: parseJsonArray<string>(ember.analysis.activitiesJson),
+        visibleText: parseJsonArray<string>(ember.analysis.visibleTextJson),
+        keywords: parseJsonArray<string>(ember.analysis.keywordsJson),
+        openQuestions: parseJsonArray<string>(ember.analysis.openQuestionsJson),
+        sceneInsights: parseSceneInsights(ember.analysis.sceneInsightsJson),
       }
     : null;
   let storySnapshot = '';
   try {
     storySnapshot = await generateWiki({
       imageTitle,
-      imageDescription: image.description,
+      imageDescription: ember.description,
       confirmedPeople,
       confirmedTags,
       confirmedLocation,
@@ -829,7 +829,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     console.error('Story snapshot generation failed, using fallback snapshot:', storySnapshotError);
     storySnapshot = buildFallbackStorySnapshot({
       imageTitle,
-      imageDescription: image.description,
+      imageDescription: ember.description,
       confirmedPeople,
       responses: allResponses,
       callSummaries,
@@ -837,11 +837,11 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     });
   }
 
-  const ownerLabel = cleanInlineText(getUserDisplayName(image.owner)) || image.owner.email;
-  const linkedContributors = image.emberContributors.filter(
+  const ownerLabel = cleanInlineText(getUserDisplayName(ember.owner)) || ember.owner.email;
+  const linkedContributors = ember.emberContributors.filter(
     (ec) => getContributorKind(ec) === 'contributor'
   );
-  const guestContributors = image.emberContributors.filter(
+  const guestContributors = ember.emberContributors.filter(
     (ec) => getContributorKind(ec) === 'guest'
   );
 
@@ -899,7 +899,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       : 'No voice recording or transcript has been added to the story circle yet.';
 
   const renderConversationSection = (
-    contributors: (typeof image.emberContributors),
+    contributors: (typeof ember.emberContributors),
     emptyMessage: string
   ) => {
     const blocks = contributors.flatMap((ec) => {
@@ -946,8 +946,8 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   };
 
   const taggedPeopleSection =
-    image.tags.length > 0
-      ? image.tags
+    ember.tags.length > 0
+      ? ember.tags
           .map((tag) => {
             const details: string[] = [];
             const contact = cleanInlineText(
@@ -964,14 +964,14 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   const mediaSection =
     toBulletList([
-      `Main media: ${image.mediaType === 'VIDEO' ? 'Video' : 'Photo'} (${image.originalName})`,
+      `Main media: ${ember.mediaType === 'VIDEO' ? 'Video' : 'Photo'} (${ember.originalName})`,
       `Story title: ${imageTitle}`,
-      `Caption: ${cleanInlineText(image.description) || 'No caption added yet.'}`,
+      `Caption: ${cleanInlineText(ember.description) || 'No caption added yet.'}`,
     ]) || 'No primary media details are available yet.';
 
   const supportingMediaSection =
-    image.attachments.length > 0
-      ? image.attachments
+    ember.attachments.length > 0
+      ? ember.attachments
           .map((attachment, index) => {
             const typeLabel =
               attachment.mediaType === 'VIDEO'
@@ -1006,7 +1006,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       analysisContext?.capturedAt
         ? `Captured: ${formatDateTime(analysisContext.capturedAt)}`
         : 'Captured: No photo timestamp available.',
-      `Ember created: ${formatDateTime(image.createdAt) || 'Unknown'}`,
+      `Ember created: ${formatDateTime(ember.createdAt) || 'Unknown'}`,
     ]) || 'No time or date details are available yet.';
 
   const imageAnalysisSection =
@@ -1021,7 +1021,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
       analysisContext?.keywords?.length
         ? `Keywords: ${analysisContext.keywords.slice(0, 8).join(', ')}`
         : null,
-    ]) || 'No image analysis is available yet.';
+    ]) || 'No ember analysis is available yet.';
 
   const wikiContent = [
     renderSection('Story Title', imageTitle),
@@ -1034,7 +1034,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
     renderSection(
       'Convos Between Owner & Ember',
       renderConversationSection(
-        image.emberContributors.filter((ec) => getContributorKind(ec) === 'owner'),
+        ember.emberContributors.filter((ec) => getContributorKind(ec) === 'owner'),
         'No owner conversation with Ember has been recorded yet.'
       )
     ),
@@ -1062,7 +1062,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
 
   // Save or update wiki
   const existingWiki = await prisma.wiki.findUnique({
-    where: { imageId },
+    where: { emberId },
   });
 
   if (existingWiki) {
@@ -1076,7 +1076,7 @@ export async function generateWikiForImage(imageId: string): Promise<string> {
   } else {
     await prisma.wiki.create({
       data: {
-        imageId,
+        emberId,
         content: wikiContent,
       },
     });

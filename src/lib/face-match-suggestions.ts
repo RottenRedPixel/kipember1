@@ -34,7 +34,7 @@ type CandidateGroup = {
   email: string | null;
   phoneNumber: string | null;
   references: Array<{
-    image: {
+    ember: {
       filename: string;
       mediaType: 'IMAGE' | 'VIDEO';
       posterFilename: string | null;
@@ -190,14 +190,14 @@ function isValidFaceBox(value: unknown): value is FaceBox {
   );
 }
 
-function getSourceFilename(image: {
+function getSourceFilename(ember: {
   filename: string;
   mediaType: 'IMAGE' | 'VIDEO';
   posterFilename: string | null;
 }) {
-  return image.mediaType === 'VIDEO' && image.posterFilename
-    ? image.posterFilename
-    : image.filename;
+  return ember.mediaType === 'VIDEO' && ember.posterFilename
+    ? ember.posterFilename
+    : ember.filename;
 }
 
 function buildIdentityKey(tag: {
@@ -240,7 +240,7 @@ function buildCandidateLabel(tag: {
 }
 
 async function cropFaceBuffer(
-  image: {
+  ember: {
     filename: string;
     mediaType: 'IMAGE' | 'VIDEO';
     posterFilename: string | null;
@@ -250,13 +250,13 @@ async function cropFaceBuffer(
 ) {
   const normalizedBox =
     variant === 'expanded' ? expandFaceBox(box) : normalizeFaceBox(box);
-  const sourceFilename = getSourceFilename(image);
+  const sourceFilename = getSourceFilename(ember);
   const input = await readUploadBuffer(sourceFilename);
   const rotated = sharp(input).rotate();
   const metadata = await rotated.metadata();
 
   if (!metadata.width || !metadata.height) {
-    throw new Error('Could not determine image dimensions for face crop');
+    throw new Error('Could not determine ember dimensions for face crop');
   }
 
   const left = Math.max(
@@ -304,7 +304,7 @@ async function loadCandidateReferenceImages(candidate: CandidateGroup) {
 
     for (const variant of variants) {
       try {
-        const buffer = await cropFaceBuffer(reference.image, reference.box, variant);
+        const buffer = await cropFaceBuffer(reference.ember, reference.box, variant);
         referenceImages.push(buffer);
       } catch {
         // Skip bad historical crops instead of failing the whole candidate.
@@ -596,11 +596,11 @@ async function verifyFaceAgainstCandidate(
   };
 }
 
-async function getReferenceCandidates(ownerId: string, imageId: string) {
-  const tags = await prisma.imageTag.findMany({
+async function getReferenceCandidates(ownerId: string, emberId: string) {
+  const tags = await prisma.emberTag.findMany({
     where: {
-      imageId: { not: imageId },
-      image: {
+      emberId: { not: emberId },
+      ember: {
         ownerId,
       },
       leftPct: { not: null },
@@ -610,7 +610,7 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
     },
     orderBy: { createdAt: 'desc' },
     include: {
-      image: {
+      ember: {
         select: {
           filename: true,
           mediaType: true,
@@ -631,14 +631,14 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
   const grouped = new Map<string, CandidateGroup>();
 
   for (const tag of tags) {
-    if (tag.image.mediaType === 'AUDIO') {
+    if (tag.ember.mediaType === 'AUDIO') {
       continue;
     }
 
     const referenceImage = {
-      filename: tag.image.filename,
-      mediaType: tag.image.mediaType,
-      posterFilename: tag.image.posterFilename,
+      filename: tag.ember.filename,
+      mediaType: tag.ember.mediaType,
+      posterFilename: tag.ember.posterFilename,
     } as const;
 
     const personKey = buildIdentityKey(tag);
@@ -650,7 +650,7 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
     if (existing) {
       if (existing.references.length < MAX_REFERENCES_PER_PERSON) {
         existing.references.push({
-          image: referenceImage,
+          ember: referenceImage,
           box: {
             leftPct: tag.leftPct!,
             topPct: tag.topPct!,
@@ -671,7 +671,7 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
       phoneNumber: tag.phoneNumber,
       references: [
         {
-          image: referenceImage,
+          ember: referenceImage,
           box: {
             leftPct: tag.leftPct!,
             topPct: tag.topPct!,
@@ -689,12 +689,12 @@ async function getReferenceCandidates(ownerId: string, imageId: string) {
     .slice(0, MAX_PEOPLE_TO_COMPARE);
 }
 
-async function loadTargetImageBuffer(image: {
+async function loadTargetImageBuffer(ember: {
   filename: string;
   mediaType: 'IMAGE' | 'VIDEO';
   posterFilename: string | null;
 }) {
-  const sourceFilename = getSourceFilename(image);
+  const sourceFilename = getSourceFilename(ember);
   const input = await readUploadBuffer(sourceFilename);
 
   return sharp(input)
@@ -709,11 +709,11 @@ async function loadTargetImageBuffer(image: {
 
 export async function suggestFaceMatchesForImage({
   ownerId,
-  imageId,
+  emberId,
   faces,
 }: {
   ownerId: string;
-  imageId: string;
+  emberId: string;
   faces: FaceBox[];
 }): Promise<FaceMatchSuggestion[]> {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -729,9 +729,9 @@ export async function suggestFaceMatchesForImage({
     return [];
   }
 
-  const image = await prisma.image.findFirst({
+  const ember = await prisma.ember.findFirst({
     where: {
-      id: imageId,
+      id: emberId,
       ownerId,
     },
     select: {
@@ -742,17 +742,17 @@ export async function suggestFaceMatchesForImage({
     },
   });
 
-  if (!image || image.mediaType === 'AUDIO') {
+  if (!ember || ember.mediaType === 'AUDIO') {
     throw new Error('Image not found');
   }
 
   const visualImage = {
-    filename: image.filename,
-    mediaType: image.mediaType,
-    posterFilename: image.posterFilename,
+    filename: ember.filename,
+    mediaType: ember.mediaType,
+    posterFilename: ember.posterFilename,
   } as const;
 
-  const referenceCandidates = await getReferenceCandidates(ownerId, imageId);
+  const referenceCandidates = await getReferenceCandidates(ownerId, emberId);
   if (referenceCandidates.length === 0) {
     return [];
   }
@@ -848,7 +848,7 @@ export async function suggestFaceMatchesForImage({
 /**
  * Auto-tag pipeline (combined detect + match in a single Claude vision call).
  *
- * For each visible face in the target image, returns:
+ * For each visible face in the target ember, returns:
  * - the bounding box (always)
  * - identity fields populated from a reference candidate when matched
  *   (contributorId / userId / label / email / phoneNumber / confidence)
@@ -873,26 +873,26 @@ export type DetectedFaceWithMatch = FaceBox & {
 
 export async function detectAndMatchFacesInImage({
   ownerId,
-  imageId,
+  emberId,
 }: {
   ownerId: string;
-  imageId: string;
+  emberId: string;
 }): Promise<DetectedFaceWithMatch[]> {
   if (!process.env.ANTHROPIC_API_KEY) return [];
 
-  const image = await prisma.image.findFirst({
-    where: { id: imageId, ownerId },
+  const ember = await prisma.ember.findFirst({
+    where: { id: emberId, ownerId },
     select: { filename: true, mediaType: true, posterFilename: true },
   });
-  if (!image || image.mediaType === 'AUDIO') return [];
+  if (!ember || ember.mediaType === 'AUDIO') return [];
 
   const targetImage = await loadTargetImageBuffer({
-    filename: image.filename,
-    mediaType: image.mediaType,
-    posterFilename: image.posterFilename,
+    filename: ember.filename,
+    mediaType: ember.mediaType,
+    posterFilename: ember.posterFilename,
   });
 
-  const allReferenceCandidates = await getReferenceCandidates(ownerId, imageId);
+  const allReferenceCandidates = await getReferenceCandidates(ownerId, emberId);
   const referenceCandidates = allReferenceCandidates.slice(0, MAX_CANDIDATES_FOR_AUTO_TAG);
   const loadedCandidates =
     referenceCandidates.length > 0 ? await loadCandidatesWithReferences(referenceCandidates) : [];
@@ -901,11 +901,11 @@ export async function detectAndMatchFacesInImage({
   const candidatesPreamble =
     loadedCandidates.length === 0
       ? 'There are no reference candidates. Set personKey to null for every detected face.'
-      : `You have ${loadedCandidates.length} reference candidate(s) listed below the target image. For each detected face in the target, decide if it is the same person as one of the candidates and set personKey accordingly. Use null when there is no match.`;
+      : `You have ${loadedCandidates.length} reference candidate(s) listed below the target ember. For each detected face in the target, decide if it is the same person as one of the candidates and set personKey accordingly. Use null when there is no match.`;
 
   const systemPrompt = `You are a face detector and identifier.
 
-You will receive a TARGET image, and ${loadedCandidates.length} reference CANDIDATE(s), each with a personKey label and example image(s) showing that person.
+You will receive a TARGET ember, and ${loadedCandidates.length} reference CANDIDATE(s), each with a personKey label and example image(s) showing that person.
 
 ${candidatesPreamble}
 
@@ -934,7 +934,7 @@ Rules:
 - Order does not matter`;
 
   const content: Anthropic.Messages.ContentBlockParam[] = [
-    { type: 'text', text: 'TARGET image (find all faces here):' },
+    { type: 'text', text: 'TARGET ember (find all faces here):' },
     {
       type: 'image',
       source: { type: 'base64', media_type: 'image/jpeg', data: targetImage.toString('base64') },

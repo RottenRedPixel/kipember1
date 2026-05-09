@@ -39,7 +39,7 @@ export async function sendContributorSmsInvite(
           phoneNumber: true,
         },
       },
-      image: {
+      ember: {
         select: {
           id: true,
           owner: {
@@ -64,7 +64,7 @@ export async function sendContributorSmsInvite(
   const inviteUrl = buildContributorInviteUrl(emberContributor.token!);
 
   const contributorFirstName = emberContributor.user.firstName || 'there';
-  const ownerFirstName = emberContributor.image.owner.firstName || 'Someone';
+  const ownerFirstName = emberContributor.ember.owner.firstName || 'Someone';
   const message = `Hi ${contributorFirstName}, this is Ember. ${ownerFirstName} invited you to help build a memory: ${inviteUrl}`;
   const phone = formatPhoneNumber(emberContributor.user.phoneNumber);
 

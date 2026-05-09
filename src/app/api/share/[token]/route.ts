@@ -22,7 +22,7 @@ function withGuestCookie(response: NextResponse, guestBrowserId: string | null, 
   return response;
 }
 
-// GET — return image data for the public share screen
+// GET — return ember data for the public share screen
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -31,7 +31,7 @@ export async function GET(
     void request;
     const { token } = await params;
 
-    const image = await prisma.image.findUnique({
+    const ember = await prisma.ember.findUnique({
       where: { shareToken: token },
       include: {
         analysis: { select: { status: true, summary: true, visualDescription: true, mood: true, errorMessage: true } },
@@ -39,22 +39,22 @@ export async function GET(
       },
     });
 
-    if (!image) {
+    if (!ember) {
       return NextResponse.json({ error: 'Not found' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    if (image.keepPrivate) {
+    if (ember.keepPrivate) {
       return NextResponse.json({ error: 'This ember is private.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    const attachments = await prisma.imageAttachment.findMany({
-      where: { imageId: image.id },
+    const attachments = await prisma.emberAttachment.findMany({
+      where: { emberId: ember.id },
       select: { id: true, filename: true, mediaType: true, posterFilename: true },
       orderBy: { createdAt: 'asc' },
     });
 
     const snapshotScript = await prisma.snapshot
-      .findUnique({ where: { imageId: image.id }, select: { script: true } })
+      .findUnique({ where: { emberId: ember.id }, select: { script: true } })
       .then((s) => s?.script ?? null)
       .catch(() => null);
 
@@ -62,21 +62,21 @@ export async function GET(
       {
         guestFlow: true,
         contributor: null,
-        image: {
-          id: image.id,
-          filename: image.filename,
-          mediaType: image.mediaType,
-          posterFilename: image.posterFilename,
-          durationSeconds: image.durationSeconds,
-          originalName: image.originalName,
-          title: image.title,
-          description: image.description,
-          createdAt: image.createdAt,
+        ember: {
+          id: ember.id,
+          filename: ember.filename,
+          mediaType: ember.mediaType,
+          posterFilename: ember.posterFilename,
+          durationSeconds: ember.durationSeconds,
+          originalName: ember.originalName,
+          title: ember.title,
+          description: ember.description,
+          createdAt: ember.createdAt,
         },
-        analysis: image.analysis,
+        analysis: ember.analysis,
         conversation: null,
         latestVoiceCall: null,
-        wiki: image.wiki,
+        wiki: ember.wiki,
         attachments,
         snapshotScript,
       },
@@ -101,12 +101,12 @@ export async function POST(
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
     }
 
-    const image = await prisma.image.findUnique({
+    const ember = await prisma.ember.findUnique({
       where: { shareToken: token },
       select: { id: true },
     });
 
-    if (!image) {
+    if (!ember) {
       return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
     }
 
@@ -115,7 +115,7 @@ export async function POST(
     const isNewCookie = !existingBrowserId;
 
     const sessionIdentity = {
-      imageId: image.id,
+      emberId: ember.id,
       sessionType: 'chat' as const,
       participantType: 'guest' as const,
       participantId: guestBrowserId,
@@ -136,7 +136,7 @@ export async function POST(
       });
 
       const welcome = await generateEmberChatReply({
-        imageId: image.id,
+        emberId: ember.id,
         sessionId: session.id,
         role: 'guest',
         trigger: 'welcome_first_open',
@@ -150,7 +150,7 @@ export async function POST(
       }
     } else if (isStart) {
       const welcome = await generateEmberChatReply({
-        imageId: image.id,
+        emberId: ember.id,
         sessionId: session.id,
         role: 'guest',
         trigger: 'welcome_returning',
@@ -166,7 +166,7 @@ export async function POST(
     });
 
     const [reply] = await Promise.all([
-      generateEmberChatReply({ imageId: image.id, sessionId: session.id, role: 'guest', trigger: 'message' }),
+      generateEmberChatReply({ emberId: ember.id, sessionId: session.id, role: 'guest', trigger: 'message' }),
       reconcileEmberMessageSafely(userMessage.id, 'share housekeeping'),
     ]);
 

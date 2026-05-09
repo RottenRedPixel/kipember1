@@ -53,7 +53,7 @@ function WikiCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-type ImageTag = {
+type EmberTag = {
   id: string;
   label: string;
   leftPct?: number | null;
@@ -89,7 +89,7 @@ type TendDetail = KipemberWikiDetail & {
   } | null;
   contributors: TendContributor[];
   attachments: KipemberAttachment[];
-  tags: ImageTag[];
+  tags: EmberTag[];
 };
 
 // Legacy contributor-detail type — only used by the parent header for
@@ -125,7 +125,7 @@ export default function TendActionScreen({ action }: { action: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const title = TEND_ACTIONS[action];
-  const imageId = searchParams.get('id');
+  const emberId = searchParams.get('id');
   const view = searchParams.get('view');
   const filterParam = searchParams.get('filter');
   const contributorFilter: 'ember' | 'all' = filterParam === 'all' ? 'all' : 'ember';
@@ -163,7 +163,7 @@ export default function TendActionScreen({ action }: { action: string }) {
     useState<ContributorSubSection>(null);
 
   useEffect(() => {
-    if (imageId) {
+    if (emberId) {
       return;
     }
 
@@ -175,13 +175,13 @@ export default function TendActionScreen({ action }: { action: string }) {
         setImages((await response.json()) as Array<{ id: string }>);
       })
       .catch(() => undefined);
-  }, [imageId]);
+  }, [emberId]);
 
-  const resolvedImageId = imageId || images[0]?.id || null;
+  const resolvedImageId = emberId || images[0]?.id || null;
   const detailPath = resolvedImageId
     ? action === 'contributors'
-      ? `/api/images/${resolvedImageId}?scope=contributors`
-      : `/api/images/${resolvedImageId}`
+      ? `/api/embers/${resolvedImageId}?scope=contributors`
+      : `/api/embers/${resolvedImageId}`
     : null;
 
   function applyDetail(payload: TendDetail) {
@@ -435,7 +435,7 @@ export default function TendActionScreen({ action }: { action: string }) {
           {action === 'contributors' ? (
             <ContributorsSlider
               detail={detail}
-              imageId={resolvedImageId}
+              emberId={resolvedImageId}
               refreshDetail={refreshDetail}
               onStatus={setStatus}
               status={status}
@@ -453,7 +453,7 @@ export default function TendActionScreen({ action }: { action: string }) {
           {action === 'edit-title' ? (
             <EditTitleSlider
               detail={detail}
-              imageId={resolvedImageId}
+              emberId={resolvedImageId}
               refreshDetail={refreshDetail}
               onStatus={setStatus}
             />
@@ -462,7 +462,7 @@ export default function TendActionScreen({ action }: { action: string }) {
           {action === 'edit-snapshot' ? (
             <EditSnapshotSlider
               detail={detail}
-              imageId={resolvedImageId}
+              emberId={resolvedImageId}
               refreshDetail={refreshDetail}
               onStatus={setStatus}
             />
@@ -472,7 +472,7 @@ export default function TendActionScreen({ action }: { action: string }) {
           {action === 'edit-time-place' ? (
             <EditTimePlaceSlider
               detail={detail}
-              imageId={resolvedImageId}
+              emberId={resolvedImageId}
               refreshDetail={refreshDetail}
               onStatus={setStatus}
             />
@@ -481,7 +481,7 @@ export default function TendActionScreen({ action }: { action: string }) {
           {action === 'frame' ? (
             <FrameSlider
               detail={detail}
-              imageId={resolvedImageId}
+              emberId={resolvedImageId}
               coverPhotoUrl={coverPhotoUrl}
               refreshDetail={refreshDetail}
               onStatus={setStatus}
@@ -492,7 +492,7 @@ export default function TendActionScreen({ action }: { action: string }) {
             <TagPeopleSlider
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               detail={detail as any}
-              imageId={resolvedImageId}
+              emberId={resolvedImageId}
               coverPhotoUrl={coverPhotoUrl}
             />
           ) : null}

@@ -26,7 +26,7 @@ export default async function AdminUsersPage() {
       phoneNumber: true,
       passwordHash: true,
       createdAt: true,
-      _count: { select: { ownedImages: true } },
+      _count: { select: { ownedEmbers: true } },
     },
   });
 
@@ -64,7 +64,7 @@ export default async function AdminUsersPage() {
                     <dt className="text-gray-500">Phone</dt>
                     <dd className="text-gray-700 truncate">{u.phoneNumber || '—'}</dd>
                     <dt className="text-gray-500">Embers</dt>
-                    <dd className="text-gray-700 tabular-nums">{u._count.ownedImages}</dd>
+                    <dd className="text-gray-700 tabular-nums">{u._count.ownedEmbers}</dd>
                     <dt className="text-gray-500">Account</dt>
                     <dd>{u.passwordHash ? <span className="text-green-600 font-bold">✓</span> : <span className="text-red-500 font-bold">✗</span>}</dd>
                     <dt className="text-gray-500">Joined</dt>
@@ -98,7 +98,7 @@ export default async function AdminUsersPage() {
                       <td className="px-4 py-3">{name}</td>
                       <td className="px-4 py-3 text-gray-600">{u.email}</td>
                       <td className="px-4 py-3 text-gray-600">{u.phoneNumber || '—'}</td>
-                      <td className="px-4 py-3 tabular-nums">{u._count.ownedImages}</td>
+                      <td className="px-4 py-3 tabular-nums">{u._count.ownedEmbers}</td>
                       <td className="px-4 py-3 text-center">
                         {u.passwordHash
                           ? <span className="text-green-600 font-medium text-xs">Yes</span>

@@ -74,7 +74,7 @@ type ContributorDetail = {
 };
 
 interface ContributorListProps {
-  imageId: string;
+  emberId: string;
   ownerUserId: string;
   emberTitle: string;
   mediaType: 'IMAGE' | 'VIDEO';
@@ -278,7 +278,7 @@ function ContributorActionButton({
 }
 
 export default function ContributorList({
-  imageId,
+  emberId,
   ownerUserId,
   emberTitle,
   mediaType,
@@ -512,7 +512,7 @@ export default function ContributorList({
           method: isEditing ? 'PATCH' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            imageId,
+            emberId,
             name: nameValue,
             phoneNumber: phoneValue,
             email: emailValue,

@@ -14,13 +14,13 @@ export type ResolvedAudioSource = {
 };
 
 export async function resolveAudioSourceForMedia(
-  imageId: string,
+  emberId: string,
   mediaId: string
 ): Promise<ResolvedAudioSource | null> {
   const [attachment, imageMedia, voiceClip] = await Promise.all([
-    prisma.imageAttachment.findFirst({
+    prisma.emberAttachment.findFirst({
       where: {
-        imageId,
+        emberId,
         id: mediaId,
         mediaType: 'AUDIO',
       },
@@ -29,7 +29,7 @@ export async function resolveAudioSourceForMedia(
         filename: true,
       },
     }),
-    prisma.image
+    prisma.ember
       .findFirst({
         where: {
           id: mediaId,
@@ -43,7 +43,7 @@ export async function resolveAudioSourceForMedia(
       .catch(() => null),
     prisma.voiceCallClip.findFirst({
       where: {
-        imageId,
+        emberId,
         id: mediaId,
       },
       select: {
@@ -83,17 +83,17 @@ export async function resolveAudioSourceForMedia(
 }
 
 export async function getOrCreateAudioSegmentPath({
-  imageId,
+  emberId,
   mediaId,
   startMs,
   endMs,
 }: {
-  imageId: string;
+  emberId: string;
   mediaId: string;
   startMs: number;
   endMs: number;
 }) {
-  const sourceInfo = await resolveAudioSourceForMedia(imageId, mediaId);
+  const sourceInfo = await resolveAudioSourceForMedia(emberId, mediaId);
   if (!sourceInfo) {
     throw new Error('Audio source not found');
   }
@@ -121,13 +121,13 @@ export async function getOrCreateAudioSegmentPath({
 }
 
 export async function getOrCreateNormalizedAudioPath({
-  imageId,
+  emberId,
   mediaId,
 }: {
-  imageId: string;
+  emberId: string;
   mediaId: string;
 }) {
-  const sourceInfo = await resolveAudioSourceForMedia(imageId, mediaId);
+  const sourceInfo = await resolveAudioSourceForMedia(emberId, mediaId);
   if (!sourceInfo) {
     throw new Error('Audio source not found');
   }

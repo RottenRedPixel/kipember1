@@ -14,9 +14,9 @@ function toIsoString(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
 }
 
-export async function loadEmberSetupContext(imageId: string) {
-  const image = await prisma.image.findUnique({
-    where: { id: imageId },
+export async function loadEmberSetupContext(emberId: string) {
+  const ember = await prisma.ember.findUnique({
+    where: { id: emberId },
     include: {
       owner: {
         select: {
@@ -164,21 +164,21 @@ export async function loadEmberSetupContext(imageId: string) {
     },
   });
 
-  if (!image) {
+  if (!ember) {
     return null;
   }
 
-  const imageTitle = getEmberTitle(image);
+  const imageTitle = getEmberTitle(ember);
   const confirmedPeople = Array.from(
     new Set(
-      image.tags
+      ember.tags
         .map((tag) => getUserDisplayName(tag.user) || getUserDisplayName(tag.emberContributor?.user) || tag.label)
         .map((label) => label?.trim())
         .filter((label): label is string => Boolean(label))
     )
   );
-  const confirmedLocation = parseConfirmedLocationContext(image.analysis?.metadataJson);
-  const contributorMemories = image.emberContributors.flatMap((ec) =>
+  const confirmedLocation = parseConfirmedLocationContext(ember.analysis?.metadataJson);
+  const contributorMemories = ember.emberContributors.flatMap((ec) =>
     [
       ...(ec.emberSession?.messages || []),
       ...ec.voiceCalls.flatMap((voiceCall) => voiceCall.emberSession?.messages || []),
@@ -198,7 +198,7 @@ export async function loadEmberSetupContext(imageId: string) {
       createdAt: toIsoString(message.createdAt),
     }))
   );
-  const callSummaries = image.emberContributors.flatMap((ec) =>
+  const callSummaries = ember.emberContributors.flatMap((ec) =>
     ec.voiceCalls
       .map((voiceCall) => voiceCall.callSummary?.trim())
       .filter((summary): summary is string => Boolean(summary))
@@ -213,7 +213,7 @@ export async function loadEmberSetupContext(imageId: string) {
         summary,
       }))
   );
-  const callHighlights = image.voiceCallClips.map((clip) => ({
+  const callHighlights = ember.voiceCallClips.map((clip) => ({
     id: clip.id,
     voiceCallId: clip.voiceCallId,
     contributorId: clip.emberContributorId,
@@ -237,13 +237,13 @@ export async function loadEmberSetupContext(imageId: string) {
 
   const promptContext = compactLines([
     `EMBER TITLE\n${imageTitle}`,
-    image.description ? `CAPTION\n${image.description}` : null,
-    image.analysis?.summary ? `IMAGE SUMMARY\n${image.analysis.summary}` : null,
-    image.analysis?.visualDescription
-      ? `VISUAL DESCRIPTION\n${image.analysis.visualDescription}`
+    ember.description ? `CAPTION\n${ember.description}` : null,
+    ember.analysis?.summary ? `IMAGE SUMMARY\n${ember.analysis.summary}` : null,
+    ember.analysis?.visualDescription
+      ? `VISUAL DESCRIPTION\n${ember.analysis.visualDescription}`
       : null,
-    image.analysis?.sceneInsightsJson
-      ? `SCENE INSIGHTS JSON\n${image.analysis.sceneInsightsJson}`
+    ember.analysis?.sceneInsightsJson
+      ? `SCENE INSIGHTS JSON\n${ember.analysis.sceneInsightsJson}`
       : null,
     confirmedPeople.length > 0
       ? `TAGGED PEOPLE\n${confirmedPeople.join(', ')}`
@@ -256,8 +256,8 @@ export async function loadEmberSetupContext(imageId: string) {
           .filter(Boolean)
           .join(', ')}`
       : null,
-    image.analysis?.capturedAt
-      ? `CAPTURED AT\n${image.analysis.capturedAt.toISOString()}`
+    ember.analysis?.capturedAt
+      ? `CAPTURED AT\n${ember.analysis.capturedAt.toISOString()}`
       : null,
     contributorMemories.length > 0
       ? `CONTRIBUTOR MEMORIES\n${contributorMemories
@@ -285,8 +285,8 @@ export async function loadEmberSetupContext(imageId: string) {
           )
           .join('\n')}`
       : null,
-    image.attachments.length > 0
-      ? `SUPPORTING MEDIA NOTES\n${image.attachments
+    ember.attachments.length > 0
+      ? `SUPPORTING MEDIA NOTES\n${ember.attachments
           .filter((attachment) => attachment.description?.trim())
           .map(
             (attachment) =>
@@ -294,13 +294,13 @@ export async function loadEmberSetupContext(imageId: string) {
           )
           .join('\n')}`
       : null,
-    image.wiki?.content
-      ? `CURRENT WIKI\n${image.wiki.content.slice(0, 8000)}`
+    ember.wiki?.content
+      ? `CURRENT WIKI\n${ember.wiki.content.slice(0, 8000)}`
       : null,
   ]);
 
   return {
-    image,
+    ember,
     imageTitle,
     confirmedPeople,
     confirmedLocation,

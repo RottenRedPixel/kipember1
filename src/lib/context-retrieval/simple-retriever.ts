@@ -16,18 +16,18 @@ export class SimpleRetriever implements ContextRetriever {
   }
 
   /**
-   * Retrieve all relevant context for an image
+   * Retrieve all relevant context for an ember
    * Concatenates wiki content and all response data
    */
-  async retrieve(imageId: string, _query: string, _limit?: number): Promise<string> {
+  async retrieve(emberId: string, _query: string, _limit?: number): Promise<string> {
     // Fetch wiki
     const wiki = await prisma.wiki.findUnique({
-      where: { imageId },
+      where: { emberId },
     });
 
     // Fetch all responses from completed conversations
-    const image = await prisma.image.findUnique({
-      where: { id: imageId },
+    const ember = await prisma.ember.findUnique({
+      where: { id: emberId },
       include: {
         emberContributors: {
           include: {
@@ -55,7 +55,7 @@ export class SimpleRetriever implements ContextRetriever {
       },
     });
 
-    if (!image) {
+    if (!ember) {
       return '';
     }
 
@@ -75,7 +75,7 @@ export class SimpleRetriever implements ContextRetriever {
 
     try {
       voiceCallClips = await prisma.voiceCallClip.findMany({
-        where: { imageId },
+        where: { emberId },
         orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
         select: {
           title: true,
@@ -109,7 +109,7 @@ export class SimpleRetriever implements ContextRetriever {
 
     // Add raw responses
     const responses: string[] = [];
-    for (const ec of image.emberContributors) {
+    for (const ec of ember.emberContributors) {
       const contributorMessages = [
         ...(ec.emberSession?.messages || []),
         ...ec.voiceCalls.flatMap((call) => call.emberSession?.messages || []),

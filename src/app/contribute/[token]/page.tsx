@@ -23,11 +23,11 @@ export default async function ContributeRedirect({
     // contributor experience instead of the guest shell.
     const ec = await prisma.emberContributor.findUnique({
       where: { token },
-      select: { imageId: true },
+      select: { emberId: true },
     }).catch(() => null);
 
-    if (ec?.imageId) {
-      redirect(`/ember/${ec.imageId}?ember=contributor`);
+    if (ec?.emberId) {
+      redirect(`/ember/${ec.emberId}?ember=contributor`);
     }
   }
 
