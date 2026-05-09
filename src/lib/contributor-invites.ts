@@ -5,7 +5,7 @@ import { sendSMS } from '@/lib/sms';
 const BASE_URL = getAppBaseUrl();
 
 export function buildContributorInviteUrl(token: string): string {
-  return `${BASE_URL}/contribute/${token}`;
+  return `${BASE_URL}/inbound/${token}`;
 }
 
 function formatPhoneNumber(phoneNumber: string): string {

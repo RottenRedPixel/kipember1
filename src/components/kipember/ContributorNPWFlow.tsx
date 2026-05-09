@@ -569,7 +569,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
         const p = new URLSearchParams(params.toString());
         p.delete('m');
         const q = p.toString();
-        const dest = `/contributor/${token}`;
+        const dest = `/contribute/${token}`;
         router.replace(q ? `${dest}?${q}` : dest);
       }
     }
@@ -623,7 +623,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
   const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
   const phoneNumber = data.contributor?.phoneNumber ?? '';
 
-  const base = `/contributor/${token}`;
+  const base = `/contribute/${token}`;
   const buildHref = (updates: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
     Object.entries(updates).forEach(([key, value]) => {
