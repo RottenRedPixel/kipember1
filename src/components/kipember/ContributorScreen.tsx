@@ -484,8 +484,7 @@ export default function ContributorScreen({ token }: { token: string }) {
       const response = await fetch(`/api/contribute/${token}`, { cache: 'no-store' });
       if (!response.ok) throw new Error('Unable to load this memory');
       const payload = (await response.json()) as ContributorData;
-      // Normalize: attach placeholder attachments array if not returned
-      setData({ attachments: [], snapshotScript: null, ...payload });
+      setData({ ...payload, attachments: payload.attachments ?? [], snapshotScript: payload.snapshotScript ?? null });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load this memory');
     } finally {
