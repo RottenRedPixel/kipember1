@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import ContributorScreen from '@/components/kipember/ContributorScreen';
+import ContributorNPWFlow from '@/components/kipember/ContributorNPWFlow';
 
 export default async function ContributorPage({
   params,
@@ -9,7 +9,7 @@ export default async function ContributorPage({
   const { token } = await params;
   return (
     <Suspense>
-      <ContributorScreen token={token} />
+      <ContributorNPWFlow token={token} />
     </Suspense>
   );
 }

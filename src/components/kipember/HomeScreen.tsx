@@ -29,7 +29,7 @@ import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberWikiOverlay from '@/components/kipember/KipemberWikiOverlay';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
-import ContributorFlow from '@/components/kipember/workflows/ContributorFlow';
+import ContributorPWFlow from '@/components/kipember/workflows/ContributorPWFlow';
 import OwnerFlow from '@/components/kipember/workflows/OwnerFlow';
 import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
 import { getEmberTitle } from '@/lib/ember-title';
@@ -230,7 +230,7 @@ function WorkflowSlot({
       ) : null;
     case 'contributor':
       return emberId ? (
-        <ContributorFlow emberId={emberId} onConversationStateChange={onConversationStateChange} emberModalSurface={emberModalSurface} />
+        <ContributorPWFlow emberId={emberId} onConversationStateChange={onConversationStateChange} emberModalSurface={emberModalSurface} />
       ) : null;
     default:
       return null;
