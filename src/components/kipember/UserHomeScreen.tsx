@@ -369,16 +369,18 @@ export default function UserHomeScreen({
 
         {/* c) Ember activity */}
         {(() => {
-          type ActivityKind = 'contributions' | 'wiki' | 'guestViews';
+          type ActivityKind = 'contributions' | 'wiki' | 'guestViews' | 'calls';
           const KIND_META: Record<ActivityKind, { gradient: string; singular: string; plural: string }> = {
             contributions: { gradient: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)', singular: 'Contribution', plural: 'Contributions' },
             wiki:          { gradient: 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)', singular: 'Wiki Update',  plural: 'Wiki Updates' },
             guestViews:    { gradient: 'linear-gradient(135deg, #059669 0%, #065f46 100%)', singular: 'Guest View',   plural: 'Guest Views' },
+            calls:         { gradient: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)', singular: 'Call',         plural: 'Calls' },
           };
           const combined: Array<HomeActivityItemProp & { kind: ActivityKind }> = [
             ...((initialHomeActivity?.contributions.items ?? []).map((i) => ({ ...i, kind: 'contributions' as const }))),
             ...((initialHomeActivity?.wikiUpdates.items   ?? []).map((i) => ({ ...i, kind: 'wiki'          as const }))),
             ...((initialHomeActivity?.guestViews.items    ?? []).map((i) => ({ ...i, kind: 'guestViews'    as const }))),
+            ...((initialHomeActivity?.calls.items         ?? []).map((i) => ({ ...i, kind: 'calls'         as const }))),
           ];
           const visibleActivity = combined
             .filter((item) => !dismissedActivity.has(`${item.kind}:${item.emberId}`))

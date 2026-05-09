@@ -344,6 +344,7 @@ model User {
   lastSeenContributionsAt DateTime?
   lastSeenWikiAt       DateTime?
   lastSeenGuestViewsAt DateTime?
+  lastSeenCallsAt      DateTime?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
   contributorPoolEntries ContributorPool[] @relation("PoolOwner")

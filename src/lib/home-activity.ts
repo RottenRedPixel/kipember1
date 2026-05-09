@@ -54,6 +54,7 @@ export type HomeActivity = {
   contributions: HomeActivityKind;
   wikiUpdates: HomeActivityKind;
   guestViews: HomeActivityKind;
+  calls: HomeActivityKind;
 };
 
 // Upper bound on messages fetched to build contributions cards. In practice we expect
@@ -78,12 +79,13 @@ const MAX_FACES_PER_EMBER = 4;
 export async function getHomeActivity(userId: string): Promise<HomeActivity> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { lastSeenContributionsAt: true, lastSeenWikiAt: true, lastSeenGuestViewsAt: true },
+    select: { lastSeenContributionsAt: true, lastSeenWikiAt: true, lastSeenGuestViewsAt: true, lastSeenCallsAt: true },
   });
 
   const sinceContributions = user?.lastSeenContributionsAt ?? null;
   const sinceWiki = user?.lastSeenWikiAt ?? null;
   const sinceGuestViews = user?.lastSeenGuestViewsAt ?? null;
+  const sinceCalls = user?.lastSeenCallsAt ?? null;
 
   // --- Contributions: fetch raw messages + session + ember, group by ember in JS ---
   const messages = await prisma.emberMessage.findMany({
@@ -260,9 +262,54 @@ export async function getHomeActivity(userId: string): Promise<HomeActivity> {
     .map((b) => ({ emberId: b.emberId, emberTitle: b.emberTitle, thumb: b.thumb, count: b.count, at: b.at }))
     .sort((a, b) => b.at.getTime() - a.at.getTime());
 
+  // --- Calls: completed VoiceCall rows on embers owned by this user ---
+  const voiceCalls = await prisma.voiceCall.findMany({
+    where: {
+      endedAt: { not: null },
+      emberContributor: { ember: { ownerId: userId } },
+      ...(sinceCalls ? { endedAt: { gt: sinceCalls } } : {}),
+    },
+    orderBy: { endedAt: 'desc' },
+    take: MAX_RECENT_MESSAGES,
+    select: {
+      endedAt: true,
+      emberContributor: {
+        select: {
+          ember: {
+            select: { id: true, title: true, mediaType: true, filename: true, posterFilename: true },
+          },
+        },
+      },
+    },
+  });
+
+  type CallBucket = { emberId: string; emberTitle: string | null; thumb: HomeActivityThumb; count: number; at: Date };
+  const callBuckets = new Map<string, CallBucket>();
+  for (const vc of voiceCalls) {
+    if (!vc.endedAt) continue;
+    const img = vc.emberContributor.ember;
+    let bucket = callBuckets.get(img.id);
+    if (!bucket) {
+      bucket = {
+        emberId: img.id,
+        emberTitle: img.title,
+        thumb: { mediaType: img.mediaType, filename: img.filename, posterFilename: img.posterFilename },
+        count: 0,
+        at: vc.endedAt,
+      };
+      callBuckets.set(img.id, bucket);
+    }
+    bucket.count += 1;
+    if (vc.endedAt > bucket.at) bucket.at = vc.endedAt;
+  }
+  const callItems: HomeActivityItem[] = Array.from(callBuckets.values())
+    .map((b) => ({ emberId: b.emberId, emberTitle: b.emberTitle, thumb: b.thumb, count: b.count, at: b.at }))
+    .sort((a, b) => b.at.getTime() - a.at.getTime());
+
   return {
     contributions: { items: contributionItems },
     wikiUpdates: { items: wikiItems },
     guestViews: { items: guestViewItems },
+    calls: { items: callItems },
   };
 }

@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
 import { prisma } from '@/lib/db';
 
-type Kind = 'contributions' | 'wiki' | 'guestViews';
+type Kind = 'contributions' | 'wiki' | 'guestViews' | 'calls';
 
-const FIELD_BY_KIND: Record<Kind, 'lastSeenContributionsAt' | 'lastSeenWikiAt' | 'lastSeenGuestViewsAt'> = {
+const FIELD_BY_KIND: Record<Kind, 'lastSeenContributionsAt' | 'lastSeenWikiAt' | 'lastSeenGuestViewsAt' | 'lastSeenCallsAt'> = {
   contributions: 'lastSeenContributionsAt',
   wiki: 'lastSeenWikiAt',
   guestViews: 'lastSeenGuestViewsAt',
+  calls: 'lastSeenCallsAt',
 };
 
 export async function POST(request: NextRequest) {
@@ -23,9 +24,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  if (body.kind !== 'contributions' && body.kind !== 'wiki' && body.kind !== 'guestViews') {
+  if (body.kind !== 'contributions' && body.kind !== 'wiki' && body.kind !== 'guestViews' && body.kind !== 'calls') {
     return NextResponse.json(
-      { error: 'kind must be "contributions", "wiki", or "guestViews"' },
+      { error: 'kind must be "contributions", "wiki", "guestViews", or "calls"' },
       { status: 400 }
     );
   }
