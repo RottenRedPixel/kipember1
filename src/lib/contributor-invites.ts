@@ -71,7 +71,7 @@ export async function sendContributorSmsInvite(
 
   const contributorFirstName = emberContributor.user.firstName || 'there';
   const ownerFirstName = emberContributor.image.owner.firstName || 'Someone';
-  const message = `Hi ${contributorFirstName}, this is Ember. ${ownerFirstName} invited you to help build a memory: ${inviteUrl}`;
+  const message = `Hi ${contributorFirstName}, this is Ember. ${ownerFirstName} invited you to help build a memory (Claude): ${inviteUrl}`;
   const phone = formatPhoneNumber(emberContributor.user.phoneNumber);
 
   try {
