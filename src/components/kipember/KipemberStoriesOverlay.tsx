@@ -80,7 +80,7 @@ export default function KipemberStoriesOverlay({
   const [lineIndex, setLineIndex] = useState(0);
   const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
-  const [selectedBadge, setSelectedBadge] = useState(3);
+  const [selectedBadge, setSelectedBadge] = useState(4);
 
   // Keep ref in sync for use inside callbacks
   useEffect(() => { selectedBadgeRef.current = selectedBadge; }, [selectedBadge]);

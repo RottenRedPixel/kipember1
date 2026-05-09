@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {
   Check,
+  Flame,
   Hand,
   Home,
   ImagePlus,
@@ -28,6 +29,7 @@ import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
 import { useGuestVoiceRecording } from '@/components/kipember/workflows/useGuestVoiceRecording';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
+import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
 
 type ContributorAttachment = {
   id: string;
@@ -637,7 +639,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
   const callTabHref = buildHref({ chat: 'calls' });
   const shareUrl = typeof window !== 'undefined' ? window.location.origin + base : base;
 
-  const railHidden = emberModalOpen || modal === 'share' || modal === 'play' || modal === 'hello';
+  const railHidden = emberModalOpen || modal === 'share' || modal === 'play' || modal === 'stories' || modal === 'hello';
 
   return (
     <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
@@ -774,6 +776,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
           ) : null}
           <RailBtn icon={Share2} label="share" href={buildHref({ m: 'share' })} />
           <RailBtn icon={ScanEye} label="view" href={buildHref({ m: 'play' })} />
+          <RailBtn icon={Flame} label="stories" href={buildHref({ m: 'stories' })} />
         </div>
 
         {/* Share modal */}
@@ -882,6 +885,16 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
         {/* Play overlay */}
         {modal === 'play' ? (
           <KipemberPlayOverlay
+            closeHref={buildHref({ m: null })}
+            emberId={data.ember.id}
+            storyScript={data.snapshotScript}
+            guestToken={token}
+          />
+        ) : null}
+
+        {/* Stories overlay */}
+        {modal === 'stories' ? (
+          <KipemberStoriesOverlay
             closeHref={buildHref({ m: null })}
             emberId={data.ember.id}
             storyScript={data.snapshotScript}

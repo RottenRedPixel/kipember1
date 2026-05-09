@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {
   Check,
+  Flame,
   Hand,
   Home,
   Link2,
@@ -22,6 +23,7 @@ import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
 import GuestFlow from '@/components/kipember/workflows/GuestFlow';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
+import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
 
 type GuestAttachment = {
   id: string;
@@ -268,7 +270,7 @@ export default function GuestEmberScreen({
 
   // The right rail must hide whenever the Ember modal is open or any other
   // overlay is showing — same rule HomeScreen uses for the rail.
-  const railHidden = emberModalOpen || modal === 'share' || modal === 'play' || modal === 'hello';
+  const railHidden = emberModalOpen || modal === 'share' || modal === 'play' || modal === 'stories' || modal === 'hello';
 
   return (
     <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
@@ -429,6 +431,7 @@ export default function GuestEmberScreen({
           ) : null}
           <RailBtn icon={Share2} label="share" href={buildHref({ m: 'share' })} />
           <RailBtn icon={ScanEye} label="view" href={buildHref({ m: 'play' })} />
+          <RailBtn icon={Flame} label="stories" href={buildHref({ m: 'stories' })} />
         </div>
 
         {/* Share modal */}
@@ -532,6 +535,16 @@ export default function GuestEmberScreen({
         {/* Play overlay */}
         {modal === 'play' ? (
           <KipemberPlayOverlay
+            closeHref={buildHref({ m: null })}
+            emberId={data.ember.id}
+            storyScript={data.snapshotScript}
+            guestToken={token}
+          />
+        ) : null}
+
+        {/* Stories overlay */}
+        {modal === 'stories' ? (
+          <KipemberStoriesOverlay
             closeHref={buildHref({ m: null })}
             emberId={data.ember.id}
             storyScript={data.snapshotScript}
