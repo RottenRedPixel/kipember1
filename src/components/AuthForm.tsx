@@ -142,17 +142,6 @@ export default function AuthForm({
             required
           />
 
-          {!isSignup ? (
-            <div className="flex justify-end">
-              <Link
-                href="/forgot-password"
-                className="text-white/30 text-xs hover:text-white/60 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
-          ) : null}
-
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
           <button
