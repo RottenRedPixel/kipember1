@@ -167,7 +167,7 @@ export default function TendActionScreen({ action }: { action: string }) {
       return;
     }
 
-    void fetch('/api/images')
+    void fetch('/api/embers')
       .then(async (response) => {
         if (!response.ok) {
           return;
@@ -192,7 +192,7 @@ export default function TendActionScreen({ action }: { action: string }) {
       setCachedCoverUrl(url);
     }
     // Privacy toggles + Delete now live inline in the wiki Control group
-    // (KipemberWikiContent), which calls PATCH/DELETE /api/images directly.
+    // (KipemberWikiContent), which calls PATCH/DELETE /api/embers directly.
     // Time/date and location/GPS state lives in EditTimePlaceSlider now;
     // it syncs from `detail` via its own useEffect.
     // Frame crop state lives in FrameSlider now; it syncs from `detail`

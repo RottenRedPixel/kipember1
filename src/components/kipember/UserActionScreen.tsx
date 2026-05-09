@@ -85,7 +85,7 @@ export default function UserActionScreen({
         return;
       }
 
-      void fetch('/api/images')
+      void fetch('/api/embers')
         .then(async (response) => {
           if (!response.ok) {
             return;

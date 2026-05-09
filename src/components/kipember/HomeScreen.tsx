@@ -595,7 +595,7 @@ export default function HomeScreen({
   }, [modal]);
 
   useEffect(() => {
-    void fetch('/api/images', { cache: 'no-store' })
+    void fetch('/api/embers', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) {
           return;
@@ -621,7 +621,7 @@ export default function HomeScreen({
         clearInterval(interval);
         return;
       }
-      void fetch('/api/images', { cache: 'no-store' })
+      void fetch('/api/embers', { cache: 'no-store' })
         .then(async (response) => {
           if (!response.ok) return;
           const payload = (await response.json()) as EmberSummary[];
@@ -765,7 +765,7 @@ export default function HomeScreen({
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('/api/images', { method: 'POST', body: formData });
+      const response = await fetch('/api/embers', { method: 'POST', body: formData });
       const payload = (await response.json().catch(() => ({}))) as CreateEmberResponse;
       if (!response.ok || typeof payload?.id !== 'string') {
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');

@@ -95,7 +95,7 @@ export default function EmberCreateFlow({
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch('/api/images', { method: 'POST', body: formData });
+      const response = await fetch('/api/embers', { method: 'POST', body: formData });
       const payload = (await response.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!response.ok || typeof payload?.id !== 'string') {
         throw new Error(typeof payload?.error === 'string' ? payload.error : 'Failed to create ember');
