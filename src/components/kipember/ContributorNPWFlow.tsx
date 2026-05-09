@@ -736,7 +736,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
             href={buildHref({ m: 'hello' })}
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
             style={{ background: 'rgba(249,115,22,0.85)' }}
-            aria-label="Create account"
+            aria-label={data?.contributor?.hasPassword ? 'Login' : 'Create account'}
           >
             <UserPlus size={18} color="white" strokeWidth={1.8} />
           </Link>
@@ -849,7 +849,15 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
             </div>
             <div className="mx-5" style={{ borderTop: '1px solid var(--border-default)' }} />
             <div className="px-5 pt-3 pb-4">
-              {data?.contributor && !data.contributor.hasPassword ? (
+              {data?.contributor && data.contributor.hasPassword ? (
+                <Link
+                  href={`/login?next=${encodeURIComponent(`/inbound/${token}`)}`}
+                  className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
+                  style={{ background: '#f97316', minHeight: 44 }}
+                >
+                  Login
+                </Link>
+              ) : data?.contributor && !data.contributor.hasPassword ? (
                 <Link
                   href={`/api/contribute/${token}/claim`}
                   className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
