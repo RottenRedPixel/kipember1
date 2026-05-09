@@ -267,8 +267,8 @@ export default function ContributorPWFlow({
             <div
               className="flex h-11 w-full items-center rounded-full px-4"
               style={{
-                background: (voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
-                border: `1px solid ${(voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
+                background: (voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
+                border: `1px solid ${(voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.45)' : 'transparent'}`,
               }}
             >
               {voice.isRecording ? (
@@ -276,7 +276,7 @@ export default function ContributorPWFlow({
               ) : (voice.playbackAnalyser ?? manualAnalyser) ? (
                 <MicLevelMeter analyser={voice.playbackAnalyser ?? manualAnalyser} className="h-5 w-full" color="#22c55e" />
               ) : (
-                <span className="text-sm w-full" style={{ color: 'rgba(34,197,94,0.55)' }}>Talk with ember...</span>
+                <span className="text-sm w-full text-white/38">Talk with ember...</span>
               )}
             </div>
           </div>
@@ -298,8 +298,8 @@ export default function ContributorPWFlow({
             <div
               className="flex h-11 w-full items-center rounded-full px-4 gap-1.5 text-sm"
               style={{
-                background: isCalling ? 'rgba(37,99,235,0.15)' : 'rgba(37,99,235,0.07)',
-                border: `1px solid ${isCalling ? 'rgba(37,99,235,0.45)' : 'rgba(37,99,235,0.18)'}`,
+                background: isCalling ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.08)',
+                border: `1px solid ${isCalling ? 'rgba(37,99,235,0.45)' : 'transparent'}`,
               }}
             >
               {isCalling ? (
@@ -309,7 +309,7 @@ export default function ContributorPWFlow({
                 </>
               ) : (
                 <>
-                  <span style={{ color: 'rgba(96,165,250,0.85)' }}>Ember will call:</span>
+                  <span className="text-white/50">Ember will call:</span>
                   <span className="text-white">{formatPhone(phoneNumber)}</span>
                 </>
               )}
@@ -329,11 +329,11 @@ export default function ContributorPWFlow({
       ) : (
         /* Chat toolbar */
         <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2 flex-shrink-0">
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isSending} className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer" style={{ background: 'rgba(255,255,255,0.08)' }} aria-label="Add photo">
-            <ImagePlus size={18} />
-          </button>
           <div className="relative min-w-0 flex-1">
-            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Share your memory with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
+            <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Share your memory with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
+            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isSending} className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full text-white/50 transition disabled:opacity-40 cursor-pointer" aria-label="Add photo">
+              <ImagePlus size={15} />
+            </button>
           </div>
           <button type="submit" disabled={isSending} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
             <SendHorizontal size={18} />

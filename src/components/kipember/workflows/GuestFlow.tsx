@@ -196,8 +196,8 @@ export default function GuestFlow({
             <div
               className="flex h-11 w-full items-center rounded-full px-4"
               style={{
-                background: (voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.15)' : 'rgba(34,197,94,0.07)',
-                border: `1px solid ${(voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.45)' : 'rgba(34,197,94,0.18)'}`,
+                background: (voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
+                border: `1px solid ${(voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.45)' : 'transparent'}`,
               }}
             >
               {voice.isRecording ? (
@@ -205,7 +205,7 @@ export default function GuestFlow({
               ) : (voice.playbackAnalyser ?? manualAnalyser) ? (
                 <MicLevelMeter analyser={voice.playbackAnalyser ?? manualAnalyser} className="h-5 w-full" color="#22c55e" />
               ) : (
-                <span className="text-sm w-full" style={{ color: 'rgba(34,197,94,0.55)' }}>Talk with ember...</span>
+                <span className="text-sm w-full text-white/38">Talk with ember...</span>
               )}
             </div>
           </div>
