@@ -7,6 +7,7 @@ import {
   Copy,
   Hand,
   LogOut,
+  Flame,
   MapPin,
   Moon,
   MoreHorizontal,
@@ -27,6 +28,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
+import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
 import KipemberWikiOverlay from '@/components/kipember/KipemberWikiOverlay';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import ContributorPWFlow from '@/components/kipember/workflows/ContributorPWFlow';
@@ -331,7 +333,7 @@ export default function HomeScreen({
   const rawChatParam = params.get('chat');
   const emberModalSurface: EmberModalSurface =
     rawChatParam === 'voice' ? 'voice' : rawChatParam === 'calls' ? 'calls' : 'chats';
-  const railHidden = firstEmber || emberModalOpen || (modal === 'share' && !!shareToken) || modal === 'play' || modal === 'hello';
+  const railHidden = firstEmber || emberModalOpen || (modal === 'share' && !!shareToken) || modal === 'play' || modal === 'stories' || modal === 'hello';
   // Enable the swipe wrapper when either axis is usable: vertical needs more
   // than one ember in the carousel, horizontal needs at least one attachment
   // beyond the cover photo. The per-axis handlers below still gate on the
@@ -1109,6 +1111,7 @@ export default function HomeScreen({
           />
         )}
         <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
+        <RailBtn icon={Flame} label="stories" href={buildHomeHref({ m: 'stories' })} active={modal === 'stories'} />
       </div>
 
       {modal === 'share' && shareToken ? (
@@ -1235,6 +1238,15 @@ export default function HomeScreen({
       {modal === 'play' ? (
         <KipemberPlayOverlay
           key={`${selectedEmberId || 'empty'}:${selectedEmber?.wiki?.updatedAt || 'wiki'}:${selectedEmber?.snapshot?.script ? 'snapshot' : 'fallback'}`}
+          closeHref={buildHomeHref({ m: null })}
+          emberId={selectedEmberId}
+          storyScript={selectedEmber?.snapshot?.script || null}
+        />
+      ) : null}
+
+      {modal === 'stories' ? (
+        <KipemberStoriesOverlay
+          key={`stories:${selectedEmberId || 'empty'}:${selectedEmber?.snapshot?.script ? 'snapshot' : 'fallback'}`}
           closeHref={buildHomeHref({ m: null })}
           emberId={selectedEmberId}
           storyScript={selectedEmber?.snapshot?.script || null}
