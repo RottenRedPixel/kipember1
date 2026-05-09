@@ -2827,7 +2827,7 @@ export default function KipemberWikiContent({
               const totalContributions = chatCount + callCount;
               return (
                 <WikiCard key={contributor.id}>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <AvatarCircle
                       name={contributorName}
                       avatarUrl={contributor.user?.avatarFilename ? `/api/uploads/${contributor.user.avatarFilename}` : null}
@@ -2884,7 +2884,7 @@ export default function KipemberWikiContent({
               const pendingTotal = pendingChatCount + pendingCallCount;
               return (
               <WikiCard key={contributor.id}>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <AvatarCircle
                     name={contributor.name || contributor.phoneNumber || '?'}
                     bgColor={contributor.avatarColor ?? pastelForContributorIdentity({
