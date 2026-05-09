@@ -20,7 +20,7 @@ export async function GET(
 
   const user = await prisma.user.findUnique({
     where: { id: challenge.userId },
-    select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
+    select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, passwordHash: true },
   }).catch(() => null);
 
   if (!user) {
@@ -35,7 +35,9 @@ export async function GET(
     // Return 200 HTML with Set-Cookie + meta refresh.
     // Cookies on redirect responses are silently dropped by mobile browsers;
     // cookies on a 200 HTML response are always processed.
-    const redirectPath = challenge.redirectPath;
+    // If the user has no password yet, send them to set one regardless of the
+    // original redirect destination — otherwise they stay permanently locked out.
+    const redirectPath = !user.passwordHash ? '/set-password' : challenge.redirectPath;
     const html = `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${redirectPath}"></head><body>Signing in...</body></html>`;
     const response = new NextResponse(html, {
       status: 200,
