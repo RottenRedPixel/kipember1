@@ -27,6 +27,7 @@ export async function GET(
           lastName: true,
           email: true,
           phoneNumber: true,
+          passwordHash: true,
         },
       },
       ember: {
@@ -110,7 +111,9 @@ export async function GET(
         contributor: {
           id: refreshedContributor.id,
           name: [refreshedContributor.user?.firstName, refreshedContributor.user?.lastName].filter(Boolean).join(' ') || refreshedContributor.user?.email || refreshedContributor.user?.phoneNumber || null,
+          firstName: refreshedContributor.user?.firstName ?? null,
           phoneNumber: refreshedContributor.user?.phoneNumber ?? null,
+          hasPassword: !!refreshedContributor.user?.passwordHash,
         },
         ember: {
           id: refreshedContributor.ember.id,
