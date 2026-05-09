@@ -1110,7 +1110,6 @@ export default function HomeScreen({
             active={modal === 'wiki'}
           />
         )}
-        <RailBtn icon={ScanEye} label="view" href={buildHomeHref({ m: 'play' })} active={modal === 'play'} />
         <RailBtn icon={Flame} label="stories" href={buildHomeHref({ m: 'stories' })} active={modal === 'stories'} />
       </div>
 

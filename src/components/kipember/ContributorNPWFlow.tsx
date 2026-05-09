@@ -775,7 +775,6 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
             </Link>
           ) : null}
           <RailBtn icon={Share2} label="share" href={buildHref({ m: 'share' })} />
-          <RailBtn icon={ScanEye} label="view" href={buildHref({ m: 'play' })} />
           <RailBtn icon={Flame} label="stories" href={buildHref({ m: 'stories' })} />
         </div>
 
