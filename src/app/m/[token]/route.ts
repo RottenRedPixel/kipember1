@@ -15,7 +15,7 @@ export async function GET(
 
   const challenge = await findSmsSigninChallenge(token).catch(() => null);
   if (!challenge?.userId) {
-    return NextResponse.redirect(`${baseUrl}/login?info=link-expired`, { status: 302 });
+    return NextResponse.redirect(`${baseUrl}/link-expired`, { status: 302 });
   }
 
   const user = await prisma.user.findUnique({
@@ -24,7 +24,7 @@ export async function GET(
   }).catch(() => null);
 
   if (!user) {
-    return NextResponse.redirect(`${baseUrl}/login?info=link-expired`, { status: 302 });
+    return NextResponse.redirect(`${baseUrl}/link-expired`, { status: 302 });
   }
 
   try {
@@ -46,6 +46,6 @@ export async function GET(
     applyUserSessionCookie(response, sessionToken);
     return response;
   } catch {
-    return NextResponse.redirect(`${baseUrl}/login?info=link-expired`, { status: 302 });
+    return NextResponse.redirect(`${baseUrl}/link-expired`, { status: 302 });
   }
 }

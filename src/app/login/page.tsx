@@ -6,7 +6,7 @@ import { getCurrentAuth } from '@/lib/auth-server';
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; next?: string; info?: string }>;
+  searchParams: Promise<{ phone?: string; next?: string }>;
 }) {
   const auth = await getCurrentAuth();
 
@@ -14,11 +14,11 @@ export default async function LoginPage({
     redirect('/home');
   }
 
-  const { phone, next, info } = await searchParams;
+  const { phone, next } = await searchParams;
 
   return (
     <Suspense>
-      <AuthForm mode="login" defaultPhone={phone} next={next} info={info} />
+      <AuthForm mode="login" defaultPhone={phone} next={next} />
     </Suspense>
   );
 }

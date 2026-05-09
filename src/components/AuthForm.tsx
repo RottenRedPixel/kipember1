@@ -12,12 +12,10 @@ export default function AuthForm({
   mode,
   defaultPhone,
   next,
-  info,
 }: {
   mode: AuthMode;
   defaultPhone?: string;
   next?: string;
-  info?: string;
 }) {
   const router = useRouter();
   const isSignup = mode === 'signup';
@@ -95,15 +93,6 @@ export default function AuthForm({
     >
       <AppHeader />
       <div className="flex flex-col gap-8 w-full max-w-sm pt-6 pb-16 fade-in">
-        {info === 'link-expired' ? (
-          <div
-            className="rounded-xl px-4 py-3 text-sm"
-            style={{ background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.3)', color: 'rgba(255,255,255,0.75)' }}
-          >
-            That sign-in link has expired or already been used. Enter your phone number below to get a new one.
-          </div>
-        ) : null}
-
         <div className="flex flex-col gap-1">
           <h1 className="text-white text-2xl font-bold tracking-tight">
             {isSignup ? 'Create your account' : 'Welcome back'}
