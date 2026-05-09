@@ -152,6 +152,7 @@ export default async function AboutPage() {
   const initials = [auth?.user.firstName, auth?.user.lastName]
     .filter(Boolean).join(' ').trim()
     .split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || undefined;
+  const hasPassword = auth ? !!auth.user.passwordHash : undefined;
 
   return (
     <Suspense>
@@ -159,7 +160,7 @@ export default async function AboutPage() {
         className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4"
         style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
       >
-        <AppHeader avatarUrl={avatarUrl} userInitials={initials} />
+        <AppHeader avatarUrl={avatarUrl} userInitials={initials} hasPassword={hasPassword} />
         <div className="flex w-full max-w-xl flex-col gap-6 pt-6 pb-16 fade-in">
           <div className="flex flex-col gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-white">
