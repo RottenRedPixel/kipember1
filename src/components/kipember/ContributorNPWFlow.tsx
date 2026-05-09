@@ -16,7 +16,6 @@ import {
   SendHorizontal,
   Share2,
   Square,
-  UserPlus,
   X,
 } from 'lucide-react';
 import EmberModalShell, { type EmberModalSurface } from '@/components/kipember/EmberModalShell';
@@ -732,14 +731,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
           >
             <Home size={18} color="var(--text-primary)" strokeWidth={1.8} />
           </Link>
-          <Link
-            href="/signup"
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(249,115,22,0.85)' }}
-            aria-label="Create account"
-          >
-            <UserPlus size={18} color="white" strokeWidth={1.8} />
-          </Link>
+          <div className="w-9 h-9" />
         </div>
 
         {/* Title overlay */}
