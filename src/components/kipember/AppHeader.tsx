@@ -8,6 +8,7 @@ type AppHeaderProps = {
   avatarUrl?: string | null;
   userInitials?: string;
   userModalHref?: string;
+  hasPassword?: boolean;
 };
 
 function computeInitials(value: string): string {
@@ -26,9 +27,11 @@ export default function AppHeader({
   avatarUrl: externalAvatarUrl,
   userInitials = 'ST',
   userModalHref = '/account',
+  hasPassword: externalHasPassword,
 }: AppHeaderProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(externalAvatarUrl ?? null);
   const [authenticated, setAuthenticated] = useState(externalAvatarUrl !== undefined);
+  const [hasPassword, setHasPassword] = useState<boolean>(externalHasPassword ?? true);
   const [localInitials, setLocalInitials] = useState<string>(userInitials);
   const pathname = usePathname();
   const isHomeDashboard = pathname === '/home';
@@ -39,6 +42,7 @@ export default function AppHeader({
     if (externalAvatarUrl !== undefined) {
       setAvatarUrl(externalAvatarUrl);
       setAuthenticated(true);
+      if (externalHasPassword !== undefined) setHasPassword(externalHasPassword);
       return;
     }
 
@@ -58,6 +62,7 @@ export default function AppHeader({
         if (typeof user?.avatarUrl === 'string') {
           setAvatarUrl(user.avatarUrl);
         }
+        setHasPassword(user?.hasPassword === true);
         const display =
           [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
           (typeof user?.email === 'string' ? user.email : '');
@@ -95,11 +100,11 @@ export default function AppHeader({
       </Link>
 
       {/* Nav links */}
-      {authenticated ? (
+      <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
+        ABOUT
+      </Link>
+      {authenticated && hasPassword && (
         <>
-          <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
-            ABOUT
-          </Link>
           <Link href="/home" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : '#6b7280' }}>
             HOME
           </Link>
@@ -107,17 +112,13 @@ export default function AppHeader({
             EMBERS
           </Link>
         </>
-      ) : (
-        <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
-          ABOUT
-        </Link>
       )}
 
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Right side — avatar when authenticated, LOGIN when not */}
-      {authenticated ? (
+      {/* Right side — avatar for full accounts, create account for passwordless, login for guests */}
+      {authenticated && hasPassword ? (
         <Link
           href={userModalHref}
           className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
@@ -129,6 +130,20 @@ export default function AppHeader({
           ) : (
             <span className="text-white text-sm font-medium">{localInitials}</span>
           )}
+        </Link>
+      ) : authenticated && !hasPassword ? (
+        <Link
+          href="/signup"
+          className="rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ width: 35, height: 35, background: 'rgba(249,115,22,0.85)' }}
+          aria-label="Create account"
+        >
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" />
+            <line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
         </Link>
       ) : (
         <Link

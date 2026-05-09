@@ -16,7 +16,7 @@ export async function GET() {
 
   const userRecord = await prisma.user.findUnique({
     where: { id: auth.user.id },
-    select: { avatarFilename: true, createdAt: true },
+    select: { avatarFilename: true, createdAt: true, passwordHash: true },
   });
 
   return NextResponse.json({
@@ -28,6 +28,7 @@ export async function GET() {
       phoneNumber: auth.user.phoneNumber,
       avatarUrl: userRecord?.avatarFilename ? `/api/uploads/${userRecord.avatarFilename}` : null,
       createdAt: userRecord?.createdAt?.toISOString() ?? null,
+      hasPassword: !!userRecord?.passwordHash,
       canAccessAdmin: isAdmin(auth.user),
     },
   });
