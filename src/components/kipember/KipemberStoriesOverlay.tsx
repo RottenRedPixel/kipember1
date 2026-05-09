@@ -8,17 +8,17 @@ import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 const BADGES = [
   { icon: MapPinned, active: 'rgba(134,239,172,0.55)', vizColor: '#86efac', label: 'place & time' },
   { icon: Users,     active: 'rgba(96,165,250,0.55)',  vizColor: '#60a5fa', label: 'friends & family' },
-  { icon: Heart,     active: 'rgba(244,114,182,0.55)', vizColor: '#f472b6', label: 'feelings & emotions' },
-  { icon: Smile,     active: 'rgba(253,224,71,0.55)',  vizColor: '#fde047', label: 'interesting stories' },
   { icon: ScanEye,   active: 'rgba(249,115,22,0.55)',  vizColor: '#f97316', label: 'snapshot of this memory' },
+  { icon: Smile,     active: 'rgba(253,224,71,0.55)',  vizColor: '#fde047', label: 'interesting stories' },
+  { icon: Heart,     active: 'rgba(244,114,182,0.55)', vizColor: '#f472b6', label: 'feelings & emotions' },
 ];
 
 const FACET_SCRIPTS: (string | null)[] = [
   'Ember will find some interesting bits about the time and place of this memory as told by the contributors.',
   'Friends and family will tell us about who was there and what was going on.',
-  'Hearing about how everyone felt in their own voices will be an awesome experience.',
+  null, // badge 2 uses the real storyScript prop
   'We will discover new facts and anecdotes about this memory.',
-  null, // badge 4 uses the real storyScript prop
+  'Hearing about how everyone felt in their own voices will be an awesome experience.',
 ];
 
 type KipemberStoriesOverlayProps = {
@@ -73,20 +73,20 @@ export default function KipemberStoriesOverlay({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const prepareAttemptedRef = useRef(false);
-  const selectedBadgeRef = useRef(3);
+  const selectedBadgeRef = useRef(2);
 
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [error, setError] = useState('');
   const [lineIndex, setLineIndex] = useState(0);
   const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
-  const [selectedBadge, setSelectedBadge] = useState(4);
+  const [selectedBadge, setSelectedBadge] = useState(2);
 
   // Keep ref in sync for use inside callbacks
   useEffect(() => { selectedBadgeRef.current = selectedBadge; }, [selectedBadge]);
 
-  const activeScript = selectedBadge === 4 ? storyScript : FACET_SCRIPTS[selectedBadge];
-  const hasPlayableContent = Boolean(emberId) && Boolean(activeScript ?? (selectedBadge === 4 ? storyScript : null));
+  const activeScript = selectedBadge === 2 ? storyScript : FACET_SCRIPTS[selectedBadge];
+  const hasPlayableContent = Boolean(emberId) && Boolean(activeScript ?? (selectedBadge === 2 ? storyScript : null));
   const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
   const shouldAnimate = playbackState === 'playing' && !done;
   const isPlaying = playbackState === 'playing';
@@ -146,7 +146,7 @@ export default function KipemberStoriesOverlay({
       throw new Error(typeof payload?.error === 'string' ? payload.error : 'Audio not available.');
     }
 
-    // Badge 4 — real snapshot
+    // Badge 2 — real snapshot
     if (!storyScript) throw new Error('This ember does not have a snapshot yet.');
     const audioUrl = guestToken
       ? `/api/embers/${emberId}/snapshot-audio?token=${encodeURIComponent(guestToken)}`
@@ -220,7 +220,7 @@ export default function KipemberStoriesOverlay({
     [buildAudio, emberId, hasPlayableContent]
   );
 
-  // Pre-fetch snapshot audio only (badge 4) — don't auto-fetch facet scripts
+  // Pre-fetch snapshot audio only (badge 2) — don't auto-fetch facet scripts
   useEffect(() => {
     if (prepareAttemptedRef.current || !emberId || !storyScript) return;
     prepareAttemptedRef.current = true;
