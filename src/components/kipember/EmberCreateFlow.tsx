@@ -38,11 +38,13 @@ export default function EmberCreateFlow({
   file,
   avatarUrl,
   userInitials,
+  hasPassword = true,
   onCancel,
 }: {
   file: File;
   avatarUrl?: string | null;
   userInitials?: string;
+  hasPassword?: boolean;
   onCancel: () => void;
 }) {
   const router = useRouter();
@@ -113,7 +115,7 @@ export default function EmberCreateFlow({
   if (step === 'confirm' && previewUrl) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: 'var(--bg-screen)', paddingTop: 56 }}>
-        <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref="/account" />
+        <AppHeader avatarUrl={avatarUrl} userInitials={userInitials} userModalHref="/account" hasPassword={hasPassword} />
         <div className="absolute top-4 left-4" style={{ top: 64 }}>
           <button
             type="button"

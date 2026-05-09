@@ -218,8 +218,10 @@ export default function UserHomeScreen({
   initialAvatarUrl,
   initialTotalContributors,
   initialHomeActivity,
+  hasPassword = true,
 }: {
   initialProfile: { firstName: string | null; lastName: string | null; email: string | null } | null;
+  hasPassword?: boolean;
   initialEmbers?: Array<{
     accessType: string;
     filename: string;
@@ -298,6 +300,7 @@ export default function UserHomeScreen({
         file={createFile}
         avatarUrl={avatarUrl}
         userInitials={initials(displayName)}
+        hasPassword={hasPassword}
         onCancel={() => setCreateFile(null)}
       />
     );
@@ -314,6 +317,7 @@ export default function UserHomeScreen({
         avatarUrl={avatarUrl}
         userInitials={initials(displayName)}
         userModalHref={accountOpenHref}
+        hasPassword={hasPassword}
       />
       <input
         ref={fileInputRef}

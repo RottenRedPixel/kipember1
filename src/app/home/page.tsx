@@ -18,6 +18,9 @@ export default async function HomePage({
   if (!auth) {
     redirect('/signin');
   }
+  if (!auth.user.passwordHash) {
+    redirect('/signup');
+  }
 
   const resolvedSearchParams = await searchParams;
 
@@ -53,6 +56,7 @@ export default async function HomePage({
         initialAvatarUrl={initialAvatarUrl}
         initialTotalContributors={initialTotalContributors}
         initialHomeActivity={initialHomeActivity}
+        hasPassword={!!auth.user.passwordHash}
       />
     </Suspense>
   );
