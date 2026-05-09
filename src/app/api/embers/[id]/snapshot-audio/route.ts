@@ -16,6 +16,20 @@ import { getUploadsDir } from '@/lib/uploads';
 
 const STORY_CUT_AUDIO_RENDER_VERSION = 'v2';
 
+// Returns true when the token is a valid contributor token OR the ember's
+// share token for the given emberId. Used by both GET and POST so guests
+// and share-link viewers can access audio on all badges.
+async function tokenAllowsAccess(token: string, emberId: string): Promise<boolean> {
+  const [contributor, ember] = await Promise.all([
+    prisma.emberContributor.findUnique({ where: { token }, select: { emberId: true } }),
+    prisma.ember.findUnique({ where: { shareToken: token }, select: { id: true } }),
+  ]);
+  return (
+    (contributor?.emberId === emberId) ||
+    (ember?.id === emberId)
+  );
+}
+
 type SnapshotBlock =
   | {
       type: 'voice';
@@ -226,14 +240,10 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Allow guest access via contributor token
+    // Allow guest access via contributor token or ember share token
     const guestToken = request.nextUrl.searchParams.get('token');
     if (guestToken) {
-      const emberContributor = await prisma.emberContributor.findUnique({
-        where: { token: guestToken },
-        select: { emberId: true },
-      });
-      if (!emberContributor || emberContributor.emberId !== id) {
+      if (!(await tokenAllowsAccess(guestToken, id))) {
         return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
       }
     } else {
@@ -308,15 +318,21 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireApiUser();
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const accessType = await getEmberAccessType(auth.user.id, id);
-    if (!accessType) {
-      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    const guestToken = request.nextUrl.searchParams.get('token');
+    if (guestToken) {
+      if (!(await tokenAllowsAccess(guestToken, id))) {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
+    } else {
+      const auth = await requireApiUser();
+      if (!auth) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const accessType = await getEmberAccessType(auth.user.id, id);
+      if (!accessType) {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
     }
 
     const body = (await request.json().catch(() => null)) as

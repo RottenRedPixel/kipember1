@@ -136,7 +136,10 @@ export default function KipemberStoriesOverlay({
     const facetScript = FACET_SCRIPTS[badge];
 
     if (facetScript) {
-      const response = await fetch(`/api/embers/${emberId}/snapshot-audio`, {
+      const facetUrl = guestToken
+        ? `/api/embers/${emberId}/snapshot-audio?token=${encodeURIComponent(guestToken)}`
+        : `/api/embers/${emberId}/snapshot-audio`;
+      const response = await fetch(facetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ script: facetScript }),
