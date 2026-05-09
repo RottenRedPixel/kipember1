@@ -202,7 +202,7 @@ function PhoneField({
     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
       <label className="text-white/60 text-xs font-medium">Phone Number</label>
       <div
-        className="flex items-center w-full h-12 rounded-xl text-sm text-white outline-none transition-colors"
+        className="flex items-center w-full h-12 rounded-xl overflow-hidden text-sm text-white outline-none transition-colors"
         style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
         onFocusCapture={(e) => { if (!locked) (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(249,115,22,0.6)'; }}
         onBlurCapture={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-input)')}
