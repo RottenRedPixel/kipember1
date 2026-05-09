@@ -31,6 +31,6 @@ export default async function ContributeRedirect({
     }
   }
 
-  // Unauthenticated (or token not found) → guest experience
-  redirect(`/guest/${token}?m=hello`);
+  // Unauthenticated (or token not found) → contributor experience
+  redirect(`/contributor/${token}`);
 }
