@@ -8,7 +8,6 @@ import {
   ArrowRightLeft,
   Check,
   ChevronDown,
-  Link2,
   CircleCheckBig,
   CircleHelp,
   ChevronLeft,
@@ -2474,15 +2473,6 @@ export default function KipemberWikiContent({
     }
   }
 
-  const [copiedContributorId, setCopiedContributorId] = useState<string | null>(null);
-  function copyContributorLink(contributorId: string, token: string) {
-    const url = `${window.location.origin}/contribute/${token}`;
-    void navigator.clipboard.writeText(url).then(() => {
-      setCopiedContributorId(contributorId);
-      setTimeout(() => setCopiedContributorId((prev) => prev === contributorId ? null : prev), 2000);
-    });
-  }
-
   const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
   const [calledIds, setCalledIds] = useState<Set<string>>(new Set());
   async function callContributor(contributorId: string) {
@@ -2857,16 +2847,6 @@ export default function KipemberWikiContent({
                       >
                         <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.45)'} />
                       </div>
-                      {contributor.token ? (
-                        <div
-                          className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
-                          style={{ width: 30, height: 30 }}
-                          onClick={() => copyContributorLink(contributor.id, contributor.token!)}
-                        >
-                          <Link2 size={14} color={copiedContributorId === contributor.id ? '#22c55e' : 'rgba(255,255,255,0.45)'} />
-                        </div>
-                      ) : null}
-                      <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>|</span>
                       <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
                         {contributor.user?.hasPassword
                           ? <CircleCheckBig size={17} color="rgba(34,197,94,0.7)" />
@@ -2913,16 +2893,6 @@ export default function KipemberWikiContent({
                     >
                       <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.25)'} />
                     </div>
-                    {contributor.token ? (
-                      <div
-                        className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
-                        style={{ width: 30, height: 30 }}
-                        onClick={() => copyContributorLink(contributor.id, contributor.token!)}
-                      >
-                        <Link2 size={14} color={copiedContributorId === contributor.id ? '#22c55e' : 'rgba(255,255,255,0.25)'} />
-                      </div>
-                    ) : null}
-                    <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>|</span>
                     <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
                       <CircleHelp size={17} color="rgba(255,255,255,0.25)" />
                     </div>

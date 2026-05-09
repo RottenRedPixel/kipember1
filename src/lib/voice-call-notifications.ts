@@ -128,64 +128,6 @@ function getFirstName(value: string | null | undefined, fallback = 'Someone'): s
   return first || fallback;
 }
 
-function buildAbsoluteUrl(pathOrUrl: string): string {
-  if (/^https?:\/\//i.test(pathOrUrl)) {
-    return pathOrUrl;
-  }
-
-  const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
-  return `${getAppBaseUrl()}${path}`;
-}
-
-function buildContributorSms(params: {
-  ownerFirstName: string;
-  inviteUrl: string;
-}): string {
-  return `Hi, this is ember. ${params.ownerFirstName} shared a photo and would love your take on that moment. Add it here ${params.inviteUrl}`;
-}
-
-function buildContributorEmail(params: {
-  contributorName: string;
-  ownerFirstName: string;
-  inviteUrl: string;
-  thumbnailUrl: string;
-}): { subject: string; text: string; html: string } {
-  const subject = `${params.ownerFirstName} shared an ember with you`;
-  const previewText = 'He\u2019d love your take on that moment';
-
-  const text = [
-    `Hi ${params.contributorName},`,
-    '',
-    `${params.ownerFirstName} shared an ember with you\u2014a photo and memory\u2014and tried to reach you. We missed you.`,
-    'We\u2019d love your take on that moment. It only takes a minute.',
-    '',
-    params.inviteUrl,
-    '',
-    'No app needed\u2014just tap and share what you remember.',
-    '',
-    '\u2014Ember',
-  ].join('\n');
-
-  const html = `
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${escapeHtml(previewText)}</div>
-    <div style="font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f7f7f5;padding:32px;">
-      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid rgba(17,17,17,0.08);border-radius:20px;padding:32px;color:#111111;">
-        <p style="margin:0 0 20px;font-size:16px;line-height:1.6;">Hi ${escapeHtml(params.contributorName)},</p>
-        <img src="${escapeHtml(params.thumbnailUrl)}" alt="Shared Ember photo" style="display:block;width:100%;max-height:360px;object-fit:cover;border-radius:14px;margin:0 0 24px;" />
-        <p style="margin:0 0 14px;font-size:16px;line-height:1.7;">${escapeHtml(params.ownerFirstName)} shared an ember with you&mdash;a photo and memory&mdash;and tried to reach you. We missed you.</p>
-        <p style="margin:0 0 24px;font-size:16px;line-height:1.7;">We&rsquo;d love your take on that moment. It only takes a minute.</p>
-        <p style="margin:0 0 24px;">
-          <a href="${escapeHtml(params.inviteUrl)}" style="display:inline-block;background:#ff6621;color:#ffffff;text-decoration:none;border-radius:999px;padding:14px 22px;font-weight:700;">Add your memory</a>
-        </p>
-        <p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#555555;"><a href="${escapeHtml(params.inviteUrl)}" style="color:#ff6621;">${escapeHtml(params.inviteUrl)}</a></p>
-        <p style="margin:0;font-size:14px;line-height:1.7;color:#555555;">No app needed&mdash;just tap and share what you remember.</p>
-        <p style="margin:24px 0 0;font-size:14px;line-height:1.7;color:#555555;">&mdash;Ember</p>
-      </div>
-    </div>
-  `;
-
-  return { subject, text, html };
-}
 
 function buildOwnerSms(params: {
   contributorName: string | null;
@@ -337,27 +279,8 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
   const ownerFirstName = getFirstName(owner.firstName, 'Someone');
   const contributorDisplayName =
     getUserDisplayName(ecUser)?.trim() || ecUser?.email?.trim() || ecUser?.phoneNumber?.trim() || 'there';
-  const targetUrl = `/contribute/${emberContributor.token}`;
-  const inviteUrl = buildAbsoluteUrl(targetUrl);
-  const thumbnailUrl = buildAbsoluteUrl(
-    getPreviewUploadUrl({
-      mediaType: emberContributor.image.mediaType,
-      filename: emberContributor.image.filename,
-      posterFilename: emberContributor.image.posterFilename,
-    })
-  );
   const isCreator = emberContributor.userId === owner.id;
 
-  const contributorSms = buildContributorSms({
-    ownerFirstName,
-    inviteUrl,
-  });
-  const contributorEmail = buildContributorEmail({
-    contributorName: contributorDisplayName,
-    ownerFirstName,
-    inviteUrl,
-    thumbnailUrl,
-  });
   const ownerSms = buildOwnerSms({
     contributorName: contributorDisplayName,
     emberTitle,
@@ -375,22 +298,6 @@ export async function maybeNotifyFailedCall(voiceCallId: string): Promise<void> 
   // prevent the others. Errors are logged but not thrown, since the webhook
   // must still return 200 to Retell.
   await Promise.all([
-    // contributor-sms temporarily disabled
-    Promise.resolve(),
-    sendChannel('contributor-email', voiceCall.id, ecUser?.email ?? null, (to) => {
-      if (!isEmailConfigured()) {
-        console.warn(
-          `[voice-call-notifications] SMTP not configured; skipping contributor email for ${voiceCall.id}`
-        );
-        return Promise.resolve();
-      }
-      return sendEmail({
-        to,
-        subject: contributorEmail.subject,
-        text: contributorEmail.text,
-        html: contributorEmail.html,
-      });
-    }),
     isCreator
       ? Promise.resolve()
       : sendChannel('owner-sms', voiceCall.id, owner.phoneNumber, (to) =>
