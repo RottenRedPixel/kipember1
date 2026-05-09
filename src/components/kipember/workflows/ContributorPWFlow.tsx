@@ -329,7 +329,7 @@ export default function ContributorPWFlow({
           <div className="relative min-w-0 flex-1">
             <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Share your memory with ember..." className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]" disabled={isSending} />
           </div>
-          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
+          <button type="submit" disabled={isSending} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
             <SendHorizontal size={18} />
           </button>
         </form>

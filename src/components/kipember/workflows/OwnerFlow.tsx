@@ -357,7 +357,7 @@ export default function OwnerFlow({
               {voice.isRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
             </button>
           </div>
-          <button type="submit" disabled={isSending || !input.trim()} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
+          <button type="submit" disabled={isSending} className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer" style={{ background: '#f97316' }} aria-label="Send message">
             <SendHorizontal size={18} />
           </button>
         </form>

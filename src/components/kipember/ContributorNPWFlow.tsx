@@ -478,7 +478,7 @@ function ContributorWorkflow({
           </div>
           <button
             type="submit"
-            disabled={isSending || !input.trim()}
+            disabled={isSending}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
             style={{ background: '#f97316' }}
             aria-label="Send message"
