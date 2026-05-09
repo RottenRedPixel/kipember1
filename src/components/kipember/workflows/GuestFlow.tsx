@@ -205,7 +205,7 @@ export default function GuestFlow({
               ) : (voice.playbackAnalyser ?? manualAnalyser) ? (
                 <MicLevelMeter analyser={voice.playbackAnalyser ?? manualAnalyser} className="h-5 w-full" color="#22c55e" />
               ) : (
-                <div className="h-5 w-full" />
+                <span className="text-sm w-full" style={{ color: 'rgba(34,197,94,0.55)' }}>Talk with ember...</span>
               )}
             </div>
           </div>

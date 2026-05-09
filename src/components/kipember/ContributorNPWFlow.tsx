@@ -313,7 +313,7 @@ function ContributorWorkflow({
       ) : surface === 'calls' ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <p className="text-white/40 text-sm text-center mt-8 px-6">
-            Tap the phone icon below to have ember call you.
+            Tap the phone to have ember call you.
           </p>
         </div>
       ) : (
@@ -396,7 +396,7 @@ function ContributorWorkflow({
               ) : (voice.playbackAnalyser ?? manualAnalyser) ? (
                 <MicLevelMeter analyser={voice.playbackAnalyser ?? manualAnalyser} className="h-5 w-full" color="#22c55e" />
               ) : (
-                <div className="h-5 w-full" />
+                <span className="text-sm w-full" style={{ color: 'rgba(34,197,94,0.55)' }}>Talk with ember...</span>
               )}
             </div>
           </div>
@@ -415,15 +415,21 @@ function ContributorWorkflow({
         /* Call toolbar */
         <div className="flex items-end gap-2 flex-shrink-0">
           <div className="flex-1 min-w-0">
-            <div className="w-full rounded-full bg-white/8 px-4 py-3 text-sm flex items-center gap-1">
+            <div
+              className="flex h-11 w-full items-center rounded-full px-4 gap-1.5 text-sm"
+              style={{
+                background: isCalling ? 'rgba(37,99,235,0.15)' : 'rgba(37,99,235,0.07)',
+                border: `1px solid ${isCalling ? 'rgba(37,99,235,0.45)' : 'rgba(37,99,235,0.18)'}`,
+              }}
+            >
               {isCalling ? (
                 <>
-                  <span style={{ color: '#2563eb' }}>Calling</span>
+                  <span style={{ color: 'rgba(96,165,250,0.9)' }}>Calling</span>
                   <span className="text-white">{formatPhone(phoneNumber)}</span>
                 </>
               ) : (
                 <>
-                  <span className="text-white/50">ember will call:</span>
+                  <span style={{ color: 'rgba(96,165,250,0.85)' }}>Ember will call:</span>
                   <span className="text-white">{phoneNumber ? formatPhone(phoneNumber) : '—'}</span>
                 </>
               )}
