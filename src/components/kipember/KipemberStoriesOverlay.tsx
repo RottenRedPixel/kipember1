@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Flame, Heart, MapPinned, Smile, Users } from 'lucide-react';
+import { Heart, MapPinned, ScanEye, Smile, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 
@@ -207,7 +207,7 @@ export default function KipemberStoriesOverlay({
         }
       }
     },
-    [buildAudio, emberId]
+    [buildAudio, emberId, hasPlayableContent]
   );
 
   useEffect(() => {
@@ -240,7 +240,7 @@ export default function KipemberStoriesOverlay({
         <div className="w-full max-w-sm text-center px-2" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9)' }}>
           <p
             className="font-medium leading-snug w-full truncate"
-            style={{ fontSize: '1.3rem', color: fading ? 'transparent' : '#ffffff', transition: 'color 0.8s ease' }}
+            style={{ fontSize: '1.3rem', color: playbackState === 'playing' && !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
           >
             {storyLines[lineIndex] ?? ' '}
           </p>
@@ -248,7 +248,7 @@ export default function KipemberStoriesOverlay({
             className="font-medium leading-snug w-full truncate"
             style={{
               fontSize: '1.3rem',
-              color: !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent',
+              color: playbackState === 'playing' && !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent',
               transition: 'color 0.8s ease',
             }}
           >
@@ -262,29 +262,29 @@ export default function KipemberStoriesOverlay({
               { icon: Users,     active: 'rgba(96,165,250,0.55)',  color: '#ffffff', label: 'friends & family' },
               { icon: Heart,     active: 'rgba(244,114,182,0.55)', color: '#ffffff', label: 'feelings & emotions' },
               { icon: Smile,     active: 'rgba(253,224,71,0.55)',  color: '#ffffff', label: 'interesting stories' },
-              { icon: Flame,     active: 'rgba(249,115,22,0.55)',  color: '#ffffff', label: 'snapshot of this memory' },
+              { icon: ScanEye,   active: 'rgba(249,115,22,0.55)',  color: '#ffffff', label: 'snapshot of this memory' },
             ];
             return (
               <>
               <div
                 className="relative w-full rounded-full overflow-hidden"
-                style={{ background: 'rgba(0,0,0,0.85)', display: 'grid', gridTemplateColumns: '64px 1fr 1fr 1fr 64px' }}
+                style={{ background: 'rgba(0,0,0,0.85)', display: 'grid', gridTemplateColumns: '50px 1fr 1fr 1fr 50px' }}
               >
-                {/* sliding indicator — outer slots are 64px wide so badge 0/4 rings are concentric with pill end caps */}
+                {/* sliding indicator — outer slots are 50px wide so badge 0/4 rings are concentric with pill end caps */}
                 <div
                   className="absolute rounded-full transition-all duration-200"
                   style={{
-                    width: 56,
-                    height: 56,
+                    width: 42,
+                    height: 42,
                     top: 4,
                     left: [
                       '4px',
-                      'calc(36px + (100% - 128px) / 6)',
-                      'calc(36px + (100% - 128px) / 2)',
-                      'calc(36px + 5 * (100% - 128px) / 6)',
-                      'calc(100% - 60px)',
+                      'calc(29px + (100% - 100px) / 6)',
+                      'calc(29px + (100% - 100px) / 2)',
+                      'calc(29px + 5 * (100% - 100px) / 6)',
+                      'calc(100% - 46px)',
                     ][selectedBadge],
-                    background: (selectedBadge === 4 ? playbackState === 'playing' : filledBadge === selectedBadge) ? BADGES[selectedBadge].active : 'transparent',
+                    background: (selectedBadge === 4 ? (playbackState === 'playing' || playbackState === 'loading') : filledBadge === selectedBadge) ? BADGES[selectedBadge].active : 'transparent',
                     border: `3px solid ${BADGES[selectedBadge].active}`,
                   }}
                 />
@@ -297,8 +297,9 @@ export default function KipemberStoriesOverlay({
                         if (selectedBadge !== 4) {
                           setSelectedBadge(4);
                           setFilledBadge(null);
+                        } else {
+                          handleToggle();
                         }
-                        handleToggle();
                       } else {
                         if (selectedBadge === 4 && playbackState === 'playing' && audioRef.current) {
                           audioRef.current.pause();
@@ -311,7 +312,7 @@ export default function KipemberStoriesOverlay({
                         }
                       }
                     }}
-                    className="relative flex items-center justify-center py-[23px] cursor-pointer"
+                    className="relative flex items-center justify-center py-[16px] cursor-pointer"
                   >
                     <Icon
                       size={18}
@@ -323,8 +324,13 @@ export default function KipemberStoriesOverlay({
                 ))}
               </div>
               <p className="w-full text-center text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                {BADGES[selectedBadge].label}
+                {selectedBadge === 4 && playbackState === 'loading' ? 'preparing audio…' : BADGES[selectedBadge].label}
               </p>
+              {error ? (
+                <p className="w-full text-center text-xs" style={{ color: 'rgba(255,100,100,0.8)' }}>
+                  {error}
+                </p>
+              ) : null}
               </>
             );
           })()}

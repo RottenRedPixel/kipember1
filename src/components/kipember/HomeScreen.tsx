@@ -635,7 +635,7 @@ export default function HomeScreen({
   }, [selectedEmberId, selectedEmberHasTitle]);
 
   useEffect(() => {
-    if (!selectedEmberId || modal !== 'play') {
+    if (!selectedEmberId || (modal !== 'play' && modal !== 'stories')) {
       setSelectedEmber(null);
       return;
     }
