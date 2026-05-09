@@ -2476,7 +2476,7 @@ export default function KipemberWikiContent({
 
   const [copiedContributorId, setCopiedContributorId] = useState<string | null>(null);
   function copyContributorLink(contributorId: string, token: string) {
-    const url = `${window.location.origin}/contribute/${token}`;
+    const url = `${window.location.origin}/inbound/${token}`;
     void navigator.clipboard.writeText(url).then(() => {
       setCopiedContributorId(contributorId);
       setTimeout(() => setCopiedContributorId((prev) => prev === contributorId ? null : prev), 2000);

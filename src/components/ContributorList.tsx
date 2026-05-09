@@ -480,7 +480,7 @@ export default function ContributorList({
 
   const copyLink = async (token: string) => {
     try {
-      const url = `${window.location.origin}/contribute/${token}`;
+      const url = `${window.location.origin}/inbound/${token}`;
       await navigator.clipboard.writeText(url);
       setError('');
       setNotice('Contributor link copied.');
