@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {
   Check,
   Hand,
-  Home,
   ImagePlus,
   Link2,
   Mail,
@@ -723,14 +722,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
           className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4"
           style={{ height: 56, background: 'var(--bg-screen)', borderBottom: '1px solid var(--border-subtle)' }}
         >
-          <Link
-            href="/"
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--bg-rail-btn)' }}
-            aria-label="Home"
-          >
-            <Home size={18} color="var(--text-primary)" strokeWidth={1.8} />
-          </Link>
+          <div className="w-9 h-9" />
           <div className="w-9 h-9" />
         </div>
 
