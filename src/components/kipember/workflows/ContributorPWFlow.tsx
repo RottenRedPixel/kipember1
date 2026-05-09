@@ -11,7 +11,7 @@ import EmberChatMessages, { type EmberChatMessage } from '@/components/kipember/
 type Message = EmberChatMessage;
 
 
-export default function ContributorFlow({
+export default function ContributorPWFlow({
   emberId,
   onConversationStateChange,
   emberModalSurface = 'chats',

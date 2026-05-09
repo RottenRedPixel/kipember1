@@ -508,7 +508,7 @@ function ContributorWorkflow({
   );
 }
 
-export default function ContributorScreen({ token }: { token: string }) {
+export default function ContributorNPWFlow({ token }: { token: string }) {
   const router = useRouter();
   const params = useSearchParams();
   const rawFlow = params.get('ember');
