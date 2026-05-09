@@ -147,11 +147,12 @@ export async function POST(request: NextRequest) {
 
     return nextResponse;
   } catch (error) {
-    console.error('Chat error:', error);
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error('Chat error:', detail, error);
     if (isPromptRemovedError(error)) {
       return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
     }
-    return NextResponse.json({ error: 'Failed to process chat message' }, { status: 500 });
+    return NextResponse.json({ error: `Failed to process chat message: ${detail}` }, { status: 500 });
   }
 }
 
