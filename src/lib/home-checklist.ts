@@ -31,7 +31,7 @@ export async function getEmberChecklist(userId: string): Promise<ChecklistItem[]
       snapshot: { select: { id: true } },
       noContributors: true,
       analysis: { select: { status: true, capturedAt: true, latitude: true } },
-      contributors: {
+      emberContributors: {
         where: { NOT: { userId: userId } },
         select: { id: true },
         take: 1,
@@ -56,7 +56,7 @@ export async function getEmberChecklist(userId: string): Promise<ChecklistItem[]
 
     if (!ember.title) push('title');
     if (!ember.snapshot) push('snapshot');
-    if (ember.contributors.length === 0 && !ember.noContributors) push('contributors');
+    if (ember.emberContributors.length === 0 && !ember.noContributors) push('contributors');
     if (!ember.analysis?.capturedAt && !ember.analysis?.latitude) push('time-place');
     if (ember.analysis?.status && ember.analysis.status !== 'ready') push('image-analysis');
   }
