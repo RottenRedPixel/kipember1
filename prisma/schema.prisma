@@ -47,12 +47,11 @@ model Ember {
 
   @@index([ownerId, createdAt])
   @@index([shareToNetwork, createdAt])
-  @@map("Image")
 }
 
 model EmberAttachment {
   id              String    @id @default(cuid())
-  emberId         String    @map("imageId")
+  emberId         String
   filename        String
   mediaType       MediaType @default(IMAGE)
   posterFilename  String?
@@ -65,12 +64,11 @@ model EmberAttachment {
   ember           Ember     @relation(fields: [emberId], references: [id], onDelete: Cascade)
 
   @@index([emberId, createdAt])
-  @@map("ImageAttachment")
 }
 
 model EmberAnalysis {
   id                String   @id @default(cuid())
-  emberId           String   @unique @map("imageId")
+  emberId           String   @unique
   ember             Ember    @relation(fields: [emberId], references: [id], onDelete: Cascade)
   status            String   @default("pending") // pending, processing, ready, partial, error
   errorMessage      String?
@@ -96,7 +94,6 @@ model EmberAnalysis {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  @@map("ImageAnalysis")
 }
 
 // Per-ember attachment of a User to an Ember as a contributor. Holds
@@ -107,7 +104,7 @@ model EmberContributor {
   id            String        @id @default(cuid())
   userId        String
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emberId       String        @map("imageId")
+  emberId       String
   ember         Ember         @relation(fields: [emberId], references: [id], onDelete: Cascade)
   token              String        @unique @default(cuid())
   tokenCreatedAt     DateTime?
@@ -137,7 +134,7 @@ model GuestView {
 
 model EmberSession {
   id               String         @id @default(cuid())
-  emberId          String         @map("imageId")
+  emberId          String
   ember            Ember          @relation(fields: [emberId], references: [id], onDelete: Cascade)
   userId           String?
   user             User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -187,7 +184,7 @@ model EmberMessage {
 
 model MemoryClaim {
   id              String                @id @default(cuid())
-  emberId         String                @map("imageId")
+  emberId         String
   ember           Ember                 @relation(fields: [emberId], references: [id], onDelete: Cascade)
   emberMessageId  String?
   emberMessage    EmberMessage?         @relation(fields: [emberMessageId], references: [id], onDelete: SetNull)
@@ -223,7 +220,7 @@ model MemoryClaim {
 
 model MemoryConflict {
   id               String                @id @default(cuid())
-  emberId          String                @map("imageId")
+  emberId          String
   ember            Ember                 @relation(fields: [emberId], references: [id], onDelete: Cascade)
   claimType        String
   subject          String                @default("")
@@ -258,7 +255,7 @@ model MemoryConflictClaim {
 
 model Wiki {
   id        String   @id @default(cuid())
-  emberId   String   @unique @map("imageId")
+  emberId   String   @unique
   ember     Ember    @relation(fields: [emberId], references: [id], onDelete: Cascade)
   content   String   // Markdown content
   version   Int      @default(1)
@@ -268,7 +265,7 @@ model Wiki {
 
 model Snapshot {
   id                      String   @id @default(cuid())
-  emberId                 String   @unique @map("imageId")
+  emberId                 String   @unique
   ember                   Ember    @relation(fields: [emberId], references: [id], onDelete: Cascade)
   title                   String
   style                   String
@@ -425,7 +422,7 @@ model Friendship {
 
 model EmberTag {
   id                 String            @id @default(cuid())
-  emberId            String            @map("imageId")
+  emberId            String
   userId             String?
   emberContributorId String?
   createdByUserId    String
@@ -445,7 +442,6 @@ model EmberTag {
   @@index([emberId, createdAt])
   @@index([userId, createdAt])
   @@index([emberContributorId, createdAt])
-  @@map("ImageTag")
 }
 
 
@@ -493,7 +489,7 @@ model VoiceCall {
 
 model VoiceCallClip {
   id                 String      @id @default(cuid())
-  emberId            String      @map("imageId")
+  emberId            String
   emberContributorId String
   voiceCallId        String
   sortOrder     Int         @default(0)
