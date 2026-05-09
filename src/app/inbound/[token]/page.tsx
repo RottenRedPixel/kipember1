@@ -31,6 +31,6 @@ export default async function ContributeRedirect({
     }
   }
 
-  // Unauthenticated (or token not found) → contributor experience
-  redirect(`/contribute/${token}`);
+  // Unauthenticated (or token not found) → contributor experience, hello modal open
+  redirect(`/contribute/${token}?m=hello`);
 }
