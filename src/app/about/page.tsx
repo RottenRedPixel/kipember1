@@ -173,14 +173,6 @@ export default async function AboutPage() {
 
           <EmberDiagram />
 
-          <Link
-            href="#"
-            className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-primary"
-            style={{ background: '#6a7c5c', minHeight: 44 }}
-          >
-            Demo an ember
-          </Link>
-
           <p className="text-base leading-relaxed text-white/60">
             As friends and family contribute their own stories over time, each ember grows richer, building a shared archive that no single person could create alone.
           </p>
