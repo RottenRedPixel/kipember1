@@ -5,6 +5,7 @@ import {
   Check,
   Hand,
   Home,
+  ImagePlus,
   Link2,
   Mail,
   MessageCircle,
@@ -70,6 +71,8 @@ type Message = {
   role: 'user' | 'assistant';
   content: string;
   createdAt?: string;
+  imageUrl?: string;
+  imageFilename?: string;
 };
 
 function formatPhone(raw: string): string {
@@ -158,9 +161,11 @@ function ContributorWorkflow({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isCalling, setIsCalling] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -251,8 +256,57 @@ function ContributorWorkflow({
     }
   }
 
+  async function handleUpload(file: File) {
+    if (isUploading) return;
+    setIsUploading(true);
+    setError('');
+    const isVideo = file.type.startsWith('video/');
+    const previewUrl = URL.createObjectURL(file);
+    setMessages((prev) => [
+      ...prev,
+      { role: 'user', content: isVideo ? 'Video' : 'Photo', imageUrl: previewUrl, createdAt: new Date().toISOString() },
+    ]);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`/api/contribute/${token}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error || 'Failed to add content.');
+      const uploadedFilename: string | null = payload?.attachment?.filename ?? null;
+      const reply = typeof payload?.response === 'string' ? payload.response.trim() : '';
+      setMessages((prev) => [
+        ...prev.map((m) =>
+          'imageUrl' in m && m.imageUrl === previewUrl
+            ? { ...m, imageUrl: undefined, imageFilename: uploadedFilename ?? undefined }
+            : m
+        ),
+        ...(reply ? [{ role: 'assistant' as const, content: reply, createdAt: new Date().toISOString() }] : []),
+      ]);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'Failed to add content.');
+    } finally {
+      URL.revokeObjectURL(previewUrl);
+      setIsUploading(false);
+    }
+  }
+
   return (
     <div className="flex flex-1 min-h-0 flex-col px-4 pb-4 pt-1">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.currentTarget.value = '';
+          if (file) void handleUpload(file);
+        }}
+      />
+
       {surface === 'voice' ? (
         <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
           <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} onPlaybackChange={setManualAnalyser} />
@@ -390,6 +444,16 @@ function ContributorWorkflow({
       ) : (
         /* Chat toolbar */
         <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || isSending}
+            className="flex h-11 w-11 items-center justify-center rounded-full text-white/80 transition disabled:opacity-40 cursor-pointer"
+            style={{ background: 'rgba(255,255,255,0.08)' }}
+            aria-label="Add photo"
+          >
+            <ImagePlus size={18} />
+          </button>
           <div className="relative min-w-0 flex-1">
             <input
               type="text"
@@ -425,7 +489,7 @@ function ContributorWorkflow({
         </form>
       )}
 
-      {voice.isRecording || voice.isUploading || voice.error || error ? (
+      {voice.isRecording || voice.isUploading || voice.error || isUploading || error ? (
         <div className="px-2 pt-2 text-xs">
           {error ? (
             <p className="text-[rgba(255,180,180,0.92)]">{error}</p>
@@ -435,6 +499,8 @@ function ContributorWorkflow({
             <p style={{ color: 'rgba(34,197,94,0.7)' }}>Recording — tap stop when done.</p>
           ) : voice.isUploading ? (
             <p className="text-white/48">Saving voice message…</p>
+          ) : isUploading ? (
+            <p className="text-white/48">Adding to this memory...</p>
           ) : null}
         </div>
       ) : null}
