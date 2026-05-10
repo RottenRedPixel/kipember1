@@ -20,7 +20,7 @@ const RAIL_H = 80;
 const CARD_H = '60vh';
 const PANEL_SM_H = '20vh';
 const SWIPE_THRESHOLD = 50;
-const FADE_MS = 160;
+const SNAP_MS = 260;
 
 const railItems = [
   { label: 'ember', icon: MessageCirclePlus },
@@ -39,20 +39,42 @@ function TestLayoutContent() {
   const [activeRail, setActiveRail] = useState<string | null>(null);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
   const [naturalRatio, setNaturalRatio] = useState<string | null>(null);
-  const [fading, setFading] = useState(false);
-  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const [photoLoaded, setPhotoLoaded] = useState(false);
+  const [swipeX, setSwipeX] = useState(0);
+  const [snapping, setSnapping] = useState(false);
+  const dragRef = useRef<{ startX: number; startY: number; axis: 'h' | 'v' | null } | null>(null);
+  const lastDirRef = useRef<1 | -1>(1);
   const panelOpen = emberOpen || activeRail !== null;
+
+  const objectPosition = orientation === 'portrait' ? 'center top' : 'center';
+  const currentIndex = id ? emberIds.indexOf(id) : -1;
+
+  function snapBack() {
+    setSnapping(true);
+    setSwipeX(0);
+    setTimeout(() => setSnapping(false), SNAP_MS);
+  }
 
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+    setPhotoLoaded(true);
     setNaturalRatio(`${w}/${h}`);
     if (w === h) setOrientation('square');
     else if (w > h) setOrientation('landscape');
     else setOrientation('portrait');
-    setFading(false);
-  }
 
-  const objectPosition = orientation === 'portrait' ? 'center top' : 'center';
+    // Slide in from the opposite side of the last swipe
+    const incomingX = lastDirRef.current < 0 ? window.innerWidth : -window.innerWidth;
+    setSwipeX(incomingX);
+    setSnapping(false);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setSnapping(true);
+        setSwipeX(0);
+        setTimeout(() => setSnapping(false), SNAP_MS);
+      });
+    });
+  }
 
   useEffect(() => {
     fetch('/api/embers')
@@ -63,9 +85,7 @@ function TestLayoutContent() {
 
   useEffect(() => {
     if (!id) return;
-    setEmber(null);
-    setOrientation(null);
-    setNaturalRatio(null);
+    setPhotoLoaded(false);
     fetch(`/api/embers/${id}`)
       .then((r) => r.json())
       .then((data) => setEmber(data))
@@ -80,55 +100,66 @@ function TestLayoutContent() {
       })
     : null;
 
-  const currentIndex = id ? emberIds.indexOf(id) : -1;
-
-  function navigateTo(index: number) {
-    if (index < 0 || index >= emberIds.length) return;
-    setFading(true);
-    setTimeout(() => {
-      router.replace(`/testlayout?id=${emberIds[index]}`);
-    }, FADE_MS);
-  }
-
-  function handleTouchStart(e: React.TouchEvent) {
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (panelOpen) return;
-    const t = e.touches[0];
-    swipeStart.current = { x: t.clientX, y: t.clientY };
+    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, axis: null };
   }
 
-  function handleTouchEnd(e: React.TouchEvent) {
-    if (!swipeStart.current || panelOpen) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - swipeStart.current.x;
-    const dy = t.clientY - swipeStart.current.y;
-    swipeStart.current = null;
-    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
-    navigateTo(dx < 0 ? currentIndex + 1 : currentIndex - 1);
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    if (dragRef.current.axis === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+      dragRef.current.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    }
+    if (dragRef.current.axis === 'h') setSwipeX(dx);
   }
 
-  function handleTouchCancel() {
-    swipeStart.current = null;
+  function handlePointerUp(e: React.PointerEvent) {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const axis = dragRef.current.axis;
+    dragRef.current = null;
+
+    if (axis !== 'h' || Math.abs(dx) < SWIPE_THRESHOLD) { snapBack(); return; }
+
+    const dir: 1 | -1 = dx < 0 ? -1 : 1;
+    const targetIndex = dir < 0 ? currentIndex + 1 : currentIndex - 1;
+    if (targetIndex < 0 || targetIndex >= emberIds.length) { snapBack(); return; }
+
+    lastDirRef.current = dir;
+    setSnapping(true);
+    setSwipeX(dir < 0 ? -window.innerWidth : window.innerWidth);
+    setTimeout(() => router.replace(`/testlayout?id=${emberIds[targetIndex]}`), SNAP_MS);
+  }
+
+  function handlePointerCancel() {
+    dragRef.current = null;
+    snapBack();
   }
 
   return (
     <>
-      {/* Main area: flex col, photo fills remaining space above spacer */}
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        {/* Photo — centered, scales to fill remaining height */}
         <div className="flex-1 min-h-0 px-[10px] pb-3 flex items-start justify-center overflow-hidden">
           {photoUrl ? (
             <div
               className="rounded-2xl overflow-hidden cursor-pointer relative"
-              onClick={() => { setEmberOpen(false); setActiveRail(null); }}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              onTouchCancel={handleTouchCancel}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+              onClick={() => { if (swipeX === 0) { setEmberOpen(false); setActiveRail(null); } }}
               style={{
                 border: '1px solid var(--border-default)',
-                aspectRatio: naturalRatio ?? undefined,
-                opacity: fading ? 0 : 1,
-                transition: `opacity ${FADE_MS}ms ease`,
+                background: photoLoaded ? 'transparent' : 'var(--bg-surface)',
+                aspectRatio: naturalRatio ?? '4/3',
+                transform: `translateX(${swipeX}px)`,
+                transition: snapping ? `transform ${SNAP_MS}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : 'none',
                 touchAction: 'pan-y',
+                willChange: 'transform',
+                userSelect: 'none',
                 ...(orientation === 'portrait'
                   ? { height: '100%', maxWidth: '100%' }
                   : { width: '100%', maxHeight: '100%' }),
@@ -138,12 +169,12 @@ function TestLayoutContent() {
                 src={photoUrl}
                 alt=""
                 className="w-full h-full"
-                style={{ objectFit: 'cover', objectPosition, display: 'block' }}
+                style={{ objectFit: 'cover', objectPosition, display: 'block', pointerEvents: 'none', opacity: photoLoaded ? 1 : 0, transition: 'opacity 400ms ease' }}
                 onLoad={handleImageLoad}
+                draggable={false}
               />
-              {/* Title + date overlay — top right */}
               {(ember?.title || ember?.createdAt) ? (
-                <div className="absolute top-0 right-0 p-3 text-right">
+                <div className="absolute top-0 right-0 p-3 text-right" style={{ pointerEvents: 'none' }}>
                   {ember?.title ? (
                     <p className="font-semibold" style={{ fontSize: 15, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{ember.title}</p>
                   ) : null}
@@ -156,17 +187,10 @@ function TestLayoutContent() {
               ) : null}
             </div>
           ) : (
-            <div
-              className="rounded-2xl"
-              style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: fading ? 0 : 1, transition: `opacity ${FADE_MS}ms ease` }}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              onTouchCancel={handleTouchCancel}
-            />
+            <div className="rounded-2xl" style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }} />
           )}
         </div>
 
-        {/* Spacer — grows when card opens, shrinking the photo */}
         <div
           style={{
             flexShrink: 0,
@@ -176,13 +200,11 @@ function TestLayoutContent() {
         />
       </div>
 
-      {/* Ember card — slides up full width */}
+      {/* Ember card */}
       <div
         className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
-          height: CARD_H,
-          background: '#111113',
-          borderRadius: '20px 20px 0 0',
+          height: CARD_H, background: '#111113', borderRadius: '20px 20px 0 0',
           transform: emberOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -194,13 +216,11 @@ function TestLayoutContent() {
         </div>
       </div>
 
-      {/* Stories panel — 20% from bottom, below rail */}
+      {/* Stories panel */}
       <div
         className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
-          height: PANEL_SM_H,
-          background: '#111113',
-          borderRadius: '20px 20px 0 0',
+          height: PANEL_SM_H, background: '#111113', borderRadius: '20px 20px 0 0',
           transform: activeRail === 'stories' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -212,13 +232,11 @@ function TestLayoutContent() {
         </div>
       </div>
 
-      {/* Share panel — 20% from bottom, below rail */}
+      {/* Share panel */}
       <div
         className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
-          height: PANEL_SM_H,
-          background: '#111113',
-          borderRadius: '20px 20px 0 0',
+          height: PANEL_SM_H, background: '#111113', borderRadius: '20px 20px 0 0',
           transform: activeRail === 'share' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -230,13 +248,11 @@ function TestLayoutContent() {
         </div>
       </div>
 
-      {/* Tend panel — starts just below header */}
+      {/* Tend panel */}
       <div
         className="fixed left-0 right-0 bottom-0 z-30 flex flex-col"
         style={{
-          top: 56,
-          background: '#111113',
-          borderRadius: '20px 20px 0 0',
+          top: 56, background: '#111113', borderRadius: '20px 20px 0 0',
           transform: activeRail === 'tend' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -248,7 +264,7 @@ function TestLayoutContent() {
         </div>
       </div>
 
-      {/* Rail — fixed bottom, above all panels including tend */}
+      {/* Rail */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-8 px-4 py-4">
         {railItems.map(({ label, icon: Icon }) => {
           const isActive = label === 'ember' ? emberOpen : activeRail === label;
@@ -259,13 +275,8 @@ function TestLayoutContent() {
               className="flex flex-col items-center gap-1 cursor-pointer transition-opacity duration-200"
               style={{ minWidth: 44, opacity: isDimmed ? 0.25 : 1 }}
               onClick={() => {
-                if (label === 'ember') {
-                  setEmberOpen((o) => !o);
-                  setActiveRail(null);
-                } else {
-                  setEmberOpen(false);
-                  setActiveRail((prev) => prev === label ? null : label);
-                }
+                if (label === 'ember') { setEmberOpen((o) => !o); setActiveRail(null); }
+                else { setEmberOpen(false); setActiveRail((prev) => prev === label ? null : label); }
               }}
             >
               <Icon size={32} color={isActive ? '#f97316' : 'white'} strokeWidth={1.5} />
