@@ -180,7 +180,7 @@ function TestLayoutContent() {
                 onLoad={handleImageLoad}
                 draggable={false}
               />
-              {(ember?.title || ember?.createdAt) ? (
+              {!panelOpen && (ember?.title || ember?.createdAt) ? (
                 <div className="absolute top-0 right-0 p-3 text-right" style={{ pointerEvents: 'none' }}>
                   {ember?.title ? (
                     <p className="font-semibold" style={{ fontSize: 15, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{ember.title}</p>
@@ -201,7 +201,7 @@ function TestLayoutContent() {
         <div
           style={{
             flexShrink: 0,
-            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '25vh' : activeRail === 'stories' ? PANEL_SM_H : RAIL_H,
+            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '30vh' : activeRail === 'stories' ? PANEL_SM_H : RAIL_H,
             transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
@@ -210,7 +210,7 @@ function TestLayoutContent() {
       <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} />
       <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} />
       <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} />
-      <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} />
+      <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} emberId={id} />
       <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} />
 
       {/* Rail */}
