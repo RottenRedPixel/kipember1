@@ -2,9 +2,14 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Flame, Hand, Leaf, MessageCirclePlus, Share, X } from 'lucide-react';
+import { Flame, Hand, Leaf, MessageCirclePlus, Share } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AppHeader from '@/components/kipember/AppHeader';
+import EmberSheet from './EmberSheet';
+import HelloSheet from './HelloSheet';
+import ShareSheet from './ShareSheet';
+import StoriesSheet from './StoriesSheet';
+import TendSheet from './TendSheet';
 
 type EmberSummary = {
   id: string;
@@ -64,7 +69,6 @@ function TestLayoutContent() {
     else if (w > h) setOrientation('landscape');
     else setOrientation('portrait');
 
-    // Slide in from the opposite side of the last swipe
     const incomingX = lastDirRef.current < 0 ? window.innerWidth : -window.innerWidth;
     setSwipeX(incomingX);
     setSnapping(false);
@@ -140,6 +144,8 @@ function TestLayoutContent() {
     snapBack();
   }
 
+  const closePanel = () => setActiveRail(null);
+
   return (
     <>
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
@@ -195,94 +201,20 @@ function TestLayoutContent() {
         <div
           style={{
             flexShrink: 0,
-            height: emberOpen ? CARD_H : (activeRail === 'stories' || activeRail === 'share' || activeRail === 'hello') ? PANEL_SM_H : RAIL_H,
+            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : (activeRail === 'stories' || activeRail === 'share') ? PANEL_SM_H : RAIL_H,
             transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
       </div>
 
-      {/* Ember card */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
-        style={{
-          height: CARD_H, background: '#111113', borderRadius: '20px 20px 0 0',
-          transform: emberOpen ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <div className="flex justify-end px-4 pt-4">
-          <button className="cursor-pointer" onClick={() => setEmberOpen(false)}>
-            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-          </button>
-        </div>
-      </div>
-
-      {/* Stories panel */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
-        style={{
-          height: PANEL_SM_H, background: '#111113', borderRadius: '20px 20px 0 0',
-          transform: activeRail === 'stories' ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <div className="flex justify-end px-4 pt-4">
-          <button className="cursor-pointer" onClick={() => setActiveRail(null)}>
-            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-          </button>
-        </div>
-      </div>
-
-      {/* Share panel */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
-        style={{
-          height: PANEL_SM_H, background: '#111113', borderRadius: '20px 20px 0 0',
-          transform: activeRail === 'share' ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <div className="flex justify-end px-4 pt-4">
-          <button className="cursor-pointer" onClick={() => setActiveRail(null)}>
-            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-          </button>
-        </div>
-      </div>
-
-      {/* Hello panel */}
-      <div
-        className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
-        style={{
-          height: PANEL_SM_H, background: '#111113', borderRadius: '20px 20px 0 0',
-          transform: activeRail === 'hello' ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <div className="flex justify-end px-4 pt-4">
-          <button className="cursor-pointer" onClick={() => setActiveRail(null)}>
-            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-          </button>
-        </div>
-      </div>
-
-      {/* Tend panel */}
-      <div
-        className="fixed left-0 right-0 bottom-0 z-30 flex flex-col"
-        style={{
-          top: 56, background: '#111113', borderRadius: '20px 20px 0 0',
-          transform: activeRail === 'tend' ? 'translateY(0)' : 'translateY(100%)',
-          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-      >
-        <div className="flex justify-end px-4 pt-4">
-          <button className="cursor-pointer" onClick={() => setActiveRail(null)}>
-            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-          </button>
-        </div>
-      </div>
+      <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} />
+      <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} />
+      <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} />
+      <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} />
+      <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} />
 
       {/* Rail */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-8 px-4 py-4">
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113' }}>
         {railItems.map(({ label, icon: Icon }) => {
           const isActive = label === 'ember' ? emberOpen : activeRail === label;
           const isDimmed = panelOpen ? !isActive : false;
