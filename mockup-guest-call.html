@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Guest Call Surface — Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #111;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 32px;
+    padding: 48px 32px;
+    flex-wrap: wrap;
+  }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 340px;
+  }
+
+  .label {
+    color: rgba(255,255,255,0.35);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0 2px;
+  }
+
+  /* Modal shell */
+  .modal {
+    background: rgba(18,18,18,0.97);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 24px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Tab bar */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 0 16px;
+  }
+  .tab {
+    padding: 12px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.35);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+  .tab.active {
+    color: #f97316;
+    border-bottom-color: #f97316;
+  }
+
+  /* Message area */
+  .messages {
+    flex: 1;
+    padding: 16px 16px 8px;
+    min-height: 130px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .empty-hint {
+    color: rgba(255,255,255,0.28);
+    font-size: 13px;
+    text-align: center;
+    margin: auto;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    padding: 8px 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pill {
+    flex: 1;
+    height: 44px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  /* Idle state */
+  .pill-idle {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid transparent;
+  }
+
+  .pill-idle input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 13px;
+    font-family: inherit;
+    min-width: 0;
+  }
+
+  .pill-idle input::placeholder {
+    color: rgba(255,255,255,0.35);
+  }
+
+  /* Calling state */
+  .pill-calling {
+    background: rgba(37,99,235,0.15);
+    border: 1px solid rgba(37,99,235,0.45);
+  }
+
+  .calling-label {
+    color: rgba(96,165,250,0.9);
+    font-size: 13px;
+  }
+
+  .calling-number {
+    color: white;
+    font-size: 13px;
+  }
+
+  /* Error state */
+  .pill-error {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.35);
+  }
+
+  .error-text {
+    color: rgba(252,165,165,0.9);
+    font-size: 13px;
+    flex: 1;
+  }
+
+  /* Phone button */
+  .btn-phone {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #2563eb;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .btn-phone.disabled {
+    opacity: 0.4;
+  }
+
+  .btn-phone svg {
+    color: white;
+  }
+
+  /* Status line */
+  .status-line {
+    padding: 0 18px 12px;
+    font-size: 11px;
+  }
+  .status-recording { color: rgba(34,197,94,0.8); }
+  .status-error { color: rgba(252,165,165,0.92); }
+  .status-info { color: rgba(255,255,255,0.45); }
+
+  /* Context note below modal */
+  .note {
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+    padding: 4px 2px 0;
+    line-height: 1.5;
+  }
+
+  /* SVG icons inline */
+  svg { display: block; }
+
+  /* Divider between owner/contrib and guest for comparison */
+  .divider {
+    width: 1px;
+    background: rgba(255,255,255,0.08);
+    align-self: stretch;
+    margin: 0 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── COLUMN 1: Owner / Contributor (existing, for reference) ── -->
+<div class="col">
+  <div class="label">Owner / Contributor — today</div>
+
+  <!-- Chat surface -->
+  <div class="modal">
+    <div class="tabs">
+      <div class="tab active">Chat</div>
+      <div class="tab">Voice</div>
+      <div class="tab">Calls</div>
+    </div>
+    <div class="messages">
+      <div class="empty-hint">No messages yet</div>
+    </div>
+    <div class="toolbar">
+      <div class="pill pill-idle">
+        <input type="text" placeholder="Chat with ember..." readonly />
+        <!-- ImagePlus icon -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/><path d="M14 10l2 2"/></svg>
+      </div>
+      <button class="btn-phone" style="background:#f97316;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Calls surface -->
+  <div class="modal">
+    <div class="tabs">
+      <div class="tab">Chat</div>
+      <div class="tab">Voice</div>
+      <div class="tab active">Calls</div>
+    </div>
+    <div class="messages">
+      <div class="empty-hint">Tap the phone to have ember call you.</div>
+    </div>
+    <div class="toolbar">
+      <div class="pill pill-idle" style="gap:6px;">
+        <span style="color:rgba(255,255,255,0.45); font-size:13px;">Ember will call:</span>
+        <span style="color:white; font-size:13px;">+1 415 555 0102</span>
+      </div>
+      <button class="btn-phone">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="note">Phone number is pulled from user profile. No input needed.</div>
+</div>
+
+<!-- ── COLUMN 2: Guest — proposed ── -->
+<div class="col">
+  <div class="label">Guest — proposed</div>
+
+  <!-- Chat surface (same as today) -->
+  <div class="modal">
+    <div class="tabs">
+      <div class="tab active">Chat</div>
+      <div class="tab">Voice</div>
+      <div class="tab">Call</div>
+    </div>
+    <div class="messages">
+      <div class="empty-hint">No messages yet</div>
+    </div>
+    <div class="toolbar">
+      <div class="pill pill-idle">
+        <input type="text" placeholder="Ask Ember about this memory..." readonly />
+        <!-- Mic icon (guest today) -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </div>
+      <button class="btn-phone" style="background:#f97316;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Call surface — idle, empty number -->
+  <div class="modal">
+    <div class="tabs">
+      <div class="tab">Chat</div>
+      <div class="tab">Voice</div>
+      <div class="tab active">Call</div>
+    </div>
+    <div class="messages">
+      <div class="empty-hint">Enter your number and ember will call you.</div>
+    </div>
+    <div class="toolbar">
+      <div class="pill pill-idle">
+        <input type="text" placeholder="+1 (555) 000-0000" value="" readonly />
+      </div>
+      <button class="btn-phone disabled">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+      </button>
+    </div>
+    <div class="note" style="padding: 0 18px 14px; color: rgba(255,255,255,0.22);">Phone button is disabled until a valid number is entered.</div>
+  </div>
+
+  <!-- Call surface — number typed, ready -->
+  <div class="modal">
+    <div class="tabs">
+      <div class="tab">Chat</div>
+      <div class="tab">Voice</div>
+      <div class="tab active">Call</div>
+    </div>
+    <div class="messages">
+      <div class="empty-hint">Enter your number and ember will call you.</div>
+    </div>
+    <div class="toolbar">
+      <div class="pill pill-idle" style="border-color: rgba(249,115,22,0.24);">
+        <input type="text" value="+1 415 555 0199" readonly style="color:white;" />
+      </div>
+      <button class="btn-phone">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+      </button>
+    </div>
+    <div class="note" style="padding: 0 18px 14px; color: rgba(255,255,255,0.22);">Valid number — phone button active.</div>
+  </div>
+
+  <!-- Call surface — calling in progress -->
+  <div class="modal">
+    <div class="tabs">
+      <div class="tab">Chat</div>
+      <div class="tab">Voice</div>
+      <div class="tab active">Call</div>
+    </div>
+    <div class="messages">
+      <div class="empty-hint">Enter your number and ember will call you.</div>
+    </div>
+    <div class="toolbar">
+      <div class="pill pill-calling">
+        <span class="calling-label">Calling</span>
+        <span class="calling-number">+1 415 555 0199</span>
+      </div>
+      <button class="btn-phone disabled">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+      </button>
+    </div>
+    <div class="note" style="padding: 0 18px 14px; color: rgba(255,255,255,0.22);">Pill flips to blue "Calling…" state. Button disabled.</div>
+  </div>
+
+  <!-- Call surface — error -->
+  <div class="modal">
+    <div class="tabs">
+      <div class="tab">Chat</div>
+      <div class="tab">Voice</div>
+      <div class="tab active">Call</div>
+    </div>
+    <div class="messages">
+      <div class="empty-hint">Enter your number and ember will call you.</div>
+    </div>
+    <div class="toolbar">
+      <div class="pill pill-idle" style="border-color: rgba(249,115,22,0.24);">
+        <input type="text" value="+1 415 555 0199" readonly style="color:white;" />
+      </div>
+      <button class="btn-phone">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.68A2 2 0 012 1h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+      </button>
+    </div>
+    <div class="status-line status-error">Could not start the call. Please try again.</div>
+  </div>
+
+  <div class="note">Guest types their own number. Button disabled until valid. Same pill/button shell as owner/contributor.</div>
+</div>
+
+</body>
+</html>

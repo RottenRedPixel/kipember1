@@ -21,7 +21,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
-import EmberFlow from '@/components/kipember/workflows/EmberFlow';
+import EmberModalContent from '@/components/kipember/workflows/EmberModalContent';
 import { useGuestVoiceRecording } from '@/components/kipember/workflows/useGuestVoiceRecording';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
@@ -590,7 +590,7 @@ export default function GuestEmberScreen({
               { label: 'Voice', surface: 'voice', href: voiceTabHref },
             ]}
           >
-            <EmberFlow
+            <EmberModalContent
               key={token}
               api={guestApi}
               voice={voice}

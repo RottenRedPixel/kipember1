@@ -39,7 +39,7 @@ export type EmberFlowApi = {
   triggerCall?: () => Promise<void>;
 };
 
-export default function EmberFlow({
+export default function EmberModalContent({
   api,
   voice,
   emberModalSurface = 'chats',

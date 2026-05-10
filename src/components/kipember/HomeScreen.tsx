@@ -31,7 +31,7 @@ import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
 import KipemberWikiOverlay from '@/components/kipember/KipemberWikiOverlay';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
-import EmberFlow from '@/components/kipember/workflows/EmberFlow';
+import EmberModalContent from '@/components/kipember/workflows/EmberModalContent';
 import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
 import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
 import { getEmberTitle } from '@/lib/ember-title';
@@ -300,7 +300,7 @@ function WorkflowSlot({
   };
 
   return (
-    <EmberFlow
+    <EmberModalContent
       key={emberId}
       api={api}
       voice={voice}

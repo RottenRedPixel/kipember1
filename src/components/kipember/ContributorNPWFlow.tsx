@@ -20,7 +20,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
 import { useGuestVoiceRecording } from '@/components/kipember/workflows/useGuestVoiceRecording';
-import EmberFlow, { type EmberFlowApi } from '@/components/kipember/workflows/EmberFlow';
+import EmberModalContent, { type EmberFlowApi } from '@/components/kipember/workflows/EmberModalContent';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
 
@@ -582,7 +582,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
               { label: 'Call', surface: 'calls', href: callTabHref },
             ]}
           >
-            <EmberFlow
+            <EmberModalContent
               key={token}
               api={npwApi}
               voice={voice}
