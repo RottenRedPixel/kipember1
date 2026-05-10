@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-const SHEET_H = '20vh';
+const SHEET_H = '25vh';
 const SNAP_MS = 320;
 
 export default function ShareSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {

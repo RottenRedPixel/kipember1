@@ -22,7 +22,7 @@ type EmberSummary = {
 };
 
 const RAIL_H = 80;
-const CARD_H = '60vh';
+const CARD_H = '50vh';
 const PANEL_SM_H = '20vh';
 const SWIPE_THRESHOLD = 50;
 const SNAP_MS = 260;
@@ -201,7 +201,7 @@ function TestLayoutContent() {
         <div
           style={{
             flexShrink: 0,
-            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : (activeRail === 'stories' || activeRail === 'share') ? PANEL_SM_H : RAIL_H,
+            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '25vh' : activeRail === 'stories' ? PANEL_SM_H : RAIL_H,
             transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { MessageCirclePlus, X } from 'lucide-react';
 
-const SHEET_H = '60vh';
+const SHEET_H = '50vh';
 const SNAP_MS = 320;
 const SWIPE_THRESHOLD = 40;
 
