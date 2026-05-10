@@ -935,18 +935,6 @@ export default function HomeScreen({
               transition: photoSwapSettling ? 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)' : 'none',
             }}
           >
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: `url(${currentPhotoUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                filter: 'blur(24px)',
-                transform: 'scale(1.08)',
-                opacity: photoOpacity * 0.7,
-                transition: `opacity ${photoFadeMs}ms ease-in-out`,
-              }}
-            />
             <img
               src={currentPhotoUrl}
               alt=""
@@ -1044,16 +1032,16 @@ export default function HomeScreen({
       {prevEmberPreloadUrl ? <img src={prevEmberPreloadUrl} alt="" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} /> : null}
       {nextEmberPreloadUrl ? <img src={nextEmberPreloadUrl} alt="" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} /> : null}
 
-      {!firstEmber && displayEmber && !emberModalExpanded ? (
+      {!firstEmber && displayEmber && !emberModalExpanded && !emberModalOpen ? (
         <div
           className="absolute left-4 z-20 pointer-events-none"
           style={{
-            top: 64,
+            bottom: emberModalOpen ? 'calc(50% + 16px)' : 80,
             opacity: dragY === 0 ? 1 : 0,
-            transition: 'opacity 0.36s ease',
+            transition: 'bottom 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0.36s ease',
           }}
         >
-          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)', maxWidth: '35ch' }}>
             {selectedEmberHasTitle ? title : ' '}
           </p>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
