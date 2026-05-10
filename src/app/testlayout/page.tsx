@@ -19,6 +19,7 @@ type EmberSummary = {
   title: string | null;
   originalName: string;
   createdAt: string;
+  storyScript: string | null;
 };
 
 const RAIL_H = 80;
@@ -201,7 +202,7 @@ function TestLayoutContent() {
         <div
           style={{
             flexShrink: 0,
-            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '30vh' : activeRail === 'stories' ? PANEL_SM_H : RAIL_H,
+            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '30vh' : activeRail === 'stories' ? '30vh' : RAIL_H,
             transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
@@ -209,12 +210,12 @@ function TestLayoutContent() {
 
       <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} />
       <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} />
-      <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} />
+      <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.storyScript ?? null} />
       <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} emberId={id} />
       <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} />
 
       {/* Rail */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113', transform: activeRail === 'stories' ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
         {railItems.map(({ label, icon: Icon }) => {
           const isActive = label === 'ember' ? emberOpen : activeRail === label;
           const isDimmed = panelOpen ? !isActive : false;
@@ -228,7 +229,7 @@ function TestLayoutContent() {
                 else { setEmberOpen(false); setActiveRail((prev) => prev === label ? null : label); }
               }}
             >
-              <Icon size={27} color={isActive ? '#f97316' : 'white'} strokeWidth={1.5} />
+              <Icon size={25} color={isActive ? '#f97316' : 'white'} strokeWidth={1.5} />
               <span style={{ color: isActive ? '#f97316' : 'rgba(255,255,255,0.5)', fontSize: 11 }}>{label}</span>
             </button>
           );
