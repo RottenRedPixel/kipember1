@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Flame, Leaf, MessageCirclePlus, Share2 } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -16,7 +16,14 @@ type EmberSummary = {
   createdAt: string;
 };
 
-export default function TestLayoutPage() {
+const railItems = [
+  { label: 'ember', icon: MessageCirclePlus },
+  { label: 'stories', icon: Flame },
+  { label: 'tend', icon: Leaf },
+  { label: 'share', icon: Share2 },
+] as const;
+
+function TestLayoutContent() {
   const router = useRouter();
   const params = useSearchParams();
   const id = params.get('id');
@@ -38,18 +45,8 @@ export default function TestLayoutPage() {
       })
     : null;
 
-  const railItems = [
-    { label: 'ember', icon: MessageCirclePlus },
-    { label: 'stories', icon: Flame },
-    { label: 'tend', icon: Leaf },
-    { label: 'share', icon: Share2 },
-  ] as const;
-
   return (
-    <div className="fixed inset-0 overflow-y-auto no-scrollbar" style={{ background: '#000' }}>
-      <div style={{ '--bg-screen': '#000000', '--border-subtle': 'transparent' } as React.CSSProperties}>
-        <AppHeader />
-      </div>
+    <>
       <div className="w-full max-w-xl mx-auto px-4" style={{ paddingTop: 56 }}>
         {ember?.title ? (
           <p className="text-white font-semibold text-lg mb-0.5">{ember.title}</p>
@@ -69,7 +66,7 @@ export default function TestLayoutPage() {
           </div>
         )}
       </div>
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center gap-8 px-4 py-4" style={{ background: 'transparent' }}>
+      <div className="fixed bottom-0 left-0 right-0 flex justify-center gap-8 px-4 py-4">
         {railItems.map(({ label, icon: Icon }) => (
           <button key={label} className="flex flex-col items-center gap-1 cursor-pointer" style={{ minWidth: 44 }}>
             <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
@@ -79,6 +76,19 @@ export default function TestLayoutPage() {
           </button>
         ))}
       </div>
+    </>
+  );
+}
+
+export default function TestLayoutPage() {
+  return (
+    <div className="fixed inset-0 overflow-y-auto no-scrollbar" style={{ background: '#000' }}>
+      <div style={{ '--bg-screen': '#000000', '--border-subtle': 'transparent' } as React.CSSProperties}>
+        <AppHeader />
+      </div>
+      <Suspense>
+        <TestLayoutContent />
+      </Suspense>
     </div>
   );
 }
