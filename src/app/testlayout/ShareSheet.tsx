@@ -97,11 +97,9 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
         <span className="flex-1 text-xs truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
           {shareUrl ?? 'Generating link…'}
         </span>
-        {shareUrl && (
-          <button type="button" onClick={copyLink} className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md cursor-pointer">
-            <Copy size={14} color="white" strokeWidth={1.8} />
-          </button>
-        )}
+        <button type="button" onClick={copyLink} disabled={!shareUrl} className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md cursor-pointer" style={{ opacity: shareUrl ? 1 : 0 }}>
+          <Copy size={14} color="white" strokeWidth={1.8} />
+        </button>
       </div>
     </div>
   );
