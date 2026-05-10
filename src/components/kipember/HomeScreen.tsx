@@ -15,6 +15,7 @@ import {
   Leaf,
   Link2,
   Mail,
+  FlaskConical,
   MessageCircle,
   MessageCirclePlus,
   Share2,
@@ -1146,7 +1147,7 @@ export default function HomeScreen({
         className={`absolute right-2 z-20 flex flex-col gap-0 items-center transition-opacity duration-200 ${
           railHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
-        style={{ top: '50%', transform: 'translateY(-50%)' }}
+        style={{ bottom: '9%' }}
       >
         {allMedia.length > 1 && nextPhotoUrl ? (
           <button
@@ -1167,6 +1168,7 @@ export default function HomeScreen({
             <span className="text-white text-xs font-medium lowercase">more</span>
           </button>
         ) : null}
+        <RailBtn icon={FlaskConical} label="test" href={`/testlayout?id=${selectedEmberId ?? ''}`} />
         {!helloDismissed ? (
           <Link href={buildHomeHref({ m: 'hello' })} className="flex flex-col items-center gap-1 p-2 rounded-xl">
             <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#f97316' }}>
