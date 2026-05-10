@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Flame, Leaf, MessageCirclePlus, Share, X } from 'lucide-react';
+import { Flame, Hand, Leaf, MessageCirclePlus, Share, X } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AppHeader from '@/components/kipember/AppHeader';
 
@@ -23,6 +23,7 @@ const SWIPE_THRESHOLD = 50;
 const SNAP_MS = 260;
 
 const railItems = [
+  { label: 'hello', icon: Hand },
   { label: 'ember', icon: MessageCirclePlus },
   { label: 'stories', icon: Flame },
   { label: 'tend', icon: Leaf },
@@ -194,7 +195,7 @@ function TestLayoutContent() {
         <div
           style={{
             flexShrink: 0,
-            height: emberOpen ? CARD_H : (activeRail === 'stories' || activeRail === 'share') ? PANEL_SM_H : RAIL_H,
+            height: emberOpen ? CARD_H : (activeRail === 'stories' || activeRail === 'share' || activeRail === 'hello') ? PANEL_SM_H : RAIL_H,
             transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
@@ -238,6 +239,22 @@ function TestLayoutContent() {
         style={{
           height: PANEL_SM_H, background: '#111113', borderRadius: '20px 20px 0 0',
           transform: activeRail === 'share' ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        <div className="flex justify-end px-4 pt-4">
+          <button className="cursor-pointer" onClick={() => setActiveRail(null)}>
+            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+          </button>
+        </div>
+      </div>
+
+      {/* Hello panel */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
+        style={{
+          height: PANEL_SM_H, background: '#111113', borderRadius: '20px 20px 0 0',
+          transform: activeRail === 'hello' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
