@@ -382,7 +382,7 @@ export default function TendActionScreen({ action }: { action: string }) {
           backgroundPosition: 'center',
         } : undefined}
       >
-      <button type="button" onClick={handleBack} className="w-[8%] h-full" style={{ cursor: 'pointer' }} aria-label="Back" />
+      <button type="button" onClick={handleBack} className="w-[5%] h-full" style={{ cursor: 'pointer' }} aria-label="Back" />
       <div
         className="flex-1 h-full flex flex-col slide-in-right"
         style={{ background: 'var(--bg-screen)', borderLeft: '1px solid var(--border-subtle)' }}

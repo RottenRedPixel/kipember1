@@ -1032,16 +1032,16 @@ export default function HomeScreen({
       {prevEmberPreloadUrl ? <img src={prevEmberPreloadUrl} alt="" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} /> : null}
       {nextEmberPreloadUrl ? <img src={nextEmberPreloadUrl} alt="" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} /> : null}
 
-      {!firstEmber && displayEmber && !emberModalExpanded && !emberModalOpen ? (
+      {!firstEmber && displayEmber && !emberModalExpanded ? (
         <div
           className="absolute left-4 z-20 pointer-events-none"
           style={{
-            bottom: emberModalOpen ? 'calc(50% + 16px)' : 80,
+            top: 64,
             opacity: dragY === 0 ? 1 : 0,
-            transition: 'bottom 220ms cubic-bezier(0.4, 0, 0.2, 1), opacity 0.36s ease',
+            transition: 'opacity 0.36s ease',
           }}
         >
-          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)', maxWidth: '35ch' }}>
+          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
             {selectedEmberHasTitle ? title : ' '}
           </p>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
@@ -1146,7 +1146,7 @@ export default function HomeScreen({
         className={`absolute right-2 z-20 flex flex-col gap-0 items-center transition-opacity duration-200 ${
           railHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
-        style={{ bottom: '9%' }}
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
       >
         {allMedia.length > 1 && nextPhotoUrl ? (
           <button
