@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Flame, Leaf, MessageCirclePlus, Share, X } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -35,10 +35,6 @@ function TestLayoutContent() {
   const [activeRail, setActiveRail] = useState<string | null>(null);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
   const [naturalRatio, setNaturalRatio] = useState<string | null>(null);
-  const [titleDateH, setTitleDateH] = useState(0);
-  const [photoW, setPhotoW] = useState<number | null>(null);
-  const titleDateRef = useRef<HTMLDivElement>(null);
-  const photoRef = useRef<HTMLDivElement>(null);
 
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
@@ -48,28 +44,7 @@ function TestLayoutContent() {
     else setOrientation('portrait');
   }
 
-  const aspectRatio = naturalRatio ?? (orientation === 'portrait' ? '3/4' : orientation === 'landscape' ? '4/3' : '1/1');
   const objectPosition = orientation === 'portrait' ? 'center top' : 'center';
-
-  useEffect(() => {
-    if (!titleDateRef.current) return;
-    const observer = new ResizeObserver(() => {
-      setTitleDateH(titleDateRef.current?.offsetHeight ?? 0);
-    });
-    observer.observe(titleDateRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!photoRef.current) return;
-    const el = photoRef.current;
-    const observer = new ResizeObserver((entries) => {
-      const w = Math.round(entries[0]?.contentRect.width ?? 0);
-      if (w > 0) setPhotoW(w);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [naturalRatio]);
 
   useEffect(() => {
     if (!id) return;
@@ -91,34 +66,11 @@ function TestLayoutContent() {
     <>
       {/* Main area: flex col, photo fills remaining space above spacer */}
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        {/* Title + date bar — fixed to initial photo width, centered; tapping closes tend */}
-        <div
-          ref={titleDateRef}
-          className="flex-shrink-0"
-          style={{
-            width: photoW ?? 'auto',
-            alignSelf: 'center',
-            background: '#000',
-            cursor: activeRail === 'tend' ? 'pointer' : undefined,
-          }}
-          onClick={() => { if (activeRail === 'tend') setActiveRail(null); }}
-        >
-          {ember?.title ? (
-            <p className="text-white font-semibold text-right" style={{ fontSize: 16 }}>{ember.title}</p>
-          ) : null}
-          {ember?.createdAt ? (
-            <p className="mb-1 text-right" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
-              {new Date(ember.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-            </p>
-          ) : null}
-        </div>
-
         {/* Photo — centered, scales to fill remaining height */}
         <div className="flex-1 min-h-0 px-[10px] pb-3 flex items-start justify-center overflow-hidden">
           {photoUrl ? (
             <div
-              ref={photoRef}
-              className="rounded-2xl overflow-hidden cursor-pointer"
+              className="rounded-2xl overflow-hidden cursor-pointer relative"
               style={{
                 border: '1px solid var(--border-default)',
                 aspectRatio: naturalRatio ?? undefined,
@@ -135,6 +87,19 @@ function TestLayoutContent() {
                 style={{ objectFit: 'cover', objectPosition, display: 'block' }}
                 onLoad={handleImageLoad}
               />
+              {/* Title + date overlay — top right */}
+              {(ember?.title || ember?.createdAt) ? (
+                <div className="absolute top-0 right-0 p-3 text-right">
+                  {ember?.title ? (
+                    <p className="font-semibold" style={{ fontSize: 15, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{ember.title}</p>
+                  ) : null}
+                  {ember?.createdAt ? (
+                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+                      {new Date(ember.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-2xl" style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }} />
@@ -205,11 +170,11 @@ function TestLayoutContent() {
         </div>
       </div>
 
-      {/* Tend panel — below title+date, above everything */}
+      {/* Tend panel — starts just below header */}
       <div
         className="fixed left-0 right-0 bottom-0 z-30 flex flex-col"
         style={{
-          top: 56 + titleDateH,
+          top: 56,
           background: '#111113',
           borderRadius: '20px 20px 0 0',
           transform: activeRail === 'tend' ? 'translateY(0)' : 'translateY(100%)',
