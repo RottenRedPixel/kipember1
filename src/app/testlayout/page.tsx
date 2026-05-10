@@ -90,21 +90,23 @@ function TestLayoutContent() {
     }, FADE_MS);
   }
 
-  function handlePointerDown(e: React.PointerEvent) {
+  function handleTouchStart(e: React.TouchEvent) {
     if (panelOpen) return;
-    swipeStart.current = { x: e.clientX, y: e.clientY };
+    const t = e.touches[0];
+    swipeStart.current = { x: t.clientX, y: t.clientY };
   }
 
-  function handlePointerUp(e: React.PointerEvent) {
+  function handleTouchEnd(e: React.TouchEvent) {
     if (!swipeStart.current || panelOpen) return;
-    const dx = e.clientX - swipeStart.current.x;
-    const dy = e.clientY - swipeStart.current.y;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - swipeStart.current.x;
+    const dy = t.clientY - swipeStart.current.y;
     swipeStart.current = null;
     if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
     navigateTo(dx < 0 ? currentIndex + 1 : currentIndex - 1);
   }
 
-  function handlePointerCancel() {
+  function handleTouchCancel() {
     swipeStart.current = null;
   }
 
@@ -117,19 +119,20 @@ function TestLayoutContent() {
           {photoUrl ? (
             <div
               className="rounded-2xl overflow-hidden cursor-pointer relative"
+              onClick={() => { setEmberOpen(false); setActiveRail(null); }}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
               style={{
                 border: '1px solid var(--border-default)',
                 aspectRatio: naturalRatio ?? undefined,
                 opacity: fading ? 0 : 1,
                 transition: `opacity ${FADE_MS}ms ease`,
+                touchAction: 'pan-y',
                 ...(orientation === 'portrait'
                   ? { height: '100%', maxWidth: '100%' }
                   : { width: '100%', maxHeight: '100%' }),
               }}
-              onClick={() => { setEmberOpen(false); setActiveRail(null); }}
-              onPointerDown={handlePointerDown}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
             >
               <img
                 src={photoUrl}
@@ -156,9 +159,9 @@ function TestLayoutContent() {
             <div
               className="rounded-2xl"
               style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: fading ? 0 : 1, transition: `opacity ${FADE_MS}ms ease` }}
-              onPointerDown={handlePointerDown}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchCancel}
             />
           )}
         </div>
