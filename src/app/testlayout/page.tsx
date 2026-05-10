@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Flame, Leaf, MessageCirclePlus, Share2 } from 'lucide-react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Flame, Leaf, MessageCirclePlus, Share } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AppHeader from '@/components/kipember/AppHeader';
 
@@ -18,20 +18,45 @@ type EmberSummary = {
 
 const RAIL_H = 80;
 const CARD_H = '60vh';
+const PANEL_SM_H = '20vh';
 
 const railItems = [
   { label: 'ember', icon: MessageCirclePlus },
   { label: 'stories', icon: Flame },
   { label: 'tend', icon: Leaf },
-  { label: 'share', icon: Share2 },
+  { label: 'share', icon: Share },
 ] as const;
 
 function TestLayoutContent() {
-  const router = useRouter();
   const params = useSearchParams();
   const id = params.get('id');
   const [ember, setEmber] = useState<EmberSummary | null>(null);
   const [emberOpen, setEmberOpen] = useState(false);
+  const [activeRail, setActiveRail] = useState<string | null>(null);
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
+  const [naturalRatio, setNaturalRatio] = useState<string | null>(null);
+  const [titleDateH, setTitleDateH] = useState(0);
+  const titleDateRef = useRef<HTMLDivElement>(null);
+
+  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+    setNaturalRatio(`${w}/${h}`);
+    if (w === h) setOrientation('square');
+    else if (w > h) setOrientation('landscape');
+    else setOrientation('portrait');
+  }
+
+  const aspectRatio = naturalRatio ?? (orientation === 'portrait' ? '3/4' : orientation === 'landscape' ? '4/3' : '1/1');
+  const objectPosition = orientation === 'portrait' ? 'center top' : 'center';
+
+  useEffect(() => {
+    if (!titleDateRef.current) return;
+    const observer = new ResizeObserver(() => {
+      setTitleDateH(titleDateRef.current?.offsetHeight ?? 0);
+    });
+    observer.observe(titleDateRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -53,36 +78,53 @@ function TestLayoutContent() {
     <>
       {/* Main area: flex col, photo fills remaining space above spacer */}
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        {/* Title + date */}
-        <div className="px-4 flex-shrink-0">
+        {/* Title + date — full width, right-aligned; tapping closes tend */}
+        <div
+          ref={titleDateRef}
+          className="px-[10px] flex-shrink-0"
+          onClick={() => { if (activeRail === 'tend') setActiveRail(null); }}
+          style={{ cursor: activeRail === 'tend' ? 'pointer' : undefined }}
+        >
           {ember?.title ? (
-            <p className="text-white font-semibold text-lg mb-0.5">{ember.title}</p>
+            <p className="text-white font-semibold text-right" style={{ fontSize: 16 }}>{ember.title}</p>
           ) : null}
           {ember?.createdAt ? (
-            <p className="mb-2" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+            <p className="mb-2 text-right" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
               {new Date(ember.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </p>
           ) : null}
         </div>
 
-        {/* Photo — flex-1, shrinks as spacer grows */}
-        <div className="flex-1 min-h-0 px-4 overflow-hidden">
+        {/* Photo — centered, scales to fill remaining height */}
+        <div className="flex-1 min-h-0 px-[10px] pb-3 flex items-start justify-center overflow-hidden">
           {photoUrl ? (
             <div
-              className="rounded-2xl overflow-hidden cursor-pointer h-full"
-              style={{ border: '1px solid var(--border-default)' }}
-              onClick={() => router.back()}
+              className="rounded-2xl overflow-hidden cursor-pointer"
+              style={{
+                border: '1px solid var(--border-default)',
+                aspectRatio: naturalRatio ?? undefined,
+                ...(orientation === 'portrait'
+                  ? { height: '100%', maxWidth: '100%' }
+                  : { width: '100%', maxHeight: '100%' }),
+              }}
+              onClick={() => { setEmberOpen(false); setActiveRail(null); }}
             >
-              <img src={photoUrl} alt="" className="w-full h-full" style={{ objectFit: 'contain' }} />
+              <img
+                src={photoUrl}
+                alt=""
+                className="w-full h-full"
+                style={{ objectFit: 'cover', objectPosition, display: 'block' }}
+                onLoad={handleImageLoad}
+              />
             </div>
           ) : (
-            <div className="rounded-2xl flex items-center justify-center h-full" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
+            <div className="rounded-2xl flex items-center justify-center" style={{ height: 200, background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
               <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>loading…</span>
             </div>
           )}
         </div>
 
-        {/* Bottom spacer — grows when card opens, shrinking the photo */}
+        {/* Spacer — grows when card opens, shrinking the photo */}
         <div
           style={{
             flexShrink: 0,
@@ -92,33 +134,79 @@ function TestLayoutContent() {
         />
       </div>
 
-      {/* Ember card — slides up from bottom, same width as photo */}
+      {/* Ember card — slides up full width */}
       <div
-        className="fixed bottom-0 z-10"
+        className="fixed bottom-0 left-0 right-0 z-10"
         style={{
           height: CARD_H,
           background: '#1c1c1e',
           borderRadius: '20px 20px 0 0',
-          left: '50%',
-          width: 'min(calc(100% - 32px), 576px)',
-          transform: emberOpen ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(100%)',
+          transform: emberOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       />
 
-      {/* Rail — fixed bottom, above card */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 flex justify-center gap-8 px-4 py-4">
-        {railItems.map(({ label, icon: Icon }) => (
-          <button
-            key={label}
-            className="flex flex-col items-center gap-1 cursor-pointer"
-            style={{ minWidth: 44 }}
-            onClick={label === 'ember' ? () => setEmberOpen((o) => !o) : undefined}
-          >
-            <Icon size={32} color={label === 'ember' && emberOpen ? '#f97316' : 'white'} strokeWidth={1.5} />
-            <span style={{ color: label === 'ember' && emberOpen ? '#f97316' : 'rgba(255,255,255,0.5)', fontSize: 11 }}>{label}</span>
-          </button>
-        ))}
+      {/* Stories panel — 20% from bottom, below rail */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-10"
+        style={{
+          height: PANEL_SM_H,
+          background: '#1c1c1e',
+          borderRadius: '20px 20px 0 0',
+          transform: activeRail === 'stories' ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      />
+
+      {/* Share panel — 20% from bottom, below rail */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-10"
+        style={{
+          height: PANEL_SM_H,
+          background: '#1c1c1e',
+          borderRadius: '20px 20px 0 0',
+          transform: activeRail === 'share' ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      />
+
+      {/* Tend panel — below title+date, above everything */}
+      <div
+        className="fixed left-0 right-0 bottom-0 z-30"
+        style={{
+          top: 56 + titleDateH,
+          background: '#1c1c1e',
+          borderRadius: '20px 20px 0 0',
+          transform: activeRail === 'tend' ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      />
+
+      {/* Rail — fixed bottom, above all panels including tend */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-8 px-4 py-4">
+        {railItems.map(({ label, icon: Icon }) => {
+          const isActive = label === 'ember' ? emberOpen : activeRail === label;
+          const isDimmed = activeRail !== null || emberOpen ? !isActive : false;
+          return (
+            <button
+              key={label}
+              className="flex flex-col items-center gap-1 cursor-pointer transition-opacity duration-200"
+              style={{ minWidth: 44, opacity: isDimmed ? 0.25 : 1 }}
+              onClick={() => {
+                if (label === 'ember') {
+                  setEmberOpen((o) => !o);
+                  setActiveRail(null);
+                } else {
+                  setEmberOpen(false);
+                  setActiveRail((prev) => prev === label ? null : label);
+                }
+              }}
+            >
+              <Icon size={32} color={isActive ? '#f97316' : 'white'} strokeWidth={1.5} />
+              <span style={{ color: isActive ? '#f97316' : 'rgba(255,255,255,0.5)', fontSize: 11 }}>{label}</span>
+            </button>
+          );
+        })}
       </div>
     </>
   );
