@@ -35,7 +35,7 @@ function buildStoryLines(value: string | null | undefined) {
     let current = '';
     for (const word of words) {
       const next = current ? `${current} ${word}` : word;
-      if (next.length > 30 && current) { chunks.push(current); current = word; }
+      if (next.length > 60 && current) { chunks.push(current); current = word; }
       else { current = next; }
     }
     if (current) chunks.push(current);
@@ -231,34 +231,27 @@ export default function StoriesSheet({
         </p>
       ) : null}
 
-      {/* Story text + label + badge row — all anchored to bottom */}
+      {/* All content anchored to bottom: story text → visualizer → capsule → label */}
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
+
         {/* Story text */}
-        <div className="text-center mb-3">
+        <div className="text-center mb-5" style={{ minHeight: 60 }}>
           <p
             className="font-medium leading-snug w-full truncate"
-            style={{
-              fontSize: '1.2rem',
-              color: isPlaying && !fading ? '#ffffff' : 'transparent',
-              transition: 'color 0.8s ease',
-            }}
+            style={{ fontSize: '1.2rem', color: isPlaying && !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
           >
             {storyLines[lineIndex] ?? ' '}
           </p>
           <p
             className="font-medium leading-snug w-full truncate"
-            style={{
-              fontSize: '1.2rem',
-              color: isPlaying && !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent',
-              transition: 'color 0.8s ease',
-            }}
+            style={{ fontSize: '1.2rem', color: isPlaying && !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
           >
             {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
           </p>
         </div>
 
-        {/* Label / visualizer */}
-        <div className="flex justify-center mb-4" style={{ minHeight: 24 }}>
+        {/* Mic visualizer — above capsule, only shown when playing */}
+        <div className="flex justify-center mb-4" style={{ minHeight: 20 }}>
           {isPlaying ? (
             <MicLevelMeter
               analyser={analyserRef.current}
@@ -266,11 +259,7 @@ export default function StoriesSheet({
               bars={22}
               className="w-[70%] h-5"
             />
-          ) : (
-            <p className="text-sm text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              {playbackState === 'loading' ? 'preparing audio…' : BADGES[selectedBadge].label}
-            </p>
-          )}
+          ) : null}
         </div>
 
         {/* Badge capsule */}
@@ -313,6 +302,14 @@ export default function StoriesSheet({
             </button>
           ))}
         </div>
+
+        {/* Label — below capsule */}
+        <div className="flex justify-center mt-3" style={{ minHeight: 20 }}>
+          <p className="text-sm text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            {playbackState === 'loading' ? 'preparing audio…' : BADGES[selectedBadge].label}
+          </p>
+        </div>
+
       </div>
     </div>
   );
