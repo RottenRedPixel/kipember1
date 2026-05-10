@@ -35,7 +35,7 @@ function buildStoryLines(value: string | null | undefined) {
     let current = '';
     for (const word of words) {
       const next = current ? `${current} ${word}` : word;
-      if (next.length > 60 && current) { chunks.push(current); current = word; }
+      if (next.length > 40 && current) { chunks.push(current); current = word; }
       else { current = next; }
     }
     if (current) chunks.push(current);
@@ -235,7 +235,7 @@ export default function StoriesSheet({
       <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
 
         {/* Story text */}
-        <div className="text-center mb-5" style={{ minHeight: 60 }}>
+        <div className="text-center mb-5">
           <p
             className="font-medium leading-snug w-full truncate"
             style={{ fontSize: '1.2rem', color: isPlaying && !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
