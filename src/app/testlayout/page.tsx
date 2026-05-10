@@ -36,7 +36,9 @@ function TestLayoutContent() {
   const [orientation, setOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
   const [naturalRatio, setNaturalRatio] = useState<string | null>(null);
   const [titleDateH, setTitleDateH] = useState(0);
+  const [photoW, setPhotoW] = useState<number | null>(null);
   const titleDateRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLDivElement>(null);
 
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
@@ -59,6 +61,17 @@ function TestLayoutContent() {
   }, []);
 
   useEffect(() => {
+    if (!photoRef.current) return;
+    const el = photoRef.current;
+    const observer = new ResizeObserver((entries) => {
+      const w = Math.round(entries[0]?.contentRect.width ?? 0);
+      if (w > 0) setPhotoW(w);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [naturalRatio]);
+
+  useEffect(() => {
     if (!id) return;
     fetch(`/api/embers/${id}`)
       .then((r) => r.json())
@@ -78,18 +91,23 @@ function TestLayoutContent() {
     <>
       {/* Main area: flex col, photo fills remaining space above spacer */}
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        {/* Title + date — full width, right-aligned; tapping closes tend */}
+        {/* Title + date bar — fixed to initial photo width, centered; tapping closes tend */}
         <div
           ref={titleDateRef}
-          className="px-[10px] flex-shrink-0"
+          className="flex-shrink-0"
+          style={{
+            width: photoW ?? 'auto',
+            alignSelf: 'center',
+            background: '#000',
+            cursor: activeRail === 'tend' ? 'pointer' : undefined,
+          }}
           onClick={() => { if (activeRail === 'tend') setActiveRail(null); }}
-          style={{ cursor: activeRail === 'tend' ? 'pointer' : undefined }}
         >
           {ember?.title ? (
             <p className="text-white font-semibold text-right" style={{ fontSize: 16 }}>{ember.title}</p>
           ) : null}
           {ember?.createdAt ? (
-            <p className="mb-2 text-right" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
+            <p className="mb-1 text-right" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
               {new Date(ember.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </p>
           ) : null}
@@ -99,6 +117,7 @@ function TestLayoutContent() {
         <div className="flex-1 min-h-0 px-[10px] pb-3 flex items-start justify-center overflow-hidden">
           {photoUrl ? (
             <div
+              ref={photoRef}
               className="rounded-2xl overflow-hidden cursor-pointer"
               style={{
                 border: '1px solid var(--border-default)',
@@ -126,7 +145,7 @@ function TestLayoutContent() {
         <div
           style={{
             flexShrink: 0,
-            height: emberOpen ? CARD_H : RAIL_H,
+            height: emberOpen ? CARD_H : (activeRail === 'stories' || activeRail === 'share') ? PANEL_SM_H : RAIL_H,
             transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
@@ -137,7 +156,7 @@ function TestLayoutContent() {
         className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
           height: CARD_H,
-          background: '#1c1c1e',
+          background: '#111113',
           borderRadius: '20px 20px 0 0',
           transform: emberOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -155,7 +174,7 @@ function TestLayoutContent() {
         className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
           height: PANEL_SM_H,
-          background: '#1c1c1e',
+          background: '#111113',
           borderRadius: '20px 20px 0 0',
           transform: activeRail === 'stories' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -173,7 +192,7 @@ function TestLayoutContent() {
         className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
           height: PANEL_SM_H,
-          background: '#1c1c1e',
+          background: '#111113',
           borderRadius: '20px 20px 0 0',
           transform: activeRail === 'share' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -191,7 +210,7 @@ function TestLayoutContent() {
         className="fixed left-0 right-0 bottom-0 z-30 flex flex-col"
         style={{
           top: 56 + titleDateH,
-          background: '#1c1c1e',
+          background: '#111113',
           borderRadius: '20px 20px 0 0',
           transform: activeRail === 'tend' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
