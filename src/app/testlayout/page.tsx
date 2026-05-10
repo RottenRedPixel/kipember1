@@ -1,7 +1,7 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Flame, Leaf, MessageCirclePlus, Share, X } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AppHeader from '@/components/kipember/AppHeader';
@@ -19,6 +19,8 @@ type EmberSummary = {
 const RAIL_H = 80;
 const CARD_H = '60vh';
 const PANEL_SM_H = '20vh';
+const SWIPE_THRESHOLD = 50;
+const FADE_MS = 160;
 
 const railItems = [
   { label: 'ember', icon: MessageCirclePlus },
@@ -28,13 +30,18 @@ const railItems = [
 ] as const;
 
 function TestLayoutContent() {
+  const router = useRouter();
   const params = useSearchParams();
   const id = params.get('id');
   const [ember, setEmber] = useState<EmberSummary | null>(null);
+  const [emberIds, setEmberIds] = useState<string[]>([]);
   const [emberOpen, setEmberOpen] = useState(false);
   const [activeRail, setActiveRail] = useState<string | null>(null);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
   const [naturalRatio, setNaturalRatio] = useState<string | null>(null);
+  const [fading, setFading] = useState(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const panelOpen = emberOpen || activeRail !== null;
 
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
@@ -42,12 +49,23 @@ function TestLayoutContent() {
     if (w === h) setOrientation('square');
     else if (w > h) setOrientation('landscape');
     else setOrientation('portrait');
+    setFading(false);
   }
 
   const objectPosition = orientation === 'portrait' ? 'center top' : 'center';
 
   useEffect(() => {
+    fetch('/api/embers')
+      .then((r) => r.json())
+      .then((data: EmberSummary[]) => setEmberIds(data.map((e) => e.id)))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
+    setEmber(null);
+    setOrientation(null);
+    setNaturalRatio(null);
     fetch(`/api/embers/${id}`)
       .then((r) => r.json())
       .then((data) => setEmber(data))
@@ -62,6 +80,34 @@ function TestLayoutContent() {
       })
     : null;
 
+  const currentIndex = id ? emberIds.indexOf(id) : -1;
+
+  function navigateTo(index: number) {
+    if (index < 0 || index >= emberIds.length) return;
+    setFading(true);
+    setTimeout(() => {
+      router.replace(`/testlayout?id=${emberIds[index]}`);
+    }, FADE_MS);
+  }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    if (panelOpen) return;
+    swipeStart.current = { x: e.clientX, y: e.clientY };
+  }
+
+  function handlePointerUp(e: React.PointerEvent) {
+    if (!swipeStart.current || panelOpen) return;
+    const dx = e.clientX - swipeStart.current.x;
+    const dy = e.clientY - swipeStart.current.y;
+    swipeStart.current = null;
+    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) < Math.abs(dy)) return;
+    navigateTo(dx < 0 ? currentIndex + 1 : currentIndex - 1);
+  }
+
+  function handlePointerCancel() {
+    swipeStart.current = null;
+  }
+
   return (
     <>
       {/* Main area: flex col, photo fills remaining space above spacer */}
@@ -74,11 +120,16 @@ function TestLayoutContent() {
               style={{
                 border: '1px solid var(--border-default)',
                 aspectRatio: naturalRatio ?? undefined,
+                opacity: fading ? 0 : 1,
+                transition: `opacity ${FADE_MS}ms ease`,
                 ...(orientation === 'portrait'
                   ? { height: '100%', maxWidth: '100%' }
                   : { width: '100%', maxHeight: '100%' }),
               }}
               onClick={() => { setEmberOpen(false); setActiveRail(null); }}
+              onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
             >
               <img
                 src={photoUrl}
@@ -102,7 +153,13 @@ function TestLayoutContent() {
               ) : null}
             </div>
           ) : (
-            <div className="rounded-2xl" style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }} />
+            <div
+              className="rounded-2xl"
+              style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', opacity: fading ? 0 : 1, transition: `opacity ${FADE_MS}ms ease` }}
+              onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerCancel}
+            />
           )}
         </div>
 
@@ -192,7 +249,7 @@ function TestLayoutContent() {
       <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-8 px-4 py-4">
         {railItems.map(({ label, icon: Icon }) => {
           const isActive = label === 'ember' ? emberOpen : activeRail === label;
-          const isDimmed = activeRail !== null || emberOpen ? !isActive : false;
+          const isDimmed = panelOpen ? !isActive : false;
           return (
             <button
               key={label}
