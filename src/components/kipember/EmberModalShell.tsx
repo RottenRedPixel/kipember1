@@ -59,23 +59,27 @@ export default function EmberModalShell({
           : isOpen
             ? '65%'
             : 'calc(100% - 68px)',
-        background: 'var(--bg-screen)',
-        WebkitBackdropFilter: 'blur(20px)',
-        backdropFilter: 'blur(20px)',
-        borderTop: '1px solid var(--border-subtle)',
+        background: isOpen ? 'var(--bg-screen)' : 'transparent',
+        WebkitBackdropFilter: isOpen ? 'blur(20px)' : 'none',
+        backdropFilter: isOpen ? 'blur(20px)' : 'none',
+        borderTop: isOpen ? '1px solid var(--border-subtle)' : 'none',
         borderRadius: '30px 30px 0 0',
         transition: 'top 220ms cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       <div className="relative flex items-center gap-3 pl-4 pr-4 py-3 flex-shrink-0">
-        <Link href={isOpen ? closeHref : openHref} className="flex-1 text-left">
-          <span className="flex items-center gap-1">
-            <EmberMark />
-            <span className="text-base font-medium" style={{ color: '#f97316' }}>
-              Ember
+        {isOpen ? (
+          <Link href={closeHref} className="flex-1 text-left">
+            <span className="flex items-center gap-1">
+              <EmberMark />
+              <span className="text-base font-medium" style={{ color: '#f97316' }}>
+                Ember
+              </span>
             </span>
-          </span>
-        </Link>
+          </Link>
+        ) : (
+          <div className="flex-1" />
+        )}
         {isOpen ? (
           <div
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 rounded-xl p-1"
