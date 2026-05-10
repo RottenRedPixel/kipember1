@@ -18,7 +18,7 @@ export default function TendSheet({ isOpen, onClose }: { isOpen: boolean; onClos
 
   return (
     <div
-      className="fixed left-0 right-0 bottom-0 z-30 flex flex-col"
+      className="fixed left-0 right-0 bottom-0 z-50 flex flex-col"
       style={{
         top: 0,
         background: '#111113',
