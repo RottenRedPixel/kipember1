@@ -16,6 +16,7 @@ import {
   Link2,
   Mail,
   MessageCircle,
+  MessageCirclePlus,
   Share2,
   Sun,
   User,
@@ -960,7 +961,7 @@ export default function HomeScreen({
                 const cy = displayEmber?.cropY;
                 const cw = displayEmber?.cropWidth;
                 const ch = displayEmber?.cropHeight;
-                const hasCrop = !emberModalExpanded && cx != null && cy != null && cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100;
+                const hasCrop = !emberModalOpen && cx != null && cy != null && cx >= 0 && cx <= 100 && cy >= 0 && cy <= 100;
                 const scale = hasCrop && cw != null && ch != null && cw > 0 && ch > 0
                   ? Math.min(100 / cw, 100 / ch)
                   : 1;
@@ -974,7 +975,18 @@ export default function HomeScreen({
                   top: 0,
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  height: 'calc(25vh - 56px)',
+                  height: 'calc(0vh - 56px)',
+                  width: 'auto',
+                  objectFit: 'contain' as const,
+                  objectPosition: 'center center',
+                  opacity: photoOpacity,
+                  transition: `opacity ${photoFadeMs}ms ease-in-out`,
+                };
+                if (emberModalOpen) return {
+                  top: 0,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  height: 'calc(50vh - 56px)',
                   width: 'auto',
                   objectFit: 'contain' as const,
                   objectPosition: 'center center',
@@ -1185,6 +1197,7 @@ export default function HomeScreen({
           />
         )}
         <RailBtn icon={Flame} label="stories" href={buildHomeHref({ m: 'stories' })} active={modal === 'stories'} />
+        <RailBtn icon={MessageCirclePlus} label="ember" href={buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })} active={emberModalOpen} />
       </div>
 
       {modal === 'share' && shareToken ? (

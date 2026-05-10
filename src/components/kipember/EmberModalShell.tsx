@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 
 export type EmberModalSurface = 'chats' | 'voice' | 'calls';
 
@@ -55,9 +55,9 @@ export default function EmberModalShell({
       className="absolute bottom-0 left-0 right-0 z-30 flex flex-col overflow-hidden"
       style={{
         top: isExpanded
-          ? '25%'
+          ? '0%'
           : isOpen
-            ? '65%'
+            ? '50%'
             : 'calc(100% - 68px)',
         background: isOpen ? 'var(--bg-screen)' : 'transparent',
         WebkitBackdropFilter: isOpen ? 'blur(20px)' : 'none',
@@ -118,17 +118,15 @@ export default function EmberModalShell({
             <ChevronDown size={18} color="var(--text-primary)" strokeWidth={1.8} />
           </Link>
         ) : null}
-        <Link
-          href={isOpen ? closeHref : openHref}
-          className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
-          style={{ background: isOpen ? 'rgba(255,255,255,0.15)' : '#f97316' }}
-        >
-          {isOpen ? (
+        {isOpen ? (
+          <Link
+            href={closeHref}
+            className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+            style={{ background: 'rgba(255,255,255,0.15)' }}
+          >
             <X size={18} color="var(--text-primary)" strokeWidth={1.8} />
-          ) : (
-            <Plus size={20} color="white" strokeWidth={2} />
-          )}
-        </Link>
+          </Link>
+        ) : null}
       </div>
       {isOpen ? (
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
