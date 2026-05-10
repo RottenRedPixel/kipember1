@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Flame, Leaf, MessageCirclePlus, Share } from 'lucide-react';
+import { Flame, Leaf, MessageCirclePlus, Share, X } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AppHeader from '@/components/kipember/AppHeader';
 
@@ -118,9 +118,7 @@ function TestLayoutContent() {
               />
             </div>
           ) : (
-            <div className="rounded-2xl flex items-center justify-center" style={{ height: 200, background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
-              <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>loading…</span>
-            </div>
+            <div className="rounded-2xl" style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }} />
           )}
         </div>
 
@@ -136,7 +134,7 @@ function TestLayoutContent() {
 
       {/* Ember card — slides up full width */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-10"
+        className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
           height: CARD_H,
           background: '#1c1c1e',
@@ -144,11 +142,17 @@ function TestLayoutContent() {
           transform: emberOpen ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
-      />
+      >
+        <div className="flex justify-end px-4 pt-4">
+          <button className="cursor-pointer" onClick={() => setEmberOpen(false)}>
+            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+          </button>
+        </div>
+      </div>
 
       {/* Stories panel — 20% from bottom, below rail */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-10"
+        className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
           height: PANEL_SM_H,
           background: '#1c1c1e',
@@ -156,11 +160,17 @@ function TestLayoutContent() {
           transform: activeRail === 'stories' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
-      />
+      >
+        <div className="flex justify-end px-4 pt-4">
+          <button className="cursor-pointer" onClick={() => setActiveRail(null)}>
+            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+          </button>
+        </div>
+      </div>
 
       {/* Share panel — 20% from bottom, below rail */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-10"
+        className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
         style={{
           height: PANEL_SM_H,
           background: '#1c1c1e',
@@ -168,11 +178,17 @@ function TestLayoutContent() {
           transform: activeRail === 'share' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
-      />
+      >
+        <div className="flex justify-end px-4 pt-4">
+          <button className="cursor-pointer" onClick={() => setActiveRail(null)}>
+            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+          </button>
+        </div>
+      </div>
 
       {/* Tend panel — below title+date, above everything */}
       <div
-        className="fixed left-0 right-0 bottom-0 z-30"
+        className="fixed left-0 right-0 bottom-0 z-30 flex flex-col"
         style={{
           top: 56 + titleDateH,
           background: '#1c1c1e',
@@ -180,7 +196,13 @@ function TestLayoutContent() {
           transform: activeRail === 'tend' ? 'translateY(0)' : 'translateY(100%)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
-      />
+      >
+        <div className="flex justify-end px-4 pt-4">
+          <button className="cursor-pointer" onClick={() => setActiveRail(null)}>
+            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+          </button>
+        </div>
+      </div>
 
       {/* Rail — fixed bottom, above all panels including tend */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-center gap-8 px-4 py-4">
