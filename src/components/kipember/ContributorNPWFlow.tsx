@@ -6,17 +6,11 @@ import {
   Flame,
   Hand,
   Home,
-  ImagePlus,
   Link2,
   Mail,
   MessageCircle,
-  Mic,
   MoreHorizontal,
-  Phone,
-  ScanEye,
-  SendHorizontal,
   Share2,
-  Square,
   X,
 } from 'lucide-react';
 import EmberModalShell, { type EmberModalSurface } from '@/components/kipember/EmberModalShell';
@@ -25,9 +19,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
-import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
-import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
 import { useGuestVoiceRecording } from '@/components/kipember/workflows/useGuestVoiceRecording';
+import EmberFlow, { type EmberFlowApi } from '@/components/kipember/workflows/EmberFlow';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
 
@@ -68,24 +61,6 @@ type ContributorData = {
   } | null;
 };
 
-type Message = {
-  role: 'user' | 'assistant';
-  content: string;
-  createdAt?: string;
-  imageUrl?: string;
-  imageFilename?: string;
-};
-
-function formatPhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 11 && digits[0] === '1') {
-    return `+1 ${digits.slice(1, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
-  }
-  if (digits.length === 10) {
-    return `+1 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
-  }
-  return raw;
-}
 
 function Modal({ children, closeHref }: { children: React.ReactNode; closeHref: string }) {
   return (
@@ -147,359 +122,6 @@ function RailBtn({
   );
 }
 
-// Inline workflow component — owns chat, voice, and call surfaces
-function ContributorWorkflow({
-  token,
-  phoneNumber,
-  surface,
-}: {
-  token: string;
-  phoneNumber: string;
-  surface: 'chats' | 'voice' | 'calls';
-}) {
-  const voice = useGuestVoiceRecording(token);
-  const [manualAnalyser, setManualAnalyser] = useState<AnalyserNode | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [isSending, setIsSending] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isCalling, setIsCalling] = useState(false);
-  const [error, setError] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Load welcome message on first open
-  useEffect(() => {
-    let cancelled = false;
-    async function loadWelcome() {
-      try {
-        const response = await fetch(`/api/contribute/${token}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: '__START__' }),
-        });
-        if (!response.ok) return;
-        const payload = await response.json().catch(() => null);
-        const greeting = typeof payload?.response === 'string' ? payload.response.trim() : '';
-        if (!cancelled && greeting) {
-          setMessages((current) =>
-            current.length === 0
-              ? [{ role: 'assistant', content: greeting, createdAt: new Date().toISOString() }]
-              : current
-          );
-        }
-      } catch {
-        /* no-op */
-      }
-    }
-    void loadWelcome();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  async function sendMessage(message: string) {
-    const trimmed = message.trim();
-    if (!trimmed || isSending) return;
-
-    setError('');
-    setInput('');
-    setMessages((current) => [
-      ...current,
-      { role: 'user', content: trimmed, createdAt: new Date().toISOString() },
-    ]);
-    setIsSending(true);
-
-    try {
-      const response = await fetch(`/api/contribute/${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed }),
-      });
-
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || 'Failed to send message.');
-
-      const reply = typeof payload?.response === 'string' ? payload.response.trim() : '';
-      if (reply) {
-        setMessages((current) => [
-          ...current,
-          { role: 'assistant', content: reply, createdAt: new Date().toISOString() },
-        ]);
-      }
-    } catch (sendError) {
-      setError(sendError instanceof Error ? sendError.message : 'Something went wrong.');
-    } finally {
-      setIsSending(false);
-    }
-  }
-
-  async function triggerCall() {
-    if (isCalling) return;
-    setIsCalling(true);
-    try {
-      const response = await fetch(`/api/contribute/${token}/call`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || 'Could not start the call.');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
-    } finally {
-      setIsCalling(false);
-    }
-  }
-
-  async function handleUpload(file: File) {
-    if (isUploading) return;
-    setIsUploading(true);
-    setError('');
-    const isVideo = file.type.startsWith('video/');
-    const previewUrl = URL.createObjectURL(file);
-    setMessages((prev) => [
-      ...prev,
-      { role: 'user', content: isVideo ? 'Video' : 'Photo', imageUrl: previewUrl, createdAt: new Date().toISOString() },
-    ]);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch(`/api/contribute/${token}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(payload?.error || 'Failed to add content.');
-      const uploadedFilename: string | null = payload?.attachment?.filename ?? null;
-      const reply = typeof payload?.response === 'string' ? payload.response.trim() : '';
-      setMessages((prev) => [
-        ...prev.map((m) =>
-          'imageUrl' in m && m.imageUrl === previewUrl
-            ? { ...m, imageUrl: undefined, imageFilename: uploadedFilename ?? undefined }
-            : m
-        ),
-        ...(reply ? [{ role: 'assistant' as const, content: reply, createdAt: new Date().toISOString() }] : []),
-      ]);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Failed to add content.');
-    } finally {
-      URL.revokeObjectURL(previewUrl);
-      setIsUploading(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-1 min-h-0 flex-col px-4 pb-4 pt-1">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,video/*"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.currentTarget.value = '';
-          if (file) void handleUpload(file);
-        }}
-      />
-
-      {surface === 'voice' ? (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
-          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} onPlaybackChange={setManualAnalyser} />
-        </div>
-      ) : surface === 'calls' ? (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
-          <p className="text-white/40 text-sm text-center mt-8 px-6">
-            Tap the phone to have ember call you.
-          </p>
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-4 pr-1 no-scrollbar">
-          <div className="flex flex-col gap-4">
-            {messages.map((message, index) =>
-              message.role === 'user' ? (
-                <div key={index} className="flex flex-col items-end gap-1">
-                  <span className="pr-1 text-xs font-bold text-white/30">you</span>
-                  <div
-                    className="inline-block max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-2.5"
-                    style={{ background: 'var(--bg-chat-user)' }}
-                  >
-                    <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
-                      {message.content}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div key={index} className="flex flex-col gap-1 items-start">
-                  <span className="pl-1 text-xs font-bold text-white">ember</span>
-                  <div
-                    className="inline-block max-w-[90%] rounded-2xl rounded-tl-sm px-4 py-2.5"
-                    style={{
-                      background: 'var(--bg-ember-bubble)',
-                      border: '1px solid var(--border-ember)',
-                    }}
-                  >
-                    <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
-                      {message.content}
-                    </p>
-                  </div>
-                </div>
-              )
-            )}
-
-            {isSending ? (
-              <div className="flex flex-col gap-1 items-start">
-                <span className="pl-1 text-xs font-bold text-white">ember</span>
-                <div
-                  className="inline-flex max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-3"
-                  style={{
-                    background: 'var(--bg-ember-bubble)',
-                    border: '1px solid var(--border-ember)',
-                  }}
-                >
-                  <div className="flex gap-1">
-                    <span className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]" />
-                    <span
-                      className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]"
-                      style={{ animationDelay: '0.1s' }}
-                    />
-                    <span
-                      className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]"
-                      style={{ animationDelay: '0.2s' }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-      )}
-
-      {surface === 'voice' ? (
-        /* Voice toolbar */
-        <div className="flex items-end gap-2 flex-shrink-0">
-          <div className="flex-1 min-w-0">
-            <div
-              className="flex h-11 w-full items-center rounded-full px-4"
-              style={{
-                background: (voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.08)',
-                border: `1px solid ${(voice.isRecording || voice.isPlayingBack || !!manualAnalyser) ? 'rgba(34,197,94,0.45)' : 'transparent'}`,
-              }}
-            >
-              {voice.isRecording ? (
-                <MicLevelMeter stream={voice.stream} className="h-5 w-full" color="#22c55e" />
-              ) : (voice.playbackAnalyser ?? manualAnalyser) ? (
-                <MicLevelMeter analyser={voice.playbackAnalyser ?? manualAnalyser} className="h-5 w-full" color="#22c55e" />
-              ) : (
-                <span className="text-sm w-full text-white/38">Talk with ember...</span>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={voice.isRecording ? voice.stopRecording : () => void voice.startRecording()}
-            disabled={voice.isUploading}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
-            style={{ background: voice.isRecording ? '#16a34a' : '#22c55e' }}
-            aria-label={voice.isRecording ? 'Stop recording' : 'Record voice message'}
-          >
-            {voice.isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
-          </button>
-        </div>
-      ) : surface === 'calls' ? (
-        /* Call toolbar */
-        <div className="flex items-end gap-2 flex-shrink-0">
-          <div className="flex-1 min-w-0">
-            <div
-              className="flex h-11 w-full items-center rounded-full px-4 gap-1.5 text-sm"
-              style={{
-                background: isCalling ? 'rgba(37,99,235,0.15)' : 'rgba(255,255,255,0.08)',
-                border: `1px solid ${isCalling ? 'rgba(37,99,235,0.45)' : 'transparent'}`,
-              }}
-            >
-              {isCalling ? (
-                <>
-                  <span style={{ color: 'rgba(96,165,250,0.9)' }}>Calling</span>
-                  <span className="text-white">{formatPhone(phoneNumber)}</span>
-                </>
-              ) : (
-                <>
-                  <span className="text-white/50">Ember will call:</span>
-                  <span className="text-white">{phoneNumber ? formatPhone(phoneNumber) : '—'}</span>
-                </>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => void triggerCall()}
-            disabled={isCalling || !phoneNumber}
-            className="flex h-11 w-11 items-center justify-center rounded-full transition disabled:opacity-40 cursor-pointer"
-            style={{ background: '#2563eb', color: 'white' }}
-            aria-label="Have ember call me"
-          >
-            <Phone size={18} />
-          </button>
-        </div>
-      ) : (
-        /* Chat toolbar */
-        <form onSubmit={(e) => { e.preventDefault(); void sendMessage(input); }} className="flex items-end gap-2 flex-shrink-0">
-          <div className="relative min-w-0 flex-1">
-            <input
-              type="text"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask Ember about this memory..."
-              className="w-full rounded-full border border-transparent bg-white/8 px-4 py-3 pr-11 text-sm text-white outline-none placeholder:text-white/38 focus:border-[rgba(249,115,22,0.24)]"
-              disabled={isSending}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading || isSending}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full text-white/50 transition disabled:opacity-40 cursor-pointer"
-              aria-label="Add photo"
-            >
-              <ImagePlus size={15} />
-            </button>
-          </div>
-          <button
-            type="submit"
-            disabled={isSending}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
-            style={{ background: '#f97316' }}
-            aria-label="Send message"
-          >
-            <SendHorizontal size={18} />
-          </button>
-        </form>
-      )}
-
-      {voice.isRecording || voice.isUploading || voice.error || isUploading || error ? (
-        <div className="px-2 pt-2 text-xs">
-          {error ? (
-            <p className="text-[rgba(255,180,180,0.92)]">{error}</p>
-          ) : voice.error ? (
-            <p className="text-[rgba(255,180,180,0.92)]">{voice.error}</p>
-          ) : voice.isRecording ? (
-            <p style={{ color: 'rgba(34,197,94,0.7)' }}>Recording — tap stop when done.</p>
-          ) : voice.isUploading ? (
-            <p className="text-white/48">Saving voice message…</p>
-          ) : isUploading ? (
-            <p className="text-white/48">Adding to this memory...</p>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export default function ContributorNPWFlow({ token }: { token: string }) {
   const router = useRouter();
@@ -514,6 +136,8 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
   const emberModalOpen = flowOpen;
   const emberModalSurface: EmberModalSurface =
     rawSurface === 'voice' ? 'voice' : rawSurface === 'calls' ? 'calls' : 'chats';
+
+  const voice = useGuestVoiceRecording(token);
 
   const [data, setData] = useState<ContributorData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -615,6 +239,48 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
   const currentPhotoUrl = allMedia[photoIndex]?.url ?? mainUrl;
   const nextPhotoUrl = allMedia.length > 1 ? allMedia[(photoIndex + 1) % allMedia.length]?.url : null;
   const phoneNumber = data.contributor?.phoneNumber ?? '';
+  const firstName = data.contributor?.firstName ?? undefined;
+
+  const npwApi: EmberFlowApi = {
+    sendChat: async (text) => {
+      const res = await fetch(`/api/contribute/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error || 'Failed to send message.');
+      return typeof payload?.response === 'string' ? payload.response.trim() : null;
+    },
+    loadWelcome: async () => {
+      const res = await fetch(`/api/contribute/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '__START__' }),
+      });
+      if (!res.ok) return null;
+      const payload = await res.json().catch(() => null);
+      return typeof payload?.response === 'string' ? payload.response.trim() : null;
+    },
+    uploadPhoto: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/contribute/${token}/upload`, { method: 'POST', body: formData });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error || 'Failed to add content.');
+      const filename: string = payload?.attachment?.filename ?? '';
+      const reply = typeof payload?.response === 'string' ? payload.response.trim() : null;
+      return { filename, reply };
+    },
+    loadCallProfile: async () => ({ phoneNumber, firstName: firstName ?? '' }),
+    triggerCall: async () => {
+      const res = await fetch(`/api/contribute/${token}/call`, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error || 'Could not start the call.');
+      }
+    },
+  };
 
   const base = `/contribute/${token}`;
   const buildHref = (updates: Record<string, string | null>) => {
@@ -916,7 +582,15 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
               { label: 'Call', surface: 'calls', href: callTabHref },
             ]}
           >
-            <ContributorWorkflow token={token} phoneNumber={phoneNumber} surface={emberModalSurface} />
+            <EmberFlow
+              key={token}
+              api={npwApi}
+              voice={voice}
+              emberModalSurface={emberModalSurface}
+              chatPlaceholder="Ask Ember about this memory..."
+              canUploadPhoto
+              canCall
+            />
           </EmberModalShell>
         ) : null}
       </div>

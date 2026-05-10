@@ -31,8 +31,8 @@ import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
 import KipemberWikiOverlay from '@/components/kipember/KipemberWikiOverlay';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
-import ContributorPWFlow from '@/components/kipember/workflows/ContributorPWFlow';
-import OwnerFlow from '@/components/kipember/workflows/OwnerFlow';
+import EmberFlow from '@/components/kipember/workflows/EmberFlow';
+import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
 import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getUserDisplayName } from '@/lib/user-name';
@@ -225,18 +225,92 @@ function WorkflowSlot({
   onConversationStateChange: (hasConversation: boolean) => void;
   emberModalSurface: EmberModalSurface;
 }) {
-  switch (flow) {
-    case 'owner':
-      return emberId ? (
-        <OwnerFlow emberId={emberId} onConversationStateChange={onConversationStateChange} emberModalSurface={emberModalSurface} />
-      ) : null;
-    case 'contributor':
-      return emberId ? (
-        <ContributorPWFlow emberId={emberId} onConversationStateChange={onConversationStateChange} emberModalSurface={emberModalSurface} />
-      ) : null;
-    default:
-      return null;
-  }
+  const voice = useVoiceRecording(emberId ?? '');
+
+  if (!emberId || (flow !== 'owner' && flow !== 'contributor')) return null;
+
+  const api = {
+    loadHistory: async () => {
+      const res = await fetch(`/api/chat?emberId=${encodeURIComponent(emberId)}`, { cache: 'no-store' });
+      if (!res.ok) return [];
+      const payload = await res.json();
+      return Array.isArray(payload.messages) ? payload.messages : [];
+    },
+    loadWelcome: async () => {
+      const res = await fetch('/api/chat/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emberId, situation: 'first_open' }),
+      });
+      if (!res.ok) return null;
+      const { message } = await res.json();
+      return typeof message === 'string' && message.trim() ? message.trim() : null;
+    },
+    sendChat: async (text: string, inputMode: 'web' | 'voice' = 'web') => {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emberId, message: text, inputMode }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error || 'Failed to send message.');
+      return typeof payload?.response === 'string' ? payload.response.trim() : null;
+    },
+    uploadPhoto: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await fetch(`/api/embers/${emberId}/attachments`, { method: 'POST', body: formData });
+      const uploadPayload = await uploadRes.json().catch(() => null);
+      if (!uploadRes.ok) throw new Error(uploadPayload?.error || 'Failed to add content.');
+      const filename: string = uploadPayload?.attachment?.filename ?? '';
+      const patchRes = await fetch('/api/chat', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emberId, imageFilename: filename }),
+      });
+      const patchPayload = await patchRes.json().catch(() => null);
+      const reply = typeof patchPayload?.response === 'string' ? patchPayload.response.trim() : null;
+      return { filename, reply };
+    },
+    loadCallProfile: async () => {
+      const res = await fetch('/api/profile', { cache: 'no-store' });
+      const data = await res.json().catch(() => null);
+      return {
+        phoneNumber: typeof data?.user?.phoneNumber === 'string' ? data.user.phoneNumber.trim() : '',
+        firstName: (data?.user?.firstName || '').trim() || 'you',
+      };
+    },
+    loadCallBlocks: async () => {
+      const res = await fetch(`/api/embers/${encodeURIComponent(emberId)}`, { cache: 'no-store' });
+      if (!res.ok) return [];
+      const payload = await res.json();
+      return Array.isArray(payload?.callBlocks) ? payload.callBlocks : [];
+    },
+    triggerCall: async () => {
+      const res = await fetch(`/api/embers/${encodeURIComponent(emberId)}/self-invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'call' }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error || 'Could not start the call.');
+      }
+    },
+  };
+
+  return (
+    <EmberFlow
+      key={emberId}
+      api={api}
+      voice={voice}
+      emberModalSurface={emberModalSurface}
+      onConversationStateChange={onConversationStateChange}
+      chatPlaceholder={flow === 'contributor' ? 'Share your memory with ember...' : 'Chat with ember...'}
+      canUploadPhoto
+      canCall
+    />
+  );
 }
 
 function FacebookIcon() {

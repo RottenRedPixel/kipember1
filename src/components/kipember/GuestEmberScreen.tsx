@@ -21,7 +21,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getEmberTitle } from '@/lib/ember-title';
 import { getPreviewMediaUrl } from '@/lib/media';
-import GuestFlow from '@/components/kipember/workflows/GuestFlow';
+import EmberFlow from '@/components/kipember/workflows/EmberFlow';
+import { useGuestVoiceRecording } from '@/components/kipember/workflows/useGuestVoiceRecording';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
 
@@ -143,6 +144,30 @@ export default function GuestEmberScreen({
   const emberModalOpen = flowOpen;
   const emberModalSurface: Exclude<EmberModalSurface, 'calls'> =
     rawSurface === 'voice' ? 'voice' : 'chats';
+
+  const voice = useGuestVoiceRecording(token);
+  const guestApi = {
+    sendChat: async (text: string) => {
+      const res = await fetch(`${chatApiPath}/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(payload?.error || 'Failed to send message.');
+      return typeof payload?.response === 'string' ? payload.response.trim() : null;
+    },
+    loadWelcome: async () => {
+      const res = await fetch(`${chatApiPath}/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '__START__' }),
+      });
+      if (!res.ok) return null;
+      const payload = await res.json().catch(() => null);
+      return typeof payload?.response === 'string' ? payload.response.trim() : null;
+    },
+  };
 
   const [data, setData] = useState<GuestData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -565,7 +590,13 @@ export default function GuestEmberScreen({
               { label: 'Voice', surface: 'voice', href: voiceTabHref },
             ]}
           >
-            <GuestFlow token={token} emberModalSurface={emberModalSurface} chatApiPath={chatApiPath} />
+            <EmberFlow
+              key={token}
+              api={guestApi}
+              voice={voice}
+              emberModalSurface={emberModalSurface}
+              chatPlaceholder="Ask Ember about this memory..."
+            />
           </EmberModalShell>
         ) : null}
       </div>
