@@ -8,11 +8,12 @@ import {
   transcodeAudioToM4a,
 } from '@/lib/audio-processing';
 import { getOrCreateAudioSegmentPath, getOrCreateNormalizedAudioPath } from '@/lib/audio-segments';
-import { getElevenLabsApiKey, getElevenLabsModelId, resolveNarrationVoice } from '@/lib/elevenlabs';
+import { getElevenLabsApiKey, getElevenLabsModelId } from '@/lib/elevenlabs';
 import { getEmberAccessType } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { normalizeTextForSpeech } from '@/lib/narration';
 import { getUploadsDir } from '@/lib/uploads';
+import { getVoiceEntry } from '@/lib/voice-catalog';
 
 const STORY_CUT_AUDIO_RENDER_VERSION = 'v2';
 
@@ -261,12 +262,12 @@ export async function GET(
       where: { id },
       select: {
         id: true,
+        owner: { select: { voicePreferenceId: true } },
         snapshot: {
           select: {
             id: true,
             script: true,
             blocksJson: true,
-            emberVoiceId: true,
             updatedAt: true,
           },
         },
@@ -281,7 +282,7 @@ export async function GET(
     const parsedBlocks = JSON.parse(snapshot.blocksJson || '[]');
     const blocks = Array.isArray(parsedBlocks) ? (parsedBlocks as SnapshotBlock[]) : [];
     const sortedBlocks = [...blocks].sort((left, right) => Number(left.order || 0) - Number(right.order || 0));
-    const voiceId = snapshot.emberVoiceId || (await resolveNarrationVoice('female')).voiceId;
+    const voiceId = getVoiceEntry(ember.owner?.voicePreferenceId).elevenLabsId;
     const outputPath = await renderSnapshotAudio({
       emberId: id,
       blocks: sortedBlocks,
@@ -339,7 +340,6 @@ export async function POST(
       | {
           script?: string;
           blocks?: SnapshotBlock[];
-          voiceId?: string | null;
         }
       | null;
 
@@ -347,10 +347,12 @@ export async function POST(
     const blocks = Array.isArray(body?.blocks)
       ? [...body.blocks].sort((left, right) => Number(left.order || 0) - Number(right.order || 0))
       : [];
-    const voiceId =
-      typeof body?.voiceId === 'string' && body.voiceId.trim()
-        ? body.voiceId.trim()
-        : (await resolveNarrationVoice('female')).voiceId;
+
+    const emberOwner = await prisma.ember.findUnique({
+      where: { id },
+      select: { owner: { select: { voicePreferenceId: true } } },
+    });
+    const voiceId = getVoiceEntry(emberOwner?.owner?.voicePreferenceId).elevenLabsId;
 
     if (!script && blocks.length === 0) {
       return NextResponse.json({ error: 'Story Cut has no playable content' }, { status: 400 });
