@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, BarChart3, ChevronDown, FlaskConical, ListChecks, Menu, MessageSquareText, Settings, Users, X } from 'lucide-react';
+import { ArrowLeft, BarChart3, ChevronDown, FlaskConical, ListChecks, Menu, MessageSquareText, Mic, Settings, Users, X } from 'lucide-react';
 import { PROMPT_GROUPS, PROMPT_REGISTRY } from '@/lib/prompt-registry';
 import { groupSlug, shortPromptLabel } from '@/lib/admin-prompt-groups';
 
@@ -70,6 +70,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Test APIs', href: '/admin/system/test-apis', icon: FlaskConical },
       { label: 'Progress Tracker', href: '/admin/system/progress-tracker', icon: ListChecks },
+      { label: 'Voice Controls', href: '/admin/system/voice-controls', icon: Mic },
     ],
   },
 ];
