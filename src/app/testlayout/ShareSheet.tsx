@@ -110,7 +110,9 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
       </div>
 
       {/* Toast / error area — reserved space */}
-      <div className="px-4 py-3 flex-shrink-0" />
+      <div className="px-4 py-3 flex-shrink-0 text-center">
+        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>temporary text</p>
+      </div>
     </div>
   );
 }
