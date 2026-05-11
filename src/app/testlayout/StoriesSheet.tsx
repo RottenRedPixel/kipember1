@@ -265,7 +265,7 @@ export default function StoriesSheet({
 
         {/* Badge capsule */}
         <div
-          className="relative rounded-full overflow-hidden flex justify-around"
+          className="relative rounded-full overflow-hidden flex"
           style={{ background: 'rgba(0,0,0,0.5)' }}
         >
           <div
@@ -275,11 +275,11 @@ export default function StoriesSheet({
               height: 40,
               top: 2,
               left: [
-                'calc(10% - 21px)',
-                'calc(30% - 21px)',
-                'calc(50% - 21px)',
-                'calc(70% - 21px)',
-                'calc(90% - 21px)',
+                'calc(10% - 20px)',
+                'calc(30% - 20px)',
+                'calc(50% - 20px)',
+                'calc(70% - 20px)',
+                'calc(90% - 20px)',
               ][selectedBadge],
               background: (playbackState === 'playing' || playbackState === 'loading')
                 ? BADGES[selectedBadge].active
@@ -292,7 +292,7 @@ export default function StoriesSheet({
               key={i}
               type="button"
               onClick={() => { if (i !== selectedBadge) switchBadge(i); else handleToggle(); }}
-              className="relative flex items-center justify-center py-3 cursor-pointer"
+              className="relative flex-1 flex items-center justify-center py-3 cursor-pointer"
             >
               <Icon
                 size={20}

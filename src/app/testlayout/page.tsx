@@ -52,6 +52,7 @@ function TestLayoutContent() {
   const [snapping, setSnapping] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; axis: 'h' | 'v' | null } | null>(null);
   const lastDirRef = useRef<1 | -1>(1);
+  const prefetchCacheRef = useRef<Record<string, EmberSummary>>({});
   const panelOpen = emberOpen || activeRail !== null;
 
   const objectPosition = orientation === 'portrait' ? 'center top' : 'center';
@@ -93,11 +94,36 @@ function TestLayoutContent() {
   useEffect(() => {
     if (!id) return;
     setPhotoLoaded(false);
+    const cached = prefetchCacheRef.current[id];
+    if (cached) { setEmber(cached); return; }
     fetch(`/api/embers/${id}`)
       .then((r) => r.json())
-      .then((data) => setEmber(data))
+      .then((data: EmberSummary) => { prefetchCacheRef.current[id] = data; setEmber(data); })
       .catch(() => {});
   }, [id]);
+
+  useEffect(() => {
+    if (!ember || emberIds.length === 0) return;
+    const neighbors = [currentIndex - 1, currentIndex + 1]
+      .filter((i) => i >= 0 && i < emberIds.length)
+      .map((i) => emberIds[i]);
+    for (const neighborId of neighbors) {
+      const prefetch = (data: EmberSummary) => {
+        prefetchCacheRef.current[neighborId] = data;
+        new Image().src = getPreviewMediaUrl({
+          mediaType: data.mediaType as 'IMAGE' | 'VIDEO',
+          filename: data.filename,
+          posterFilename: data.posterFilename,
+        });
+      };
+      const cached = prefetchCacheRef.current[neighborId];
+      if (cached) { prefetch(cached); continue; }
+      fetch(`/api/embers/${neighborId}`)
+        .then((r) => r.json())
+        .then((data: EmberSummary) => prefetch(data))
+        .catch(() => {});
+    }
+  }, [ember, emberIds, currentIndex]);
 
   const photoUrl = ember
     ? getPreviewMediaUrl({
@@ -151,7 +177,19 @@ function TestLayoutContent() {
   return (
     <>
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        <div className="flex-1 min-h-0 px-[10px] pb-3 flex items-start justify-center overflow-hidden">
+        {(ember?.title || ember?.createdAt) ? (
+          <div className="px-[10px] pt-2 pb-1 flex-shrink-0">
+            {ember?.title ? (
+              <p className="font-semibold" style={{ fontSize: 15, color: '#fff' }}>{ember.title}</p>
+            ) : null}
+            {ember?.createdAt ? (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+                {new Date(ember.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <div className={`flex-1 min-h-0 px-[10px] pb-3 flex ${orientation === 'portrait' ? 'items-start' : 'items-center'} justify-center overflow-hidden`}>
           {photoUrl ? (
             <div
               className="rounded-2xl overflow-hidden cursor-pointer relative"
@@ -182,18 +220,6 @@ function TestLayoutContent() {
                 onLoad={handleImageLoad}
                 draggable={false}
               />
-              {!panelOpen && (ember?.title || ember?.createdAt) ? (
-                <div className="absolute top-0 right-0 p-3 text-right" style={{ pointerEvents: 'none' }}>
-                  {ember?.title ? (
-                    <p className="font-semibold" style={{ fontSize: 15, color: '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>{ember.title}</p>
-                  ) : null}
-                  {ember?.createdAt ? (
-                    <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
-                      {new Date(ember.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
           ) : (
             <div className="rounded-2xl" style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }} />
@@ -223,7 +249,7 @@ function TestLayoutContent() {
           return (
             <button
               key={label}
-              className="flex flex-col items-center gap-1 cursor-pointer transition-opacity duration-200"
+              className="flex flex-col items-center gap-1 cursor-pointer transition-opacity duration-200 rounded-xl [@media(hover:hover)]:hover:bg-white/10 px-3 py-1"
               style={{ minWidth: 44, opacity: isDimmed ? 0.25 : 1 }}
               onClick={() => {
                 if (label === 'ember') { setEmberOpen((o) => !o); setActiveRail(null); }

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Check, Hand } from 'lucide-react';
+import { Hand } from 'lucide-react';
 
 const SNAP_MS = 320;
 
@@ -72,8 +72,8 @@ export default function HelloSheet({
       </div>
 
       <div className="flex flex-col items-center pt-2 pb-4 gap-2">
-        <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#f97316' }}>
-          <Hand size={28} color="#fff" strokeWidth={1.6} />
+        <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, background: '#f97316' }}>
+          <Hand size={22} color="#fff" strokeWidth={1.6} />
         </div>
         <span className="text-white text-base font-medium">Hello {firstName ?? 'there'}!</span>
         <p className="text-white/60 text-sm text-center px-6 pb-2">
@@ -83,10 +83,8 @@ export default function HelloSheet({
         </p>
       </div>
 
-      <div className="mx-5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }} />
-
-      <div className="px-5 pt-3 pb-4">
-        {isContributor && !hasPassword ? (
+      {isContributor && !hasPassword ? (
+        <div className="px-5 pb-4">
           <Link
             href="/set-password"
             className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
@@ -94,25 +92,8 @@ export default function HelloSheet({
           >
             Create Account
           </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={toggleDismiss}
-            className="flex items-center justify-center gap-2 w-full cursor-pointer"
-            style={{ padding: '6px 0' }}
-          >
-            <div style={{
-              width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-              border: `1px solid ${helloDismissed ? '#f97316' : 'rgba(255,255,255,0.25)'}`,
-              background: helloDismissed ? '#f97316' : 'transparent',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {helloDismissed ? <Check size={10} color="#fff" strokeWidth={3} /> : null}
-            </div>
-            <span className="text-white/40 text-xs">Don't show again</span>
-          </button>
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }
