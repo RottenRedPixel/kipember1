@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Copy, Link2, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { Copy, Link2, MessageCircle, MoreHorizontal, Share } from 'lucide-react';
 
 const SHEET_H = '30vh';
 const SNAP_MS = 320;
@@ -57,11 +57,15 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
-      <div className="flex justify-center pt-3 pb-2 flex-shrink-0" onClick={handleClose} style={{ cursor: 'pointer' }}>
+      <div className="flex justify-center pt-3 pb-1 flex-shrink-0" onClick={handleClose} style={{ cursor: 'pointer' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
       </div>
+      <div className="flex items-center px-4 pt-3 pb-3 flex-shrink-0">
+        <Share size={18} color="white" strokeWidth={1.8} />
+        <span className="flex-1 ml-2 text-white font-semibold text-base">Share this Ember</span>
+      </div>
 
-      <div className="flex justify-around px-4 flex-shrink-0">
+      <div className="flex-1 flex items-end justify-around px-4 pb-2">
         <button type="button" className={btnClass} onClick={copyLink}>
           <div className="w-10 h-10 flex items-center justify-center">
             <Link2 size={22} color={copyStatus === 'copied' ? '#4ade80' : 'white'} strokeWidth={1.6} />
@@ -93,14 +97,20 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
         </button>
       </div>
 
-      <div className="mx-4 mt-2 flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <span className="flex-1 text-xs truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          {shareUrl ?? 'Generating link…'}
-        </span>
-        <button type="button" onClick={copyLink} disabled={!shareUrl} className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-md cursor-pointer" style={{ opacity: shareUrl ? 1 : 0 }}>
-          <Copy size={14} color="white" strokeWidth={1.8} />
-        </button>
+      {/* URL capsule */}
+      <div className="px-4 flex-shrink-0">
+        <div className="flex h-11 items-center gap-2 rounded-full px-4" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid transparent' }}>
+          <span className="flex-1 text-xs truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
+            {shareUrl ?? 'Generating link…'}
+          </span>
+          <button type="button" onClick={copyLink} disabled={!shareUrl} className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full cursor-pointer" style={{ opacity: shareUrl ? 1 : 0 }}>
+            <Copy size={14} color="white" strokeWidth={1.8} />
+          </button>
+        </div>
       </div>
+
+      {/* Toast / error area — reserved space */}
+      <div className="px-4 py-3 flex-shrink-0" />
     </div>
   );
 }

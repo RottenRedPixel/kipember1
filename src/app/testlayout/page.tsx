@@ -213,10 +213,10 @@ function TestLayoutContent() {
       <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} emberId={id} accessType={ember?.accessType ?? null} />
       <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
       <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} emberId={id} />
-      <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} />
+      <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} emberId={id} />
 
       {/* Rail */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113', transform: activeRail === 'stories' || emberOpen ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113', transform: activeRail === 'stories' || activeRail === 'hello' || activeRail === 'share' || emberOpen ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
         {railItems.map(({ label, icon: Icon }) => {
           const isActive = label === 'ember' ? emberOpen : activeRail === label;
           const isDimmed = panelOpen ? !isActive : false;

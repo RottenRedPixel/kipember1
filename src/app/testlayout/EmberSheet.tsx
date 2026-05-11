@@ -55,6 +55,7 @@ export default function EmberSheet({
 
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [chatFocused, setChatFocused] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -85,7 +86,7 @@ export default function EmberSheet({
             body: JSON.stringify({ emberId, situation: 'first_open' }),
           })
             .then((r) => r.json())
-            .then((wd) => { if (wd?.reply) setMessages([{ role: 'assistant', content: wd.reply, createdAt: new Date().toISOString() }]); })
+            .then((wd) => { const msg = wd?.reply ?? wd?.response; if (msg) setMessages([{ role: 'assistant', content: msg, createdAt: new Date().toISOString() }]); })
             .catch(() => {})
             .finally(() => setIsLoadingWelcome(false));
         } else {
@@ -138,7 +139,8 @@ export default function EmberSheet({
         body: JSON.stringify({ emberId, message: trimmed, inputMode: 'web' }),
       });
       const d = await r.json();
-      if (d?.reply) setMessages((prev) => [...prev, { role: 'assistant', content: d.reply, createdAt: new Date().toISOString() }]);
+      const reply = d?.reply ?? d?.response;
+      if (reply) setMessages((prev) => [...prev, { role: 'assistant', content: reply, createdAt: new Date().toISOString() }]);
     } catch { setError('Something went wrong.'); }
     finally { setIsSending(false); }
   }, [input, isSending, emberId]);
@@ -163,7 +165,7 @@ export default function EmberSheet({
       const chatData = await chat.json().catch(() => null);
       setMessages((prev) => [
         ...prev.map((m) => m.imageUrl === previewUrl ? { ...m, imageUrl: undefined, imageFilename: filename } : m),
-        ...(chatData?.reply ? [{ role: 'assistant' as const, content: chatData.reply }] : []),
+        ...((chatData?.reply ?? chatData?.response) ? [{ role: 'assistant' as const, content: chatData.reply ?? chatData.response }] : []),
       ]);
     } catch { setError('Failed to add content.'); }
     finally { URL.revokeObjectURL(previewUrl); setIsUploading(false); }
@@ -231,6 +233,8 @@ export default function EmberSheet({
         className="flex-1 bg-transparent text-sm text-white outline-none min-w-0"
         style={{ caretColor: '#f97316' }}
         disabled={isSending}
+        onFocus={() => setChatFocused(true)}
+        onBlur={() => setChatFocused(false)}
       />
     );
   }
@@ -368,10 +372,11 @@ export default function EmberSheet({
                 : 'rgba(255,255,255,0.08)',
               border: `1px solid ${surface === 'voice' && isVoiceActive ? 'rgba(34,197,94,0.45)'
                 : surface === 'calls' && isCalling ? 'rgba(37,99,235,0.45)'
+                : surface === 'chats' && chatFocused ? 'rgba(249,115,22,0.24)'
                 : 'transparent'}`,
             }}
           >
-            <PillContent />
+            {PillContent()}
             {surface === 'chats' && (
               <button
                 type="button"
@@ -385,7 +390,7 @@ export default function EmberSheet({
               </button>
             )}
           </div>
-          <ActionButton />
+          {ActionButton()}
         </div>
 
         {/* Status line */}

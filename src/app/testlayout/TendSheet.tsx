@@ -1,15 +1,56 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Leaf, X } from 'lucide-react';
+import KipemberWikiContent, { type KipemberWikiDetail } from '@/components/kipember/KipemberWikiContent';
 
 const SNAP_MS = 320;
-const COLORS = ['#1a1a2e', '#16213e', '#0f3460', '#1b4332', '#2d1b69', '#3d0000', '#1a2a1a', '#2a1a2a'];
 
-export default function TendSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function TendSheet({
+  isOpen,
+  onClose,
+  emberId,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  emberId: string | null;
+}) {
   const [showing, setShowing] = useState(isOpen);
+  const [detail, setDetail] = useState<KipemberWikiDetail | null>(null);
+  const [statusMessage, setStatusMessage] = useState('');
+  const loadedRef = useRef(false);
 
-  useEffect(() => { if (isOpen) setShowing(true); else setShowing(false); }, [isOpen]);
+  const fetchDetail = useCallback(async () => {
+    if (!emberId) return;
+    try {
+      const r = await fetch(`/api/embers/${encodeURIComponent(emberId)}`, { cache: 'no-store' });
+      const d = await r.json();
+      setDetail(d);
+    } catch { /* silently ignore */ }
+  }, [emberId]);
+
+  useEffect(() => {
+    if (!isOpen || !emberId || loadedRef.current) return;
+    loadedRef.current = true;
+    void fetchDetail();
+  }, [isOpen, emberId, fetchDetail]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowing(true);
+    } else {
+      setShowing(false);
+      loadedRef.current = false;
+      setDetail(null);
+      setStatusMessage('');
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!statusMessage) return;
+    const timer = setTimeout(() => setStatusMessage(''), 3000);
+    return () => clearTimeout(timer);
+  }, [statusMessage]);
 
   function handleClose() {
     setShowing(false);
@@ -27,24 +68,32 @@ export default function TendSheet({ isOpen, onClose }: { isOpen: boolean; onClos
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
-      <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0">
+      {/* Header */}
+      <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <Leaf size={18} color="white" strokeWidth={1.8} />
         <span className="flex-1 ml-2 text-white font-semibold text-base">Tend this Ember</span>
-        <button className="cursor-pointer" onClick={handleClose}>
+        <button type="button" className="cursor-pointer" onClick={handleClose}>
           <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-8 flex flex-col gap-3" style={{ scrollbarWidth: 'none' }}>
-        {Array.from({ length: 20 }, (_, i) => (
-          <div
-            key={i}
-            className="rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ height: 80, background: COLORS[i % COLORS.length] }}
-          >
-            <span className="text-white/50 text-sm">Box {i + 1}</span>
-          </div>
-        ))}
+      {/* Status toast */}
+      {statusMessage ? (
+        <div
+          className="mx-4 mt-2 flex-shrink-0 rounded-lg px-3 py-2 text-sm text-white"
+          style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' }}
+        >
+          {statusMessage}
+        </div>
+      ) : null}
+
+      {/* Wiki content */}
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-[10px]">
+        <KipemberWikiContent
+          detail={detail}
+          refreshDetail={fetchDetail}
+          onStatus={setStatusMessage}
+        />
       </div>
     </div>
   );

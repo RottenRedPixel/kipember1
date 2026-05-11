@@ -233,7 +233,7 @@ export default function StoriesSheet({
       ) : null}
 
       {/* All content anchored to bottom: story text → visualizer → capsule → label */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
+      <div className="absolute bottom-0 left-0 right-0 px-4">
 
         {/* Story text */}
         <div className="text-center mb-5">
@@ -271,9 +271,9 @@ export default function StoriesSheet({
           <div
             className="absolute rounded-full transition-all duration-200"
             style={{
-              width: 42,
-              height: 42,
-              top: 7,
+              width: 40,
+              height: 40,
+              top: 2,
               left: [
                 'calc(10% - 21px)',
                 'calc(30% - 21px)',
@@ -292,7 +292,7 @@ export default function StoriesSheet({
               key={i}
               type="button"
               onClick={() => { if (i !== selectedBadge) switchBadge(i); else handleToggle(); }}
-              className="relative flex items-center justify-center py-[16px] cursor-pointer"
+              className="relative flex items-center justify-center py-3 cursor-pointer"
             >
               <Icon
                 size={20}
@@ -304,9 +304,9 @@ export default function StoriesSheet({
           ))}
         </div>
 
-        {/* Label — below capsule */}
-        <div className="flex justify-center mt-3" style={{ minHeight: 20 }}>
-          <p className="text-sm text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        {/* Toast / error area — reserved space */}
+        <div className="py-3">
+          <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.45)' }}>
             {playbackState === 'loading' ? 'preparing audio…' : BADGES[selectedBadge].label}
           </p>
         </div>
