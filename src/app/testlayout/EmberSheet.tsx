@@ -321,7 +321,7 @@ export default function EmberSheet({
               }}
             >
               <span className="max-[340px]:hidden">{label}</span>
-              <Icon size={13} strokeWidth={1.8} className="hidden max-[340px]:block" />
+              <span className="hidden max-[340px]:block"><Icon size={13} strokeWidth={1.8} /></span>
             </button>
           ))}
         </div>
