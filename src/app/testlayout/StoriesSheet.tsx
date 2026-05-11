@@ -147,6 +147,7 @@ export default function StoriesSheet({
     audio.addEventListener('play', () => setPlaybackState('playing'));
     audio.addEventListener('pause', () => setPlaybackState((current) => (current === 'loading' ? current : 'paused')));
     audio.addEventListener('ended', () => { setPlaybackState('paused'); setDone(true); });
+    audio.addEventListener('error', () => { setPlaybackState('paused'); });
     audioRef.current = audio;
     audioUrlRef.current = audioUrl;
     try {
@@ -283,7 +284,7 @@ export default function StoriesSheet({
               background: (playbackState === 'playing' || playbackState === 'loading')
                 ? BADGES[selectedBadge].active
                 : 'transparent',
-              border: `3px solid ${BADGES[selectedBadge].active}`,
+              border: `2px solid rgba(255,255,255,0.7)`,
             }}
           />
           {BADGES.map(({ icon: Icon }, i) => (
@@ -296,8 +297,8 @@ export default function StoriesSheet({
               <Icon
                 size={20}
                 strokeWidth={1.5}
-                color={selectedBadge === i ? '#ffffff' : 'rgba(255,255,255,0.3)'}
-                style={{ transition: 'color 0.2s ease' }}
+                color={BADGES[i].vizColor}
+                style={{ opacity: selectedBadge === i ? 1 : 0.35 }}
               />
             </button>
           ))}

@@ -33,9 +33,6 @@ export default function HelloSheet({ isOpen, onClose }: { isOpen: boolean; onClo
       </div>
 
       <div className="flex flex-col items-center pt-2 pb-4 gap-2">
-        <div className="rounded-full flex items-center justify-center" style={{ width: 55, height: 55, background: '#f97316' }}>
-          <Hand size={28} color="#fff" strokeWidth={1.6} />
-        </div>
         <span className="text-white text-base font-medium">Hello there!</span>
         <p className="text-white/60 text-sm text-center px-6 pb-2">
           This is your ember. Tend it, share it, and invite contributors to help bring the memory to life.

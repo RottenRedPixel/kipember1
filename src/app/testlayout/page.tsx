@@ -19,7 +19,7 @@ type EmberSummary = {
   title: string | null;
   originalName: string;
   createdAt: string;
-  storyScript: string | null;
+  snapshot: { script: string } | null;
 };
 
 const RAIL_H = 80;
@@ -208,14 +208,14 @@ function TestLayoutContent() {
         />
       </div>
 
-      <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} />
+      <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} emberId={id} />
       <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} />
-      <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.storyScript ?? null} />
+      <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
       <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} emberId={id} />
       <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} />
 
       {/* Rail */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113', transform: activeRail === 'stories' ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113', transform: activeRail === 'stories' || emberOpen ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
         {railItems.map(({ label, icon: Icon }) => {
           const isActive = label === 'ember' ? emberOpen : activeRail === label;
           const isDimmed = panelOpen ? !isActive : false;
@@ -230,7 +230,7 @@ function TestLayoutContent() {
               }}
             >
               <Icon size={25} color={isActive ? '#f97316' : 'white'} strokeWidth={1.5} />
-              <span style={{ color: isActive ? '#f97316' : 'rgba(255,255,255,0.5)', fontSize: 11 }}>{label}</span>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{label}</span>
             </button>
           );
         })}
