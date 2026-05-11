@@ -20,6 +20,7 @@ type EmberSummary = {
   originalName: string;
   createdAt: string;
   snapshot: { script: string } | null;
+  accessType: 'owner' | 'contributor' | 'network' | null;
 };
 
 const RAIL_H = 80;
@@ -209,7 +210,7 @@ function TestLayoutContent() {
       </div>
 
       <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} emberId={id} />
-      <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} />
+      <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} emberId={id} accessType={ember?.accessType ?? null} />
       <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
       <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} emberId={id} />
       <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} />
