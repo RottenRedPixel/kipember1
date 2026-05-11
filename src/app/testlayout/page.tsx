@@ -203,7 +203,7 @@ function TestLayoutContent() {
         <div
           style={{
             flexShrink: 0,
-            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '30vh' : activeRail === 'stories' ? '30vh' : RAIL_H,
+            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '25vh' : activeRail === 'stories' ? '30vh' : RAIL_H,
             transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />

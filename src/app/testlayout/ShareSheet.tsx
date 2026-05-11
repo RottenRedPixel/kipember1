@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Copy, Link2, MessageCircle, MoreHorizontal, Share } from 'lucide-react';
+import { Copy, Link2, MessageCircle, MoreHorizontal } from 'lucide-react';
 
-const SHEET_H = '30vh';
+const SHEET_H = '25vh';
 const SNAP_MS = 320;
 
 function FacebookIcon() {
@@ -59,10 +59,6 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
     >
       <div className="flex justify-center pt-3 pb-1 flex-shrink-0" onClick={handleClose} style={{ cursor: 'pointer' }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
-      </div>
-      <div className="flex items-center px-4 pt-3 pb-3 flex-shrink-0">
-        <Share size={18} color="white" strokeWidth={1.8} />
-        <span className="flex-1 ml-2 text-white font-semibold text-base">Share this Ember</span>
       </div>
 
       <div className="flex-1 flex items-end justify-around px-4 pb-2">
