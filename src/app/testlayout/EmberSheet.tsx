@@ -303,9 +303,9 @@ export default function EmberSheet({
 
       {/* Header */}
       <div className="relative flex items-center px-4 pb-2 flex-shrink-0" style={{ paddingTop: expanded ? 16 : 8 }}>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           <EmberMark size={20} />
-          <span className="font-semibold text-base" style={{ color: '#f97316' }}>Ember</span>
+          <span className="font-semibold text-base" style={{ color: '#f97316' }}>ember</span>
         </div>
         {/* Tabs — absolutely centered so left/right content widths don't affect position */}
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.06)' }}>
@@ -314,7 +314,7 @@ export default function EmberSheet({
               key={s}
               type="button"
               onClick={() => setSurface(s)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer flex items-center justify-center"
+              className="px-[11px] py-1.5 rounded-lg text-xs font-medium cursor-pointer flex items-center justify-center transition-colors duration-150 hover:bg-white/10"
               style={{
                 background: surface === s ? 'rgba(255,255,255,0.12)' : 'transparent',
                 color: surface === s ? '#ffffff' : 'rgba(255,255,255,0.35)',
@@ -396,12 +396,8 @@ export default function EmberSheet({
         ) : null}
       </div>
 
-      {/* Label line */}
-      <div className="flex justify-center px-4 py-3 flex-shrink-0">
-        <p className="text-sm text-center" style={{ color: 'rgba(255,255,255,0.4)' }}>
-          {SURFACE_LABEL[surface]}
-        </p>
-      </div>
+      {/* Toast / error area — reserved space */}
+      <div className="px-4 py-3 flex-shrink-0" />
 
       <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden"
         onChange={(e) => { const file = e.target.files?.[0]; e.currentTarget.value = ''; if (file) void uploadPhoto(file); }} />
