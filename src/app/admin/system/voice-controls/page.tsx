@@ -6,6 +6,7 @@ import { RefreshCw, Check, Pencil, X } from 'lucide-react';
 type VoiceRow = {
   id: string;
   name: string;
+  accent: string;
   gender: 'female' | 'male';
   elevenLabsId: string;
   retellId: string;
@@ -140,7 +141,10 @@ export default function AdminVoiceControlsPage() {
                   <tbody className="divide-y divide-gray-100">
                     {rows.map((v) => (
                       <tr key={v.id} className="bg-white">
-                        <td className="px-4 py-3 font-medium text-gray-900">{v.name}</td>
+                        <td className="px-4 py-3">
+                          <span className="font-medium text-gray-900">{v.name}</span>
+                          <span className="block text-xs text-gray-400">{v.accent}</span>
+                        </td>
                         <td className="px-4 py-3">
                           <IdCell
                             voiceId={v.id}

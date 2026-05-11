@@ -22,6 +22,7 @@ export async function GET() {
     return {
       id: v.id,
       name: v.name,
+      accent: v.accent,
       gender: v.gender,
       elevenLabsId: v.elevenLabsId,
       retellId: v.retellId,

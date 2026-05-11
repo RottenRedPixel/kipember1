@@ -602,7 +602,10 @@ export default function AccountScreen({
                             <span className="block rounded-full bg-white" style={{ width: 8, height: 8 }} />
                           )}
                         </span>
-                        <span className="flex-1 text-left text-sm text-white">{voice.name}</span>
+                        <span className="flex-1 text-left text-sm text-white">
+                          {voice.name}
+                          <span className="ml-1.5 text-white/40 text-xs font-normal">({voice.accent})</span>
+                        </span>
                       </button>
                     ))}
                   </div>
