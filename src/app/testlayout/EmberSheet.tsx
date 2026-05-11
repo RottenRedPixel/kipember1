@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronUp, ImagePlus, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronUp, ImagePlus, MessageCircle, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
 import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
@@ -13,10 +13,10 @@ import type { EmberModalSurface } from '@/components/kipember/EmberModalShell';
 const SNAP_MS = 320;
 const SWIPE_THRESHOLD = 40;
 
-const TABS: { label: string; surface: EmberModalSurface }[] = [
-  { label: 'chat',  surface: 'chats' },
-  { label: 'voice', surface: 'voice' },
-  { label: 'calls', surface: 'calls' },
+const TABS: { label: string; surface: EmberModalSurface; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
+  { label: 'chat',  surface: 'chats', icon: MessageCircle },
+  { label: 'voice', surface: 'voice', icon: Mic },
+  { label: 'call',  surface: 'calls', icon: Phone },
 ];
 
 const SURFACE_LABEL: Record<EmberModalSurface, string> = {
@@ -302,38 +302,40 @@ export default function EmberSheet({
       )}
 
       {/* Header */}
-      <div className="flex items-center px-4 pt-2 pb-2 gap-3 flex-shrink-0" style={{ paddingTop: expanded ? 16 : undefined }}>
+      <div className="relative flex items-center px-4 pb-2 flex-shrink-0" style={{ paddingTop: expanded ? 16 : 8 }}>
         <div className="flex items-center gap-2 flex-shrink-0">
           <EmberMark size={20} />
           <span className="font-semibold text-base" style={{ color: '#f97316' }}>Ember</span>
         </div>
-        <div className="flex-1 flex justify-center">
-          <div className="flex items-center gap-0.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.06)' }}>
-            {TABS.map(({ label, surface: s }) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => setSurface(s)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
-                style={{
-                  background: surface === s ? 'rgba(255,255,255,0.12)' : 'transparent',
-                  color: surface === s ? '#ffffff' : 'rgba(255,255,255,0.35)',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        {/* Tabs — absolutely centered so left/right content widths don't affect position */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.06)' }}>
+          {TABS.map(({ label, surface: s, icon: Icon }) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSurface(s)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer flex items-center justify-center"
+              style={{
+                background: surface === s ? 'rgba(255,255,255,0.12)' : 'transparent',
+                color: surface === s ? '#ffffff' : 'rgba(255,255,255,0.35)',
+              }}
+            >
+              <span className="max-[340px]:hidden">{label}</span>
+              <Icon size={13} strokeWidth={1.8} className="hidden max-[340px]:block" />
+            </button>
+          ))}
         </div>
-        {expanded ? (
-          <button type="button" onClick={handleClose} className="cursor-pointer flex-shrink-0">
-            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-          </button>
-        ) : (
-          <button type="button" onClick={() => setExpanded(true)} className="w-9 h-9 flex items-center justify-center cursor-pointer flex-shrink-0">
-            <ChevronUp size={18} color="rgba(255,255,255,0.35)" strokeWidth={1.8} />
-          </button>
-        )}
+        <div className="ml-auto flex-shrink-0">
+          {expanded ? (
+            <button type="button" onClick={handleClose} className="cursor-pointer">
+              <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+            </button>
+          ) : (
+            <button type="button" onClick={() => setExpanded(true)} className="w-9 h-9 flex items-center justify-center cursor-pointer">
+              <ChevronUp size={18} color="rgba(255,255,255,0.35)" strokeWidth={1.8} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content area */}
