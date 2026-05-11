@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
+import { prisma } from '@/lib/db';
 import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { startWebVoiceCallForContributor } from '@/lib/voice-calls';
+import { getVoiceEntry } from '@/lib/voice-catalog';
 
 export const runtime = 'nodejs';
 
@@ -31,9 +33,16 @@ export async function POST(
       );
     }
 
+    const userRecord = await prisma.user.findUnique({
+      where: { id: auth.user.id },
+      select: { voicePreferenceId: true },
+    });
+    const retellVoiceId = getVoiceEntry(userRecord?.voicePreferenceId).retellId;
+
     const result = await startWebVoiceCallForContributor({
       emberContributorId: contributor.id,
       initiatedBy: 'owner',
+      retellVoiceId,
     });
 
     return NextResponse.json({

@@ -16,7 +16,7 @@ export async function GET() {
 
   const userRecord = await prisma.user.findUnique({
     where: { id: auth.user.id },
-    select: { avatarFilename: true, createdAt: true, passwordHash: true },
+    select: { avatarFilename: true, createdAt: true, passwordHash: true, voicePreferenceId: true },
   });
 
   return NextResponse.json({
@@ -30,6 +30,7 @@ export async function GET() {
       createdAt: userRecord?.createdAt?.toISOString() ?? null,
       hasPassword: !!userRecord?.passwordHash,
       canAccessAdmin: isAdmin(auth.user),
+      voicePreferenceId: userRecord?.voicePreferenceId ?? 'sarah',
     },
   });
 }
@@ -42,29 +43,34 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { firstName, lastName, phoneNumber } = await request.json();
+    const { firstName, lastName, phoneNumber, voicePreferenceId } = await request.json();
 
-    const normalizedPhone = normalizePhone(phoneNumber);
+    const phoneProvided = phoneNumber !== undefined && phoneNumber !== null;
+    const normalizedPhone = phoneProvided ? normalizePhone(phoneNumber) : null;
 
-    if (!normalizedPhone) {
+    if (phoneProvided && !normalizedPhone) {
       return NextResponse.json({ error: 'A valid phone number is required' }, { status: 400 });
     }
 
-    const existingUser = await prisma.user.findFirst({
-      where: { phoneNumber: normalizedPhone, id: { not: auth.user.id } },
-      select: { id: true },
-    });
-
-    if (existingUser) {
-      return NextResponse.json({ error: 'That phone number is already in use' }, { status: 400 });
+    if (normalizedPhone) {
+      const existingUser = await prisma.user.findFirst({
+        where: { phoneNumber: normalizedPhone, id: { not: auth.user.id } },
+        select: { id: true },
+      });
+      if (existingUser) {
+        return NextResponse.json({ error: 'That phone number is already in use' }, { status: 400 });
+      }
     }
 
     const user = await prisma.user.update({
       where: { id: auth.user.id },
       data: {
-        firstName: typeof firstName === 'string' && firstName.trim() ? firstName.trim() : null,
-        lastName: typeof lastName === 'string' && lastName.trim() ? lastName.trim() : null,
-        phoneNumber: normalizedPhone,
+        ...(typeof firstName === 'string' ? { firstName: firstName.trim() || null } : {}),
+        ...(typeof lastName === 'string' ? { lastName: lastName.trim() || null } : {}),
+        ...(normalizedPhone ? { phoneNumber: normalizedPhone } : {}),
+        ...(typeof voicePreferenceId === 'string' && voicePreferenceId.trim()
+          ? { voicePreferenceId: voicePreferenceId.trim() }
+          : {}),
       },
       select: {
         id: true,
@@ -73,16 +79,19 @@ export async function PATCH(request: NextRequest) {
         email: true,
         phoneNumber: true,
         avatarFilename: true,
+        voicePreferenceId: true,
       },
     });
 
-    await claimMemoriesForUser({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-    });
+    if (phoneProvided || typeof firstName === 'string' || typeof lastName === 'string') {
+      await claimMemoriesForUser({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+      });
+    }
 
     return NextResponse.json({
       user: {

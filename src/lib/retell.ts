@@ -109,12 +109,14 @@ export async function createRetellPhoneCall({
   dynamicVariables,
   useBetaAgent,
   role,
+  voiceId,
 }: {
   toNumber: string;
   metadata: Record<string, string>;
   dynamicVariables: Record<string, string>;
   useBetaAgent?: boolean;
   role?: 'owner' | 'contributor';
+  voiceId?: string;
 }): Promise<Retell.PhoneCallResponse> {
   if (!(await isFeatureEnabled('voice_calls', true))) {
     throw new Error('Voice calls are disabled');
@@ -137,6 +139,7 @@ export async function createRetellPhoneCall({
         webhook_events: [...DEFAULT_WEBHOOK_EVENTS],
         webhook_timeout_ms: 10000,
         webhook_url: webhookUrl,
+        ...(voiceId ? { voice_id: voiceId } : {}),
       },
     },
   });
@@ -147,11 +150,13 @@ export async function createRetellWebCall({
   dynamicVariables,
   useBetaAgent,
   role,
+  voiceId,
 }: {
   metadata: Record<string, string>;
   dynamicVariables: Record<string, string>;
   useBetaAgent?: boolean;
   role?: 'owner' | 'contributor';
+  voiceId?: string;
 }): Promise<Retell.WebCallResponse> {
   if (!(await isFeatureEnabled('voice_calls', true))) {
     throw new Error('Voice calls are disabled');
@@ -172,6 +177,7 @@ export async function createRetellWebCall({
         webhook_events: [...DEFAULT_WEBHOOK_EVENTS],
         webhook_timeout_ms: 10000,
         webhook_url: webhookUrl,
+        ...(voiceId ? { voice_id: voiceId } : {}),
       },
     },
   });

@@ -341,6 +341,7 @@ model User {
   taggedEmbers         EmberTag[]   @relation("TaggedUserEmbers")
   emberSessions        EmberSession[]
   memoryClaims         MemoryClaim[]
+  voicePreferenceId    String?      @default("sarah")
   lastSeenContributionsAt DateTime?
   lastSeenWikiAt       DateTime?
   lastSeenGuestViewsAt DateTime?

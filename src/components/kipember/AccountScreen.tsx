@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import {
   Camera, ChevronRight,
   KeyRound, LayoutDashboard,
-  Settings, ShieldAlert, User, Users, X,
+  Mic, Settings, ShieldAlert, User, Users, X,
 } from 'lucide-react';
+import { VOICE_CATALOG } from '@/lib/voice-catalog';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AvatarCropModal from '@/components/kipember/AvatarCropModal';
 import AccountContributorsAccordion from '@/components/kipember/AccountContributorsAccordion';
 
-type Section = 'profile' | 'contributors' | 'preferences' | 'password' | 'settings' | null;
+type Section = 'profile' | 'contributors' | 'preferences' | 'voices' | 'password' | 'settings' | null;
 
 type AccountScreenProps = {
   firstName: string | null;
@@ -24,6 +25,7 @@ type AccountScreenProps = {
   coverPhotoUrl?: string | null;
   /** True when this user has admin access (drives the Admin View row). */
   canAccessAdmin?: boolean;
+  voicePreferenceId?: string | null;
   /**
    * When true, the screen renders WITHOUT its own outer slider chrome
    * (fixed inset-0, peek, borderLeft, slide-in-right) — the parent
@@ -101,6 +103,7 @@ export default function AccountScreen({
   joinedAt,
   coverPhotoUrl,
   canAccessAdmin = false,
+  voicePreferenceId: initialVoicePreferenceId,
   embedded = false,
   onClose,
 }: AccountScreenProps) {
@@ -130,6 +133,37 @@ export default function AccountScreen({
   // Preferences
   const [isDark, setIsDark] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  // Voices
+  const [selectedVoice, setSelectedVoice] = useState(initialVoicePreferenceId ?? 'sarah');
+  const [savedVoice, setSavedVoice] = useState(initialVoicePreferenceId ?? 'sarah');
+  const [voiceSaving, setVoiceSaving] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState('');
+  const voiceDirty = selectedVoice !== savedVoice;
+
+  async function saveVoice() {
+    if (!voiceDirty || voiceSaving) return;
+    setVoiceSaving(true);
+    setVoiceStatus('');
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voicePreferenceId: selectedVoice }),
+      });
+      if (res.ok) {
+        setSavedVoice(selectedVoice);
+        setVoiceStatus('Saved.');
+      } else {
+        setVoiceStatus('Failed to save.');
+      }
+      setTimeout(() => setVoiceStatus(''), 2500);
+    } catch {
+      setVoiceStatus('Network error.');
+    } finally {
+      setVoiceSaving(false);
+    }
+  }
 
   useEffect(() => {
     setIsDark(localStorage.getItem('ember-theme') !== 'light');
@@ -249,6 +283,7 @@ export default function AccountScreen({
     { key: 'profile',      icon: <User size={20} strokeWidth={1.6} />,         label: 'Profile' },
     { key: 'contributors', icon: <Users size={20} strokeWidth={1.6} />,        label: 'Contacts' },
     { key: 'preferences',  icon: <Settings size={20} strokeWidth={1.6} />,     label: 'Preferences' },
+    { key: 'voices',       icon: <Mic size={20} strokeWidth={1.6} />,          label: 'Voices' },
     { key: 'password',     icon: <KeyRound size={20} strokeWidth={1.6} />,     label: 'Password' },
     { key: 'settings',     icon: <ShieldAlert size={20} strokeWidth={1.6} />,  label: 'Settings' },
   ];
@@ -527,6 +562,73 @@ export default function AccountScreen({
                   onToggle={() => setNotificationsEnabled((v) => !v)}
                   border
                 />
+              </div>
+            </div>
+          )}
+
+          {/* ── Voices ── */}
+          {section === 'voices' && (
+            <div className="px-5 py-6 flex flex-col gap-5">
+              <p className="text-xs text-white/40 px-1">
+                Choose the voice used for chat replies, story playback, and phone calls.
+              </p>
+              {(['female', 'male'] as const).map((gender) => (
+                <div key={gender} className="flex flex-col gap-2">
+                  <span className="text-xs text-white/40 px-1 uppercase tracking-widest">{gender}</span>
+                  <div className="flex flex-col rounded-xl overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}>
+                    {VOICE_CATALOG.filter((v) => v.gender === gender).map((voice, i) => (
+                      <button
+                        key={voice.id}
+                        type="button"
+                        onClick={() => setSelectedVoice(voice.id)}
+                        className="w-full flex items-center gap-3 px-4"
+                        style={{
+                          minHeight: 52,
+                          cursor: 'pointer',
+                          borderTop: i > 0 ? '1px solid var(--border-subtle)' : undefined,
+                        }}
+                      >
+                        <span
+                          className="flex-shrink-0 rounded-full flex items-center justify-center"
+                          style={{
+                            width: 22,
+                            height: 22,
+                            border: `2px solid ${selectedVoice === voice.id ? '#f97316' : 'rgba(255,255,255,0.2)'}`,
+                            background: selectedVoice === voice.id ? '#f97316' : 'transparent',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {selectedVoice === voice.id && (
+                            <span className="block rounded-full bg-white" style={{ width: 8, height: 8 }} />
+                          )}
+                        </span>
+                        <span className="flex-1 text-left text-sm text-white">{voice.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="flex items-center gap-3 px-1">
+                {voiceStatus ? (
+                  <span className="text-xs text-white/50 flex-1">{voiceStatus}</span>
+                ) : (
+                  <span className="flex-1" />
+                )}
+                <button
+                  type="button"
+                  onClick={() => void saveVoice()}
+                  disabled={!voiceDirty || voiceSaving}
+                  className="flex-1 rounded-full text-white text-sm font-medium"
+                  style={{
+                    background: voiceDirty ? '#f97316' : 'var(--bg-surface)',
+                    border: voiceDirty ? 'none' : '1px solid var(--border-subtle)',
+                    minHeight: 44,
+                    cursor: voiceDirty ? 'pointer' : 'default',
+                    maxWidth: '50%',
+                  }}
+                >
+                  {voiceSaving ? 'Saving…' : 'Save'}
+                </button>
               </div>
             </div>
           )}

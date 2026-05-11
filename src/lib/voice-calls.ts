@@ -781,10 +781,12 @@ export async function startVoiceCallForContributor({
   emberContributorId,
   initiatedBy,
   useBetaAgent,
+  retellVoiceId,
 }: {
   emberContributorId: string;
   initiatedBy: 'owner' | 'contributor';
   useBetaAgent?: boolean;
+  retellVoiceId?: string;
 }) {
   const { emberContributor, user, session, dynamicVariables } =
     await prepareVoiceCallContext(emberContributorId);
@@ -797,6 +799,7 @@ export async function startVoiceCallForContributor({
     toNumber: user.phoneNumber,
     useBetaAgent,
     role: initiatedBy,
+    voiceId: retellVoiceId,
     metadata: {
       emberContributorId: emberContributor.id,
       emberSessionId: session.id,
@@ -836,10 +839,12 @@ export async function startWebVoiceCallForContributor({
   emberContributorId,
   initiatedBy,
   useBetaAgent,
+  retellVoiceId,
 }: {
   emberContributorId: string;
   initiatedBy: 'owner' | 'contributor';
   useBetaAgent?: boolean;
+  retellVoiceId?: string;
 }) {
   const { emberContributor, session, dynamicVariables } =
     await prepareVoiceCallContext(emberContributorId);
@@ -847,6 +852,7 @@ export async function startWebVoiceCallForContributor({
   const call = await createRetellWebCall({
     useBetaAgent,
     role: initiatedBy,
+    voiceId: retellVoiceId,
     metadata: {
       emberContributorId: emberContributor.id,
       emberSessionId: session.id,

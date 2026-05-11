@@ -19,6 +19,7 @@ type AccountUser = {
   avatarUrl: string | null;
   createdAt: string | null;
   canAccessAdmin: boolean;
+  voicePreferenceId: string | null;
 };
 
 function initialsOf(value: string) {
@@ -102,6 +103,7 @@ export default function KipemberAccountOverlay({ closeHref }: { closeHref: strin
               userInitials={userInitials}
               joinedAt={user.createdAt ? new Date(user.createdAt) : null}
               canAccessAdmin={canAccessAdmin}
+              voicePreferenceId={user.voicePreferenceId}
               embedded
               onClose={handleClose}
             />

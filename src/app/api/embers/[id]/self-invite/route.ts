@@ -5,6 +5,7 @@ import { ensureEmberOwnerAccess } from '@/lib/ember';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { startVoiceCallForContributor } from '@/lib/voice-calls';
 import { sendOwnerSelfSms } from '@/lib/owner-self-invite';
+import { getVoiceEntry } from '@/lib/voice-catalog';
 
 export async function POST(
   request: NextRequest,
@@ -47,7 +48,7 @@ export async function POST(
 
     const ownerUser = await prisma.user.findUnique({
       where: { id: auth.user.id },
-      select: { phoneNumber: true },
+      select: { phoneNumber: true, voicePreferenceId: true },
     });
 
     if (!ownerUser?.phoneNumber) {
@@ -63,10 +64,12 @@ export async function POST(
       // new pipeline against real owner phone numbers without affecting
       // contributor / guest production calls.
       const useBetaAgent = request.nextUrl.searchParams.get('beta') === '1';
+      const retellVoiceId = getVoiceEntry(ownerUser.voicePreferenceId).retellId;
       const result = await startVoiceCallForContributor({
         emberContributorId: emberContributor.id,
         initiatedBy: 'owner',
         useBetaAgent,
+        retellVoiceId,
       });
       return NextResponse.json({ success: true, ...result });
     }

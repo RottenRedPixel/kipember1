@@ -20,6 +20,7 @@ import {
 } from '@/lib/openai';
 import { persistUploadedMedia } from '@/lib/media-upload';
 import { synthesizeSpeech } from '@/lib/tts';
+import { getVoiceEntry } from '@/lib/voice-catalog';
 
 const COOKIE_NAME = 'mw_voice_chat_v1';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
@@ -181,9 +182,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const userRecord = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { voicePreferenceId: true },
+    });
+    const voiceEntry = getVoiceEntry(userRecord?.voicePreferenceId);
+
     let replyAudioFilename: string | null = null;
     try {
-      const synthesized = await synthesizeSpeech({ text: replyText });
+      const synthesized = await synthesizeSpeech({ text: replyText, voiceId: voiceEntry.elevenLabsId });
       replyAudioFilename = synthesized.filename;
     } catch (synthError) {
       console.error('Voice reply TTS failed:', synthError);

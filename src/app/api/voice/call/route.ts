@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
+import { prisma } from '@/lib/db';
 import { ensureOwnedContributorAccess } from '@/lib/ember';
 import { startVoiceCallForContributor } from '@/lib/voice-calls';
+import { getVoiceEntry } from '@/lib/voice-catalog';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,9 +26,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
     }
 
+    const userRecord = await prisma.user.findUnique({
+      where: { id: auth.user.id },
+      select: { voicePreferenceId: true },
+    });
+    const retellVoiceId = getVoiceEntry(userRecord?.voicePreferenceId).retellId;
+
     const result = await startVoiceCallForContributor({
       emberContributorId: contributorId,
       initiatedBy: 'owner',
+      retellVoiceId,
     });
 
     return NextResponse.json({ success: true, ...result });
