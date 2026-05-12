@@ -16,7 +16,7 @@ export default function EmberTitleBlock({
         <p className="font-semibold text-right" style={{ fontSize: 20, color: '#fff', letterSpacing: '-0.02em' }}>{title}</p>
       ) : null}
       {createdAt ? (
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>
+        <p className="text-right" style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>
           {new Date(createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
         </p>
       ) : null}
