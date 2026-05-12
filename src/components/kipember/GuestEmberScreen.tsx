@@ -332,6 +332,7 @@ export default function GuestEmberScreen({
         onClose={closePanel}
         emberId={data.ember.id}
         storyScript={data.snapshotScript}
+        accessToken={token}
       />
       <ShareSheet
         isOpen={activeTab === 'share'}

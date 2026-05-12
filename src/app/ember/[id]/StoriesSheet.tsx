@@ -48,11 +48,13 @@ export default function StoriesSheet({
   onClose,
   emberId,
   storyScript,
+  accessToken,
 }: {
   isOpen: boolean;
   onClose: () => void;
   emberId: string | null;
   storyScript: string | null;
+  accessToken?: string;
 }) {
   const [showing, setShowing] = useState(isOpen);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
@@ -120,10 +122,11 @@ export default function StoriesSheet({
 
   const fetchAudioBlob = useCallback(async () => {
     if (!emberId) throw new Error('No ember selected.');
+    const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
     const badge = selectedBadgeRef.current;
     const facetScript = FACET_SCRIPTS[badge];
     if (facetScript) {
-      const response = await fetch(`/api/embers/${emberId}/snapshot-audio`, {
+      const response = await fetch(`/api/embers/${emberId}/snapshot-audio${tokenQs}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ script: facetScript }),
@@ -133,11 +136,11 @@ export default function StoriesSheet({
       throw new Error(typeof payload?.error === 'string' ? payload.error : 'Audio not available.');
     }
     if (!storyScript) throw new Error('This ember does not have a snapshot yet.');
-    const response = await fetch(`/api/embers/${emberId}/snapshot-audio`, { cache: 'no-store' });
+    const response = await fetch(`/api/embers/${emberId}/snapshot-audio${tokenQs}`, { cache: 'no-store' });
     if (response.ok) return await response.blob();
     const payload = await response.json().catch(() => null);
     throw new Error(typeof payload?.error === 'string' ? payload.error : 'Story audio is not available yet.');
-  }, [emberId, storyScript]);
+  }, [emberId, storyScript, accessToken]);
 
   const buildAudio = useCallback(async () => {
     const audioBlob = await fetchAudioBlob();
