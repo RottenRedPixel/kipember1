@@ -359,7 +359,7 @@ function EmberViewContent() {
                 else { setEmberOpen(false); setActiveTab((prev) => prev === label ? null : label); }
               }}
             >
-              <Icon size={25} color={isActive ? '#f97316' : 'white'} strokeWidth={1.5} />
+              <Icon size={25} color="white" strokeWidth={1.5} />
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{label}</span>
             </button>
           );

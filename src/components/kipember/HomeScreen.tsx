@@ -1039,7 +1039,7 @@ export default function HomeScreen({
             transition: 'opacity 0.36s ease',
           }}
         >
-          <p className="text-white font-medium text-base leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
+          <p className="text-white font-medium text-3xl leading-tight" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>
             {selectedEmberHasTitle ? title : ' '}
           </p>
           <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)', textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}>

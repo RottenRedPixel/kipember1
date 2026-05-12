@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, ImagePlus, MessageCircle, MessageSquare, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, ImagePlus, MessageCircle, MessageCirclePlus, MessageSquare, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
 import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
@@ -330,12 +330,10 @@ export default function EmberSheet({
       }}
     >
       {/* Header */}
-      <div className="relative flex items-center px-4 pt-4 pb-2 flex-shrink-0">
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="font-semibold text-base" style={{ color: 'var(--bubble-chat-accent)' }}>ember</span>
-        </div>
-        {/* Tabs — absolutely centered so left/right content widths don't affect position */}
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center px-4 pt-4 pb-3 gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
+        <MessageCirclePlus size={18} color="white" strokeWidth={1.8} className="flex-shrink-0" />
+        <span className="font-semibold text-base flex-shrink-0 text-white">ember</span>
+        <div className="flex items-center gap-0.5 rounded-xl p-1 mx-auto" style={{ background: 'rgba(255,255,255,0.06)' }}>
           {TABS.map(({ label, surface: s, icon: Icon }) => (
             <button
               key={s}
@@ -352,7 +350,7 @@ export default function EmberSheet({
             </button>
           ))}
         </div>
-        <div className="ml-auto flex items-center gap-5 flex-shrink-0">
+        <div className="flex items-center gap-5 flex-shrink-0">
           <button type="button" onClick={() => setExpanded((v) => !v)} className="cursor-pointer">
             {expanded
               ? <ChevronDown size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
