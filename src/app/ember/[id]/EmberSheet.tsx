@@ -247,12 +247,12 @@ export default function EmberSheet({
       return isCalling ? (
         <><span style={{ color: 'rgba(96,165,250,0.9)', fontSize: 14 }}>Calling</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
       ) : (
-        <><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Ember will call:</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
+        <><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>ember will call:</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
       );
     }
     if (surface === 'sms') {
       return (
-        <><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Ember will SMS:</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
+        <><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>ember will SMS:</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
       );
     }
     // chats
@@ -354,7 +354,6 @@ export default function EmberSheet({
       {/* Header */}
       <div className="relative flex items-center px-4 pb-2 flex-shrink-0" style={{ paddingTop: expanded ? 16 : 8 }}>
         <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="max-[360px]:hidden"><EmberMark size={20} /></span>
           <span className="font-semibold text-base" style={{ color: 'var(--bubble-chat-accent)' }}>ember</span>
         </div>
         {/* Tabs — absolutely centered so left/right content widths don't affect position */}
@@ -424,6 +423,7 @@ export default function EmberSheet({
                 : 'transparent'}`,
             }}
           >
+            <EmberMark size={18} />
             {PillContent()}
             {surface === 'chats' && (
               <button

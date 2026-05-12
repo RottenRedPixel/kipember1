@@ -282,7 +282,7 @@ function EmberViewContent() {
               onClick={() => { if (swipeX === 0) { setEmberOpen(false); setActiveRail(null); } }}
               style={{
                 border: '1px solid var(--border-default)',
-                background: photoLoaded ? 'transparent' : 'var(--bg-surface)',
+                background: 'transparent',
                 aspectRatio: naturalRatio ?? '4/3',
                 transform: `translateX(${swipeX}px) translateY(${swipeY}px)`,
                 transition: snapping ? `transform ${SNAP_MS}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : 'none',

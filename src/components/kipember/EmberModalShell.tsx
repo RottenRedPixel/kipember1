@@ -25,8 +25,8 @@ interface EmberModalShellProps {
 
 export function EmberMark({ size = 22 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 72 72" fill="white">
-      <circle cx="36" cy="36" r="7.2" fill="#f97316" />
+    <svg width={size} height={size} viewBox="0 0 72 72" fill="#f97316">
+      <circle cx="36" cy="36" r="7.2" fill="white" />
       <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
       <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
       <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
