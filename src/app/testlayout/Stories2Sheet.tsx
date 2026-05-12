@@ -131,12 +131,11 @@ function AvatarStack({ avatars, onAvatarClick, reverseDepth = false, onDropOnPla
               fontSize: 11,
               fontWeight: 700,
               color: activatedIds.has(id) ? '#000' : 'rgba(255,255,255,0.35)',
-              transition: 'background 300ms ease, color 300ms ease',
+              transition: isDragging ? 'none' : 'left 150ms ease, background 300ms ease, color 300ms ease',
               cursor: isDragging ? 'grabbing' : 'grab',
               zIndex: isDragging ? 10 : (reverseDepth ? order.length - 1 - i : i),
               userSelect: 'none',
               touchAction: 'none',
-              transition: isDragging ? 'none' : 'left 150ms ease',
               boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.4)' : 'none',
             }}
           >
