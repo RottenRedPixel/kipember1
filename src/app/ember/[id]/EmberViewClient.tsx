@@ -193,7 +193,7 @@ function EmberViewContent() {
   }, [ember, emberIds, currentIndex]);
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (panelOpen) return;
+    if (panelOpen || snapping) return;
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
     dragRef.current = { startX: e.clientX, startY: e.clientY, axis: null };
   }
