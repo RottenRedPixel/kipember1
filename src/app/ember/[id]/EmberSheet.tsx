@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronUp, ImagePlus, MessageCircle, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
+import { ChevronUp, ImagePlus, MessageCircle, MessageSquare, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
 import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
@@ -17,12 +17,14 @@ const TABS: { label: string; surface: EmberModalSurface; icon: React.ComponentTy
   { label: 'chat',  surface: 'chats', icon: MessageCircle },
   { label: 'voice', surface: 'voice', icon: Mic },
   { label: 'call',  surface: 'calls', icon: Phone },
+  { label: 'sms',   surface: 'sms',   icon: MessageSquare },
 ];
 
 const SURFACE_LABEL: Record<EmberModalSurface, string> = {
   chats: 'chat with ember',
   voice: 'voice messages',
   calls: 'ember will call you',
+  sms:   'text with ember',
 };
 
 export default function EmberSheet({
@@ -223,6 +225,22 @@ export default function EmberSheet({
         <><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Ember will call:</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
       );
     }
+    if (surface === 'sms') {
+      return (
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void sendChat(); } }}
+          placeholder="Text with ember..."
+          className="flex-1 bg-transparent text-sm text-white outline-none min-w-0"
+          style={{ caretColor: 'var(--bubble-sms-accent)' }}
+          disabled={isSending}
+          onFocus={() => setChatFocused(true)}
+          onBlur={() => setChatFocused(false)}
+        />
+      );
+    }
     // chats
     return (
       <input
@@ -266,6 +284,20 @@ export default function EmberSheet({
           aria-label="Call"
         >
           <Phone size={18} />
+        </button>
+      );
+    }
+    if (surface === 'sms') {
+      return (
+        <button
+          type="button"
+          onClick={() => void sendChat()}
+          disabled={isSending}
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
+          style={{ background: 'var(--bubble-sms-accent)' }}
+          aria-label="Send SMS"
+        >
+          <SendHorizontal size={18} />
         </button>
       );
     }
@@ -355,6 +387,8 @@ export default function EmberSheet({
               {callBlocks.map((block) => <EmberCallCard key={block.voiceCallId} block={block} hideHeader />)}
             </div>
           )
+        ) : surface === 'sms' ? (
+          <p className="text-sm text-center mt-8 px-6" style={{ color: 'rgba(255,255,255,0.35)' }}>SMS with ember — coming soon.</p>
         ) : isLoadingHistory ? (
           <div className="flex-1 min-h-0" />
         ) : (
@@ -374,6 +408,7 @@ export default function EmberSheet({
               border: `1px solid ${surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 45%, transparent)'
                 : surface === 'calls' && isCalling ? 'color-mix(in srgb, var(--bubble-call-accent) 45%, transparent)'
                 : surface === 'chats' && chatFocused ? 'color-mix(in srgb, var(--bubble-chat-accent) 24%, transparent)'
+                : surface === 'sms' && chatFocused ? 'color-mix(in srgb, var(--bubble-sms-accent) 24%, transparent)'
                 : 'transparent'}`,
             }}
           >

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
 
-export type EmberModalSurface = 'chats' | 'voice' | 'calls';
+export type EmberModalSurface = 'chats' | 'voice' | 'calls' | 'sms';
 
 export interface EmberModalTab {
   label: string;
