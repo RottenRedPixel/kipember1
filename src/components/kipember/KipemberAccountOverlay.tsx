@@ -87,7 +87,7 @@ export default function KipemberAccountOverlay({ closeHref }: { closeHref: strin
         <div
           className="flex-1 h-full flex flex-col"
           style={{
-            background: 'color-mix(in srgb, var(--bg-screen) 98%, transparent)',
+            background: '#1a1008',
             borderLeft: '1px solid var(--border-subtle)',
             transform: overlayOpen ? 'translateX(0)' : 'translateX(100%)',
             transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
