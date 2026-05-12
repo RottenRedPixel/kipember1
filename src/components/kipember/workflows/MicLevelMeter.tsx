@@ -59,6 +59,11 @@ export default function MicLevelMeter({
     const data = new Uint8Array(analyserNode.frequencyBinCount);
     const step = Math.max(1, Math.floor(data.length / bars));
 
+    // Resolve CSS custom properties — canvas fillStyle can't use var(--x)
+    const resolvedColor = color.startsWith('var(')
+      ? (getComputedStyle(document.documentElement).getPropertyValue(color.slice(4, -1).trim()).trim() || '#22c55e')
+      : color;
+
     let raf = 0;
     const draw = () => {
       const w = canvas.width;
@@ -70,7 +75,7 @@ export default function MicLevelMeter({
 
       analyserNode!.getByteFrequencyData(data);
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = color;
+      ctx.fillStyle = resolvedColor;
 
       for (let i = 0; i < bars; i++) {
         const raw = data[i * step] / 255;

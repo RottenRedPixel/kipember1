@@ -207,7 +207,7 @@ export default function EmberCallCard({
         />
       ) : null}
       {segmentsVisible ? (
-      <div className={`flex flex-col gap-3 ${hideHeader ? '' : 'mt-3'}`}>
+      <div className={`flex flex-col gap-4 ${hideHeader ? '' : 'mt-3'}`}>
         {block.segments.map((segment, index) => {
           const isUser = segment.role === 'user';
           const canPlay = Boolean(block.recordingUrl) && segment.startMs != null;
@@ -252,7 +252,7 @@ export default function EmberCallCard({
                 </div>
               ) : null}
               <div
-                className={`flex flex-col gap-0.5 ${isUser ? 'items-end' : 'items-start'}`}
+                className={`flex flex-col gap-1 ${isUser ? 'items-end' : 'items-start'}`}
               >
               <span
                 className={`text-xs font-bold ${
@@ -297,7 +297,7 @@ export default function EmberCallCard({
                 ) : null}
               </div>
               {segmentTime ? (
-                <span className="text-white/25 text-[10px] mt-0.5">{segmentTime}</span>
+                <span className={`text-white/25 text-[10px] mt-0.5 ${isUser ? 'pr-1' : 'pl-1'}`}>{segmentTime}</span>
               ) : null}
               </div>
             </div>

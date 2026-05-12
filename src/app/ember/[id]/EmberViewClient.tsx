@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Flame, Hand, Leaf, MessageCirclePlus, Share } from 'lucide-react';
+import { Flame, Hand, Images, Leaf, MessageCirclePlus, Share } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AppHeader from '@/components/kipember/AppHeader';
 import EmberSheet from './EmberSheet';
@@ -55,9 +55,11 @@ function EmberViewContent() {
   const [naturalRatio, setNaturalRatio] = useState<string | null>(null);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
+  const [swipeY, setSwipeY] = useState(0);
   const [snapping, setSnapping] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; axis: 'h' | 'v' | null } | null>(null);
   const lastDirRef = useRef<1 | -1>(1);
+  const lastNavAxisRef = useRef<'h' | 'v'>('h');
   const prefetchCacheRef = useRef<Record<string, EmberSummary>>({});
   const panelOpen = emberOpen || activeRail !== null;
 
@@ -88,6 +90,7 @@ function EmberViewContent() {
   function snapBack() {
     setSnapping(true);
     setSwipeX(0);
+    setSwipeY(0);
     setTimeout(() => setSnapping(false), SNAP_MS);
   }
 
@@ -99,13 +102,21 @@ function EmberViewContent() {
     else if (w > h) setOrientation('landscape');
     else setOrientation('portrait');
 
-    const incomingX = lastDirRef.current < 0 ? window.innerWidth : -window.innerWidth;
-    setSwipeX(incomingX);
+    if (lastNavAxisRef.current === 'v') {
+      const incomingY = lastDirRef.current < 0 ? window.innerHeight : -window.innerHeight;
+      setSwipeY(incomingY);
+      setSwipeX(0);
+    } else {
+      const incomingX = lastDirRef.current < 0 ? window.innerWidth : -window.innerWidth;
+      setSwipeX(incomingX);
+      setSwipeY(0);
+    }
     setSnapping(false);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setSnapping(true);
         setSwipeX(0);
+        setSwipeY(0);
         setTimeout(() => setSnapping(false), SNAP_MS);
       });
     });
@@ -177,19 +188,39 @@ function EmberViewContent() {
       dragRef.current.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
     }
     if (dragRef.current.axis === 'h') setSwipeX(dx);
+    if (dragRef.current.axis === 'v') setSwipeY(dy);
   }
 
   function handlePointerUp(e: React.PointerEvent) {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
     const axis = dragRef.current.axis;
     dragRef.current = null;
+
+    // Vertical swipe — navigate between embers
+    if (axis === 'v') {
+      if (Math.abs(dy) < SWIPE_THRESHOLD) { snapBack(); return; }
+      const dir: 1 | -1 = dy < 0 ? -1 : 1; // up = -1 (next), down = 1 (prev)
+      const targetIndex = dir < 0 ? currentIndex + 1 : currentIndex - 1;
+      if (targetIndex < 0 || targetIndex >= emberIds.length) { snapBack(); return; }
+      lastDirRef.current = dir;
+      lastNavAxisRef.current = 'v';
+      setSnapping(true);
+      setSwipeY(dir < 0 ? -window.innerHeight : window.innerHeight);
+      setTimeout(() => {
+        setMediaIndex(0);
+        router.replace(`/ember/${emberIds[targetIndex]}`);
+      }, SNAP_MS);
+      return;
+    }
 
     if (axis !== 'h' || Math.abs(dx) < SWIPE_THRESHOLD) { snapBack(); return; }
 
     const dir: 1 | -1 = dx < 0 ? -1 : 1;
+    lastNavAxisRef.current = 'h';
 
-    // Try navigating within the photo carousel first
+    // Horizontal swipe only cycles through the photo carousel
     const nextMediaIndex = mediaIndex + (dir < 0 ? 1 : -1);
     if (nextMediaIndex >= 0 && nextMediaIndex < allMedia.length) {
       lastDirRef.current = dir;
@@ -202,17 +233,8 @@ function EmberViewContent() {
       return;
     }
 
-    // Navigate between embers
-    const targetIndex = dir < 0 ? currentIndex + 1 : currentIndex - 1;
-    if (targetIndex < 0 || targetIndex >= emberIds.length) { snapBack(); return; }
-
-    lastDirRef.current = dir;
-    setSnapping(true);
-    setSwipeX(dir < 0 ? -window.innerWidth : window.innerWidth);
-    setTimeout(() => {
-      setMediaIndex(0);
-      router.replace(`/ember/${emberIds[targetIndex]}`);
-    }, SNAP_MS);
+    // No more photos in this direction — snap back
+    snapBack();
   }
 
   function handlePointerCancel() {
@@ -262,9 +284,9 @@ function EmberViewContent() {
                 border: '1px solid var(--border-default)',
                 background: photoLoaded ? 'transparent' : 'var(--bg-surface)',
                 aspectRatio: naturalRatio ?? '4/3',
-                transform: `translateX(${swipeX}px)`,
+                transform: `translateX(${swipeX}px) translateY(${swipeY}px)`,
                 transition: snapping ? `transform ${SNAP_MS}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : 'none',
-                touchAction: 'pan-y',
+                touchAction: 'none',
                 willChange: 'transform',
                 userSelect: 'none',
                 ...(orientation === 'portrait'
@@ -280,6 +302,13 @@ function EmberViewContent() {
                 onLoad={handleImageLoad}
                 draggable={false}
               />
+              {/* Multi-photo badge */}
+              {allMedia.length > 1 ? (
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: 'rgba(0,0,0,0.45)', pointerEvents: 'none' }}>
+                  <Images size={16} className="text-white" strokeWidth={1.8} />
+                  <span className="text-white text-sm font-medium leading-none">{allMedia.length}</span>
+                </div>
+              ) : null}
               {/* Photo dots indicator */}
               {allMedia.length > 1 ? (
                 <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5" style={{ pointerEvents: 'none' }}>

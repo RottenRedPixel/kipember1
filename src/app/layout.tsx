@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Ubuntu } from 'next/font/google';
 import './globals.css';
+import { ToastProvider } from '@/lib/toast';
 
 const ubuntu = Ubuntu({
   weight: ['300', '400', '500', '700'],
@@ -36,7 +37,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="h-full w-full" style={{ background: '#171515' }}>{children}</body>
+      <body className="h-full w-full" style={{ background: '#171515' }}><ToastProvider>{children}</ToastProvider></body>
     </html>
   );
 }

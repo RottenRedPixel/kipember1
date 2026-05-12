@@ -9,6 +9,7 @@ import EmberCallCard, { type EmberCallBlock } from '@/components/kipember/EmberC
 import EmberChatMessages, { type EmberChatMessage } from '@/components/kipember/EmberChatMessages';
 import { EmberMark } from '@/components/kipember/EmberModalShell';
 import type { EmberModalSurface } from '@/components/kipember/EmberModalShell';
+import { useToast } from '@/lib/toast';
 
 const SNAP_MS = 320;
 const SWIPE_THRESHOLD = 40;
@@ -55,19 +56,42 @@ export default function EmberSheet({
   const [callBlocks, setCallBlocks] = useState<EmberCallBlock[]>([]);
   const [manualAnalyser, setManualAnalyser] = useState<AnalyserNode | null>(null);
 
-  const [error, setError] = useState('');
-  const [status, setStatus] = useState('');
   const [chatFocused, setChatFocused] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dragRef = useRef<{ startY: number } | null>(null);
   const loadedRef = useRef(false);
 
   const voice = useVoiceRecording(emberId ?? '');
+  const { toast } = useToast();
 
   // Scroll to latest message
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Scroll to bottom on surface switch and on open
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = contentRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [surface, isOpen]);
+
+  // Voice state toasts
+  const prevRecording = useRef(false);
+  const prevVoiceUploading = useRef(false);
+  useEffect(() => {
+    if (voice.isRecording && !prevRecording.current) toast('Recording — tap stop when done.', { duration: 8000 });
+    prevRecording.current = voice.isRecording;
+  }, [voice.isRecording]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (voice.isUploading && !prevVoiceUploading.current) toast('Saving voice message…');
+    prevVoiceUploading.current = voice.isUploading;
+  }, [voice.isUploading]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (voice.error) toast(voice.error, { type: 'error' });
+  }, [voice.error]); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   // Load chat history + call data once when sheet opens with a valid ember
   useEffect(() => {
@@ -121,8 +145,6 @@ export default function EmberSheet({
       loadedRef.current = false;
       setMessages([]);
       setInput('');
-      setError('');
-      setStatus('');
       setIsLoadingHistory(false);
       setIsLoadingWelcome(false);
     }
@@ -131,7 +153,7 @@ export default function EmberSheet({
   const sendChat = useCallback(async () => {
     const trimmed = input.trim();
     if (!trimmed || isSending || !emberId) return;
-    setError(''); setStatus(''); setInput('');
+    setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: trimmed, createdAt: new Date().toISOString() }]);
     setIsSending(true);
     try {
@@ -143,43 +165,46 @@ export default function EmberSheet({
       const d = await r.json();
       const reply = d?.reply ?? d?.response;
       if (reply) setMessages((prev) => [...prev, { role: 'assistant', content: reply, createdAt: new Date().toISOString() }]);
-    } catch { setError('Something went wrong.'); }
+    } catch { toast('Something went wrong.', { type: 'error' }); }
     finally { setIsSending(false); }
-  }, [input, isSending, emberId]);
+  }, [input, isSending, emberId, toast]);
 
   const uploadPhoto = useCallback(async (file: File) => {
     if (!emberId || isUploading) return;
-    setIsUploading(true); setError(''); setStatus('');
+    setIsUploading(true);
+    toast('Adding to this memory…', { duration: 8000 });
     const isVideo = file.type.startsWith('video/');
     const previewUrl = URL.createObjectURL(file);
     setMessages((prev) => [...prev, { role: 'user', content: isVideo ? 'Video' : 'Photo', imageUrl: previewUrl }]);
     try {
       const form = new FormData();
       form.append('file', file);
-      form.append('emberId', emberId);
       const r = await fetch(`/api/embers/${encodeURIComponent(emberId)}/attachments`, { method: 'POST', body: form });
-      const { filename } = await r.json();
+      const payload = await r.json().catch(() => null);
+      if (!r.ok) throw new Error(payload?.error ?? 'Failed to add content.');
+      const imageFilename: string | null = payload?.attachment?.filename ?? null;
+      if (!imageFilename) throw new Error('Upload succeeded but no filename returned.');
       const chat = await fetch('/api/chat', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emberId, filename }),
+        body: JSON.stringify({ emberId, imageFilename }),
       });
       const chatData = await chat.json().catch(() => null);
       setMessages((prev) => [
-        ...prev.map((m) => m.imageUrl === previewUrl ? { ...m, imageUrl: undefined, imageFilename: filename } : m),
+        ...prev.map((m) => m.imageUrl === previewUrl ? { ...m, imageUrl: undefined, imageFilename } : m),
         ...((chatData?.reply ?? chatData?.response) ? [{ role: 'assistant' as const, content: chatData.reply ?? chatData.response }] : []),
       ]);
-    } catch { setError('Failed to add content.'); }
+    } catch (err) { toast(err instanceof Error ? err.message : 'Failed to add content.', { type: 'error' }); }
     finally { URL.revokeObjectURL(previewUrl); setIsUploading(false); }
-  }, [emberId, isUploading]);
+  }, [emberId, isUploading, toast]);
 
   const triggerCall = useCallback(async () => {
     if (!emberId || isCalling) return;
     setIsCalling(true);
     try { await fetch(`/api/embers/${encodeURIComponent(emberId)}/self-invite`, { method: 'POST' }); }
-    catch { setError('Something went wrong.'); }
+    catch { toast('Something went wrong.', { type: 'error' }); }
     finally { setIsCalling(false); }
-  }, [emberId, isCalling]);
+  }, [emberId, isCalling, toast]);
 
   function formatPhone(raw: string) {
     const d = raw.replace(/\D/g, '');
@@ -227,18 +252,7 @@ export default function EmberSheet({
     }
     if (surface === 'sms') {
       return (
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void sendChat(); } }}
-          placeholder="Text with ember..."
-          className="flex-1 bg-transparent text-sm text-white outline-none min-w-0"
-          style={{ caretColor: 'var(--bubble-sms-accent)' }}
-          disabled={isSending}
-          onFocus={() => setChatFocused(true)}
-          onBlur={() => setChatFocused(false)}
-        />
+        <><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Ember will SMS:</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
       );
     }
     // chats
@@ -291,8 +305,7 @@ export default function EmberSheet({
       return (
         <button
           type="button"
-          onClick={() => void sendChat()}
-          disabled={isSending}
+          disabled
           className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
           style={{ background: 'var(--bubble-sms-accent)' }}
           aria-label="Send SMS"
@@ -341,7 +354,7 @@ export default function EmberSheet({
       {/* Header */}
       <div className="relative flex items-center px-4 pb-2 flex-shrink-0" style={{ paddingTop: expanded ? 16 : 8 }}>
         <div className="flex items-center gap-1 flex-shrink-0">
-          <EmberMark size={20} />
+          <span className="max-[360px]:hidden"><EmberMark size={20} /></span>
           <span className="font-semibold text-base" style={{ color: 'var(--bubble-chat-accent)' }}>ember</span>
         </div>
         {/* Tabs — absolutely centered so left/right content widths don't affect position */}
@@ -357,8 +370,8 @@ export default function EmberSheet({
                 color: surface === s ? '#ffffff' : 'rgba(255,255,255,0.35)',
               }}
             >
-              <span className="max-[340px]:hidden">{label}</span>
-              <span className="hidden max-[340px]:block"><Icon size={13} strokeWidth={1.8} /></span>
+              <span className="max-[360px]:hidden">{label}</span>
+              <span className="hidden max-[360px]:block"><Icon size={13} strokeWidth={1.8} /></span>
             </button>
           ))}
         </div>
@@ -376,7 +389,7 @@ export default function EmberSheet({
       </div>
 
       {/* Content area */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-1 pb-2 no-scrollbar">
+      <div ref={contentRef} className="flex-1 min-h-0 overflow-y-auto px-4 pt-1 pb-2 no-scrollbar">
         {surface === 'voice' ? (
           <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} selfLabel={selfLabel} onPlaybackChange={setManualAnalyser} />
         ) : surface === 'calls' ? (
@@ -397,7 +410,7 @@ export default function EmberSheet({
       </div>
 
       {/* Normalized toolbar — same position for all 3 modes */}
-      <div className="px-4 flex-shrink-0">
+      <div className="px-4 pb-4 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div
             className="flex h-11 flex-1 items-center rounded-full px-4 gap-2"
@@ -408,7 +421,6 @@ export default function EmberSheet({
               border: `1px solid ${surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 45%, transparent)'
                 : surface === 'calls' && isCalling ? 'color-mix(in srgb, var(--bubble-call-accent) 45%, transparent)'
                 : surface === 'chats' && chatFocused ? 'color-mix(in srgb, var(--bubble-chat-accent) 24%, transparent)'
-                : surface === 'sms' && chatFocused ? 'color-mix(in srgb, var(--bubble-sms-accent) 24%, transparent)'
                 : 'transparent'}`,
             }}
           >
@@ -429,17 +441,6 @@ export default function EmberSheet({
           {ActionButton()}
         </div>
 
-        {/* Status line */}
-        {error || status || voice.isRecording || voice.isUploading || voice.error || isUploading ? (
-          <p className="text-xs px-1 pt-1.5" style={{ color: error || voice.error ? 'rgba(255,180,180,0.92)' : 'rgba(255,255,255,0.45)' }}>
-            {error || voice.error || status || (voice.isRecording ? 'Recording — tap stop when done.' : voice.isUploading ? 'Saving voice message…' : isUploading ? 'Adding to this memory...' : '')}
-          </p>
-        ) : null}
-      </div>
-
-      {/* Toast / error area — reserved space */}
-      <div className="px-4 py-3 flex-shrink-0 text-center">
-        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>temporary text</p>
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden"

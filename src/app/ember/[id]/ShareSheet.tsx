@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Copy, Link2, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { useToast } from '@/lib/toast';
 
-const SHEET_H = '25vh';
 const SNAP_MS = 320;
 
 function FacebookIcon() {
@@ -17,7 +17,7 @@ function FacebookIcon() {
 export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boolean; onClose: () => void; emberId: string | null }) {
   const [showing, setShowing] = useState(isOpen);
   const [shareToken, setShareToken] = useState<string | null>(null);
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied'>('idle');
+  const { toast } = useToast();
 
   useEffect(() => { if (isOpen) setShowing(true); else setShowing(false); }, [isOpen]);
 
@@ -35,9 +35,8 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
   const copyLink = useCallback(async () => {
     if (!shareUrl) return;
     try { await navigator.clipboard.writeText(shareUrl); } catch { /* ignore */ }
-    setCopyStatus('copied');
-    setTimeout(() => setCopyStatus('idle'), 2000);
-  }, [shareUrl]);
+    toast('Link copied!', { type: 'success' });
+  }, [shareUrl, toast]);
 
   function handleClose() {
     setShowing(false);
@@ -51,7 +50,7 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
     <div
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
       style={{
-        height: SHEET_H,
+        height: '20vh',
         background: '#111113',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
@@ -67,14 +66,12 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
       </div>
 
-      <div className="flex-1 flex items-end justify-around px-4 pb-2">
+      <div className="flex-1 flex items-center justify-around px-4">
         <button type="button" className={btnClass} onClick={copyLink}>
           <div className="w-10 h-10 flex items-center justify-center">
-            <Link2 size={22} color={copyStatus === 'copied' ? '#4ade80' : 'white'} strokeWidth={1.6} />
+            <Link2 size={22} color="white" strokeWidth={1.6} />
           </div>
-          <span className="text-xs" style={{ color: copyStatus === 'copied' ? '#4ade80' : 'rgba(255,255,255,0.6)' }}>
-            {copyStatus === 'copied' ? 'Copied!' : 'Copy Link'}
-          </span>
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>Copy Link</span>
         </button>
 
         <button type="button" className={btnClass} onClick={() => shareUrl ? window.location.assign(`sms:?&body=${encodeURIComponent(shareUrl)}`) : undefined}>
@@ -100,7 +97,7 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
       </div>
 
       {/* URL capsule */}
-      <div className="px-4 flex-shrink-0">
+      <div className="px-4 pb-4 flex-shrink-0">
         <div className="flex h-11 items-center gap-2 rounded-full px-4" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid transparent' }}>
           <span className="flex-1 text-xs truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>
             {shareUrl ?? 'Generating link…'}
@@ -109,11 +106,6 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
             <Copy size={14} color="white" strokeWidth={1.8} />
           </button>
         </div>
-      </div>
-
-      {/* Toast / error area — reserved space */}
-      <div className="px-4 py-3 flex-shrink-0 text-center">
-        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>temporary text</p>
       </div>
     </div>
   );
