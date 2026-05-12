@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/db';
-import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
+import { ensureEmberSession, emberSessionParticipantWhere } from '@/lib/ember-sessions';
+import { generateEmberChatReply } from '@/lib/ember-chat-reply';
+import { reconcileEmberMessageSafely } from '@/lib/memory-reconciliation';
+import { PROMPT_REMOVED_MESSAGE, isPromptRemovedError } from '@/lib/control-plane';
 
+const GUEST_BROWSER_COOKIE = 'kb-guest-browser';
+const GUEST_BROWSER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function withGuestCookie(response: NextResponse, guestBrowserId: string | null, isNew: boolean) {
+  if (guestBrowserId && isNew) {
+    response.cookies.set(GUEST_BROWSER_COOKIE, guestBrowserId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: GUEST_BROWSER_COOKIE_MAX_AGE,
+      path: '/',
+    });
+  }
+  return response;
+}
+
+// GET — return ember data for the public share screen
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
@@ -10,164 +31,155 @@ export async function GET(
     void request;
     const { token } = await params;
 
-    const tokenInclude = {
-      user: true,
-      emberSession: {
-        include: {
-          messages: {
-            orderBy: { createdAt: 'asc' as const },
-          },
-        },
+    const ember = await prisma.ember.findUnique({
+      where: { shareToken: token },
+      include: {
+        analysis: { select: { status: true, summary: true, visualDescription: true, mood: true, errorMessage: true } },
+        wiki: { select: { id: true, content: true, version: true, updatedAt: true } },
       },
-      voiceCalls: {
-        orderBy: { createdAt: 'desc' as const },
-        take: 1,
-        select: {
-          id: true,
-          status: true,
-          startedAt: true,
-          endedAt: true,
-          createdAt: true,
-          updatedAt: true,
-          analyzedAt: true,
-          callSummary: true,
-          memorySyncedAt: true,
-        },
-      },
-      ember: {
-        include: {
-          analysis: {
-            select: {
-              status: true,
-              summary: true,
-              visualDescription: true,
-              mood: true,
-              errorMessage: true,
-            },
-          },
-          wiki: {
-            select: {
-              id: true,
-              content: true,
-              version: true,
-              updatedAt: true,
-            },
-          },
-        },
-      },
-    };
-
-    const emberContributor = await prisma.emberContributor.findUnique({
-      where: { token },
-      include: tokenInclude,
     });
 
-    if (!emberContributor) {
-      return NextResponse.json(
-        { error: 'Guest memory not found' },
-        { status: 404, headers: { 'Cache-Control': 'no-store' } }
-      );
+    if (!ember) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    if (emberContributor.ember.keepPrivate) {
-      return NextResponse.json(
-        { error: 'This ember is private.' },
-        { status: 403, headers: { 'Cache-Control': 'no-store' } }
-      );
+    if (ember.keepPrivate) {
+      return NextResponse.json({ error: 'This ember is private.' }, { status: 403, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    // Log a guest view for the owner's home-activity counter. Fire-and-forget.
-    prisma.guestView
-      .create({ data: { emberContributorId: emberContributor.id } })
-      .catch((err) => {
-        console.error('Failed to log guest view:', err);
-      });
-
-    const latestVoiceCall = emberContributor.voiceCalls[0] ?? null;
-    if (shouldRefreshVoiceCallStatus(latestVoiceCall)) {
-      try {
-        await refreshVoiceCallFromProvider(latestVoiceCall.id);
-      } catch (refreshError) {
-        console.error('Failed to refresh guest voice call from provider:', refreshError);
-      }
-    }
-
-    const refreshedContributor = await prisma.emberContributor.findUnique({
-      where: { token },
-      include: tokenInclude,
+    const attachments = await prisma.emberAttachment.findMany({
+      where: { emberId: ember.id },
+      select: { id: true, filename: true, mediaType: true, posterFilename: true },
+      orderBy: { createdAt: 'asc' },
     });
 
-    if (!refreshedContributor) {
-      return NextResponse.json(
-        { error: 'Guest memory not found' },
-        {
-          status: 404,
-          headers: {
-            'Cache-Control': 'no-store',
-          },
-        }
-      );
-    }
+    const snapshotScript = await prisma.snapshot
+      .findUnique({ where: { emberId: ember.id }, select: { script: true } })
+      .then((s) => s?.script ?? null)
+      .catch(() => null);
 
     return NextResponse.json(
       {
         guestFlow: true,
-        contributor: {
-          id: refreshedContributor.id,
-          name: [refreshedContributor.user.firstName, refreshedContributor.user.lastName].filter(Boolean).join(' ') || null,
-          firstName: refreshedContributor.user.firstName,
-          phoneNumber: refreshedContributor.user.phoneNumber,
-          hasPassword: !!refreshedContributor.user.passwordHash,
-        },
+        contributor: null,
         ember: {
-          id: refreshedContributor.ember.id,
-          filename: refreshedContributor.ember.filename,
-          mediaType: refreshedContributor.ember.mediaType,
-          posterFilename: refreshedContributor.ember.posterFilename,
-          durationSeconds: refreshedContributor.ember.durationSeconds,
-          originalName: refreshedContributor.ember.originalName,
-          title: refreshedContributor.ember.title,
-          description: refreshedContributor.ember.description,
-          createdAt: refreshedContributor.ember.createdAt,
+          id: ember.id,
+          filename: ember.filename,
+          mediaType: ember.mediaType,
+          posterFilename: ember.posterFilename,
+          durationSeconds: ember.durationSeconds,
+          originalName: ember.originalName,
+          title: ember.title,
+          description: ember.description,
+          createdAt: ember.createdAt,
         },
-        analysis: refreshedContributor.ember.analysis,
-        conversation: refreshedContributor.emberSession
-          ? {
-              status: refreshedContributor.emberSession.status,
-              currentStep: refreshedContributor.emberSession.currentStep,
-              messages: refreshedContributor.emberSession.messages,
-            }
-          : null,
-        latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
-        wiki: refreshedContributor.ember.wiki,
-        attachments: await prisma.emberAttachment
-          .findMany({
-            where: { emberId: refreshedContributor.ember.id },
-            select: { id: true, filename: true, mediaType: true, posterFilename: true },
-            orderBy: { createdAt: 'asc' },
-          })
-          .catch(() => []),
-        snapshotScript: await prisma.snapshot
-          .findUnique({ where: { emberId: refreshedContributor.ember.id }, select: { script: true } })
-          .then((sc) => sc?.script ?? null)
-          .catch(() => null),
+        analysis: ember.analysis,
+        conversation: null,
+        latestVoiceCall: null,
+        wiki: ember.wiki,
+        attachments,
+        snapshotScript,
       },
-      {
-        headers: {
-          'Cache-Control': 'no-store',
-        },
-      }
+      { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (error) {
-    console.error('Error loading guest memory:', error);
-    return NextResponse.json(
-      { error: 'Failed to load guest memory' },
-      {
-        status: 500,
-        headers: {
-          'Cache-Control': 'no-store',
-        },
+    console.error('Error loading shared memory:', error);
+    return NextResponse.json({ error: 'Failed to load' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
+  }
+}
+
+// POST — handle anonymous chat on a public share link
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  try {
+    const { token } = await params;
+    const { message } = await request.json();
+
+    if (!message) {
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    }
+
+    const ember = await prisma.ember.findUnique({
+      where: { shareToken: token },
+      select: { id: true },
+    });
+
+    if (!ember) {
+      return NextResponse.json({ error: 'Invalid link' }, { status: 404 });
+    }
+
+    const existingBrowserId = request.cookies.get(GUEST_BROWSER_COOKIE)?.value;
+    const guestBrowserId = existingBrowserId || randomUUID();
+    const isNewCookie = !existingBrowserId;
+
+    const sessionIdentity = {
+      emberId: ember.id,
+      sessionType: 'chat' as const,
+      participantType: 'guest' as const,
+      participantId: guestBrowserId,
+    };
+
+    let session = await prisma.emberSession.findUnique({
+      where: emberSessionParticipantWhere(sessionIdentity),
+    });
+
+    const isStart = message === '__START__';
+
+    if (!session) {
+      session = await ensureEmberSession({
+        ...sessionIdentity,
+        emberContributorId: null,
+        browserId: guestBrowserId,
+        status: 'active',
+      });
+
+      const welcome = await generateEmberChatReply({
+        emberId: ember.id,
+        sessionId: session.id,
+        role: 'guest',
+        trigger: 'welcome_first_open',
+      });
+      await prisma.emberMessage.create({
+        data: { sessionId: session.id, role: 'assistant', content: welcome, source: 'web' },
+      });
+
+      if (isStart) {
+        return withGuestCookie(NextResponse.json({ response: welcome }), guestBrowserId, isNewCookie);
       }
-    );
+    } else if (isStart) {
+      const welcome = await generateEmberChatReply({
+        emberId: ember.id,
+        sessionId: session.id,
+        role: 'guest',
+        trigger: 'welcome_returning',
+      });
+      await prisma.emberMessage.create({
+        data: { sessionId: session.id, role: 'assistant', content: welcome, source: 'web' },
+      });
+      return withGuestCookie(NextResponse.json({ response: welcome }), guestBrowserId, isNewCookie);
+    }
+
+    const userMessage = await prisma.emberMessage.create({
+      data: { sessionId: session.id, role: 'user', content: message, source: 'web' },
+    });
+
+    const [reply] = await Promise.all([
+      generateEmberChatReply({ emberId: ember.id, sessionId: session.id, role: 'guest', trigger: 'message' }),
+      reconcileEmberMessageSafely(userMessage.id, 'share housekeeping'),
+    ]);
+
+    await prisma.emberMessage.create({
+      data: { sessionId: session.id, role: 'assistant', content: reply, source: 'web' },
+    });
+
+    return withGuestCookie(NextResponse.json({ response: reply }), guestBrowserId, isNewCookie);
+  } catch (error) {
+    console.error('Share chat error:', error);
+    if (isPromptRemovedError(error)) {
+      return NextResponse.json({ error: PROMPT_REMOVED_MESSAGE }, { status: 500 });
+    }
+    return NextResponse.json({ error: 'Failed to process message' }, { status: 500 });
   }
 }

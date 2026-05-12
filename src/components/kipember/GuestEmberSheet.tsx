@@ -1,13 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronUp, SendHorizontal, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageCirclePlus, SendHorizontal, X } from 'lucide-react';
 import EmberChatMessages, { type EmberChatMessage } from '@/components/kipember/EmberChatMessages';
 import { EmberMark } from '@/components/kipember/EmberModalShell';
 import { useToast } from '@/lib/toast';
 
 const SNAP_MS = 320;
-const SWIPE_THRESHOLD = 40;
 
 export type GuestEmberApi = {
   sendChat: (text: string) => Promise<string | null>;
@@ -35,7 +34,6 @@ export default function GuestEmberSheet({
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<{ startY: number } | null>(null);
   const loadedRef = useRef(false);
 
   const { toast } = useToast();
@@ -105,20 +103,6 @@ export default function GuestEmberSheet({
 
   function handleClose() { setShowing(false); setExpanded(false); setTimeout(onClose, SNAP_MS); }
 
-  function handlePullPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    dragRef.current = { startY: e.clientY };
-  }
-
-  function handlePullPointerUp(e: React.PointerEvent) {
-    if (!dragRef.current) return;
-    const dy = e.clientY - dragRef.current.startY;
-    dragRef.current = null;
-    if (Math.abs(dy) < 10) { if (expanded) setExpanded(false); else handleClose(); }
-    else if (!expanded && dy < -SWIPE_THRESHOLD) { setExpanded(true); }
-    else if (dy > SWIPE_THRESHOLD) { if (expanded) setExpanded(false); else handleClose(); }
-  }
-
   function PillContent() {
     return (
       <input
@@ -148,34 +132,19 @@ export default function GuestEmberSheet({
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1), height ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
-      {/* Pull bar — collapsed only */}
-      {!expanded && (
-        <div
-          className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-pointer"
-          onPointerDown={handlePullPointerDown}
-          onPointerUp={handlePullPointerUp}
-        >
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
-        </div>
-      )}
-
       {/* Header */}
-      <div className="relative flex items-center px-4 pb-2 flex-shrink-0" style={{ paddingTop: expanded ? 16 : 8 }}>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="font-semibold text-base" style={{ color: 'var(--bubble-chat-accent)' }}>ember</span>
-        </div>
-
-
-        <div className="ml-auto flex-shrink-0">
-          {expanded ? (
-            <button type="button" onClick={handleClose} className="cursor-pointer">
-              <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-            </button>
-          ) : (
-            <button type="button" onClick={() => setExpanded(true)} className="w-9 h-9 flex items-center justify-center cursor-pointer">
-              <ChevronUp size={18} color="rgba(255,255,255,0.35)" strokeWidth={1.8} />
-            </button>
-          )}
+      <div className="flex items-center px-4 pt-4 pb-3 gap-2 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
+        <MessageCirclePlus size={18} color="white" strokeWidth={1.8} className="flex-shrink-0" />
+        <span className="font-semibold text-base flex-shrink-0 text-white">ember</span>
+        <div className="ml-auto flex items-center gap-5 flex-shrink-0">
+          <button type="button" onClick={() => setExpanded((v) => !v)} className="cursor-pointer">
+            {expanded
+              ? <ChevronDown size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+              : <ChevronUp size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />}
+          </button>
+          <button type="button" onClick={handleClose} className="cursor-pointer">
+            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+          </button>
         </div>
       </div>
 
@@ -188,20 +157,20 @@ export default function GuestEmberSheet({
       <div className="px-4 pb-4 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div
-            className="flex h-11 flex-1 items-center rounded-full px-4 gap-2"
+            className="flex h-12 flex-1 items-center rounded-full px-4 gap-2"
             style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: `1px solid ${chatFocused ? 'color-mix(in srgb, var(--bubble-chat-accent) 24%, transparent)' : 'transparent'}`,
+              background: 'var(--bg-input)',
+              border: `1px solid ${chatFocused ? 'color-mix(in srgb, var(--bubble-chat-accent) 24%, transparent)' : 'var(--border-input)'}`,
             }}
           >
-            <EmberMark size={18} />
+            <span style={{ marginLeft: -5 }}><EmberMark size={20} /></span>
             {PillContent()}
           </div>
           <button
             type="button"
             onClick={() => void sendChat()}
             disabled={isSending}
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
+            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
             style={{ background: 'var(--bubble-chat-accent)' }}
             aria-label="Send"
           >

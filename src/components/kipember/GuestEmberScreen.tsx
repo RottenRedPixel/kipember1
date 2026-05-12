@@ -7,6 +7,7 @@ import GuestEmberSheet from '@/components/kipember/GuestEmberSheet';
 import HelloSheet from '@/app/ember/[id]/HelloSheet';
 import ShareSheet from '@/app/ember/[id]/ShareSheet';
 import StoriesSheet from '@/app/ember/[id]/StoriesSheet';
+import EmberTitleBlock from '@/app/ember/[id]/EmberTitleBlock';
 import { getPreviewMediaUrl } from '@/lib/media';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -250,19 +251,7 @@ export default function GuestEmberScreen({
       </div>
 
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        {/* Title + date */}
-        {(data.ember.title || data.ember.createdAt) ? (
-          <div className="px-[10px] pt-2 pb-1 flex-shrink-0">
-            {data.ember.title ? (
-              <p className="font-semibold" style={{ fontSize: 15, color: '#fff' }}>{data.ember.title}</p>
-            ) : null}
-            {data.ember.createdAt ? (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-                {new Date(data.ember.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
+        <EmberTitleBlock title={data.ember.title} createdAt={data.ember.createdAt} />
 
         {/* Photo card */}
         <div className={`flex-1 min-h-0 px-[10px] pb-3 flex ${orientation === 'portrait' ? 'items-start' : 'items-center'} justify-center overflow-hidden`}>
