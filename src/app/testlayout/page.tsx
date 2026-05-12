@@ -9,6 +9,7 @@ import EmberSheet from './EmberSheet';
 import HelloSheet from './HelloSheet';
 import ShareSheet from './ShareSheet';
 import StoriesSheet from './StoriesSheet';
+import Stories2Sheet from './Stories2Sheet';
 import TendSheet from './TendSheet';
 
 type EmberSummary = {
@@ -33,6 +34,7 @@ const railItems = [
   { label: 'hello', icon: Hand },
   { label: 'ember', icon: MessageCirclePlus },
   { label: 'stories', icon: Flame },
+  { label: 'stories2', icon: Flame },
   { label: 'tend', icon: Leaf },
   { label: 'share', icon: Share },
 ] as const;
@@ -229,7 +231,7 @@ function TestLayoutContent() {
         <div
           style={{
             flexShrink: 0,
-            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '25vh' : activeRail === 'stories' ? '30vh' : RAIL_H,
+            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '25vh' : activeRail === 'stories' || activeRail === 'stories2' ? '30vh' : RAIL_H,
             transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
@@ -238,11 +240,12 @@ function TestLayoutContent() {
       <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} emberId={id} />
       <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} emberId={id} accessType={ember?.accessType ?? null} />
       <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
+      <Stories2Sheet isOpen={activeRail === 'stories2'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
       <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} emberId={id} />
       <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} emberId={id} />
 
       {/* Rail */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113', transform: activeRail === 'stories' || activeRail === 'hello' || activeRail === 'share' || emberOpen ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113', transform: activeRail === 'stories' || activeRail === 'stories2' || activeRail === 'hello' || activeRail === 'share' || emberOpen ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
         {railItems.map(({ label, icon: Icon }) => {
           const isActive = label === 'ember' ? emberOpen : activeRail === label;
           const isDimmed = panelOpen ? !isActive : false;

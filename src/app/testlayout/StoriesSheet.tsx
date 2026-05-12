@@ -210,19 +210,26 @@ export default function StoriesSheet({
     setTimeout(onClose, SNAP_MS);
   }
 
+  const pullDragRef = useRef<number | null>(null);
+
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
       style={{
         height: SHEET_H,
-        background: '#111113',
+        background: '#bfdbfe',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
       {/* Pull bar */}
-      <div className="flex justify-center pt-3 pb-2 flex-shrink-0" onClick={handleClose} style={{ cursor: 'pointer' }}>
+      <div
+        className="flex justify-center pt-3 pb-2 flex-shrink-0"
+        style={{ cursor: 'pointer' }}
+        onPointerDown={(e) => { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); pullDragRef.current = e.clientY; }}
+        onPointerUp={(e) => { if (pullDragRef.current === null) return; const dy = e.clientY - pullDragRef.current; pullDragRef.current = null; if (dy < 10) handleClose(); else if (dy > 40) handleClose(); }}
+      >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
       </div>
 

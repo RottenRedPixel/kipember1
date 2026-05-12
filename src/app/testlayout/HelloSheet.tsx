@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Hand } from 'lucide-react';
 
 const SNAP_MS = 320;
@@ -55,6 +55,7 @@ export default function HelloSheet({
   }
 
   const isContributor = accessType === 'contributor';
+  const dragRef = useRef<number | null>(null);
 
   return (
     <div
@@ -67,7 +68,12 @@ export default function HelloSheet({
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
-      <div className="flex justify-center pt-3 pb-1 flex-shrink-0" onClick={handleClose} style={{ cursor: 'pointer' }}>
+      <div
+        className="flex justify-center pt-3 pb-1 flex-shrink-0"
+        style={{ cursor: 'pointer' }}
+        onPointerDown={(e) => { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); dragRef.current = e.clientY; }}
+        onPointerUp={(e) => { if (dragRef.current === null) return; const dy = e.clientY - dragRef.current; dragRef.current = null; if (dy < 10) handleClose(); else if (dy > 40) handleClose(); }}
+      >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
       </div>
 

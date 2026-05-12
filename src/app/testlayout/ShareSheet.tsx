@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Copy, Link2, MessageCircle, MoreHorizontal } from 'lucide-react';
 
 const SHEET_H = '25vh';
@@ -44,6 +44,7 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
     setTimeout(onClose, SNAP_MS);
   }
 
+  const dragRef = useRef<number | null>(null);
   const btnClass = 'flex flex-col items-center gap-1 p-2 rounded-xl cursor-pointer';
 
   return (
@@ -57,7 +58,12 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
-      <div className="flex justify-center pt-3 pb-1 flex-shrink-0" onClick={handleClose} style={{ cursor: 'pointer' }}>
+      <div
+        className="flex justify-center pt-3 pb-1 flex-shrink-0"
+        style={{ cursor: 'pointer' }}
+        onPointerDown={(e) => { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); dragRef.current = e.clientY; }}
+        onPointerUp={(e) => { if (dragRef.current === null) return; const dy = e.clientY - dragRef.current; dragRef.current = null; if (dy < 10) handleClose(); else if (dy > 40) handleClose(); }}
+      >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
       </div>
 

@@ -199,6 +199,7 @@ export default function EmberSheet({
     dragRef.current = null;
     if (Math.abs(dy) < 10) { if (expanded) setExpanded(false); else handleClose(); }
     else if (!expanded && dy < -SWIPE_THRESHOLD) { setExpanded(true); }
+    else if (dy > SWIPE_THRESHOLD) { handleClose(); }
     else if (expanded && dy > SWIPE_THRESHOLD) { setExpanded(false); }
   }
 
