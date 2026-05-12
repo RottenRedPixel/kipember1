@@ -262,7 +262,7 @@ export default function EmberCallCard({
                 {isUser ? firstName : 'ember'}
               </span>
               <div
-                className={`inline-block max-w-[85%] rounded-2xl px-3 py-2 text-xs leading-relaxed text-white/80 ${
+                className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${
                   isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
                 }`}
                 style={{
@@ -272,7 +272,7 @@ export default function EmberCallCard({
                     : '1px solid var(--border-ember)',
                 }}
               >
-                {segment.content}
+                <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">{segment.content}</p>
                 {canPlay ? (
                   <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10">
                     <button
@@ -282,7 +282,7 @@ export default function EmberCallCard({
                       }
                       className="flex h-5 w-5 items-center justify-center rounded-full flex-shrink-0"
                       style={{
-                        background: 'rgba(37,99,235,0.85)',
+                        background: 'var(--bubble-call-accent)',
                         border: 'none',
                         cursor: 'pointer',
                       }}
