@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Flame, Hand, Images, Leaf, MessageCirclePlus, Share } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
@@ -48,6 +48,19 @@ function EmberViewContent() {
   const { id: routeId } = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const modal = searchParams.get('m');
+
+  const accountOpenHref = useMemo(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set('m', 'account');
+    return `/ember/${routeId}?${next.toString()}`;
+  }, [searchParams, routeId]);
+
+  const accountCloseHref = useMemo(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete('m');
+    const query = next.toString();
+    return query ? `/ember/${routeId}?${query}` : `/ember/${routeId}`;
+  }, [searchParams, routeId]);
   const [id, setId] = useState(routeId);
   // Seed from the preview cache written by the list view on tap.
   // This gives us filename immediately so the image starts loading before
@@ -236,6 +249,9 @@ function EmberViewContent() {
 
   return (
     <>
+      <div style={{ '--border-subtle': 'transparent' } as React.CSSProperties}>
+        <AppHeader userModalHref={accountOpenHref} />
+      </div>
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
         {(ember?.title || ember?.createdAt) ? (
           <div className="px-[10px] pt-2 pb-1 flex-shrink-0">
@@ -319,6 +335,8 @@ function EmberViewContent() {
       <ShareSheet isOpen={activeTab === 'share'} onClose={closePanel} emberId={id} />
       <TendSheet isOpen={activeTab === 'tend'} onClose={closePanel} emberId={id} />
 
+      {modal === 'account' && <KipemberAccountOverlay closeHref={accountCloseHref} />}
+
       {/* Tab bar */}
       <div
         className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4"
@@ -354,9 +372,6 @@ function EmberViewContent() {
 export default function EmberViewClient() {
   return (
     <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
-      <div style={{ '--border-subtle': 'transparent' } as React.CSSProperties}>
-        <AppHeader />
-      </div>
       <Suspense>
         <EmberViewContent />
       </Suspense>
