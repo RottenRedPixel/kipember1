@@ -110,15 +110,15 @@ export default function AppHeader({
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-30 flex items-center px-4 gap-2"
+      className="fixed top-0 left-0 right-0 z-30 flex items-center px-[10px] gap-2"
       style={{
         height: 56,
         background: '#3b0a1a',
       }}
     >
       {/* Logo */}
-      <Link href="/" className="flex items-center flex-shrink-0">
-        <svg width={22} height={22} viewBox="0 0 72 72" fill="white">
+      <Link href="/" className="flex items-center gap-1.5 flex-shrink-0">
+        <svg width={20} height={20} viewBox="0 0 72 72" fill="white">
           <circle cx="36" cy="36" r="7.2" style={{ fill: 'var(--color-accent)' }} />
           <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
           <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
@@ -129,13 +129,14 @@ export default function AppHeader({
           <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
           <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
         </svg>
+        <span className="font-bold text-base" style={{ color: 'var(--color-accent)', position: 'relative', top: -1 }}>ember</span>
       </Link>
 
       {/* Nav links — fade in as a group so first-load is a smooth reveal,
           not a pop. On subsequent page navigations the cache means authLoading
           is already false, so they render at full opacity immediately. */}
       <div
-        className="flex items-center gap-2"
+        className="flex items-center gap-2 ml-2"
         style={{ opacity: authLoading ? 0 : 1, transition: 'opacity 0.25s ease' }}
       >
         <Link href="/about" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: pathname === '/about' ? 'var(--text-primary)' : 'var(--color-neutral)' }}>

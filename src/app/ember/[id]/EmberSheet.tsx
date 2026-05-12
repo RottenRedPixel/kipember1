@@ -395,7 +395,7 @@ export default function EmberSheet({
                 : 'transparent'}`,
             }}
           >
-            <EmberMark size={18} />
+            <span style={{ marginLeft: -5 }}><EmberMark size={20} /></span>
             {PillContent()}
             {surface === 'chats' && (
               <button
