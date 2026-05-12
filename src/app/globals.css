@@ -117,7 +117,7 @@ html,
 body {
   height: 100%;
   width: 100%;
-  background: var(--bg-body);
+  background: var(--bg-screen);
   color: var(--text-primary);
   font-family: var(--font-ubuntu), sans-serif;
   overscroll-behavior: none;

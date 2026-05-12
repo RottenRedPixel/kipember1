@@ -353,7 +353,7 @@ function EmberViewContent() {
 
 export default function EmberViewClient() {
   return (
-    <div className="fixed inset-0" style={{ background: '#000' }}>
+    <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
       <div style={{ '--border-subtle': 'transparent' } as React.CSSProperties}>
         <AppHeader />
       </div>
