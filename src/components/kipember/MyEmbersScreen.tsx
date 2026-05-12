@@ -10,6 +10,7 @@ import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay
 import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
 import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
+import { writeEmberPreview } from '@/lib/ember-preview-cache';
 
 type EmberSummary = BaseEmberSummary & {
   mediaType: EmberMediaType;
@@ -289,6 +290,7 @@ export default function MyEmbersScreen({
                     href={`/ember/${ember.id}`}
                     className="flex rounded-xl overflow-hidden can-hover-card"
                     style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-default)' }}
+                    onClick={() => writeEmberPreview({ id: ember.id, filename: ember.filename, mediaType: ember.mediaType, posterFilename: ember.posterFilename, title: ember.title, originalName: ember.originalName, createdAt: typeof ember.createdAt === 'string' ? ember.createdAt : ember.createdAt.toISOString() })}
                   >
                     {/* Photo */}
                     <div className="relative flex-shrink-0" style={{ width: 177, height: 177 }}>
@@ -362,6 +364,7 @@ export default function MyEmbersScreen({
                   href={`/ember/${ember.id}`}
                   className="aspect-square rounded-xl overflow-hidden can-hover-card relative"
                   style={{ background: 'var(--bg-screen)', border: '1px solid var(--border-default)', opacity: 0.95 }}
+                  onClick={() => writeEmberPreview({ id: ember.id, filename: ember.filename, mediaType: ember.mediaType, posterFilename: ember.posterFilename, title: ember.title, originalName: ember.originalName, createdAt: typeof ember.createdAt === 'string' ? ember.createdAt : ember.createdAt.toISOString() })}
                 >
                   <img
                     src={getPreviewMediaUrl({

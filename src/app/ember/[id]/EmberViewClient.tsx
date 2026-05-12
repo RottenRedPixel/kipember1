@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Flame, Hand, Images, Leaf, MessageCirclePlus, Share } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
+import { readEmberPreview } from '@/lib/ember-preview-cache';
 import AppHeader from '@/components/kipember/AppHeader';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import EmberSheet from './EmberSheet';
@@ -48,7 +49,13 @@ function EmberViewContent() {
   const searchParams = useSearchParams();
   const modal = searchParams.get('m');
   const [id, setId] = useState(routeId);
-  const [ember, setEmber] = useState<EmberSummary | null>(null);
+  // Seed from the preview cache written by the list view on tap.
+  // This gives us filename immediately so the image starts loading before
+  // the full /api/embers/[id] fetch resolves.
+  const cached = typeof window !== 'undefined' ? readEmberPreview(routeId) : null;
+  const [ember, setEmber] = useState<EmberSummary | null>(
+    cached ? { ...cached, snapshot: null, accessType: null } as EmberSummary : null
+  );
   const [emberIds, setEmberIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
   const [mediaIndex, setMediaIndex] = useState(0);
@@ -134,10 +141,18 @@ function EmberViewContent() {
 
   useEffect(() => {
     if (!id) return;
-    setPhotoLoaded(false);
+    // Only hide the image when we don't already have data for this id.
+    // If ember was seeded from the sessionStorage preview cache, the image
+    // may already be in the browser cache and fire onLoad before this effect
+    // runs — resetting photoLoaded here would hide it permanently since the
+    // img element won't remount and onLoad won't fire again.
+    setEmber((prev) => {
+      if (!prev || prev.id !== id) setPhotoLoaded(false);
+      return prev;
+    });
     setMediaIndex(0);
-    const cached = prefetchCacheRef.current[id];
-    if (cached) { setEmber(cached); return; }
+    const prefetched = prefetchCacheRef.current[id];
+    if (prefetched) { setEmber(prefetched); return; }
     fetch(`/api/embers/${id}`)
       .then((r) => r.json())
       .then((data: EmberSummary) => { prefetchCacheRef.current[id] = data; setEmber(data); })

@@ -164,8 +164,6 @@ export default function EmberCreateFlow({
         style={{
           width: 96,
           height: 96,
-          background: 'rgba(249,115,22,0.15)',
-          border: '1.5px solid rgba(249,115,22,0.55)',
           animation: 'kipSpin 1.5s linear infinite',
         }}
       >
