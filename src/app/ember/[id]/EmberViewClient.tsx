@@ -8,6 +8,7 @@ import { readEmberPreview } from '@/lib/ember-preview-cache';
 import AppHeader from '@/components/kipember/AppHeader';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import EmberSheet from './EmberSheet';
+import EmberTitleBlock from './EmberTitleBlock';
 import HelloSheet from './HelloSheet';
 import ShareSheet from './ShareSheet';
 import StoriesSheet from './StoriesSheet';
@@ -253,18 +254,7 @@ function EmberViewContent() {
         <AppHeader userModalHref={accountOpenHref} />
       </div>
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        {(ember?.title || ember?.createdAt) ? (
-          <div className="px-[10px] pt-2 pb-1 flex-shrink-0">
-            {ember?.title ? (
-              <p className="font-semibold" style={{ fontSize: 15, color: '#fff' }}>{ember.title}</p>
-            ) : null}
-            {ember?.createdAt ? (
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
-                {new Date(ember.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
+        <EmberTitleBlock title={ember?.title} createdAt={ember?.createdAt} />
         <div
           className={`flex-1 min-h-0 px-[10px] pb-3 flex ${orientation === 'portrait' ? 'items-start' : 'items-center'} justify-center overflow-hidden cursor-pointer`}
           onPointerDown={handlePointerDown}
