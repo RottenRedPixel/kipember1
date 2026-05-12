@@ -6,9 +6,9 @@
 }
 
 :root {
-  --bg-body: #111113;
+  --bg-body: #0d0d0f;
   --bg-screen: #111113;
-  --bg-chrome: #111113;
+  --bg-chrome: #0d0d0f;
   --bg-modal: rgba(0, 0, 0, 0.75);
   /* Opaque pre-composite of 7% white over bg-screen — keeps the same
      visual weight as the legacy translucent surface but doesn't let
