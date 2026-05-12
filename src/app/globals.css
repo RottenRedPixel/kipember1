@@ -23,7 +23,7 @@
      Circle stay solid. */
   --bg-ember-bubble: #2a2828;
   --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-default: rgba(255, 255, 255, 0.12);
+  --border-default: rgba(255, 255, 255, 0.05);
   --border-input: rgba(255, 255, 255, 0.1);
   --border-btn: rgba(255, 255, 255, 0.35);
   --border-ember: rgba(255, 255, 255, 0.1);
