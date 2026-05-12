@@ -112,7 +112,7 @@ export default function EmberSheet({
             body: JSON.stringify({ emberId, situation: 'first_open' }),
           })
             .then((r) => r.json())
-            .then((wd) => { const msg = wd?.reply ?? wd?.response; if (msg) setMessages([{ role: 'assistant', content: msg, createdAt: new Date().toISOString() }]); })
+            .then((wd) => { const msg = wd?.message ?? wd?.reply ?? wd?.response; if (msg) setMessages([{ role: 'assistant', content: msg, createdAt: new Date().toISOString() }]); })
             .catch(() => {})
             .finally(() => setIsLoadingWelcome(false));
         } else {
