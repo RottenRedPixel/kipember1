@@ -111,7 +111,7 @@ export default function EditTimePlaceSlider({
     return () => clearTimeout(t);
   }, [savedMessage]);
   const [locationSaving, setLocationSaving] = useState(false);
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [mode, setMode] = useState<'view' | 'edit'>('edit');
 
   const placeResolution = usePlaceResolution(detail as Parameters<typeof usePlaceResolution>[0]);
   const placePrefilledRef = useRef(false);
@@ -152,7 +152,6 @@ export default function EditTimePlaceSlider({
     setSavedLocationCountry(parsed.country);
     setSavedLocationLat(latStr);
     setSavedLocationLng(lngStr);
-    setMode('view');
   }, [detail]);
 
   useEffect(() => {
@@ -294,7 +293,7 @@ export default function EditTimePlaceSlider({
           readOnly={isView}
           className="w-full h-12 px-4 rounded-xl text-sm text-white outline-none"
           style={{
-            background: 'var(--bg-surface)',
+            background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
             border: '1px solid var(--border-subtle)',
             colorScheme: 'dark',
             cursor: isView ? 'default' : 'pointer',
@@ -311,7 +310,7 @@ export default function EditTimePlaceSlider({
         </div>
         <div
           className="rounded-xl px-4"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+          style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}
         >
           <input
             type="text"
@@ -359,7 +358,7 @@ export default function EditTimePlaceSlider({
         </div>
         <div
           className="rounded-xl px-4 flex items-center gap-2 min-h-[48px]"
-          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+          style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}
         >
           {locationLatitude && locationLongitude ? (
             <>
@@ -403,31 +402,20 @@ export default function EditTimePlaceSlider({
 
       {/* Actions */}
       <div className="flex gap-3">
-        {isView ? (
-          <button
-            type="button"
-            onClick={() => { setMode('edit'); setSavedMessage(''); }}
-            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium"
-            style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: 'pointer' }}
-          >
-            Edit
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => void saveAll()}
-            disabled={isSaving || !isDirty}
-            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-            style={{
-              background: isDirty ? '#f97316' : 'var(--bg-surface)',
-              border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-              minHeight: 44,
-              cursor: isDirty ? 'pointer' : 'default',
-            }}
-          >
-            {isSaving ? 'Saving...' : 'Save'}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => void saveAll()}
+          disabled={isSaving || !isDirty}
+          className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+          style={{
+            background: isDirty ? '#f97316' : 'var(--bg-surface)',
+            border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+            minHeight: 44,
+            cursor: isDirty ? 'pointer' : 'default',
+          }}
+        >
+          {isSaving ? 'Saving...' : 'Save'}
+        </button>
       </div>
       {savedMessage ? (
         <div

@@ -352,7 +352,7 @@ export default function EmberSheet({
             </button>
           ))}
         </div>
-        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+        <div className="ml-auto flex items-center gap-5 flex-shrink-0">
           <button type="button" onClick={() => setExpanded((v) => !v)} className="cursor-pointer">
             {expanded
               ? <ChevronDown size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />

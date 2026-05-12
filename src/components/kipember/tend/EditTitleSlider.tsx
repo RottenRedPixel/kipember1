@@ -24,7 +24,7 @@ function WikiCard({ children }: { children: React.ReactNode }) {
     <div
       className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
       style={{
-        background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+        background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
         border: '1px solid var(--border-subtle)',
       }}
     >
@@ -50,10 +50,7 @@ export default function EditTitleSlider({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [preferredPeopleIds, setPreferredPeopleIds] = useState<Set<string>>(new Set());
-  // The slider opens in 'view' mode showing only the title block. Clicking
-  // Edit reveals Title Ideas + People and unlocks the input. After a
-  // successful save we snap back to 'view'.
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [mode, setMode] = useState<'view' | 'edit'>('edit');
   const [savedMessage, setSavedMessage] = useState('');
   useEffect(() => {
     if (!savedMessage) return;
@@ -63,13 +60,13 @@ export default function EditTitleSlider({
 
   // Sync the input value from the loaded detail. Also default the people
   // checklist to "all selected" so the first batch of ideas already follows
-  // everyone tagged in the photo. Re-opening the slider always lands back
-  // in view mode.
+  // everyone tagged in the photo. Load cached suggestions immediately since
+  // the slider opens straight into edit mode.
   useEffect(() => {
     if (!detail) return;
     setTitleValue(detail.title || stripExtension(detail.originalName) || '');
     setPreferredPeopleIds(new Set((detail.tags || []).map((tag) => tag.id)));
-    setMode('view');
+    void loadCachedSuggestions();
   }, [detail]);
 
   // Reset transient state when the ember changes. We deliberately do NOT
@@ -164,7 +161,6 @@ export default function EditTitleSlider({
     });
     if (response.ok) {
       setSavedMessage('Title saved.');
-      setMode('view');
     } else {
       onStatus?.('Failed to save title.');
     }
@@ -199,7 +195,7 @@ export default function EditTitleSlider({
         <div
           className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
           style={{
-            background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+            background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
             border: '1px solid var(--border-subtle)',
           }}
         >
@@ -324,46 +320,29 @@ export default function EditTitleSlider({
       ) : null}
 
       <div className="flex gap-3">
-        {mode === 'view' ? (
-          <button
-            type="button"
-            onClick={() => {
-              setMode('edit');
-              setSavedMessage('');
-              void loadCachedSuggestions();
-            }}
-            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium"
-            style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: 'pointer' }}
-          >
-            Edit
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => void handleRegenIdeas()}
-              disabled={refreshing || loading}
-              className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
-              style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-            >
-              {refreshing ? 'Regenerating...' : 'Regen Ideas'}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={!isDirty}
-              className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-              style={{
-                background: isDirty ? '#f97316' : 'var(--bg-surface)',
-                border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-                minHeight: 44,
-                cursor: isDirty ? 'pointer' : 'default',
-              }}
-            >
-              Save
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={() => void handleRegenIdeas()}
+          disabled={refreshing || loading}
+          className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+          style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+        >
+          {refreshing ? 'Regenerating...' : 'Regen Ideas'}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={!isDirty}
+          className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+          style={{
+            background: isDirty ? '#f97316' : 'var(--bg-surface)',
+            border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+            minHeight: 44,
+            cursor: isDirty ? 'pointer' : 'default',
+          }}
+        >
+          Save
+        </button>
       </div>
       {savedMessage ? (
         <div

@@ -88,7 +88,7 @@ export default function TagPeopleSlider({
   coverPhotoUrl: string | null;
 }) {
   const [faceTags, setFaceTags] = useState<FaceTag[]>([]);
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [mode, setMode] = useState<'view' | 'edit'>('edit');
   const [hasChanges, setHasChanges] = useState(false);
   const [draggingTagId, setDraggingTagId] = useState<string | null>(null);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
@@ -627,7 +627,7 @@ export default function TagPeopleSlider({
                 key={tag.id}
                 className="rounded-xl"
                 style={{
-                  background: 'var(--bg-surface)',
+                  background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
                   border: '1px solid var(--border-subtle)',
                 }}
               >
@@ -772,42 +772,29 @@ export default function TagPeopleSlider({
       ) : null}
 
       <div className="flex gap-3">
-        {mode === 'view' ? (
-          <button
-            type="button"
-            onClick={() => { setMode('edit'); setHasChanges(false); setSavedMessage(''); }}
-            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium"
-            style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: 'pointer' }}
-          >
-            Edit
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => void handleAutoDetect()}
-              disabled={detectingFaces || !emberId}
-              className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary disabled:opacity-50"
-              style={{ border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: detectingFaces ? 'default' : 'pointer' }}
-            >
-              {detectingFaces ? 'Detecting…' : 'Auto Detect'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setSavedMessage('Tagged People Saved'); setTaggedComplete(true); setMode('view'); }}
-              disabled={!hasChanges}
-              className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-              style={{
-                background: hasChanges ? '#f97316' : 'var(--bg-surface)',
-                border: hasChanges ? 'none' : '1px solid var(--border-subtle)',
-                minHeight: 44,
-                cursor: hasChanges ? 'pointer' : 'default',
-              }}
-            >
-              Save
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={() => void handleAutoDetect()}
+          disabled={detectingFaces || !emberId}
+          className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary disabled:opacity-50"
+          style={{ border: '1.5px solid var(--border-btn)', minHeight: 44, cursor: detectingFaces ? 'default' : 'pointer' }}
+        >
+          {detectingFaces ? 'Detecting…' : 'Auto Detect'}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setSavedMessage('Tagged People Saved'); setTaggedComplete(true); }}
+          disabled={!hasChanges}
+          className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+          style={{
+            background: hasChanges ? '#f97316' : 'var(--bg-surface)',
+            border: hasChanges ? 'none' : '1px solid var(--border-subtle)',
+            minHeight: 44,
+            cursor: hasChanges ? 'pointer' : 'default',
+          }}
+        >
+          Save
+        </button>
       </div>
       {savedMessage ? (
         <div

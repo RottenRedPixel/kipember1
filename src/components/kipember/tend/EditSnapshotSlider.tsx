@@ -41,7 +41,7 @@ function SnapshotCard({ children }: { children: React.ReactNode }) {
     <div
       className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
       style={{
-        background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+        background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
         border: '1px solid var(--border-subtle)',
       }}
     >
@@ -100,10 +100,7 @@ export default function EditSnapshotSlider({
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState('');
   const [requiredPeopleIds, setRequiredPeopleIds] = useState<Set<string>>(new Set());
-  // Slider opens in 'view' mode showing only the snapshot block. Clicking
-  // Edit reveals Length + People and unlocks the textarea. After a
-  // successful save we snap back to 'view'.
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [mode, setMode] = useState<'view' | 'edit'>('edit');
   const [savedMessage, setSavedMessage] = useState('');
   useEffect(() => {
     if (!savedMessage) return;
@@ -132,7 +129,6 @@ export default function EditSnapshotSlider({
     // snapshot already names everyone tagged. The Title slider follows the
     // same pattern. Re-opening the slider always lands back in view mode.
     setRequiredPeopleIds(new Set((detail?.tags || []).map((tag) => tag.id)));
-    setMode('view');
   }, [detail]);
 
   // Auto-resize textarea to fit content
@@ -175,7 +171,6 @@ export default function EditSnapshotSlider({
       const updated = payload?.snapshot;
       if (updated?.script) setScriptDraft(updated.script);
       setSavedMessage('Snapshot saved.');
-      setMode('view');
       await refreshDetail();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save snapshot';
@@ -327,43 +322,29 @@ export default function EditSnapshotSlider({
 
       {/* Actions */}
       <div className="flex gap-3">
-        {mode === 'view' ? (
-          <button
-            type="button"
-            onClick={() => { setMode('edit'); setSavedMessage(''); }}
-            disabled={!detail.canManage}
-            className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-            style={{ background: '#f97316', border: 'none', minHeight: 44, cursor: detail.canManage ? 'pointer' : 'default' }}
-          >
-            Edit
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => void handleRegenerate()}
-              disabled={!detail.canManage || regenerating}
-              className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
-              style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-            >
-              {regenerating ? 'Regenerating...' : 'Regen Snapshot'}
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={!detail.canManage || saving || !isDirty}
-              className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
-              style={{
-                background: isDirty ? '#f97316' : 'var(--bg-surface)',
-                border: isDirty ? 'none' : '1px solid var(--border-subtle)',
-                minHeight: 44,
-                cursor: isDirty ? 'pointer' : 'default',
-              }}
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={() => void handleRegenerate()}
+          disabled={!detail.canManage || regenerating}
+          className="flex-1 rounded-full px-5 text-white text-sm font-medium btn-secondary disabled:opacity-60 cursor-pointer"
+          style={{ border: '1.5px solid var(--border-btn)', minHeight: 44 }}
+        >
+          {regenerating ? 'Regenerating...' : 'Regen Snapshot'}
+        </button>
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={!detail.canManage || saving || !isDirty}
+          className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
+          style={{
+            background: isDirty ? '#f97316' : 'var(--bg-surface)',
+            border: isDirty ? 'none' : '1px solid var(--border-subtle)',
+            minHeight: 44,
+            cursor: isDirty ? 'pointer' : 'default',
+          }}
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </button>
       </div>
     </div>
     {savedMessage ? (

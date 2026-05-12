@@ -1816,23 +1816,7 @@ function WikiSection({
           <div className="flex items-center gap-2">{headerInner}</div>
         )}
         <div className="flex items-center gap-2">
-          {onEdit ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              aria-label={`Edit ${title}`}
-              className="flex items-center justify-center rounded-full can-hover cursor-pointer"
-              style={{
-                width: 28,
-                height: 28,
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              <PencilLine size={13} />
-            </button>
-          ) : editHref ? (
+          {editHref ? (
             <Link
               href={editHref}
               aria-label={`Edit ${title}`}
@@ -1859,7 +1843,16 @@ function WikiSection({
           )}
         </div>
       </div>
-      {isHidden ? null : children}
+      {isHidden ? null : onEdit ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="w-full text-left cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150"
+          style={{ background: 'none', border: 'none', padding: 0 }}
+        >
+          {children}
+        </button>
+      ) : children}
     </div>
   );
 }
