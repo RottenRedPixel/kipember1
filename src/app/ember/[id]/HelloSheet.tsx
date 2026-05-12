@@ -1,20 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
-import { Hand } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Hand, X } from 'lucide-react';
 
 const SNAP_MS = 320;
 
-// When `guest` is provided the component skips the /api/profile fetch and
-// uses the caller-supplied values instead (guest/contributor flows don't
-// have a logged-in session).
 type GuestProps = {
   firstName: string | null;
   hasPassword: boolean;
-  /** true = named contributor, false = anonymous viewer */
   isContributor: boolean;
-  /** Used as the localStorage key so "don't show again" is scoped to this token */
   token: string;
   createAccountHref?: string;
 };
@@ -38,7 +33,7 @@ export default function HelloSheet({
   const [helloDismissed, setHelloDismissed] = useState(false);
 
   useEffect(() => {
-    if (guest) return; // caller manages these values
+    if (guest) return;
     fetch('/api/profile')
       .then((r) => r.json())
       .then((d) => {
@@ -74,7 +69,6 @@ export default function HelloSheet({
 
   const isContributor = guest ? guest.isContributor : accessType === 'contributor';
   const isAnonymousGuest = guest && !guest.isContributor;
-  const dragRef = useRef<number | null>(null);
 
   return (
     <div
@@ -85,18 +79,18 @@ export default function HelloSheet({
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-        touchAction: 'pan-y',
       }}
-      onPointerDown={(e) => { dragRef.current = e.clientY; }}
-      onPointerMove={(e) => { if (dragRef.current === null) return; const dy = e.clientY - dragRef.current; if (dy > 40) { dragRef.current = null; handleClose(); } }}
-      onPointerUp={() => { dragRef.current = null; }}
-      onPointerCancel={() => { dragRef.current = null; }}
     >
-      <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
+      {/* Header */}
+      <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
+        <Hand size={18} color="white" strokeWidth={1.6} />
+        <span className="flex-1 ml-2 text-white font-semibold text-base">hello</span>
+        <button type="button" className="cursor-pointer" onClick={handleClose}>
+          <X size={20} color="var(--text-secondary)" strokeWidth={1.8} />
+        </button>
       </div>
 
-      <div className="flex flex-col items-center pt-2 pb-4 gap-2">
+      <div className="flex flex-col items-center pt-4 pb-4 gap-2">
         <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, background: '#f97316' }}>
           <Hand size={22} color="#fff" strokeWidth={1.6} />
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Copy, Link2, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Copy, Link2, MessageCircle, MoreHorizontal, Share2, X } from 'lucide-react';
 import { useToast } from '@/lib/toast';
 
 const SNAP_MS = 320;
@@ -23,7 +23,6 @@ export default function ShareSheet({
   isOpen: boolean;
   onClose: () => void;
   emberId: string | null;
-  /** When provided, skips the share-token fetch and uses this URL directly. */
   overrideShareUrl?: string;
 }) {
   const [showing, setShowing] = useState(isOpen);
@@ -54,27 +53,26 @@ export default function ShareSheet({
     setTimeout(onClose, SNAP_MS);
   }
 
-  const dragRef = useRef<number | null>(null);
   const btnClass = 'flex flex-col items-center gap-1 p-2 rounded-xl cursor-pointer';
 
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
       style={{
-        height: '20vh',
+        height: '28vh',
         background: 'var(--bg-chrome)',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-        touchAction: 'pan-y',
       }}
-      onPointerDown={(e) => { dragRef.current = e.clientY; }}
-      onPointerMove={(e) => { if (dragRef.current === null) return; const dy = e.clientY - dragRef.current; if (dy > 40) { dragRef.current = null; handleClose(); } }}
-      onPointerUp={() => { dragRef.current = null; }}
-      onPointerCancel={() => { dragRef.current = null; }}
     >
-      <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
+      {/* Header */}
+      <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
+        <Share2 size={18} color="white" strokeWidth={1.6} />
+        <span className="flex-1 ml-2 text-white font-semibold text-base">share</span>
+        <button type="button" className="cursor-pointer" onClick={handleClose}>
+          <X size={20} color="var(--text-secondary)" strokeWidth={1.8} />
+        </button>
       </div>
 
       <div className="flex-1 flex items-center justify-around px-4">

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronUp, ImagePlus, MessageCircle, MessageSquare, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
+import { ImagePlus, MessageCircle, MessageSquare, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
 import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
@@ -12,7 +12,6 @@ import type { EmberModalSurface } from '@/components/kipember/EmberModalShell';
 import { useToast } from '@/lib/toast';
 
 const SNAP_MS = 320;
-const SWIPE_THRESHOLD = 40;
 
 const TABS: { label: string; surface: EmberModalSurface; icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
   { label: 'chat',  surface: 'chats', icon: MessageCircle },
@@ -38,7 +37,6 @@ export default function EmberSheet({
   emberId: string | null;
 }) {
   const [showing, setShowing] = useState(isOpen);
-  const [expanded, setExpanded] = useState(false);
   const [surface, setSurface] = useState<EmberModalSurface>('chats');
 
   // Chat state
@@ -61,8 +59,6 @@ export default function EmberSheet({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const dragRef = useRef<{ startY: number } | null>(null);
-  const sheetDragRef = useRef<number | null>(null);
   const loadedRef = useRef(false);
 
   const voice = useVoiceRecording(emberId ?? '');
@@ -142,7 +138,6 @@ export default function EmberSheet({
     if (isOpen) { setShowing(true); }
     else {
       setShowing(false);
-      setExpanded(false);
       loadedRef.current = false;
       setMessages([]);
       setInput('');
@@ -214,22 +209,7 @@ export default function EmberSheet({
     return raw;
   }
 
-  function handleClose() { setShowing(false); setExpanded(false); setTimeout(onClose, SNAP_MS); }
-
-  function handlePullPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-    dragRef.current = { startY: e.clientY };
-  }
-
-  function handlePullPointerUp(e: React.PointerEvent) {
-    if (!dragRef.current) return;
-    const dy = e.clientY - dragRef.current.startY;
-    dragRef.current = null;
-    if (Math.abs(dy) < 10) { if (expanded) setExpanded(false); else handleClose(); }
-    else if (!expanded && dy < -SWIPE_THRESHOLD) { setExpanded(true); }
-    else if (dy > SWIPE_THRESHOLD) { handleClose(); }
-    else if (expanded && dy > SWIPE_THRESHOLD) { setExpanded(false); }
-  }
+  function handleClose() { setShowing(false); setTimeout(onClose, SNAP_MS); }
 
   // ── Toolbar pill content ────────────────────────────────────────────────────
   const isVoiceActive = voice.isRecording || voice.isPlayingBack || !!manualAnalyser;
@@ -333,45 +313,16 @@ export default function EmberSheet({
     <div
       className="fixed bottom-0 left-0 right-0 flex flex-col"
       style={{
-        height: expanded ? '100dvh' : '50vh',
-        zIndex: expanded ? 50 : 10,
+        height: '50vh',
+        zIndex: 10,
         background: 'var(--bg-chrome)',
-        borderRadius: expanded ? 0 : '20px 20px 0 0',
+        borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
-        transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1), height ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+        transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
-      onPointerDown={(e) => {
-        // Only start a sheet-level drag if the gesture begins outside the scrollable
-        // chat area, any button/input, and the pull bar (which has its own handlers).
-        const t = e.target as Element;
-        if (contentRef.current?.contains(t)) return;
-        if (t.closest('button, a, input, textarea, [data-pull-bar]')) return;
-        sheetDragRef.current = e.clientY;
-      }}
-      onPointerMove={(e) => {
-        if (sheetDragRef.current === null) return;
-        const dy = e.clientY - sheetDragRef.current;
-        if (dy > SWIPE_THRESHOLD) { sheetDragRef.current = null; handleClose(); }
-      }}
-      onPointerUp={() => { sheetDragRef.current = null; }}
-      onPointerCancel={() => { sheetDragRef.current = null; }}
     >
-      {/* Pull bar — collapsed only */}
-      {!expanded && (
-        <div
-          data-pull-bar
-          className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-pointer"
-          onPointerDown={handlePullPointerDown}
-          onPointerMove={(e) => { if (!dragRef.current) return; const dy = e.clientY - dragRef.current.startY; if (dy > SWIPE_THRESHOLD) { dragRef.current = null; handleClose(); } }}
-          onPointerUp={handlePullPointerUp}
-          onPointerCancel={() => { dragRef.current = null; }}
-        >
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
-        </div>
-      )}
-
       {/* Header */}
-      <div className="relative flex items-center px-4 pb-2 flex-shrink-0" style={{ paddingTop: expanded ? 16 : 8 }}>
+      <div className="relative flex items-center px-4 pt-4 pb-2 flex-shrink-0">
         <div className="flex items-center gap-1 flex-shrink-0">
           <span className="font-semibold text-base" style={{ color: 'var(--bubble-chat-accent)' }}>ember</span>
         </div>
@@ -394,15 +345,9 @@ export default function EmberSheet({
           ))}
         </div>
         <div className="ml-auto flex-shrink-0">
-          {expanded ? (
-            <button type="button" onClick={handleClose} className="cursor-pointer">
-              <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-            </button>
-          ) : (
-            <button type="button" onClick={() => setExpanded(true)} className="w-9 h-9 flex items-center justify-center cursor-pointer">
-              <ChevronUp size={18} color="rgba(255,255,255,0.35)" strokeWidth={1.8} />
-            </button>
-          )}
+          <button type="button" onClick={handleClose} className="cursor-pointer">
+            <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+          </button>
         </div>
       </div>
 

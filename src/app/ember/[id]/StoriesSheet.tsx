@@ -1,10 +1,10 @@
 'use client';
 
-import { Heart, MapPinned, ScanEye, Smile, Users } from 'lucide-react';
+import { Flame, Heart, MapPinned, ScanEye, Smile, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 
-const SHEET_H = '30vh';
+const SHEET_H = '35vh';
 const SNAP_MS = 320;
 
 const BADGES = [
@@ -210,8 +210,6 @@ export default function StoriesSheet({
     setTimeout(onClose, SNAP_MS);
   }
 
-  const pullDragRef = useRef<number | null>(null);
-
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
@@ -221,16 +219,15 @@ export default function StoriesSheet({
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-        touchAction: 'pan-y',
       }}
-      onPointerDown={(e) => { pullDragRef.current = e.clientY; }}
-      onPointerMove={(e) => { if (pullDragRef.current === null) return; const dy = e.clientY - pullDragRef.current; if (dy > 40) { pullDragRef.current = null; handleClose(); } }}
-      onPointerUp={() => { pullDragRef.current = null; }}
-      onPointerCancel={() => { pullDragRef.current = null; }}
     >
-      {/* Pull bar */}
-      <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
+      {/* Header */}
+      <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
+        <Flame size={18} color="white" strokeWidth={1.6} />
+        <span className="flex-1 ml-2 text-white font-semibold text-base">stories</span>
+        <button type="button" className="cursor-pointer" onClick={handleClose}>
+          <X size={20} color="var(--text-secondary)" strokeWidth={1.8} />
+        </button>
       </div>
 
       {error ? (
