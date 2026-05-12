@@ -13,7 +13,7 @@ export default function EmberTitleBlock({
   return (
     <div className="px-[10px] pt-3 pb-2 flex-shrink-0">
       {title ? (
-        <p className="font-semibold" style={{ fontSize: 20, color: '#fff', letterSpacing: '-0.02em' }}>{title}</p>
+        <p className="font-semibold text-right" style={{ fontSize: 20, color: '#fff', letterSpacing: '-0.02em' }}>{title}</p>
       ) : null}
       {createdAt ? (
         <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>
