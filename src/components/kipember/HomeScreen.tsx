@@ -15,8 +15,7 @@ import {
   Leaf,
   Link2,
   Mail,
-  FlaskConical,
-  MessageCircle,
+MessageCircle,
   MessageCirclePlus,
   Share2,
   Sun,
@@ -1168,8 +1167,7 @@ export default function HomeScreen({
             <span className="text-white text-xs font-medium lowercase">more</span>
           </button>
         ) : null}
-        <RailBtn icon={FlaskConical} label="test" href={`/testlayout?id=${selectedEmberId ?? ''}`} />
-        {!helloDismissed ? (
+{!helloDismissed ? (
           <Link href={buildHomeHref({ m: 'hello' })} className="flex flex-col items-center gap-1 p-2 rounded-xl">
             <div className="w-11 h-11 rounded-full flex items-center justify-center" style={{ background: '#f97316' }}>
               <Hand size={23} color="#fff" strokeWidth={1.8} />

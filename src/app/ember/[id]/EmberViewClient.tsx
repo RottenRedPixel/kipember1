@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Flame, Hand, Leaf, MessageCirclePlus, Share } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AppHeader from '@/components/kipember/AppHeader';
@@ -9,7 +9,6 @@ import EmberSheet from './EmberSheet';
 import HelloSheet from './HelloSheet';
 import ShareSheet from './ShareSheet';
 import StoriesSheet from './StoriesSheet';
-import Stories2Sheet from './Stories2Sheet';
 import TendSheet from './TendSheet';
 
 type EmberSummary = {
@@ -24,9 +23,14 @@ type EmberSummary = {
   accessType: 'owner' | 'contributor' | 'network' | null;
 };
 
+type AttachmentItem = {
+  filename: string;
+  mediaType: string;
+  posterFilename: string | null;
+};
+
 const RAIL_H = 80;
 const CARD_H = '50vh';
-const PANEL_SM_H = '20vh';
 const SWIPE_THRESHOLD = 50;
 const SNAP_MS = 260;
 
@@ -34,17 +38,17 @@ const railItems = [
   { label: 'hello', icon: Hand },
   { label: 'ember', icon: MessageCirclePlus },
   { label: 'stories', icon: Flame },
-  { label: 'stories2', icon: Flame },
   { label: 'tend', icon: Leaf },
   { label: 'share', icon: Share },
 ] as const;
 
-function TestLayoutContent() {
+function EmberViewContent() {
   const router = useRouter();
-  const params = useSearchParams();
-  const id = params.get('id');
+  const { id } = useParams<{ id: string }>();
   const [ember, setEmber] = useState<EmberSummary | null>(null);
   const [emberIds, setEmberIds] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
+  const [mediaIndex, setMediaIndex] = useState(0);
   const [emberOpen, setEmberOpen] = useState(false);
   const [activeRail, setActiveRail] = useState<string | null>(null);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
@@ -59,6 +63,27 @@ function TestLayoutContent() {
 
   const objectPosition = orientation === 'portrait' ? 'center top' : 'center';
   const currentIndex = id ? emberIds.indexOf(id) : -1;
+
+  // Build the full media array: cover photo + attachments
+  const coverMedia: AttachmentItem | null = ember
+    ? { filename: ember.filename, mediaType: ember.mediaType, posterFilename: ember.posterFilename }
+    : null;
+  const allMedia: AttachmentItem[] = coverMedia ? [coverMedia, ...attachments] : [];
+  const currentMedia = allMedia[mediaIndex] ?? coverMedia;
+
+  const photoUrl = currentMedia
+    ? getPreviewMediaUrl({
+        mediaType: currentMedia.mediaType as 'IMAGE' | 'VIDEO',
+        filename: currentMedia.filename,
+        posterFilename: currentMedia.posterFilename,
+      })
+    : null;
+
+  // Rail items filtered by access type
+  const visibleRailItems = railItems.filter(({ label }) => {
+    if (label === 'tend' && ember?.accessType === 'contributor') return false;
+    return true;
+  });
 
   function snapBack() {
     setSnapping(true);
@@ -96,11 +121,22 @@ function TestLayoutContent() {
   useEffect(() => {
     if (!id) return;
     setPhotoLoaded(false);
+    setMediaIndex(0);
     const cached = prefetchCacheRef.current[id];
     if (cached) { setEmber(cached); return; }
     fetch(`/api/embers/${id}`)
       .then((r) => r.json())
       .then((data: EmberSummary) => { prefetchCacheRef.current[id] = data; setEmber(data); })
+      .catch(() => {});
+  }, [id]);
+
+  // Fetch attachments when ember changes
+  useEffect(() => {
+    if (!id) return;
+    setAttachments([]);
+    fetch(`/api/embers/${id}/attachments`)
+      .then((r) => r.json())
+      .then((data) => { if (data.attachments) setAttachments(data.attachments); })
       .catch(() => {});
   }, [id]);
 
@@ -127,14 +163,6 @@ function TestLayoutContent() {
     }
   }, [ember, emberIds, currentIndex]);
 
-  const photoUrl = ember
-    ? getPreviewMediaUrl({
-        mediaType: ember.mediaType as 'IMAGE' | 'VIDEO',
-        filename: ember.filename,
-        posterFilename: ember.posterFilename,
-      })
-    : null;
-
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (panelOpen) return;
     (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
@@ -160,13 +188,31 @@ function TestLayoutContent() {
     if (axis !== 'h' || Math.abs(dx) < SWIPE_THRESHOLD) { snapBack(); return; }
 
     const dir: 1 | -1 = dx < 0 ? -1 : 1;
+
+    // Try navigating within the photo carousel first
+    const nextMediaIndex = mediaIndex + (dir < 0 ? 1 : -1);
+    if (nextMediaIndex >= 0 && nextMediaIndex < allMedia.length) {
+      lastDirRef.current = dir;
+      setSnapping(true);
+      setSwipeX(dir < 0 ? -window.innerWidth : window.innerWidth);
+      setTimeout(() => {
+        setMediaIndex(nextMediaIndex);
+        setPhotoLoaded(false);
+      }, SNAP_MS);
+      return;
+    }
+
+    // Navigate between embers
     const targetIndex = dir < 0 ? currentIndex + 1 : currentIndex - 1;
     if (targetIndex < 0 || targetIndex >= emberIds.length) { snapBack(); return; }
 
     lastDirRef.current = dir;
     setSnapping(true);
     setSwipeX(dir < 0 ? -window.innerWidth : window.innerWidth);
-    setTimeout(() => router.replace(`/testlayout?id=${emberIds[targetIndex]}`), SNAP_MS);
+    setTimeout(() => {
+      setMediaIndex(0);
+      router.replace(`/ember/${emberIds[targetIndex]}`);
+    }, SNAP_MS);
   }
 
   function handlePointerCancel() {
@@ -175,6 +221,18 @@ function TestLayoutContent() {
   }
 
   const closePanel = () => setActiveRail(null);
+
+  const spacerHeight = emberOpen
+    ? CARD_H
+    : activeRail === 'hello'
+    ? '50vh'
+    : activeRail === 'share'
+    ? '25vh'
+    : activeRail === 'stories'
+    ? '30vh'
+    : RAIL_H;
+
+  const railHidden = activeRail === 'stories' || activeRail === 'hello' || activeRail === 'share' || emberOpen;
 
   return (
     <>
@@ -222,31 +280,48 @@ function TestLayoutContent() {
                 onLoad={handleImageLoad}
                 draggable={false}
               />
+              {/* Photo dots indicator */}
+              {allMedia.length > 1 ? (
+                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5" style={{ pointerEvents: 'none' }}>
+                  {allMedia.map((_, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: i === mediaIndex ? 16 : 6,
+                        height: 6,
+                        borderRadius: 3,
+                        background: i === mediaIndex ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
+                        transition: 'width 200ms ease, background 200ms ease',
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-2xl" style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }} />
           )}
         </div>
 
-        <div
-          style={{
-            flexShrink: 0,
-            height: emberOpen ? CARD_H : activeRail === 'hello' ? '50vh' : activeRail === 'share' ? '25vh' : activeRail === 'stories' || activeRail === 'stories2' ? '30vh' : RAIL_H,
-            transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        />
+        <div style={{ flexShrink: 0, height: spacerHeight, transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
       </div>
 
       <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} emberId={id} />
       <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} emberId={id} accessType={ember?.accessType ?? null} />
       <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
-      <Stories2Sheet isOpen={activeRail === 'stories2'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
       <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} emberId={id} />
       <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} emberId={id} />
 
       {/* Rail */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4" style={{ background: '#111113', transform: activeRail === 'stories' || activeRail === 'stories2' || activeRail === 'hello' || activeRail === 'share' || emberOpen ? 'translateY(100%)' : 'translateY(0)', transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)' }}>
-        {railItems.map(({ label, icon: Icon }) => {
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4"
+        style={{
+          background: '#111113',
+          transform: railHidden ? 'translateY(100%)' : 'translateY(0)',
+          transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {visibleRailItems.map(({ label, icon: Icon }) => {
           const isActive = label === 'ember' ? emberOpen : activeRail === label;
           const isDimmed = panelOpen ? !isActive : false;
           return (
@@ -269,14 +344,14 @@ function TestLayoutContent() {
   );
 }
 
-export default function TestLayoutPage() {
+export default function EmberViewClient() {
   return (
     <div className="fixed inset-0" style={{ background: '#000' }}>
       <div style={{ '--bg-screen': '#000000', '--border-subtle': 'transparent' } as React.CSSProperties}>
         <AppHeader />
       </div>
       <Suspense>
-        <TestLayoutContent />
+        <EmberViewContent />
       </Suspense>
     </div>
   );
