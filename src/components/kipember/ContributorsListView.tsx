@@ -44,7 +44,7 @@ export type AccountFilter = 'with-ember' | 'without-ember';
 
 type AccountContext = {
   kind: 'account';
-  /** Builder for the row's drill-down link — for /account this points at /tend/contributors with from=account. */
+  /** Builder for the row's drill-down link. */
   rowDetailHref: (params: { contributor: UnifiedContributor }) => string;
   /** Current filter state for the With/Without Ember toggle. */
   filter: AccountFilter;

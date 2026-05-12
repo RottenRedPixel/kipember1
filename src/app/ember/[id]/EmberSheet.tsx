@@ -200,7 +200,11 @@ export default function EmberSheet({
     if (!emberId || isCalling) return;
     setIsCalling(true);
     try {
-      const r = await fetch(`/api/embers/${encodeURIComponent(emberId)}/self-invite`, { method: 'POST' });
+      const r = await fetch(`/api/embers/${encodeURIComponent(emberId)}/self-invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'call' }),
+      });
       if (r.ok) toast('Calling you now!', { type: 'success', duration: 5000 });
       else toast('Could not place the call. Try again.', { type: 'error' });
     }

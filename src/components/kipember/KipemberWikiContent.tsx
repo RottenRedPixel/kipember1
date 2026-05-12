@@ -2750,8 +2750,7 @@ export default function KipemberWikiContent({
     : allTrackerSteps;
 
   // Map each editing slug to the inputs the overlay header needs
-  // (icon + display label) so we can render the right edit slider
-  // with the same visual chrome as the legacy /tend/[action] route.
+  // (icon + display label) so we can render the right edit slider.
   const editingMeta: Record<NonNullable<EditingSlug>, { label: string; icon: React.ReactNode }> = {
     title: { label: 'Edit Title', icon: <PencilLine size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
     snapshot: { label: 'Edit Snapshot', icon: <ScanEye size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
@@ -3509,7 +3508,7 @@ export default function KipemberWikiContent({
           <div
             className="flex-1 h-full flex flex-col"
             style={{
-              background: 'var(--bg-chrome)',
+              background: '#1e90ff',
               borderLeft: '1px solid var(--border-subtle)',
               transform: overlayOpen ? 'translateX(0)' : 'translateX(100%)',
               transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

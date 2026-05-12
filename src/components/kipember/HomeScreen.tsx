@@ -12,7 +12,6 @@ import {
   Moon,
   MoreHorizontal,
   ScanEye,
-  Leaf,
   Link2,
   Mail,
 MessageCircle,
@@ -30,7 +29,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import KipemberPlayOverlay from '@/components/kipember/KipemberPlayOverlay';
 import KipemberStoriesOverlay from '@/components/kipember/KipemberStoriesOverlay';
-import KipemberWikiOverlay from '@/components/kipember/KipemberWikiOverlay';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import EmberModalContent from '@/components/kipember/workflows/EmberModalContent';
 import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
@@ -1176,14 +1174,6 @@ export default function HomeScreen({
           </Link>
         ) : null}
         <TabBtn icon={Share2} label="share" href={buildHomeHref({ m: 'share' })} active={modal === 'share'} />
-        {displayEmber?.accessType !== 'contributor' && (
-          <TabBtn
-            icon={Leaf}
-            label="tend"
-            href={selectedEmberId ? buildHomeHref({ m: 'wiki' }) : '/home'}
-            active={modal === 'wiki'}
-          />
-        )}
         <TabBtn icon={Flame} label="stories" href={buildHomeHref({ m: 'stories' })} active={modal === 'stories'} />
         <TabBtn icon={MessageCirclePlus} label="ember" href={buildHomeHref({ ember: defaultChatFlow, m: null, step: null, sub: null })} active={emberModalOpen} />
       </div>
@@ -1304,10 +1294,6 @@ export default function HomeScreen({
         </Modal>
       ) : null}
 
-      {/* The Tend modal was archived once every entry it surfaced got
-          a wiki section pencil. The Tend rail button now jumps straight
-          to /tend/view-wiki. We can resurrect this block from git
-          history if we ever want a multi-action launcher again. */}
 
       {modal === 'play' ? (
         <KipemberPlayOverlay
@@ -1354,19 +1340,9 @@ export default function HomeScreen({
       ) : null}
       </div>
 
-      {/* Wiki and Account modals are rendered as siblings of AppHeader at
-          the root level (outside the fade-in inner wrapper) so their z-40
-          beats the header's z-30. Inside the fade-in wrapper, the wrapper
-          would create a stacking context that traps these modals below
-          the header. */}
-      {modal === 'wiki' ? (
-        <KipemberWikiOverlay
-          key={selectedEmberId || 'empty'}
-          closeHref={buildHomeHref({ m: null })}
-          emberId={selectedEmberId}
-        />
-      ) : null}
-
+      {/* Account modal is rendered as a sibling of AppHeader at
+          the root level (outside the fade-in inner wrapper) so its z-40
+          beats the header's z-30. */}
       {modal === 'account' ? (
         <KipemberAccountOverlay closeHref={buildHomeHref({ m: null })} />
       ) : null}
