@@ -309,7 +309,7 @@ export default function AccountScreen({
         style={
           embedded
             ? undefined
-            : { background: '#1a1008', borderLeft: '1px solid var(--border-subtle)' }
+            : { background: 'var(--bg-overlay)', borderLeft: '1px solid var(--border-subtle)' }
         }
       >
         {/* Header — always shows the Account root header in embedded mode.
@@ -489,7 +489,7 @@ export default function AccountScreen({
               // left, mirroring the wiki edit overlays' 10px peek
               // past the wiki edge.
               left: 10,
-              background: '#1a1008',
+              background: 'var(--bg-drill)',
               borderLeft: '1px solid var(--border-subtle)',
               transform: sectionOverlayOpen ? 'translateX(0)' : 'translateX(100%)',
               transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

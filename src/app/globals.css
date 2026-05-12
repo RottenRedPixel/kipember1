@@ -7,8 +7,12 @@
 
 :root {
   --bg-body: #0d0d0f;
-  --bg-screen: #141414;
-  --bg-chrome: #1e1e1e;
+  /* Surface palette — ascending elevation. Use these for any new surface. */
+  --bg-screen: #141414;   /* Page: landing, about, home, embers, ember view */
+  --bg-frame:  #0a0a0a;   /* Chrome: header + tab bar */
+  --bg-chrome: #1c1c1c;   /* Sheet: EmberSheet, TendSheet, HelloSheet, StoriesSheet, ShareSheet */
+  --bg-overlay:#262626;   /* Overlay: wiki edit sliders, /account outer overlay */
+  --bg-drill:  #303030;   /* Drill: /account inner sliders (Profile, Contacts, Voices, etc.) */
   --bg-modal: rgba(0, 0, 0, 0.75);
   /* Opaque pre-composite of 7% white over bg-screen — keeps the same
      visual weight as the legacy translucent surface but doesn't let
@@ -50,7 +54,7 @@
 
   /* Voice (green) */
   --bubble-voice-bg:     #22c55e2e;
-  --bubble-voice-border: rgba(255, 255, 255, 0.1);
+  --bubble-voice-border: #22c55e80;
   --bubble-voice-accent: #22c55e;
 
   /* Call (blue) */
@@ -101,7 +105,7 @@
   --bubble-chat-accent:  #ea6c0a;
 
   --bubble-voice-bg:     #22c55e20;
-  --bubble-voice-border: rgba(28, 25, 23, 0.1);
+  --bubble-voice-border: #22c55e60;
   --bubble-voice-accent: #16a34a;
 
   --bubble-call-bg:      #2563eb20;
