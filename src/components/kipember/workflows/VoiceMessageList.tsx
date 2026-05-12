@@ -145,9 +145,9 @@ export default function VoiceMessageList({
               <div
                 className={`inline-block max-w-[85%] rounded-2xl px-4 py-2.5 ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
                 style={{
-                  background: isUser ? 'rgba(34,197,94,0.18)' : 'var(--bg-ember-bubble)',
+                  background: isUser ? 'var(--bubble-voice-bg)' : 'var(--bg-ember-bubble)',
                   border: isUser
-                    ? '1px solid rgba(34,197,94,0.45)'
+                    ? '1px solid var(--bubble-voice-border)'
                     : '1px solid var(--border-ember)',
                 }}
               >

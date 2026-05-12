@@ -209,9 +209,9 @@ export default function EmberSheet({
   function PillContent() {
     if (surface === 'voice') {
       return voice.isRecording ? (
-        <MicLevelMeter stream={voice.stream} className="h-5 w-full" color="#22c55e" />
+        <MicLevelMeter stream={voice.stream} className="h-5 w-full" color="var(--bubble-voice-accent)" />
       ) : (voice.playbackAnalyser ?? manualAnalyser) ? (
-        <MicLevelMeter analyser={voice.playbackAnalyser ?? manualAnalyser} className="h-5 w-full" color="#22c55e" />
+        <MicLevelMeter analyser={voice.playbackAnalyser ?? manualAnalyser} className="h-5 w-full" color="var(--bubble-voice-accent)" />
       ) : (
         <span className="text-sm w-full" style={{ color: 'rgba(255,255,255,0.38)' }}>Talk with ember...</span>
       );
@@ -232,7 +232,7 @@ export default function EmberSheet({
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void sendChat(); } }}
         placeholder="Chat with ember..."
         className="flex-1 bg-transparent text-sm text-white outline-none min-w-0"
-        style={{ caretColor: '#f97316' }}
+        style={{ caretColor: 'var(--bubble-chat-accent)' }}
         disabled={isSending}
         onFocus={() => setChatFocused(true)}
         onBlur={() => setChatFocused(false)}
@@ -248,7 +248,7 @@ export default function EmberSheet({
           onClick={voice.isRecording ? voice.stopRecording : () => void voice.startRecording()}
           disabled={voice.isUploading}
           className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
-          style={{ background: voice.isRecording ? '#16a34a' : '#22c55e' }}
+          style={{ background: 'var(--bubble-voice-accent)', filter: voice.isRecording ? 'brightness(0.8)' : undefined }}
           aria-label={voice.isRecording ? 'Stop' : 'Record'}
         >
           {voice.isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
@@ -262,7 +262,7 @@ export default function EmberSheet({
           onClick={() => void triggerCall()}
           disabled={isCalling || !phoneNumber}
           className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
-          style={{ background: '#2563eb' }}
+          style={{ background: 'var(--bubble-call-accent)' }}
           aria-label="Call"
         >
           <Phone size={18} />
@@ -275,7 +275,7 @@ export default function EmberSheet({
         onClick={() => void sendChat()}
         disabled={isSending}
         className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
-        style={{ background: '#f97316' }}
+        style={{ background: 'var(--bubble-chat-accent)' }}
         aria-label="Send"
       >
         <SendHorizontal size={18} />
@@ -310,7 +310,7 @@ export default function EmberSheet({
       <div className="relative flex items-center px-4 pb-2 flex-shrink-0" style={{ paddingTop: expanded ? 16 : 8 }}>
         <div className="flex items-center gap-1 flex-shrink-0">
           <EmberMark size={20} />
-          <span className="font-semibold text-base" style={{ color: '#f97316' }}>ember</span>
+          <span className="font-semibold text-base" style={{ color: 'var(--bubble-chat-accent)' }}>ember</span>
         </div>
         {/* Tabs — absolutely centered so left/right content widths don't affect position */}
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.06)' }}>
@@ -368,12 +368,12 @@ export default function EmberSheet({
           <div
             className="flex h-11 flex-1 items-center rounded-full px-4 gap-2"
             style={{
-              background: surface === 'voice' && isVoiceActive ? 'rgba(34,197,94,0.15)'
-                : surface === 'calls' && isCalling ? 'rgba(37,99,235,0.15)'
+              background: surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 15%, transparent)'
+                : surface === 'calls' && isCalling ? 'color-mix(in srgb, var(--bubble-call-accent) 15%, transparent)'
                 : 'rgba(255,255,255,0.08)',
-              border: `1px solid ${surface === 'voice' && isVoiceActive ? 'rgba(34,197,94,0.45)'
-                : surface === 'calls' && isCalling ? 'rgba(37,99,235,0.45)'
-                : surface === 'chats' && chatFocused ? 'rgba(249,115,22,0.24)'
+              border: `1px solid ${surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 45%, transparent)'
+                : surface === 'calls' && isCalling ? 'color-mix(in srgb, var(--bubble-call-accent) 45%, transparent)'
+                : surface === 'chats' && chatFocused ? 'color-mix(in srgb, var(--bubble-chat-accent) 24%, transparent)'
                 : 'transparent'}`,
             }}
           >

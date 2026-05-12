@@ -16,7 +16,6 @@
      used to ride on the wiki's solid bg. */
   --bg-surface: #272525;
   --bg-input: rgba(255, 255, 255, 0.06);
-  --bg-rail-btn: rgba(0, 0, 0, 0.5);
   --bg-chat-user: #2e3a4e;
   /* Same rationale as --bg-surface — opaque pre-composite of 8% white
      over bg-screen so chat/voice/call bubbles in the wiki's Story
@@ -30,6 +29,27 @@
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.6);
   --text-muted: rgba(255, 255, 255, 0.3);
+
+  /* ── Surface bubble tokens ─────────────────────────────────────────── */
+  /* Chat (orange) */
+  --bubble-chat-bg:      #f9731633;
+  --bubble-chat-border:  #f9731680;
+  --bubble-chat-accent:  #f97316;
+
+  /* Voice (green) */
+  --bubble-voice-bg:     #22c55e2e;
+  --bubble-voice-border: rgba(255, 255, 255, 0.1);
+  --bubble-voice-accent: #22c55e;
+
+  /* Call (blue) */
+  --bubble-call-bg:      #2563eb2e;
+  --bubble-call-border:  #2563eb73;
+  --bubble-call-accent:  #2563eb;
+
+  /* SMS / text (purple — future) */
+  --bubble-sms-bg:       #5b21b62e;
+  --bubble-sms-border:   rgba(255, 255, 255, 0.1);
+  --bubble-sms-accent:   #5b21b6;
 }
 
 [data-theme="light"] {
@@ -40,7 +60,6 @@
   /* Opaque pre-composite (5% black over bg-screen). */
   --bg-surface: #ece9e5;
   --bg-input: rgba(0, 0, 0, 0.05);
-  --bg-rail-btn: rgba(0, 0, 0, 0.1);
   --bg-chat-user: #3a5a7a;
   --bg-ember-bubble: #ece9e5;
   --border-subtle: rgba(28, 25, 23, 0.08);
@@ -51,6 +70,23 @@
   --text-primary: #1c1917;
   --text-secondary: rgba(28, 25, 23, 0.6);
   --text-muted: rgba(28, 25, 23, 0.3);
+
+  /* ── Surface bubble tokens (light) ─────────────────────────────────── */
+  --bubble-chat-bg:      #f9731620;
+  --bubble-chat-border:  #f9731650;
+  --bubble-chat-accent:  #ea6c0a;
+
+  --bubble-voice-bg:     #22c55e20;
+  --bubble-voice-border: rgba(28, 25, 23, 0.1);
+  --bubble-voice-accent: #16a34a;
+
+  --bubble-call-bg:      #2563eb20;
+  --bubble-call-border:  #2563eb60;
+  --bubble-call-accent:  #1d4ed8;
+
+  --bubble-sms-bg:       #5b21b620;
+  --bubble-sms-border:   rgba(28, 25, 23, 0.1);
+  --bubble-sms-accent:   #4c1d95;
 }
 
 html,

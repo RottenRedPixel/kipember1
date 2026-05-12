@@ -386,7 +386,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
           <Link
             href="/"
             className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--bg-rail-btn)' }}
+            style={{ background: 'var(--bg-input)' }}
             aria-label="Home"
           >
             <Home size={18} color="var(--text-primary)" strokeWidth={1.8} />

@@ -266,9 +266,9 @@ export default function EmberCallCard({
                   isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'
                 }`}
                 style={{
-                  background: isUser ? 'rgba(37,99,235,0.18)' : 'var(--bg-ember-bubble)',
+                  background: isUser ? 'var(--bubble-call-bg)' : 'var(--bg-ember-bubble)',
                   border: isUser
-                    ? '1px solid rgba(37,99,235,0.45)'
+                    ? '1px solid var(--bubble-call-border)'
                     : '1px solid var(--border-ember)',
                 }}
               >
