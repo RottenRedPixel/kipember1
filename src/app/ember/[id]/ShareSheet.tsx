@@ -72,7 +72,9 @@ export default function ShareSheet({
         className="flex justify-center pt-3 pb-1 flex-shrink-0"
         style={{ cursor: 'pointer' }}
         onPointerDown={(e) => { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); dragRef.current = e.clientY; }}
-        onPointerUp={(e) => { if (dragRef.current === null) return; const dy = e.clientY - dragRef.current; dragRef.current = null; if (dy < 10) handleClose(); else if (dy > 40) handleClose(); }}
+        onPointerMove={(e) => { if (dragRef.current === null) return; const dy = e.clientY - dragRef.current; if (dy > 40) { dragRef.current = null; handleClose(); } }}
+        onPointerUp={(e) => { if (dragRef.current === null) return; const dy = e.clientY - dragRef.current; dragRef.current = null; if (dy > 40) handleClose(); }}
+        onPointerCancel={() => { dragRef.current = null; }}
       >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
       </div>

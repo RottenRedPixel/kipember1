@@ -202,8 +202,8 @@ function EmberViewContent() {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
-    if (dragRef.current.axis === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
-      dragRef.current.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    if (dragRef.current.axis === null && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) {
+      dragRef.current.axis = Math.abs(dx) > Math.abs(dy) * 1.5 ? 'h' : 'v';
     }
     if (dragRef.current.axis === 'h') setSwipeX(dx);
     if (dragRef.current.axis === 'v') setSwipeY(dy);

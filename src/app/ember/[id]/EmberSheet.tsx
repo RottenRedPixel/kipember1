@@ -345,7 +345,9 @@ export default function EmberSheet({
         <div
           className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-pointer"
           onPointerDown={handlePullPointerDown}
+          onPointerMove={(e) => { if (!dragRef.current) return; const dy = e.clientY - dragRef.current.startY; if (dy > SWIPE_THRESHOLD) { dragRef.current = null; handleClose(); } }}
           onPointerUp={handlePullPointerUp}
+          onPointerCancel={() => { dragRef.current = null; }}
         >
           <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
         </div>

@@ -228,7 +228,9 @@ export default function StoriesSheet({
         className="flex justify-center pt-3 pb-2 flex-shrink-0"
         style={{ cursor: 'pointer' }}
         onPointerDown={(e) => { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); pullDragRef.current = e.clientY; }}
-        onPointerUp={(e) => { if (pullDragRef.current === null) return; const dy = e.clientY - pullDragRef.current; pullDragRef.current = null; if (dy < 10) handleClose(); else if (dy > 40) handleClose(); }}
+        onPointerMove={(e) => { if (pullDragRef.current === null) return; const dy = e.clientY - pullDragRef.current; if (dy > 40) { pullDragRef.current = null; handleClose(); } }}
+        onPointerUp={(e) => { if (pullDragRef.current === null) return; const dy = e.clientY - pullDragRef.current; pullDragRef.current = null; if (dy > 40) handleClose(); }}
+        onPointerCancel={() => { pullDragRef.current = null; }}
       >
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
       </div>
