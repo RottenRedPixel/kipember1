@@ -246,7 +246,7 @@ function EmberViewContent() {
     ? '30vh'
     : TAB_H;
 
-  const tabHidden = activeTab === 'stories' || activeTab === 'hello' || activeTab === 'share' || emberOpen;
+  const tabHidden = activeTab === 'stories' || activeTab === 'hello' || activeTab === 'share' || emberOpen || modal === 'account';
 
   return (
     <>

@@ -75,7 +75,7 @@ export default function KipemberAccountOverlay({ closeHref }: { closeHref: strin
   const canAccessAdmin = user?.canAccessAdmin ?? false;
 
   return (
-    <div className="absolute inset-0 z-40 flex justify-center">
+    <div className="absolute inset-0 z-50 flex justify-center">
       <div className="relative w-full max-w-xl h-full flex">
         <button
           type="button"
