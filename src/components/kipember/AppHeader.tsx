@@ -113,7 +113,7 @@ export default function AppHeader({
       className="fixed top-0 left-0 right-0 z-30 flex items-center px-4 gap-2"
       style={{
         height: 56,
-        background: 'var(--bg-chrome)',
+        background: '#1f0d0d',
       }}
     >
       {/* Logo */}

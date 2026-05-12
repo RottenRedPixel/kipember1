@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ImagePlus, MessageCircle, MessageSquare, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, ImagePlus, MessageCircle, MessageSquare, Mic, Phone, SendHorizontal, Square, X } from 'lucide-react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import VoiceMessageList from '@/components/kipember/workflows/VoiceMessageList';
 import { useVoiceRecording } from '@/components/kipember/workflows/useVoiceRecording';
@@ -37,6 +37,7 @@ export default function EmberSheet({
   emberId: string | null;
 }) {
   const [showing, setShowing] = useState(isOpen);
+  const [expanded, setExpanded] = useState(false);
   const [surface, setSurface] = useState<EmberModalSurface>('chats');
 
   // Chat state
@@ -138,6 +139,7 @@ export default function EmberSheet({
     if (isOpen) { setShowing(true); }
     else {
       setShowing(false);
+      setExpanded(false);
       loadedRef.current = false;
       setMessages([]);
       setInput('');
@@ -197,7 +199,11 @@ export default function EmberSheet({
   const triggerCall = useCallback(async () => {
     if (!emberId || isCalling) return;
     setIsCalling(true);
-    try { await fetch(`/api/embers/${encodeURIComponent(emberId)}/self-invite`, { method: 'POST' }); }
+    try {
+      const r = await fetch(`/api/embers/${encodeURIComponent(emberId)}/self-invite`, { method: 'POST' });
+      if (r.ok) toast('Calling you now!', { type: 'success', duration: 5000 });
+      else toast('Could not place the call. Try again.', { type: 'error' });
+    }
     catch { toast('Something went wrong.', { type: 'error' }); }
     finally { setIsCalling(false); }
   }, [emberId, isCalling, toast]);
@@ -209,7 +215,7 @@ export default function EmberSheet({
     return raw;
   }
 
-  function handleClose() { setShowing(false); setTimeout(onClose, SNAP_MS); }
+  function handleClose() { setShowing(false); setExpanded(false); setTimeout(onClose, SNAP_MS); }
 
   // ── Toolbar pill content ────────────────────────────────────────────────────
   const isVoiceActive = voice.isRecording || voice.isPlayingBack || !!manualAnalyser;
@@ -225,9 +231,7 @@ export default function EmberSheet({
       );
     }
     if (surface === 'calls') {
-      return isCalling ? (
-        <><span style={{ color: 'rgba(96,165,250,0.9)', fontSize: 14 }}>Calling</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
-      ) : (
+      return (
         <><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>ember will call:</span><span className="text-white text-sm ml-1.5">{formatPhone(phoneNumber)}</span></>
       );
     }
@@ -313,12 +317,12 @@ export default function EmberSheet({
     <div
       className="fixed bottom-0 left-0 right-0 flex flex-col"
       style={{
-        height: '50vh',
-        zIndex: 10,
+        height: expanded ? '100dvh' : '50vh',
+        zIndex: expanded ? 50 : 10,
         background: 'var(--bg-chrome)',
-        borderRadius: '20px 20px 0 0',
+        borderRadius: expanded ? 0 : '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
-        transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+        transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1), height ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
       {/* Header */}
@@ -344,7 +348,12 @@ export default function EmberSheet({
             </button>
           ))}
         </div>
-        <div className="ml-auto flex-shrink-0">
+        <div className="ml-auto flex items-center gap-2 flex-shrink-0">
+          <button type="button" onClick={() => setExpanded((v) => !v)} className="cursor-pointer">
+            {expanded
+              ? <ChevronDown size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+              : <ChevronUp size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />}
+          </button>
           <button type="button" onClick={handleClose} className="cursor-pointer">
             <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
           </button>
@@ -378,11 +387,8 @@ export default function EmberSheet({
           <div
             className="flex h-11 flex-1 items-center rounded-full px-4 gap-2"
             style={{
-              background: surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 15%, transparent)'
-                : surface === 'calls' && isCalling ? 'color-mix(in srgb, var(--bubble-call-accent) 15%, transparent)'
-                : 'rgba(255,255,255,0.08)',
+              background: surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 15%, transparent)' : 'rgba(255,255,255,0.08)',
               border: `1px solid ${surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 45%, transparent)'
-                : surface === 'calls' && isCalling ? 'color-mix(in srgb, var(--bubble-call-accent) 45%, transparent)'
                 : surface === 'chats' && chatFocused ? 'color-mix(in srgb, var(--bubble-chat-accent) 24%, transparent)'
                 : 'transparent'}`,
             }}

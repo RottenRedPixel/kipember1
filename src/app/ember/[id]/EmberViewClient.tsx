@@ -323,7 +323,7 @@ function EmberViewContent() {
       <div
         className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4"
         style={{
-          background: 'var(--bg-chrome)',
+          background: '#0d1f12',
           transform: tabHidden ? 'translateY(100%)' : 'translateY(0)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
