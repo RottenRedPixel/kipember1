@@ -69,7 +69,6 @@ function EmberViewContent() {
   const [snapping, setSnapping] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; axis: 'h' | 'v' | null } | null>(null);
   const lastDirRef = useRef<1 | -1>(1);
-  const lastNavAxisRef = useRef<'h' | 'v'>('h');
   const prefetchCacheRef = useRef<Record<string, EmberSummary>>({});
   const panelOpen = emberOpen || activeTab !== null;
 
@@ -111,17 +110,19 @@ function EmberViewContent() {
     if (w === h) setOrientation('square');
     else if (w > h) setOrientation('landscape');
     else setOrientation('portrait');
+  }
 
-    if (lastNavAxisRef.current === 'v') {
-      const incomingY = lastDirRef.current < 0 ? window.innerHeight : -window.innerHeight;
-      setSwipeY(incomingY);
+  function slideInFrom(axis: 'h' | 'v', dir: 1 | -1) {
+    // Place the new card off-screen on the opposite side of the swipe (no animation),
+    // then animate it to 0. Deterministic — does not depend on image onLoad firing.
+    setSnapping(false);
+    if (axis === 'v') {
+      setSwipeY(dir < 0 ? window.innerHeight : -window.innerHeight);
       setSwipeX(0);
     } else {
-      const incomingX = lastDirRef.current < 0 ? window.innerWidth : -window.innerWidth;
-      setSwipeX(incomingX);
+      setSwipeX(dir < 0 ? window.innerWidth : -window.innerWidth);
       setSwipeY(0);
     }
-    setSnapping(false);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setSnapping(true);
@@ -194,7 +195,7 @@ function EmberViewContent() {
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (panelOpen || snapping) return;
-    (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+    try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch {}
     dragRef.current = { startX: e.clientX, startY: e.clientY, axis: null };
   }
 
@@ -223,13 +224,12 @@ function EmberViewContent() {
       const targetIndex = dir < 0 ? currentIndex + 1 : currentIndex - 1;
       if (targetIndex < 0 || targetIndex >= emberIds.length) { snapBack(); return; }
       lastDirRef.current = dir;
-      lastNavAxisRef.current = 'v';
       setSnapping(true);
       setSwipeY(dir < 0 ? -window.innerHeight : window.innerHeight);
       setTimeout(() => {
         setMediaIndex(0);
-        window.history.replaceState(null, '', `/ember/${emberIds[targetIndex]}`);
         setId(emberIds[targetIndex]);
+        slideInFrom('v', dir);
       }, SNAP_MS);
       return;
     }
@@ -237,7 +237,6 @@ function EmberViewContent() {
     if (axis !== 'h' || Math.abs(dx) < SWIPE_THRESHOLD) { snapBack(); return; }
 
     const dir: 1 | -1 = dx < 0 ? -1 : 1;
-    lastNavAxisRef.current = 'h';
 
     // Horizontal swipe only cycles through the photo carousel
     const nextMediaIndex = mediaIndex + (dir < 0 ? 1 : -1);
@@ -248,6 +247,7 @@ function EmberViewContent() {
       setTimeout(() => {
         setMediaIndex(nextMediaIndex);
         setPhotoLoaded(false);
+        slideInFrom('h', dir);
       }, SNAP_MS);
       return;
     }
@@ -290,24 +290,26 @@ function EmberViewContent() {
             ) : null}
           </div>
         ) : null}
-        <div className={`flex-1 min-h-0 px-[10px] pb-3 flex ${orientation === 'portrait' ? 'items-start' : 'items-center'} justify-center overflow-hidden`}>
+        <div
+          className={`flex-1 min-h-0 px-[10px] pb-3 flex ${orientation === 'portrait' ? 'items-start' : 'items-center'} justify-center overflow-hidden cursor-pointer`}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onClick={() => { if (swipeX === 0 && swipeY === 0) { setEmberOpen(false); setActiveTab(null); } }}
+          style={{ touchAction: 'none', userSelect: 'none' }}
+        >
           {photoUrl ? (
             <div
-              className="rounded-2xl overflow-hidden cursor-pointer relative"
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerCancel}
-              onClick={() => { if (swipeX === 0) { setEmberOpen(false); setActiveTab(null); } }}
+              className="rounded-2xl overflow-hidden relative"
               style={{
                 border: '1px solid var(--border-default)',
                 background: 'transparent',
                 aspectRatio: naturalRatio ?? '4/3',
                 transform: `translateX(${swipeX}px) translateY(${swipeY}px)`,
                 transition: snapping ? `transform ${SNAP_MS}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : 'none',
-                touchAction: 'none',
                 willChange: 'transform',
-                userSelect: 'none',
+                pointerEvents: 'none',
                 ...(orientation === 'portrait'
                   ? { height: '100%', maxWidth: '100%' }
                   : { width: '100%', maxHeight: '100%' }),
