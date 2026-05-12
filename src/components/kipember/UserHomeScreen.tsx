@@ -356,6 +356,7 @@ export default function UserHomeScreen({
           <p className="text-white/60 text-sm mt-1">Good to see you again!</p>
         </div>
 
+        {false && (<>
         {/* Stats strip */}
         <div className="mt-5">
           <div className="flex items-center gap-2 mb-3">
@@ -379,9 +380,10 @@ export default function UserHomeScreen({
           ))}
         </div>
         </div>
+        </>)}
 
         {/* c) Ember activity */}
-        {(() => {
+        {false && (() => {
           type ActivityKind = 'contributions' | 'wiki' | 'guestViews' | 'calls';
           const KIND_META: Record<ActivityKind, { gradient: string; singular: string; plural: string }> = {
             contributions: { gradient: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)', singular: 'Contribution', plural: 'Contributions' },
@@ -477,7 +479,7 @@ export default function UserHomeScreen({
         })()}
 
         {/* d) Your Checklist */}
-        {(() => {
+        {false && (() => {
           const allItems = initialChecklist ?? [];
           const visible = allItems.filter((item) => !dismissedChecklist.has(`${item.slug}:${item.emberId}`));
           const displayed = visible.slice(0, 4);
