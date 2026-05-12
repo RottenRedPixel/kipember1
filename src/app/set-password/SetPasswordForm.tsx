@@ -64,19 +64,13 @@ export default function SetPasswordForm({
           <div className="flex gap-3">
             <div className="flex flex-col gap-1.5 flex-1 min-w-0">
               <label className="text-white/60 text-xs font-medium">First Name</label>
-              <div
-                className="w-full h-12 rounded-xl px-4 flex items-center text-sm text-white/50"
-                style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-              >
+              <div className="input-auth flex items-center text-white/50">
                 {firstName || 'First'}
               </div>
             </div>
             <div className="flex flex-col gap-1.5 flex-1 min-w-0">
               <label className="text-white/60 text-xs font-medium">Last Name</label>
-              <div
-                className="w-full h-12 rounded-xl px-4 flex items-center text-sm text-white/50"
-                style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-              >
+              <div className="input-auth flex items-center text-white/50">
                 {lastName || 'Last'}
               </div>
             </div>
@@ -85,10 +79,7 @@ export default function SetPasswordForm({
           {phoneNumber ? (
             <div className="flex flex-col gap-1.5">
               <label className="text-white/60 text-xs font-medium">Phone Number</label>
-              <div
-                className="w-full h-12 rounded-xl px-4 flex items-center text-sm text-white/50"
-                style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-              >
+              <div className="input-auth flex items-center text-white/50">
                 {phoneNumber}
               </div>
             </div>
@@ -103,10 +94,7 @@ export default function SetPasswordForm({
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="new-password"
-              className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
-              style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(249,115,22,0.6)')}
-              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-input)')}
+              className="input-auth"
             />
           </div>
 

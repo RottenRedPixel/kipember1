@@ -201,12 +201,7 @@ function PhoneField({
   return (
     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
       <label className="text-white/60 text-xs font-medium">Phone Number</label>
-      <div
-        className="flex items-center w-full h-12 rounded-xl overflow-hidden text-sm text-white outline-none transition-colors"
-        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-        onFocusCapture={(e) => { if (!locked) (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(249,115,22,0.6)'; }}
-        onBlurCapture={(e) => ((e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-input)')}
-      >
+      <div className="input-auth-wrap">
         <span className="pl-4 pr-2 text-white/50 select-none shrink-0">+1</span>
         <div className="w-px h-5 bg-white/15 shrink-0" />
         {locked ? (
@@ -256,13 +251,7 @@ function Field({
         onChange={onChange}
         required={required}
         autoComplete="off"
-        className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
-        style={{
-          background: 'var(--bg-input)',
-          border: '1px solid var(--border-input)',
-        }}
-        onFocus={(event) => (event.currentTarget.style.borderColor = 'rgba(249,115,22,0.6)')}
-        onBlur={(event) => (event.currentTarget.style.borderColor = 'var(--border-input)')}
+        className="input-auth"
       />
     </div>
   );

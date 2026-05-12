@@ -3495,13 +3495,13 @@ export default function KipemberWikiContent({
             type="button"
             onClick={closeEditOverlay}
             className="h-full"
-            style={{ width: 'calc(8% + 10px)', cursor: 'pointer' }}
+            style={{ width: '8%', cursor: 'pointer' }}
             aria-label="Back to wiki"
           />
           <div
             className="flex-1 h-full flex flex-col"
             style={{
-              background: '#1e90ff',
+              background: '#272727',
               borderLeft: '1px solid var(--border-subtle)',
               transform: overlayOpen ? 'translateX(0)' : 'translateX(100%)',
               transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

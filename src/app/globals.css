@@ -7,8 +7,8 @@
 
 :root {
   --bg-body: #0d0d0f;
-  --bg-screen: #1f0a14;
-  --bg-chrome: #0d1b2e;
+  --bg-screen: #141414;
+  --bg-chrome: #1e1e1e;
   --bg-modal: rgba(0, 0, 0, 0.75);
   /* Opaque pre-composite of 7% white over bg-screen — keeps the same
      visual weight as the legacy translucent surface but doesn't let
@@ -16,7 +16,7 @@
      partly transparent over the ember view; translucent surfaces
      used to ride on the wiki's solid bg. */
   --bg-surface: #272525;
-  --bg-input: rgba(255, 255, 255, 0.06);
+  --bg-input: rgba(255, 255, 255, 0.08);
   --bg-chat-user: #2e3a4e;
   /* Same rationale as --bg-surface — opaque pre-composite of 8% white
      over bg-screen so chat/voice/call bubbles in the wiki's Story
@@ -24,7 +24,7 @@
   --bg-ember-bubble: #2a2828;
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-default: rgba(255, 255, 255, 0.05);
-  --border-input: rgba(255, 255, 255, 0.1);
+  --border-input: rgba(255, 255, 255, 0.22);
   --border-btn: rgba(255, 255, 255, 0.35);
   --border-ember: rgba(255, 255, 255, 0.1);
   --text-primary: #ffffff;
@@ -122,6 +122,59 @@ body {
   font-family: var(--font-ubuntu), sans-serif;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Unified auth input — used for sign in, sign up, forgot/reset/set password */
+@layer components {
+.input-auth {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  color: #ffffff;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.input-auth::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+.input-auth:focus {
+  border-color: rgba(249, 115, 22, 0.6);
+}
+.input-auth-wrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 14px;
+  color: #ffffff;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.input-auth-wrap:focus-within {
+  border-color: rgba(249, 115, 22, 0.6);
+}
+.input-auth-wrap > input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #ffffff;
+}
+.input-auth-wrap > input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
 }
 
 @keyframes slideInRight {

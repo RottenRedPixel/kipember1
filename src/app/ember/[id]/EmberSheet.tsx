@@ -268,7 +268,7 @@ export default function EmberSheet({
           type="button"
           onClick={voice.isRecording ? voice.stopRecording : () => void voice.startRecording()}
           disabled={voice.isUploading}
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
+          className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
           style={{ background: 'var(--bubble-voice-accent)', filter: voice.isRecording ? 'brightness(0.8)' : undefined }}
           aria-label={voice.isRecording ? 'Stop' : 'Record'}
         >
@@ -282,7 +282,7 @@ export default function EmberSheet({
           type="button"
           onClick={() => void triggerCall()}
           disabled={isCalling || !phoneNumber}
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
+          className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
           style={{ background: 'var(--bubble-call-accent)' }}
           aria-label="Call"
         >
@@ -295,7 +295,7 @@ export default function EmberSheet({
         <button
           type="button"
           disabled
-          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
+          className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
           style={{ background: 'var(--bubble-sms-accent)' }}
           aria-label="Send SMS"
         >
@@ -308,7 +308,7 @@ export default function EmberSheet({
         type="button"
         onClick={() => void sendChat()}
         disabled={isSending}
-        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
+        className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-white cursor-pointer disabled:opacity-40"
         style={{ background: 'var(--bubble-chat-accent)' }}
         aria-label="Send"
       >
@@ -387,12 +387,12 @@ export default function EmberSheet({
       <div className="px-4 pb-4 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div
-            className="flex h-11 flex-1 items-center rounded-full px-4 gap-2"
+            className="flex h-12 flex-1 items-center rounded-full px-4 gap-2"
             style={{
-              background: surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 15%, transparent)' : 'rgba(255,255,255,0.08)',
+              background: surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 15%, transparent)' : 'var(--bg-input)',
               border: `1px solid ${surface === 'voice' && isVoiceActive ? 'color-mix(in srgb, var(--bubble-voice-accent) 45%, transparent)'
                 : surface === 'chats' && chatFocused ? 'color-mix(in srgb, var(--bubble-chat-accent) 24%, transparent)'
-                : 'transparent'}`,
+                : 'var(--border-input)'}`,
             }}
           >
             <span style={{ marginLeft: -5 }}><EmberMark size={20} /></span>

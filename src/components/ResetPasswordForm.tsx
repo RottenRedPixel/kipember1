@@ -129,10 +129,7 @@ function Field({
         value={value}
         onChange={onChange}
         autoComplete="off"
-        className="h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none transition-colors"
-        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)' }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = 'rgba(249,115,22,0.6)')}
-        onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border-input)')}
+        className="input-auth"
       />
     </div>
   );

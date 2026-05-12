@@ -113,7 +113,7 @@ export default function AppHeader({
       className="fixed top-0 left-0 right-0 z-30 flex items-center px-[10px] gap-2"
       style={{
         height: 56,
-        background: '#3b0a1a',
+        background: '#000000',
       }}
     >
       {/* Logo */}
@@ -139,15 +139,15 @@ export default function AppHeader({
         className="flex items-center gap-2 ml-2"
         style={{ opacity: authLoading ? 0 : 1, transition: 'opacity 0.25s ease' }}
       >
-        <Link href="/about" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: pathname === '/about' ? 'var(--text-primary)' : 'var(--color-neutral)' }}>
+        <Link href="/about" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : 'rgba(255,255,255,0.5)' }}>
           about
         </Link>
         {authenticated && hasPassword && (
           <>
-            <Link href="/home" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isHomeDashboard ? 'var(--text-primary)' : 'var(--color-neutral)' }}>
+            <Link href="/home" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : 'rgba(255,255,255,0.5)' }}>
               home
             </Link>
-            <Link href="/embers" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isEmbersList ? 'var(--text-primary)' : 'var(--color-neutral)' }}>
+            <Link href="/embers" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isEmbersList ? '#ffffff' : 'rgba(255,255,255,0.5)' }}>
               embers
             </Link>
           </>
