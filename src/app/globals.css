@@ -6,8 +6,9 @@
 }
 
 :root {
-  --bg-body: #171515;
-  --bg-screen: #171515;
+  --bg-body: #000000;
+  --bg-screen: #000000;
+  --bg-chrome: #111113;
   --bg-modal: rgba(0, 0, 0, 0.75);
   /* Opaque pre-composite of 7% white over bg-screen — keeps the same
      visual weight as the legacy translucent surface but doesn't let
@@ -29,6 +30,17 @@
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.6);
   --text-muted: rgba(255, 255, 255, 0.3);
+
+  /* ── Accent + semantic colors ──────────────────────────────────────── */
+  --color-accent:         #f97316;
+  --color-success:        #22c55e;
+  --color-success-bg:     rgba(34, 197, 94, 0.13);
+  --color-success-border: rgba(34, 197, 94, 0.28);
+  --color-error:          #ef4444;
+  --color-error-bg:       rgba(239, 68, 68, 0.12);
+  --color-error-border:   rgba(239, 68, 68, 0.55);
+  --color-neutral:        #6b7280;
+  --border-header:        rgba(255, 255, 255, 0.06);
 
   /* ── Surface bubble tokens ─────────────────────────────────────────── */
   /* Chat (orange) */
@@ -56,6 +68,7 @@
   --color-white: #1c1917;
   --bg-body: #faf7f3;
   --bg-screen: #faf7f3;
+  --bg-chrome: #ece9e5;
   --bg-modal: rgba(250, 247, 243, 0.92);
   /* Opaque pre-composite (5% black over bg-screen). */
   --bg-surface: #ece9e5;
@@ -70,6 +83,17 @@
   --text-primary: #1c1917;
   --text-secondary: rgba(28, 25, 23, 0.6);
   --text-muted: rgba(28, 25, 23, 0.3);
+
+  /* ── Accent + semantic colors (light) ──────────────────────────────── */
+  --color-accent:         #f97316;
+  --color-success:        #16a34a;
+  --color-success-bg:     rgba(22, 163, 74, 0.12);
+  --color-success-border: rgba(22, 163, 74, 0.25);
+  --color-error:          #dc2626;
+  --color-error-bg:       rgba(220, 38, 38, 0.10);
+  --color-error-border:   rgba(220, 38, 38, 0.45);
+  --color-neutral:        #9ca3af;
+  --border-header:        rgba(28, 25, 23, 0.08);
 
   /* ── Surface bubble tokens (light) ─────────────────────────────────── */
   --bubble-chat-bg:      #f9731620;

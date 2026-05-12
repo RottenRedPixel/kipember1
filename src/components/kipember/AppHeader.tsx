@@ -33,6 +33,9 @@ export default function AppHeader({
   const [authenticated, setAuthenticated] = useState(externalAvatarUrl !== undefined);
   const [hasPassword, setHasPassword] = useState<boolean>(externalHasPassword ?? true);
   const [localInitials, setLocalInitials] = useState<string>(userInitials);
+  // When the caller doesn't pass auth state we self-fetch. Hide the right
+  // side until the fetch resolves so it never flashes "login" mid-transition.
+  const [authLoading, setAuthLoading] = useState(externalAvatarUrl === undefined);
   const pathname = usePathname();
   const isHomeDashboard = pathname === '/home';
   const isEmbersList = pathname === '/embers';
@@ -42,6 +45,7 @@ export default function AppHeader({
     if (externalAvatarUrl !== undefined) {
       setAvatarUrl(externalAvatarUrl);
       setAuthenticated(true);
+      setAuthLoading(false);
       if (externalHasPassword !== undefined) setHasPassword(externalHasPassword);
       return;
     }
@@ -54,6 +58,7 @@ export default function AppHeader({
       .then(async (res) => {
         if (!res.ok) {
           setAuthenticated(false);
+          setAuthLoading(false);
           return;
         }
         setAuthenticated(true);
@@ -69,9 +74,11 @@ export default function AppHeader({
         if (display) {
           setLocalInitials(computeInitials(display));
         }
+        setAuthLoading(false);
       })
       .catch(() => {
         setAuthenticated(false);
+        setAuthLoading(false);
       });
   }, [externalAvatarUrl]);
 
@@ -80,12 +87,12 @@ export default function AppHeader({
       className="fixed top-0 left-0 right-0 z-30 flex items-center px-4 gap-2"
       style={{
         height: 56,
-        background: 'var(--bg-screen)',
+        background: 'var(--bg-chrome)',
         borderBottom: '1px solid var(--border-subtle)',
       }}
     >
       {/* Logo */}
-      <Link href="/" className="flex items-center flex-shrink-0 pr-2">
+      <Link href="/" className="flex items-center flex-shrink-0">
         <svg width={22} height={22} viewBox="0 0 72 72" fill="white">
           <circle cx="36" cy="36" r="7.2" fill="#f97316" />
           <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
@@ -100,16 +107,16 @@ export default function AppHeader({
       </Link>
 
       {/* Nav links */}
-      <Link href="/about" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
-        ABOUT
+      <Link href="/about" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : '#6b7280' }}>
+        about
       </Link>
-      {authenticated && hasPassword && (
+      {!authLoading && authenticated && hasPassword && (
         <>
-          <Link href="/home" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : '#6b7280' }}>
-            HOME
+          <Link href="/home" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : '#6b7280' }}>
+            home
           </Link>
-          <Link href="/embers" className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0" style={{ color: isEmbersList ? '#ffffff' : '#6b7280' }}>
-            EMBERS
+          <Link href="/embers" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isEmbersList ? '#ffffff' : '#6b7280' }}>
+            embers
           </Link>
         </>
       )}
@@ -117,8 +124,9 @@ export default function AppHeader({
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Right side — avatar for full accounts, create account for passwordless, login for guests */}
-      {authenticated && hasPassword ? (
+      {/* Right side — avatar for full accounts, create account for passwordless, login for guests.
+          Render nothing while auth state is loading to avoid flashing "login" on page transitions. */}
+      {authLoading ? null : authenticated && hasPassword ? (
         <Link
           href={userModalHref}
           className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
@@ -148,10 +156,10 @@ export default function AppHeader({
       ) : (
         <Link
           href="/login"
-          className="px-2 py-3 text-xs font-medium tracking-widest nav-link flex-shrink-0"
+          className="px-1 py-3 text-sm nav-link flex-shrink-0"
           style={{ color: pathname === '/login' ? '#ffffff' : '#6b7280' }}
         >
-          LOGIN
+          login
         </Link>
       )}
     </div>

@@ -217,7 +217,7 @@ export default function StoriesSheet({
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
       style={{
         height: SHEET_H,
-        background: '#111113',
+        background: 'var(--bg-chrome)',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
@@ -291,7 +291,7 @@ export default function StoriesSheet({
               background: (playbackState === 'playing' || playbackState === 'loading')
                 ? BADGES[selectedBadge].active
                 : 'transparent',
-              border: `2px solid rgba(255,255,255,0.7)`,
+              border: `2px solid rgba(255,255,255,0.25)`,
             }}
           />
           {BADGES.map(({ icon: Icon }, i) => (
@@ -305,7 +305,7 @@ export default function StoriesSheet({
                 size={20}
                 strokeWidth={1.5}
                 color={BADGES[i].vizColor}
-                style={{ opacity: selectedBadge === i ? 1 : 0.35 }}
+                style={{ opacity: 1 }}
               />
             </button>
           ))}

@@ -84,7 +84,7 @@ function Modal({ children, closeHref }: { children: React.ReactNode; closeHref: 
   );
 }
 
-function RailBtn({
+function TabBtn({
   icon: Icon,
   label,
   href,
@@ -305,7 +305,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
   const callTabHref = buildHref({ chat: 'calls' });
   const shareUrl = typeof window !== 'undefined' ? window.location.origin + base : base;
 
-  const railHidden = emberModalOpen || modal === 'share' || modal === 'play' || modal === 'stories' || modal === 'hello';
+  const tabHidden = emberModalOpen || modal === 'share' || modal === 'play' || modal === 'stories' || modal === 'hello';
 
   return (
     <div className="fixed inset-0 flex justify-center" style={{ background: 'var(--bg-screen)' }}>
@@ -411,7 +411,7 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
         {/* Right rail */}
         <div
           className={`absolute right-2 z-20 flex flex-col gap-0 items-center transition-opacity duration-200 ${
-            railHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            tabHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
           style={{ bottom: '9%' }}
         >
@@ -440,8 +440,8 @@ export default function ContributorNPWFlow({ token }: { token: string }) {
               <span className="text-white text-xs font-medium lowercase">hello!</span>
             </Link>
           ) : null}
-          <RailBtn icon={Share2} label="share" href={buildHref({ m: 'share' })} />
-          <RailBtn icon={Flame} label="stories" href={buildHref({ m: 'stories' })} />
+          <TabBtn icon={Share2} label="share" href={buildHref({ m: 'share' })} />
+          <TabBtn icon={Flame} label="stories" href={buildHref({ m: 'stories' })} />
         </div>
 
         {/* Share modal */}

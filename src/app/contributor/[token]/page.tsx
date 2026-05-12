@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import GuestEmberScreen from '@/components/kipember/GuestEmberScreen';
 
-export default async function PublicSharePage({
+export default async function ContributorMemoryPage({
   params,
 }: {
   params: Promise<{ token: string }>;
@@ -12,9 +12,9 @@ export default async function PublicSharePage({
     <Suspense>
       <GuestEmberScreen
         token={token}
-        dataApiPath="/api/share"
-        chatApiPath="/api/share"
-        basePath="/share"
+        dataApiPath="/api/contributor"
+        chatApiPath="/api/contributor"
+        basePath="/contributor"
       />
     </Suspense>
   );

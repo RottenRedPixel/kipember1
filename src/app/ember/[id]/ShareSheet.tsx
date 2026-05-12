@@ -14,7 +14,18 @@ function FacebookIcon() {
   );
 }
 
-export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boolean; onClose: () => void; emberId: string | null }) {
+export default function ShareSheet({
+  isOpen,
+  onClose,
+  emberId,
+  overrideShareUrl,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  emberId: string | null;
+  /** When provided, skips the share-token fetch and uses this URL directly. */
+  overrideShareUrl?: string;
+}) {
   const [showing, setShowing] = useState(isOpen);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const { toast } = useToast();
@@ -22,15 +33,15 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
   useEffect(() => { if (isOpen) setShowing(true); else setShowing(false); }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !emberId) return;
+    if (overrideShareUrl || !isOpen || !emberId) return;
     setShareToken(null);
     fetch(`/api/embers/${emberId}/share-token`, { method: 'POST' })
       .then((r) => r.json())
       .then((d) => { if (d.token) setShareToken(d.token); })
       .catch(() => {});
-  }, [isOpen, emberId]);
+  }, [isOpen, emberId, overrideShareUrl]);
 
-  const shareUrl = shareToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/share/${shareToken}` : null;
+  const shareUrl = overrideShareUrl ?? (shareToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/guest/${shareToken}` : null);
 
   const copyLink = useCallback(async () => {
     if (!shareUrl) return;
@@ -51,7 +62,7 @@ export default function ShareSheet({ isOpen, onClose, emberId }: { isOpen: boole
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
       style={{
         height: '20vh',
-        background: '#111113',
+        background: 'var(--bg-chrome)',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,

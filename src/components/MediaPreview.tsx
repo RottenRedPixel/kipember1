@@ -62,6 +62,7 @@ export default function MediaPreview({
   playsInline = false,
   autoPlay = false,
   preload = 'metadata',
+  usePosterForVideo = false,
 }: MediaPreviewProps) {
   const resolvedMediaType = resolvePreviewMediaType(
     mediaType,
@@ -70,6 +71,17 @@ export default function MediaPreview({
   );
 
   if (resolvedMediaType === 'VIDEO') {
+    // When usePosterForVideo is set (e.g. thumbnails in the wiki), render a
+    // static image instead of an unplayable <video> element.
+    if (usePosterForVideo) {
+      return (
+        <img
+          src={posterFilename ? getUploadUrl(posterFilename) : getPreviewMediaUrl({ mediaType, filename, posterFilename })}
+          alt={originalName}
+          className={className}
+        />
+      );
+    }
     return (
       <video
         src={getUploadUrl(filename)}

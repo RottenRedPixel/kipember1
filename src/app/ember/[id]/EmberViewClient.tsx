@@ -1,10 +1,11 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Flame, Hand, Images, Leaf, MessageCirclePlus, Share } from 'lucide-react';
 import { getPreviewMediaUrl } from '@/lib/media';
 import AppHeader from '@/components/kipember/AppHeader';
+import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import EmberSheet from './EmberSheet';
 import HelloSheet from './HelloSheet';
 import ShareSheet from './ShareSheet';
@@ -29,12 +30,12 @@ type AttachmentItem = {
   posterFilename: string | null;
 };
 
-const RAIL_H = 80;
+const TAB_H = 80;
 const CARD_H = '50vh';
 const SWIPE_THRESHOLD = 50;
 const SNAP_MS = 260;
 
-const railItems = [
+const tabItems = [
   { label: 'hello', icon: Hand },
   { label: 'ember', icon: MessageCirclePlus },
   { label: 'stories', icon: Flame },
@@ -43,14 +44,16 @@ const railItems = [
 ] as const;
 
 function EmberViewContent() {
-  const router = useRouter();
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const modal = searchParams.get('m');
+  const [id, setId] = useState(routeId);
   const [ember, setEmber] = useState<EmberSummary | null>(null);
   const [emberIds, setEmberIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
   const [mediaIndex, setMediaIndex] = useState(0);
   const [emberOpen, setEmberOpen] = useState(false);
-  const [activeRail, setActiveRail] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
   const [orientation, setOrientation] = useState<'portrait' | 'landscape' | 'square' | null>(null);
   const [naturalRatio, setNaturalRatio] = useState<string | null>(null);
   const [photoLoaded, setPhotoLoaded] = useState(false);
@@ -61,7 +64,7 @@ function EmberViewContent() {
   const lastDirRef = useRef<1 | -1>(1);
   const lastNavAxisRef = useRef<'h' | 'v'>('h');
   const prefetchCacheRef = useRef<Record<string, EmberSummary>>({});
-  const panelOpen = emberOpen || activeRail !== null;
+  const panelOpen = emberOpen || activeTab !== null;
 
   const objectPosition = orientation === 'portrait' ? 'center top' : 'center';
   const currentIndex = id ? emberIds.indexOf(id) : -1;
@@ -81,8 +84,8 @@ function EmberViewContent() {
       })
     : null;
 
-  // Rail items filtered by access type
-  const visibleRailItems = railItems.filter(({ label }) => {
+  // Tab items filtered by access type
+  const visibleTabItems = tabItems.filter(({ label }) => {
     if (label === 'tend' && ember?.accessType === 'contributor') return false;
     return true;
   });
@@ -210,7 +213,8 @@ function EmberViewContent() {
       setSwipeY(dir < 0 ? -window.innerHeight : window.innerHeight);
       setTimeout(() => {
         setMediaIndex(0);
-        router.replace(`/ember/${emberIds[targetIndex]}`);
+        window.history.replaceState(null, '', `/ember/${emberIds[targetIndex]}`);
+        setId(emberIds[targetIndex]);
       }, SNAP_MS);
       return;
     }
@@ -242,19 +246,19 @@ function EmberViewContent() {
     snapBack();
   }
 
-  const closePanel = () => setActiveRail(null);
+  const closePanel = () => setActiveTab(null);
 
   const spacerHeight = emberOpen
     ? CARD_H
-    : activeRail === 'hello'
+    : activeTab === 'hello'
     ? '50vh'
-    : activeRail === 'share'
+    : activeTab === 'share'
     ? '25vh'
-    : activeRail === 'stories'
+    : activeTab === 'stories'
     ? '30vh'
-    : RAIL_H;
+    : TAB_H;
 
-  const railHidden = activeRail === 'stories' || activeRail === 'hello' || activeRail === 'share' || emberOpen;
+  const tabHidden = activeTab === 'stories' || activeTab === 'hello' || activeTab === 'share' || emberOpen;
 
   return (
     <>
@@ -279,7 +283,7 @@ function EmberViewContent() {
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerCancel}
-              onClick={() => { if (swipeX === 0) { setEmberOpen(false); setActiveRail(null); } }}
+              onClick={() => { if (swipeX === 0) { setEmberOpen(false); setActiveTab(null); } }}
               style={{
                 border: '1px solid var(--border-default)',
                 background: 'transparent',
@@ -327,31 +331,29 @@ function EmberViewContent() {
                 </div>
               ) : null}
             </div>
-          ) : (
-            <div className="rounded-2xl" style={{ width: '100%', aspectRatio: '1/1', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }} />
-          )}
+          ) : null}
         </div>
 
         <div style={{ flexShrink: 0, height: spacerHeight, transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
       </div>
 
       <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} emberId={id} />
-      <HelloSheet isOpen={activeRail === 'hello'} onClose={closePanel} emberId={id} accessType={ember?.accessType ?? null} />
-      <StoriesSheet isOpen={activeRail === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
-      <ShareSheet isOpen={activeRail === 'share'} onClose={closePanel} emberId={id} />
-      <TendSheet isOpen={activeRail === 'tend'} onClose={closePanel} emberId={id} />
+      <HelloSheet isOpen={activeTab === 'hello'} onClose={closePanel} emberId={id} accessType={ember?.accessType ?? null} />
+      <StoriesSheet isOpen={activeTab === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
+      <ShareSheet isOpen={activeTab === 'share'} onClose={closePanel} emberId={id} />
+      <TendSheet isOpen={activeTab === 'tend'} onClose={closePanel} emberId={id} />
 
-      {/* Rail */}
+      {/* Tab bar */}
       <div
         className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4"
         style={{
-          background: '#111113',
-          transform: railHidden ? 'translateY(100%)' : 'translateY(0)',
+          background: 'var(--bg-chrome)',
+          transform: tabHidden ? 'translateY(100%)' : 'translateY(0)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        {visibleRailItems.map(({ label, icon: Icon }) => {
-          const isActive = label === 'ember' ? emberOpen : activeRail === label;
+        {visibleTabItems.map(({ label, icon: Icon }) => {
+          const isActive = label === 'ember' ? emberOpen : activeTab === label;
           const isDimmed = panelOpen ? !isActive : false;
           return (
             <button
@@ -359,8 +361,8 @@ function EmberViewContent() {
               className="flex flex-col items-center gap-1 cursor-pointer transition-opacity duration-200 rounded-xl [@media(hover:hover)]:hover:bg-white/10 px-3 py-1"
               style={{ minWidth: 44, opacity: isDimmed ? 0.25 : 1 }}
               onClick={() => {
-                if (label === 'ember') { setEmberOpen((o) => !o); setActiveRail(null); }
-                else { setEmberOpen(false); setActiveRail((prev) => prev === label ? null : label); }
+                if (label === 'ember') { setEmberOpen((o) => !o); setActiveTab(null); }
+                else { setEmberOpen(false); setActiveTab((prev) => prev === label ? null : label); }
               }}
             >
               <Icon size={25} color={isActive ? '#f97316' : 'white'} strokeWidth={1.5} />
@@ -376,7 +378,7 @@ function EmberViewContent() {
 export default function EmberViewClient() {
   return (
     <div className="fixed inset-0" style={{ background: '#000' }}>
-      <div style={{ '--bg-screen': '#000000', '--border-subtle': 'transparent' } as React.CSSProperties}>
+      <div style={{ '--border-subtle': 'transparent' } as React.CSSProperties}>
         <AppHeader />
       </div>
       <Suspense>

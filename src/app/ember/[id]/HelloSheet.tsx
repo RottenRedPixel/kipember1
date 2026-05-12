@@ -6,23 +6,39 @@ import { Hand } from 'lucide-react';
 
 const SNAP_MS = 320;
 
+// When `guest` is provided the component skips the /api/profile fetch and
+// uses the caller-supplied values instead (guest/contributor flows don't
+// have a logged-in session).
+type GuestProps = {
+  firstName: string | null;
+  hasPassword: boolean;
+  /** true = named contributor, false = anonymous viewer */
+  isContributor: boolean;
+  /** Used as the localStorage key so "don't show again" is scoped to this token */
+  token: string;
+  createAccountHref?: string;
+};
+
 export default function HelloSheet({
   isOpen,
   onClose,
   emberId,
   accessType,
+  guest,
 }: {
   isOpen: boolean;
   onClose: () => void;
   emberId: string | null;
   accessType: 'owner' | 'contributor' | 'network' | null;
+  guest?: GuestProps;
 }) {
   const [showing, setShowing] = useState(isOpen);
-  const [firstName, setFirstName] = useState<string | null>(null);
-  const [hasPassword, setHasPassword] = useState(true);
+  const [firstName, setFirstName] = useState<string | null>(guest?.firstName ?? null);
+  const [hasPassword, setHasPassword] = useState(guest?.hasPassword ?? true);
   const [helloDismissed, setHelloDismissed] = useState(false);
 
   useEffect(() => {
+    if (guest) return; // caller manages these values
     fetch('/api/profile')
       .then((r) => r.json())
       .then((d) => {
@@ -30,13 +46,15 @@ export default function HelloSheet({
         if (typeof d?.user?.hasPassword === 'boolean') setHasPassword(d.user.hasPassword);
       })
       .catch(() => {});
-  }, []);
+  }, [guest]);
+
+  const storageKey = guest ? `hello-dismissed-${guest.token}` : emberId ? `hello-dismissed-${emberId}` : null;
 
   useEffect(() => {
-    if (emberId && typeof window !== 'undefined') {
-      setHelloDismissed(!!localStorage.getItem(`hello-dismissed-${emberId}`));
+    if (storageKey && typeof window !== 'undefined') {
+      setHelloDismissed(!!localStorage.getItem(storageKey));
     }
-  }, [emberId]);
+  }, [storageKey]);
 
   useEffect(() => { if (isOpen) setShowing(true); else setShowing(false); }, [isOpen]);
 
@@ -48,13 +66,14 @@ export default function HelloSheet({
   function toggleDismiss() {
     const next = !helloDismissed;
     setHelloDismissed(next);
-    if (emberId) {
-      if (next) localStorage.setItem(`hello-dismissed-${emberId}`, '1');
-      else localStorage.removeItem(`hello-dismissed-${emberId}`);
+    if (storageKey) {
+      if (next) localStorage.setItem(storageKey, '1');
+      else localStorage.removeItem(storageKey);
     }
   }
 
-  const isContributor = accessType === 'contributor';
+  const isContributor = guest ? guest.isContributor : accessType === 'contributor';
+  const isAnonymousGuest = guest && !guest.isContributor;
   const dragRef = useRef<number | null>(null);
 
   return (
@@ -62,7 +81,7 @@ export default function HelloSheet({
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
       style={{
         height: '50vh',
-        background: '#111113',
+        background: 'var(--bg-chrome)',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
@@ -81,9 +100,13 @@ export default function HelloSheet({
         <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, background: '#f97316' }}>
           <Hand size={22} color="#fff" strokeWidth={1.6} />
         </div>
-        <span className="text-white text-base font-medium">Hello {firstName ?? 'there'}!</span>
+        <span className="text-white text-base font-medium">
+          {isAnonymousGuest ? 'Welcome!' : `Hello ${firstName ?? 'there'}!`}
+        </span>
         <p className="text-white/60 text-sm text-center px-6 pb-2">
-          {isContributor
+          {isAnonymousGuest
+            ? "You're viewing a shared memory. Explore the story, chat with Ember, and see what others have shared."
+            : isContributor
             ? "You've been invited to help build this memory. Add photos, share stories, and contribute what you remember."
             : 'This is your ember. Tend it, share it, and invite contributors to help bring the memory to life.'}
         </p>
@@ -92,7 +115,7 @@ export default function HelloSheet({
       {isContributor && !hasPassword ? (
         <div className="px-5 pb-4">
           <Link
-            href="/set-password"
+            href={guest?.createAccountHref ?? '/set-password'}
             className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
             style={{ background: '#f97316', minHeight: 44 }}
           >

@@ -1,7 +1,7 @@
 'use client';
 
 // Token-authed mirror of useVoiceRecording. Same record → upload → render
-// pair flow, but the network round-trip targets /api/guest/[token]/voice
+// pair flow, but the network round-trip targets /api/contributor/[token]/voice
 // (which doesn't require a logged-in user). The hook keeps its own message
 // list scoped to the guest browser cookie, so each share-link visitor gets
 // an isolated voice history.
@@ -32,7 +32,7 @@ export function useGuestVoiceRecording(token: string) {
     async function loadHistory() {
       setIsLoadingHistory(true);
       try {
-        const res = await fetch(`/api/guest/${encodeURIComponent(token)}/voice`, {
+        const res = await fetch(`/api/contributor/${encodeURIComponent(token)}/voice`, {
           cache: 'no-store',
         });
         if (!res.ok) {
@@ -215,7 +215,7 @@ export function useGuestVoiceRecording(token: string) {
       });
       const formData = new FormData();
       formData.append('audio', file);
-      const res = await fetch(`/api/guest/${encodeURIComponent(token)}/voice`, {
+      const res = await fetch(`/api/contributor/${encodeURIComponent(token)}/voice`, {
         method: 'POST',
         body: formData,
       });

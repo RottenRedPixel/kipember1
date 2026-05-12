@@ -283,10 +283,10 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     whatItDoes:
       'Same context as Ember Chat, but tuned for unauthenticated guests viewing via a share link. The guest is here to hear about the memory, not to contribute to it — so this prompt answers their questions from the wiki and explicitly does NOT probe them with interview-style follow-ups.',
     whenItFires: [
-      'A non-logged-in user follows a share link to /guest/[token] and uses the chat',
+      'A non-logged-in user follows a share link to /guest/[token] (anonymous viewer) and uses the chat',
     ],
     affects: [
-      { label: 'Chat replies to anyone visiting via /guest/[token]', on: true },
+      { label: 'Chat replies to anyone visiting via /guest/[token] (anonymous viewer)', on: true },
       { label: 'Chat replies to the owner (uses ember_chat.owner_style) or contributors (ember_chat.contributor_style)', on: false },
     ],
   },
@@ -386,7 +386,7 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
     whatItDoes:
       'Voice equivalent of the guest chat prompt. Answers a guest’s spoken questions using the wiki, never pushes interview questions back at them. Tone is informational and warm rather than coaxing.',
     whenItFires: [
-      'A non-logged-in guest opens /guest/[token] and uses the voice tab',
+      'A non-logged-in guest opens /guest/[token] (anonymous viewer) and uses the voice tab',
     ],
     affects: [
       { label: 'Voice replies to share-link visitors', on: true },

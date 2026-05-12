@@ -418,7 +418,7 @@ type PersonIdentity = {
 
 // Single source for the owner's bubble color. Matches AppHeader and the
 // Account avatar so the owner reads as the same person on every surface.
-const OWNER_AVATAR_BG = 'rgba(249,115,22,0.6)';
+const OWNER_AVATAR_BG = 'color-mix(in srgb, var(--color-accent) 60%, transparent)';
 
 // Pastels are pale enough that dark text reads cleanly. The owner's
 // orange tint is dark enough that white text reads better — same
@@ -612,7 +612,7 @@ function VoiceBlockCard({
       >
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 29, height: 29, background: '#22c55e' }}
+          style={{ width: 29, height: 29, background: 'var(--color-success)' }}
         >
           <Mic size={16} className="text-white" />
         </div>
@@ -639,7 +639,7 @@ function VoiceBlockCard({
         </p>
         <ChevronDown
           size={14}
-          color="rgba(255,255,255,0.5)"
+          color="var(--text-secondary)"
           style={{
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             transition: 'transform 0.15s ease',
@@ -1257,7 +1257,7 @@ function CollapsibleAnalysisCard({
         <p className="flex-1 text-white/50 text-xs font-medium break-words">{filename}</p>
         <ChevronDown
           size={14}
-          color="rgba(255,255,255,0.5)"
+          color="var(--text-secondary)"
           style={{
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             transition: 'transform 0.15s ease',
@@ -1309,7 +1309,7 @@ function PrivacyToggle({
         />
         <span
           className="absolute inset-0 rounded-full transition-colors duration-200"
-          style={{ background: value ? '#f97316' : 'rgba(255,255,255,0.15)' }}
+          style={{ background: value ? 'var(--color-accent)' : 'var(--border-default)' }}
         />
         <span
           className="absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200"
@@ -1398,7 +1398,7 @@ function PrivacyToggles({
             world"). */}
         <p
           className="text-xs"
-          style={{ color: keepPrivateValue ? '#4ade80' : '#f97316' }}
+          style={{ color: keepPrivateValue ? 'var(--color-success)' : 'var(--color-accent)' }}
         >
           {keepPrivateValue ? 'This ember is now private' : 'This ember is now public'}
         </p>
@@ -1447,8 +1447,8 @@ function DeleteEmberCard({
       <div
         className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
         style={{
-          background: 'rgba(239,68,68,0.12)',
-          border: '1px solid rgba(239,68,68,0.55)',
+          background: 'var(--color-error-bg)',
+          border: '1px solid var(--color-error-border)',
         }}
       >
         <p className="text-white text-sm font-semibold mb-1">
@@ -1481,7 +1481,7 @@ function DeleteEmberCard({
             disabled={deleting}
             className="flex-1 flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium disabled:opacity-50"
             style={{
-              background: 'rgba(239,68,68,0.85)',
+              background: 'var(--color-error)',
               border: 'none',
               minHeight: 44,
               cursor: deleting ? 'default' : 'pointer',
@@ -1508,7 +1508,7 @@ function DeleteEmberCard({
         disabled={!canManage}
         className="w-1/2 ml-auto flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium disabled:opacity-50"
         style={{
-          background: 'rgba(239,68,68,0.85)',
+          background: 'var(--color-error)',
           border: 'none',
           minHeight: 44,
           cursor: !canManage ? 'default' : 'pointer',
@@ -1588,18 +1588,18 @@ function WikiBadge({
   // bg-screen so the pill stays fully opaque even when the wiki overlay
   // itself is partially transparent. Visual matches the original tinted
   // pills exactly in both dark and light themes.
-  const grey = { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(148,163,184) 15%)', fg: '#94a3b8' };
+  const grey = { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(148,163,184) 15%)', fg: '#94a3b8' };
   const palette = loading
     ? grey
     : tracksProgress
     ? complete
-      ? { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(34,197,94) 15%)', fg: '#4ade80' }
+      ? { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(34,197,94) 15%)', fg: 'var(--color-success)' }
       : hasCustomLabel
-        ? { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(249,115,22) 15%)', fg: '#f97316' }
-        : { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(239,68,68) 15%)', fg: '#f87171' }
+        ? { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(249,115,22) 15%)', fg: 'var(--color-accent)' }
+        : { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(239,68,68) 15%)', fg: '#f87171' }
     : count === 0
       ? grey
-      : { bg: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(59,130,246) 15%)', fg: '#60a5fa' };
+      : { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(59,130,246) 15%)', fg: '#60a5fa' };
   const collectedDefault =
     typeof count === 'number' ? (
       <>
@@ -1670,7 +1670,7 @@ function EmberProgressBar({
             <h3 className="text-white font-medium text-base">Progress</h3>
             <ChevronDown
               size={14}
-              color="rgba(255,255,255,0.5)"
+              color="var(--text-secondary)"
               style={{
                 transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
                 transition: 'transform 0.15s ease',
@@ -1691,7 +1691,7 @@ function EmberProgressBar({
       </div>
       <div
         className="h-2 rounded-full overflow-hidden"
-        style={{ background: 'rgba(255,255,255,0.08)' }}
+        style={{ background: 'var(--bg-input)' }}
         role="progressbar"
         aria-valuenow={percent}
         aria-valuemin={0}
@@ -1701,7 +1701,7 @@ function EmberProgressBar({
           className="h-full rounded-full"
           style={{
             width: `${percent}%`,
-            background: '#4ade80',
+            background: 'var(--color-success)',
             transition: 'width 0.3s ease',
           }}
         />
@@ -1716,7 +1716,7 @@ function EmberProgressBar({
               onClick={() => handleChipClick(step.slug)}
               className="text-xs font-medium px-2.5 py-1 rounded-full can-hover cursor-pointer inline-flex items-center gap-1.5"
               style={{
-                background: 'color-mix(in srgb, var(--bg-screen) 85%, rgb(148,163,184) 15%)',
+                background: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(148,163,184) 15%)',
                 color: '#94a3b8',
                 minHeight: 28,
                 border: 'none',
@@ -1789,7 +1789,7 @@ function WikiSection({
       {collapsible ? (
         <ChevronDown
           size={14}
-          color="rgba(255,255,255,0.5)"
+          color="var(--text-secondary)"
           style={{
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             transition: 'transform 0.15s ease',
@@ -1873,7 +1873,7 @@ function WikiCard({ children }: { children: React.ReactNode }) {
         // so the card stays fully opaque even when the wiki overlay's
         // own background is partially transparent. Matches the visual
         // of the original translucent surface in either theme.
-        background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 7%)',
+        background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
         border: '1px solid var(--border-subtle)',
       }}
     >
@@ -1926,7 +1926,7 @@ function PlaceCard({
         </div>
         <ChevronDown
           size={14}
-          color="rgba(255,255,255,0.5)"
+          color="var(--text-secondary)"
           style={{
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             transition: 'transform 0.15s ease',
@@ -2017,7 +2017,7 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
       >
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 29, height: 29, background: '#f97316' }}
+          style={{ width: 29, height: 29, background: 'var(--color-accent)' }}
         >
           <MessageCircle size={16} className="text-white" fill="currentColor" stroke="currentColor" />
         </div>
@@ -2044,7 +2044,7 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
         </p>
         <ChevronDown
           size={14}
-          color="rgba(255,255,255,0.5)"
+          color="var(--text-secondary)"
           style={{
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             transition: 'transform 0.15s ease',
@@ -2104,7 +2104,7 @@ function CollapsibleGuestVisitorChatBlock({
       >
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 29, height: 29, background: '#6b7280' }}
+          style={{ width: 29, height: 29, background: 'var(--color-neutral)' }}
         >
           <MessagesSquare size={16} className="text-white" strokeWidth={2} />
         </div>
@@ -2117,7 +2117,7 @@ function CollapsibleGuestVisitorChatBlock({
         </p>
         <ChevronDown
           size={14}
-          color="rgba(255,255,255,0.5)"
+          color="var(--text-secondary)"
           style={{
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             transition: 'transform 0.15s ease',
@@ -2181,7 +2181,7 @@ function CollapsibleGuestVisitorVoiceBlock({
       >
         <div
           className="rounded-full flex items-center justify-center flex-shrink-0"
-          style={{ width: 29, height: 29, background: '#6b7280' }}
+          style={{ width: 29, height: 29, background: 'var(--color-neutral)' }}
         >
           <Mic size={16} className="text-white" />
         </div>
@@ -2194,7 +2194,7 @@ function CollapsibleGuestVisitorVoiceBlock({
         </p>
         <ChevronDown
           size={14}
-          color="rgba(255,255,255,0.5)"
+          color="var(--text-secondary)"
           style={{
             transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
             transition: 'transform 0.15s ease',
@@ -2255,19 +2255,19 @@ function ReconciliationPill({
 }) {
   const stylesByTone = {
     neutral: {
-      background: 'rgba(255,255,255,0.08)',
+      background: 'var(--bg-input)',
       color: 'rgba(255,255,255,0.55)',
-      border: '1px solid rgba(255,255,255,0.08)',
+      border: '1px solid var(--border-subtle)',
     },
     warn: {
-      background: 'rgba(249,115,22,0.13)',
+      background: 'var(--bubble-chat-bg)',
       color: 'rgba(253,186,116,0.95)',
-      border: '1px solid rgba(249,115,22,0.28)',
+      border: '1px solid var(--bubble-chat-border)',
     },
     good: {
-      background: 'rgba(34,197,94,0.13)',
+      background: 'var(--color-success-bg)',
       color: 'rgba(134,239,172,0.95)',
-      border: '1px solid rgba(34,197,94,0.28)',
+      border: '1px solid var(--color-success-border)',
     },
   } as const;
 
@@ -2781,7 +2781,7 @@ export default function KipemberWikiContent({
               <AvatarCircle
                 name={ownerName}
                 avatarUrl={detail?.owner?.avatarFilename ? `/api/uploads/${detail.owner.avatarFilename}` : null}
-                bgColor="rgba(249,115,22,0.6)"
+                bgColor={OWNER_AVATAR_BG}
               />
               <span className="text-white text-sm font-medium">{ownerName}</span>
               {detail?.owner?.createdAt ? (
@@ -2840,7 +2840,7 @@ export default function KipemberWikiContent({
                     />
                     <span className="text-white text-sm font-medium flex-1 min-w-0 truncate">
                       {contributorName.length > 10 ? contributorName.slice(0, 10).trimEnd() + '…' : contributorName}
-                      <span className="font-normal ml-1 text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>(<span style={{ color: totalContributions > 0 ? '#22c55e' : 'rgba(255,255,255,0.35)', fontWeight: 600 }}>{totalContributions}</span>)</span>
+                      <span className="font-normal ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(<span style={{ color: totalContributions > 0 ? 'var(--color-success)' : 'var(--text-muted)', fontWeight: 600 }}>{totalContributions}</span>)</span>
                     </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <div
@@ -2848,14 +2848,14 @@ export default function KipemberWikiContent({
                         style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
                         onClick={() => void sendInviteSms(contributor.id)}
                       >
-                        <MessageSquareShare size={14} color={contributor.inviteSent || sentSmsIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.45)'} />
+                        <MessageSquareShare size={14} color={contributor.inviteSent || sentSmsIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
                       </div>
                       <div
                         className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                         style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
                         onClick={() => void callContributor(contributor.id)}
                       >
-                        <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.45)'} />
+                        <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
                       </div>
                       {contributor.token ? (
                         <div
@@ -2863,14 +2863,14 @@ export default function KipemberWikiContent({
                           style={{ width: 30, height: 30 }}
                           onClick={() => copyContributorLink(contributor.id, contributor.token!)}
                         >
-                          <Link2 size={14} color={copiedContributorId === contributor.id ? '#22c55e' : 'rgba(255,255,255,0.45)'} />
+                          <Link2 size={14} color={copiedContributorId === contributor.id ? 'var(--color-success)' : 'var(--text-muted)'} />
                         </div>
                       ) : null}
-                      <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>|</span>
+                      <span style={{ color: 'var(--border-default)', fontSize: 12 }}>|</span>
                       <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
                         {contributor.user?.hasPassword
                           ? <CircleCheckBig size={17} color="rgba(34,197,94,0.7)" />
-                          : <CircleHelp size={17} color="rgba(255,255,255,0.45)" />
+                          : <CircleHelp size={17} color="var(--text-muted)" />
                         }
                       </div>
                     </div>
@@ -2896,7 +2896,7 @@ export default function KipemberWikiContent({
                   />
                   <span className="text-white/60 text-sm flex-1 min-w-0 truncate">
                     {((n) => n.length > 10 ? n.slice(0, 10).trimEnd() + '…' : n)(contributor.name || contributor.phoneNumber || 'Pending')}
-                    <span className="font-normal ml-1 text-xs" style={{ color: 'rgba(255,255,255,0.2)' }}>(<span style={{ color: pendingTotal > 0 ? '#22c55e' : 'rgba(255,255,255,0.2)', fontWeight: 600 }}>{pendingTotal}</span>)</span>
+                    <span className="font-normal ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(<span style={{ color: pendingTotal > 0 ? 'var(--color-success)' : 'var(--text-muted)', fontWeight: 600 }}>{pendingTotal}</span>)</span>
                   </span>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <div
@@ -2904,14 +2904,14 @@ export default function KipemberWikiContent({
                       style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
                       onClick={() => void sendInviteSms(contributor.id)}
                     >
-                      <MessageSquareShare size={14} color={contributor.inviteSent || sentSmsIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.25)'} />
+                      <MessageSquareShare size={14} color={contributor.inviteSent || sentSmsIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
                     </div>
                     <div
                       className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                       style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
                       onClick={() => void callContributor(contributor.id)}
                     >
-                      <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? '#22c55e' : 'rgba(255,255,255,0.25)'} />
+                      <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
                     </div>
                     {contributor.token ? (
                       <div
@@ -2919,12 +2919,12 @@ export default function KipemberWikiContent({
                         style={{ width: 30, height: 30 }}
                         onClick={() => copyContributorLink(contributor.id, contributor.token!)}
                       >
-                        <Link2 size={14} color={copiedContributorId === contributor.id ? '#22c55e' : 'rgba(255,255,255,0.25)'} />
+                        <Link2 size={14} color={copiedContributorId === contributor.id ? 'var(--color-success)' : 'var(--text-muted)'} />
                       </div>
                     ) : null}
-                    <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>|</span>
+                    <span style={{ color: 'var(--border-default)', fontSize: 12 }}>|</span>
                     <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
-                      <CircleHelp size={17} color="rgba(255,255,255,0.25)" />
+                      <CircleHelp size={17} color="var(--text-muted)" />
                     </div>
                   </div>
                 </div>
@@ -3509,7 +3509,7 @@ export default function KipemberWikiContent({
           <div
             className="flex-1 h-full flex flex-col"
             style={{
-              background: 'var(--bg-screen)',
+              background: 'var(--bg-chrome)',
               borderLeft: '1px solid var(--border-subtle)',
               transform: overlayOpen ? 'translateX(0)' : 'translateX(100%)',
               transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

@@ -13,7 +13,7 @@ export default async function GuestMemoryPage({
       <GuestEmberScreen
         token={token}
         dataApiPath="/api/guest"
-        chatApiPath="/api/contribute"
+        chatApiPath="/api/guest"
         basePath="/guest"
       />
     </Suspense>

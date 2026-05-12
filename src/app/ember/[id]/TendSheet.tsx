@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Leaf, X } from 'lucide-react';
 import KipemberWikiContent, { type KipemberWikiDetail } from '@/components/kipember/KipemberWikiContent';
+import { useToast } from '@/lib/toast';
 
 const SNAP_MS = 320;
 
@@ -17,7 +18,7 @@ export default function TendSheet({
 }) {
   const [showing, setShowing] = useState(isOpen);
   const [detail, setDetail] = useState<KipemberWikiDetail | null>(null);
-  const [statusMessage, setStatusMessage] = useState('');
+  const { toast } = useToast();
   const loadedRef = useRef(false);
 
   const fetchDetail = useCallback(async () => {
@@ -42,15 +43,8 @@ export default function TendSheet({
       setShowing(false);
       loadedRef.current = false;
       setDetail(null);
-      setStatusMessage('');
     }
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!statusMessage) return;
-    const timer = setTimeout(() => setStatusMessage(''), 3000);
-    return () => clearTimeout(timer);
-  }, [statusMessage]);
 
   function handleClose() {
     setShowing(false);
@@ -62,37 +56,27 @@ export default function TendSheet({
       className="fixed left-0 right-0 bottom-0 z-50 flex flex-col"
       style={{
         top: 0,
-        background: '#111113',
+        background: 'var(--bg-chrome)',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
       {/* Header */}
-      <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
         <Leaf size={18} color="white" strokeWidth={1.8} />
         <span className="flex-1 ml-2 text-white font-semibold text-base">Tend this Ember</span>
         <button type="button" className="cursor-pointer" onClick={handleClose}>
-          <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={1.8} />
+          <X size={20} color="var(--text-secondary)" strokeWidth={1.8} />
         </button>
       </div>
-
-      {/* Status toast */}
-      {statusMessage ? (
-        <div
-          className="mx-4 mt-2 flex-shrink-0 rounded-lg px-3 py-2 text-sm text-white"
-          style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)' }}
-        >
-          {statusMessage}
-        </div>
-      ) : null}
 
       {/* Wiki content */}
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-[10px]">
         <KipemberWikiContent
           detail={detail}
           refreshDetail={fetchDetail}
-          onStatus={setStatusMessage}
+          onStatus={(msg) => toast(msg, { type: 'success' })}
         />
       </div>
     </div>
