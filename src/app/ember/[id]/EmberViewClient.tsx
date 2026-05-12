@@ -65,10 +65,8 @@ function EmberViewContent() {
   const [naturalRatio, setNaturalRatio] = useState<string | null>(null);
   const [photoLoaded, setPhotoLoaded] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
-  const [swipeY, setSwipeY] = useState(0);
   const [snapping, setSnapping] = useState(false);
-  const dragRef = useRef<{ startX: number; startY: number; axis: 'h' | 'v' | null } | null>(null);
-  const lastDirRef = useRef<1 | -1>(1);
+  const dragRef = useRef<{ startX: number; startY: number } | null>(null);
   const prefetchCacheRef = useRef<Record<string, EmberSummary>>({});
   const panelOpen = emberOpen || activeTab !== null;
 
@@ -99,7 +97,6 @@ function EmberViewContent() {
   function snapBack() {
     setSnapping(true);
     setSwipeX(0);
-    setSwipeY(0);
     setTimeout(() => setSnapping(false), SNAP_MS);
   }
 
@@ -112,22 +109,15 @@ function EmberViewContent() {
     else setOrientation('portrait');
   }
 
-  function slideInFrom(axis: 'h' | 'v', dir: 1 | -1) {
+  function slideInFromHorizontal(dir: 1 | -1) {
     // Place the new card off-screen on the opposite side of the swipe (no animation),
     // then animate it to 0. Deterministic — does not depend on image onLoad firing.
     setSnapping(false);
-    if (axis === 'v') {
-      setSwipeY(dir < 0 ? window.innerHeight : -window.innerHeight);
-      setSwipeX(0);
-    } else {
-      setSwipeX(dir < 0 ? window.innerWidth : -window.innerWidth);
-      setSwipeY(0);
-    }
+    setSwipeX(dir < 0 ? window.innerWidth : -window.innerWidth);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setSnapping(true);
         setSwipeX(0);
-        setSwipeY(0);
         setTimeout(() => setSnapping(false), SNAP_MS);
       });
     });
@@ -196,64 +186,33 @@ function EmberViewContent() {
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (panelOpen || snapping) return;
     try { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); } catch {}
-    dragRef.current = { startX: e.clientX, startY: e.clientY, axis: null };
+    dragRef.current = { startX: e.clientX, startY: e.clientY };
   }
 
   function handlePointerMove(e: React.PointerEvent) {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    if (dragRef.current.axis === null && (Math.abs(dx) > 12 || Math.abs(dy) > 12)) {
-      dragRef.current.axis = Math.abs(dx) > Math.abs(dy) * 1.5 ? 'h' : 'v';
-    }
-    if (dragRef.current.axis === 'h') setSwipeX(dx);
-    if (dragRef.current.axis === 'v') setSwipeY(dy);
+    setSwipeX(dx);
   }
 
   function handlePointerUp(e: React.PointerEvent) {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    const axis = dragRef.current.axis;
     dragRef.current = null;
 
-    // Vertical swipe — navigate between embers
-    if (axis === 'v') {
-      if (Math.abs(dy) < SWIPE_THRESHOLD) { snapBack(); return; }
-      const dir: 1 | -1 = dy < 0 ? -1 : 1; // up = -1 (next), down = 1 (prev)
-      const targetIndex = dir < 0 ? currentIndex + 1 : currentIndex - 1;
-      if (targetIndex < 0 || targetIndex >= emberIds.length) { snapBack(); return; }
-      lastDirRef.current = dir;
-      setSnapping(true);
-      setSwipeY(dir < 0 ? -window.innerHeight : window.innerHeight);
-      setTimeout(() => {
-        setMediaIndex(0);
-        setId(emberIds[targetIndex]);
-        slideInFrom('v', dir);
-      }, SNAP_MS);
-      return;
-    }
+    if (Math.abs(dx) < SWIPE_THRESHOLD) { snapBack(); return; }
 
-    if (axis !== 'h' || Math.abs(dx) < SWIPE_THRESHOLD) { snapBack(); return; }
-
-    const dir: 1 | -1 = dx < 0 ? -1 : 1;
-
-    // Horizontal swipe only cycles through the photo carousel
-    const nextMediaIndex = mediaIndex + (dir < 0 ? 1 : -1);
-    if (nextMediaIndex >= 0 && nextMediaIndex < allMedia.length) {
-      lastDirRef.current = dir;
-      setSnapping(true);
-      setSwipeX(dir < 0 ? -window.innerWidth : window.innerWidth);
-      setTimeout(() => {
-        setMediaIndex(nextMediaIndex);
-        setPhotoLoaded(false);
-        slideInFrom('h', dir);
-      }, SNAP_MS);
-      return;
-    }
-
-    // No more photos in this direction — snap back
-    snapBack();
+    // Horizontal swipe — navigate between embers
+    const dir: 1 | -1 = dx < 0 ? -1 : 1; // swipe-left = -1 (next), swipe-right = 1 (prev)
+    const targetIndex = dir < 0 ? currentIndex + 1 : currentIndex - 1;
+    if (targetIndex < 0 || targetIndex >= emberIds.length) { snapBack(); return; }
+    setSnapping(true);
+    setSwipeX(dir < 0 ? -window.innerWidth : window.innerWidth);
+    setTimeout(() => {
+      setMediaIndex(0);
+      setId(emberIds[targetIndex]);
+      slideInFromHorizontal(dir);
+    }, SNAP_MS);
   }
 
   function handlePointerCancel() {
@@ -296,7 +255,7 @@ function EmberViewContent() {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
-          onClick={() => { if (swipeX === 0 && swipeY === 0) { setEmberOpen(false); setActiveTab(null); } }}
+          onClick={() => { if (swipeX === 0) { setEmberOpen(false); setActiveTab(null); } }}
           style={{ touchAction: 'none', userSelect: 'none' }}
         >
           {photoUrl ? (
@@ -306,7 +265,7 @@ function EmberViewContent() {
                 border: '1px solid var(--border-default)',
                 background: 'transparent',
                 aspectRatio: naturalRatio ?? '4/3',
-                transform: `translateX(${swipeX}px) translateY(${swipeY}px)`,
+                transform: `translateX(${swipeX}px)`,
                 transition: snapping ? `transform ${SNAP_MS}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : 'none',
                 willChange: 'transform',
                 pointerEvents: 'none',

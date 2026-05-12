@@ -62,6 +62,7 @@ export default function EmberSheet({
   const contentRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dragRef = useRef<{ startY: number } | null>(null);
+  const sheetDragRef = useRef<number | null>(null);
   const loadedRef = useRef(false);
 
   const voice = useVoiceRecording(emberId ?? '');
@@ -339,10 +340,26 @@ export default function EmberSheet({
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1), height ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
+      onPointerDown={(e) => {
+        // Only start a sheet-level drag if the gesture begins outside the scrollable
+        // chat area, any button/input, and the pull bar (which has its own handlers).
+        const t = e.target as Element;
+        if (contentRef.current?.contains(t)) return;
+        if (t.closest('button, a, input, textarea, [data-pull-bar]')) return;
+        sheetDragRef.current = e.clientY;
+      }}
+      onPointerMove={(e) => {
+        if (sheetDragRef.current === null) return;
+        const dy = e.clientY - sheetDragRef.current;
+        if (dy > SWIPE_THRESHOLD) { sheetDragRef.current = null; handleClose(); }
+      }}
+      onPointerUp={() => { sheetDragRef.current = null; }}
+      onPointerCancel={() => { sheetDragRef.current = null; }}
     >
       {/* Pull bar — collapsed only */}
       {!expanded && (
         <div
+          data-pull-bar
           className="flex justify-center pt-3 pb-1 flex-shrink-0 cursor-pointer"
           onPointerDown={handlePullPointerDown}
           onPointerMove={(e) => { if (!dragRef.current) return; const dy = e.clientY - dragRef.current.startY; if (dy > SWIPE_THRESHOLD) { dragRef.current = null; handleClose(); } }}

@@ -221,17 +221,15 @@ export default function StoriesSheet({
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+        touchAction: 'pan-y',
       }}
+      onPointerDown={(e) => { pullDragRef.current = e.clientY; }}
+      onPointerMove={(e) => { if (pullDragRef.current === null) return; const dy = e.clientY - pullDragRef.current; if (dy > 40) { pullDragRef.current = null; handleClose(); } }}
+      onPointerUp={() => { pullDragRef.current = null; }}
+      onPointerCancel={() => { pullDragRef.current = null; }}
     >
       {/* Pull bar */}
-      <div
-        className="flex justify-center pt-3 pb-2 flex-shrink-0"
-        style={{ cursor: 'pointer' }}
-        onPointerDown={(e) => { (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId); pullDragRef.current = e.clientY; }}
-        onPointerMove={(e) => { if (pullDragRef.current === null) return; const dy = e.clientY - pullDragRef.current; if (dy > 40) { pullDragRef.current = null; handleClose(); } }}
-        onPointerUp={(e) => { if (pullDragRef.current === null) return; const dy = e.clientY - pullDragRef.current; pullDragRef.current = null; if (dy > 40) handleClose(); }}
-        onPointerCancel={() => { pullDragRef.current = null; }}
-      >
+      <div className="flex justify-center pt-3 pb-2 flex-shrink-0">
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.25)' }} />
       </div>
 
