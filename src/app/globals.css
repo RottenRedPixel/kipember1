@@ -7,7 +7,7 @@
 
 :root {
   --bg-body: #111113;
-  --bg-screen: #000000;
+  --bg-screen: #111113;
   --bg-chrome: #111113;
   --bg-modal: rgba(0, 0, 0, 0.75);
   /* Opaque pre-composite of 7% white over bg-screen — keeps the same
@@ -67,7 +67,7 @@
 [data-theme="light"] {
   --color-white: #1c1917;
   --bg-body: #faf7f3;
-  --bg-screen: #faf7f3;
+  --bg-screen: #ece9e5;
   --bg-chrome: #ece9e5;
   --bg-modal: rgba(250, 247, 243, 0.92);
   /* Opaque pre-composite (5% black over bg-screen). */
