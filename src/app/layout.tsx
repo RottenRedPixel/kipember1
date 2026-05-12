@@ -38,7 +38,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="h-full w-full" style={{ background: '#171515' }}><ToastProvider><PageTransition>{children}</PageTransition></ToastProvider></body>
+      <body className="h-full w-full"><ToastProvider><PageTransition>{children}</PageTransition></ToastProvider></body>
     </html>
   );
 }
