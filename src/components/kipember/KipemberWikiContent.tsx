@@ -2850,8 +2850,8 @@ export default function KipemberWikiContent({
                         id: contributor.id,
                       })}
                     />
-                    <span className="text-white text-sm font-medium flex-1 min-w-0 truncate">
-                      {contributorName.length > 10 ? contributorName.slice(0, 10).trimEnd() + '…' : contributorName}
+                    <span className="text-white text-sm font-medium flex-1 min-w-0">
+                      {contributorName.length > 15 ? contributorName.slice(0, 15).trimEnd() + '…' : contributorName}
                       <span className="font-normal ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(<span style={{ color: totalContributions > 0 ? 'var(--color-success)' : 'var(--text-muted)', fontWeight: 600 }}>{totalContributions}</span>)</span>
                     </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -2913,8 +2913,8 @@ export default function KipemberWikiContent({
                       id: contributor.id,
                     })}
                   />
-                  <span className="text-white/60 text-sm flex-1 min-w-0 truncate">
-                    {((n) => n.length > 10 ? n.slice(0, 10).trimEnd() + '…' : n)(contributor.name || contributor.phoneNumber || 'Pending')}
+                  <span className="text-white/60 text-sm flex-1 min-w-0">
+                    {((n) => n.length > 15 ? n.slice(0, 15).trimEnd() + '…' : n)(contributor.name || contributor.phoneNumber || 'Pending')}
                     <span className="font-normal ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(<span style={{ color: pendingTotal > 0 ? 'var(--color-success)' : 'var(--text-muted)', fontWeight: 600 }}>{pendingTotal}</span>)</span>
                   </span>
                   <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
