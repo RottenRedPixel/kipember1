@@ -111,6 +111,7 @@ export default function ContributorsSlider({
   status,
   mode = 'manage',
   onSaved,
+  initialExpandedId = null,
 }: {
   detail: ContributorsDetail | null;
   emberId: string | null;
@@ -119,8 +120,9 @@ export default function ContributorsSlider({
   status?: string;
   mode?: 'manage' | 'add';
   onSaved?: () => void;
+  initialExpandedId?: string | null;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(initialExpandedId);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   const [savedForm, setSavedForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   const [savingContributor, setSavingContributor] = useState(false);

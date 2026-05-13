@@ -1859,10 +1859,11 @@ function WikiSection({
   );
 }
 
-function WikiCard({ children }: { children: React.ReactNode }) {
+function WikiCard({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
     <div
-      className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
+      onClick={onClick}
+      className={`rounded-xl px-4 py-3.5 flex flex-col gap-1 ${onClick ? 'cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150' : ''}`}
       style={{
         // Pre-composite the translucent --bg-surface against --bg-screen
         // so the card stays fully opaque even when the wiki overlay's
@@ -2336,6 +2337,7 @@ export default function KipemberWikiContent({
     setOverlayOpen(false);
     setTimeout(() => {
       setEditingSlug(null);
+      setManageInitialExpandedId(null);
       // Always pull fresh detail on close — covers Tag People (which
       // mutates tags via its own fetches without a refresh callback)
       // and any other slider that saved data while open. Title /
@@ -2512,6 +2514,12 @@ export default function KipemberWikiContent({
       setCallingContributorId(null);
     }
   }
+
+  const [manageInitialExpandedId, setManageInitialExpandedId] = useState<string | null>(null);
+  const openContributorRow = (contributorId: string) => {
+    setManageInitialExpandedId(contributorId);
+    setEditingSlug('contributors');
+  };
 
   // A real pending contributor has at least one identifier (name / email /
   // phoneNumber). Rows with all identity fields null are share-link
@@ -2819,7 +2827,6 @@ export default function KipemberWikiContent({
           pendingContributors.length > 0 ||
           Boolean(detail?.analysis?.noContributors)
         }
-        onEdit={detail?.id ? () => setEditingSlug('contributors') : undefined}
         tracksProgress
         loading={wikiClaimsLoading}
         id="tracker-contributors"
@@ -2837,7 +2844,7 @@ export default function KipemberWikiContent({
               const callCount = contributedCalls.length;
               const totalContributions = chatCount + callCount;
               return (
-                <WikiCard key={contributor.id}>
+                <WikiCard key={contributor.id} onClick={() => openContributorRow(contributor.id)}>
                   <div className="flex items-center gap-3 min-w-0">
                     <AvatarCircle
                       name={contributorName}
@@ -2901,7 +2908,7 @@ export default function KipemberWikiContent({
               const pendingCallCount = contributor.voiceCalls?.filter((c) => c.callSummary).length ?? 0;
               const pendingTotal = pendingChatCount + pendingCallCount;
               return (
-              <WikiCard key={contributor.id}>
+              <WikiCard key={contributor.id} onClick={() => openContributorRow(contributor.id)}>
                 <div className="flex items-center gap-3 min-w-0">
                   <AvatarCircle
                     name={contributor.name || contributor.phoneNumber || '?'}
@@ -3612,6 +3619,7 @@ export default function KipemberWikiContent({
                   }}
                   onStatus={onStatus}
                   mode="manage"
+                  initialExpandedId={manageInitialExpandedId}
                 />
               ) : null}
               {editingSlug === 'add-contributor' ? (
