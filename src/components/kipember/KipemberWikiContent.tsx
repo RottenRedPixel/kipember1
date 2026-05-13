@@ -1882,98 +1882,20 @@ function WikiCard({ children, onClick }: { children: React.ReactNode; onClick?: 
 // place name; expanded shows exact address, coordinates, and source.
 function PlaceCard({
   placeName,
-  placeConfirmedAt,
-  showExactAddress,
-  addressLines,
-  placeCountry,
-  coordinateLine,
-  locationLookupPending,
-  placeSource,
   bare = false,
 }: {
   placeName: string | null;
-  placeConfirmedAt: string | null;
-  showExactAddress: boolean;
-  addressLines: string[];
-  placeCountry: string | null;
-  coordinateLine: string | null;
-  locationLookupPending: boolean;
-  placeSource: 'manual' | 'gps' | 'none';
   // When true, render the place content without the outer WikiCard
   // wrapper so the caller can compose it into a larger card (e.g. the
   // merged Time & Place section, where time + place share one card).
   bare?: boolean;
 }) {
-  const [collapsed, setCollapsed] = useState(true);
   const inner = (
     <>
-      <button
-        type="button"
-        onClick={() => setCollapsed((v) => !v)}
-        aria-expanded={!collapsed}
-        className="w-full flex items-center gap-2 cursor-pointer"
-        style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 36 }}
-      >
-        <div className="flex-1 text-left">
-          <p className="text-white/30 text-xs font-medium mb-1.5">Place</p>
-          <p className="text-white font-medium text-sm">
-            {placeName || 'No location data available.'}
-          </p>
-        </div>
-        <ChevronDown
-          size={14}
-          color="var(--text-secondary)"
-          style={{
-            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.15s ease',
-          }}
-        />
-      </button>
-      {!collapsed ? (
-        <>
-          {placeConfirmedAt ? (
-            <p className="text-white/30 text-xs mt-1">
-              (edited on {new Date(placeConfirmedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })})
-            </p>
-          ) : null}
-          {showExactAddress ? (
-            <>
-              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Exact Address</p>
-              {addressLines.map((line, index) => (
-                <p key={index} className="text-white/70 text-sm">
-                  {line}
-                </p>
-              ))}
-              {placeCountry ? (
-                <p className="text-white/70 text-sm">{placeCountry}</p>
-              ) : null}
-            </>
-          ) : placeCountry ? (
-            <>
-              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Country</p>
-              <p className="text-white/70 text-sm">{placeCountry}</p>
-            </>
-          ) : null}
-          {coordinateLine ? (
-            <>
-              <p className="text-white/30 text-xs font-medium mt-3 mb-1.5">Coordinates</p>
-              <p className="text-white/70 text-sm">{coordinateLine}</p>
-            </>
-          ) : null}
-          {locationLookupPending && addressLines.length === 0 ? (
-            <p className="text-white/30 text-xs mt-3">
-              Looking up an address from the photo GPS metadata...
-            </p>
-          ) : null}
-          <p className="text-white/30 text-xs mt-3">
-            Source: {placeSource === 'manual'
-              ? 'Manual entry'
-              : placeSource === 'gps'
-                ? 'Photo GPS metadata & Reverse Geocoded'
-                : 'Not set'}
-          </p>
-        </>
-      ) : null}
+      <p className="text-white/30 text-xs font-medium mb-1.5">Place</p>
+      <p className="text-white font-medium text-sm">
+        {placeName || 'No location data available.'}
+      </p>
     </>
   );
   return bare ? inner : <WikiCard>{inner}</WikiCard>;
@@ -3102,17 +3024,7 @@ export default function KipemberWikiContent({
             Source: {detail?.analysis?.capturedAt ? 'Photo EXIF metadata' : 'Upload timestamp'}
           </p>
           <div className="my-3 h-px" style={{ background: 'var(--border-subtle)' }} />
-          <PlaceCard
-            placeName={placeName}
-            placeConfirmedAt={placeConfirmedAt}
-            showExactAddress={showExactAddress}
-            addressLines={addressLines}
-            placeCountry={placeCountry}
-            coordinateLine={coordinateLine}
-            locationLookupPending={locationLookupPending}
-            placeSource={placeSource}
-            bare
-          />
+          <PlaceCard placeName={placeName} bare />
         </WikiCard>
       </WikiSection>
 
