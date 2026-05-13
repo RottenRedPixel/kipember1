@@ -109,12 +109,14 @@ export default function ContributorsSlider({
   refreshDetail,
   onStatus,
   status,
+  startAdding = false,
 }: {
   detail: ContributorsDetail | null;
   emberId: string | null;
   refreshDetail: () => Promise<unknown>;
   onStatus?: (message: string) => void;
   status?: string;
+  startAdding?: boolean;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
@@ -129,7 +131,7 @@ export default function ContributorsSlider({
   const [addLangOpen, setAddLangOpen] = useState(false);
   const [settingsCommOpen, setSettingsCommOpen] = useState(false);
   const [settingsAttemptsOpen, setSettingsAttemptsOpen] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(startAdding);
   const [addError, setAddError] = useState<string | null>(null);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   // Filter pill (This Ember / All) and sort dropdown — restored from the

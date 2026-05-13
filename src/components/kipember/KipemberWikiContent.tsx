@@ -2335,6 +2335,7 @@ export default function KipemberWikiContent({
     setOverlayOpen(false);
     setTimeout(() => {
       setEditingSlug(null);
+      setOpenAddOnSliderMount(false);
       // Always pull fresh detail on close — covers Tag People (which
       // mutates tags via its own fetches without a refresh callback)
       // and any other slider that saved data while open. Title /
@@ -2512,37 +2513,7 @@ export default function KipemberWikiContent({
     }
   }
 
-  const [addingContributor, setAddingContributor] = useState(false);
-  const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '' });
-  const [addError, setAddError] = useState<string | null>(null);
-  const [savingAdd, setSavingAdd] = useState(false);
-  async function addContributor() {
-    if (!emberId) return;
-    setSavingAdd(true);
-    try {
-      const res = await fetch('/api/contributors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          emberId,
-          name: `${addForm.firstName} ${addForm.lastName}`.trim(),
-          phoneNumber: addForm.phone,
-        }),
-      });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setAddError(payload?.error || 'Failed to add contributor.');
-        return;
-      }
-      setAddForm({ firstName: '', lastName: '', phone: '' });
-      setAddingContributor(false);
-      setAddError(null);
-      toast('Contributor added!', { type: 'success' });
-      await refreshDetail?.();
-    } finally {
-      setSavingAdd(false);
-    }
-  }
+  const [openAddOnSliderMount, setOpenAddOnSliderMount] = useState(false);
 
   // A real pending contributor has at least one identifier (name / email /
   // phoneNumber). Rows with all identity fields null are share-link
@@ -2855,66 +2826,19 @@ export default function KipemberWikiContent({
         id="tracker-contributors"
       >
         {activeContributors.length === 0 && pendingContributors.length === 0 ? (
-          addingContributor ? (
-            <WikiCard>
-              <div className="flex flex-col gap-3">
-                <input
-                  value={addForm.firstName}
-                  onChange={(e) => { setAddError(null); setAddForm((f) => ({ ...f, firstName: e.target.value })); }}
-                  placeholder="First Name"
-                  className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-                />
-                <input
-                  value={addForm.lastName}
-                  onChange={(e) => { setAddError(null); setAddForm((f) => ({ ...f, lastName: e.target.value })); }}
-                  placeholder="Last Name (optional)"
-                  className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-                />
-                <input
-                  value={addForm.phone}
-                  onChange={(e) => { setAddError(null); setAddForm((f) => ({ ...f, phone: e.target.value })); }}
-                  placeholder="Phone"
-                  className="w-full h-12 rounded-xl px-4 text-sm text-white placeholder-white/30 outline-none"
-                  style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
-                />
-                {addError ? <p className="text-xs px-1" style={{ color: '#f87171' }}>{addError}</p> : null}
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => { setAddingContributor(false); setAddError(null); setAddForm({ firstName: '', lastName: '', phone: '' }); }}
-                    className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium"
-                    style={{ background: 'transparent', border: '1.5px solid var(--border-btn)', minHeight: 44 }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void addContributor()}
-                    disabled={savingAdd || !addForm.firstName.trim() || !addForm.phone.trim()}
-                    className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium disabled:opacity-50"
-                    style={{ background: '#f97316', minHeight: 44 }}
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            </WikiCard>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAddingContributor(true)}
-              className="w-full rounded-xl px-4 py-3.5 flex items-center justify-center text-white text-sm font-medium cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150"
-              style={{
-                background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
-                border: '1px solid var(--border-subtle)',
-                minHeight: 44,
-              }}
-            >
-              Add A Contributor
-            </button>
-          )
+          <button
+            type="button"
+            onClick={() => { setOpenAddOnSliderMount(true); setEditingSlug('contributors'); }}
+            disabled={!detail?.id}
+            className="w-full rounded-xl px-4 py-3.5 flex items-center justify-center text-white text-sm font-medium cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150 disabled:opacity-50"
+            style={{
+              background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+              border: '1px solid var(--border-subtle)',
+              minHeight: 44,
+            }}
+          >
+            Add A Contributor
+          </button>
         ) : (
           <div className="flex flex-col gap-2.5">
             {activeContributors.map((contributor) => {
@@ -3687,6 +3611,7 @@ export default function KipemberWikiContent({
                     await refreshDetail();
                   }}
                   onStatus={onStatus}
+                  startAdding={openAddOnSliderMount}
                 />
               ) : null}
               {editingSlug === 'tag-people' && detail ? (
