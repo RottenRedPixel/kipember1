@@ -666,7 +666,7 @@ export default function ContributorsSlider({
                   >
                     {/* Preferred Language */}
                     <div className="flex items-center justify-between h-12">
-                      <span className="text-sm text-white/70">Language Preference</span>
+                      <span className="text-sm text-white/70">Language</span>
                       <div className="relative">
                         <button
                           type="button"
@@ -704,7 +704,7 @@ export default function ContributorsSlider({
 
                     {/* Preferred Communication */}
                     <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                      <span className="text-sm text-white/70">Communication Preference</span>
+                      <span className="text-sm text-white/70">Communicate Via</span>
                       <div className="relative">
                         <button
                           type="button"
@@ -746,7 +746,7 @@ export default function ContributorsSlider({
 
                     {/* Communication Attempts */}
                     <div className="flex items-center justify-between h-12" style={{ borderTop: '1px solid var(--border-subtle)' }}>
-                      <span className="text-sm text-white/70">Communication Attempts</span>
+                      <span className="text-sm text-white/70">Persistence</span>
                       <div className="relative">
                         <button
                           type="button"
