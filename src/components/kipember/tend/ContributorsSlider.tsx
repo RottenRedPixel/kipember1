@@ -854,8 +854,8 @@ export default function ContributorsSlider({
         </button>
       )}
 
-      {/* Add Contributor — hidden while a row is expanded */}
-      {!expandedId && !expandedPoolKey && (adding ? (
+      {/* Add Contributor form — only shown when add was triggered from the wiki block */}
+      {!expandedId && !expandedPoolKey && adding ? (
         <div
           className="rounded-xl px-4 py-4 flex flex-col gap-3"
           style={{
@@ -940,19 +940,7 @@ export default function ContributorsSlider({
             </button>
           </div>
         </div>
-      ) : (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            disabled={!canManageContributors}
-            className="w-1/2 flex items-center justify-center rounded-full text-white text-sm font-medium cursor-pointer disabled:opacity-50"
-            style={{ background: '#f97316', minHeight: 44 }}
-          >
-            Add Contributor
-          </button>
-        </div>
-      ))}
+      ) : null}
     </div>
   );
 }
