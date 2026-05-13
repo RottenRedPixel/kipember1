@@ -2902,16 +2902,18 @@ export default function KipemberWikiContent({
               </div>
             </WikiCard>
           ) : (
-            <div className="flex">
-              <button
-                type="button"
-                onClick={() => setAddingContributor(true)}
-                className="flex-1 ml-auto flex items-center justify-center rounded-full text-white text-sm font-medium cursor-pointer"
-                style={{ background: '#f97316', minHeight: 44 }}
-              >
-                Add A Contributor
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setAddingContributor(true)}
+              className="w-full rounded-xl px-4 py-3.5 flex items-center justify-center text-white text-sm font-medium cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150"
+              style={{
+                background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+                border: '1px solid var(--border-subtle)',
+                minHeight: 44,
+              }}
+            >
+              Add A Contributor
+            </button>
           )
         ) : (
           <div className="flex flex-col gap-2.5">
