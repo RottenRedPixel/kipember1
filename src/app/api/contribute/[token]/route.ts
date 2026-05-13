@@ -108,6 +108,7 @@ export async function GET(
 
     return NextResponse.json(
       {
+        guestFlow: true,
         contributor: {
           id: refreshedContributor.id,
           name: [refreshedContributor.user?.firstName, refreshedContributor.user?.lastName].filter(Boolean).join(' ') || refreshedContributor.user?.email || refreshedContributor.user?.phoneNumber || null,
@@ -124,9 +125,21 @@ export async function GET(
           originalName: refreshedContributor.ember.originalName,
           title: refreshedContributor.ember.title,
           description: refreshedContributor.ember.description,
+          createdAt: refreshedContributor.ember.createdAt,
         },
         conversation: refreshedContributor.emberSession,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,
+        attachments: await prisma.emberAttachment
+          .findMany({
+            where: { emberId: refreshedContributor.ember.id },
+            select: { id: true, filename: true, mediaType: true, posterFilename: true },
+            orderBy: { createdAt: 'asc' },
+          })
+          .catch(() => []),
+        snapshotScript: await prisma.snapshot
+          .findUnique({ where: { emberId: refreshedContributor.ember.id }, select: { script: true } })
+          .then((sc) => sc?.script ?? null)
+          .catch(() => null),
       },
       {
         headers: {

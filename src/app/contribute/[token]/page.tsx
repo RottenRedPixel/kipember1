@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import ContributorNPWFlow from '@/components/kipember/ContributorNPWFlow';
+import GuestEmberScreen from '@/components/kipember/GuestEmberScreen';
 
 export default async function ContributorPage({
   params,
@@ -9,7 +9,12 @@ export default async function ContributorPage({
   const { token } = await params;
   return (
     <Suspense>
-      <ContributorNPWFlow token={token} />
+      <GuestEmberScreen
+        token={token}
+        dataApiPath="/api/contribute"
+        chatApiPath="/api/contribute"
+        basePath="/contribute"
+      />
     </Suspense>
   );
 }
