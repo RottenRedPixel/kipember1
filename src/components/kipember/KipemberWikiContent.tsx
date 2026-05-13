@@ -2835,7 +2835,8 @@ export default function KipemberWikiContent({
                 contributor.user?.phoneNumber ||
                 'Contributor';
               const chatCount = contributor.conversation?.messages.filter((m) => m.role === 'user').length ?? 0;
-              const callCount = contributor.voiceCalls?.length ?? 0;
+              const contributedCalls = contributor.voiceCalls?.filter((c) => c.callSummary) ?? [];
+              const callCount = contributedCalls.length;
               const totalContributions = chatCount + callCount;
               return (
                 <WikiCard key={contributor.id}>
@@ -2869,7 +2870,7 @@ export default function KipemberWikiContent({
                         style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
                         onClick={() => void callContributor(contributor.id)}
                       >
-                        <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
+                        <Phone size={14} color={callCount > 0 || calledIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
                       </div>
                       {contributor.token ? (
                         <div
@@ -2899,7 +2900,7 @@ export default function KipemberWikiContent({
             })}
             {pendingContributors.map((contributor) => {
               const pendingChatCount = contributor.conversation?.messages.filter((m) => m.role === 'user').length ?? 0;
-              const pendingCallCount = contributor.voiceCalls?.length ?? 0;
+              const pendingCallCount = contributor.voiceCalls?.filter((c) => c.callSummary).length ?? 0;
               const pendingTotal = pendingChatCount + pendingCallCount;
               return (
               <WikiCard key={contributor.id}>
@@ -2932,7 +2933,7 @@ export default function KipemberWikiContent({
                       style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
                       onClick={() => void callContributor(contributor.id)}
                     >
-                      <Phone size={14} color={(contributor.voiceCalls?.length ?? 0) > 0 || calledIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
+                      <Phone size={14} color={pendingCallCount > 0 || calledIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
                     </div>
                     {contributor.token ? (
                       <div
