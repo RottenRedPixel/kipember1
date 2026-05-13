@@ -10,7 +10,7 @@
   /* Surface palette — ascending elevation. Use these for any new surface. */
   --bg-screen: #141414;   /* Page: landing, about, home, embers, ember view */
   --bg-frame:  #0a0a0a;   /* Chrome: header + tab bar */
-  --bg-chrome: #1c1c1c;   /* Sheet: EmberSheet, TendSheet, HelloSheet, StoriesSheet, ShareSheet */
+  --bg-chrome: #151515;   /* Sheet: EmberSheet, TendSheet, HelloSheet, StoriesSheet, ShareSheet */
   --bg-overlay:#262626;   /* Overlay: wiki edit sliders, /account outer overlay */
   --bg-drill:  #303030;   /* Drill: /account inner sliders (Profile, Contacts, Voices, etc.) */
   --bg-modal: rgba(0, 0, 0, 0.75);

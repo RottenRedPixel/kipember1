@@ -129,7 +129,7 @@ export default function AppHeader({
           <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
           <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
         </svg>
-        <span className="font-bold text-base" style={{ color: 'var(--color-accent)', position: 'relative', top: -1 }}>ember</span>
+        <span className="font-bold text-base" style={{ color: 'var(--color-accent)', position: 'relative', top: 0 }}>ember</span>
       </Link>
 
       {/* Nav links — fade in as a group so first-load is a smooth reveal,

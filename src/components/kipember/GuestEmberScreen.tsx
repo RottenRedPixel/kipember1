@@ -222,7 +222,7 @@ export default function GuestEmberScreen({
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center" style={{ background: '#000' }}>
+      <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'var(--bg-screen)' }}>
         <p className="text-white/60 text-sm">Loading memory...</p>
       </div>
     );
@@ -230,7 +230,7 @@ export default function GuestEmberScreen({
 
   if (error || !data) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: '#000' }}>
+      <div className="fixed inset-0 flex flex-col items-center justify-center px-6" style={{ background: 'var(--bg-screen)' }}>
         <p className="text-white font-medium text-base mb-2">Memory not found</p>
         <p className="text-white/60 text-sm text-center mb-6">{error || 'This memory is no longer available.'}</p>
         <Link
@@ -245,7 +245,7 @@ export default function GuestEmberScreen({
   }
 
   return (
-    <div className="fixed inset-0" style={{ background: '#000' }}>
+    <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
       <div style={{ '--border-subtle': 'transparent' } as React.CSSProperties}>
         <AppHeader avatarUrl={null} hasPassword={false} />
       </div>
@@ -345,7 +345,7 @@ export default function GuestEmberScreen({
       <div
         className="fixed bottom-0 left-0 right-0 z-40 flex justify-around px-4 py-4"
         style={{
-          background: 'var(--bg-chrome)',
+          background: 'var(--bg-frame)',
           transform: tabHidden ? 'translateY(100%)' : 'translateY(0)',
           transition: 'transform 320ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
