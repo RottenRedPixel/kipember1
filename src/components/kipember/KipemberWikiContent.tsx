@@ -2834,7 +2834,7 @@ export default function KipemberWikiContent({
                       {contributorName.length > 10 ? contributorName.slice(0, 10).trimEnd() + '…' : contributorName}
                       <span className="font-normal ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(<span style={{ color: totalContributions > 0 ? 'var(--color-success)' : 'var(--text-muted)', fontWeight: 600 }}>{totalContributions}</span>)</span>
                     </span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       <div
                         className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                         style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
@@ -2890,7 +2890,7 @@ export default function KipemberWikiContent({
                     {((n) => n.length > 10 ? n.slice(0, 10).trimEnd() + '…' : n)(contributor.name || contributor.phoneNumber || 'Pending')}
                     <span className="font-normal ml-1 text-xs" style={{ color: 'var(--text-muted)' }}>(<span style={{ color: pendingTotal > 0 ? 'var(--color-success)' : 'var(--text-muted)', fontWeight: 600 }}>{pendingTotal}</span>)</span>
                   </span>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     <div
                       className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                       style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
