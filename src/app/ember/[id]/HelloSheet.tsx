@@ -107,10 +107,10 @@ export default function HelloSheet({
       </div>
 
       {isContributor && !hasPassword ? (
-        <div className="px-5 pb-4">
+        <div className="px-5 pb-4 flex">
           <Link
             href={guest?.createAccountHref ?? '/set-password'}
-            className="flex items-center justify-center rounded-full text-white text-sm font-medium w-full"
+            className="flex-1 ml-auto flex items-center justify-center rounded-full text-white text-sm font-medium"
             style={{ background: '#f97316', minHeight: 44 }}
           >
             Create Account
