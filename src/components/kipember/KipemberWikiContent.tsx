@@ -51,6 +51,7 @@ import { usePlaceResolution } from '@/components/kipember/usePlaceResolution';
 import { pastelForContributor, pastelForContributorIdentity } from '@/lib/contributor-color';
 import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
 import { getUserDisplayName } from '@/lib/user-name';
+import { useToast } from '@/lib/toast';
 
 type ConversationMessage = {
   id: string;
@@ -2306,6 +2307,7 @@ export default function KipemberWikiContent({
   onStatus?: (message: string) => void;
 }) {
   const placeResolution = usePlaceResolution(detail);
+  const { toast } = useToast();
   const contributors = detail?.contributors || [];
   const emberId = detail?.id || null;
   const ownerName = getUserDisplayName(detail?.owner) || null;
@@ -2461,7 +2463,14 @@ export default function KipemberWikiContent({
     setSendingSmsContributorId(contributorId);
     try {
       const res = await fetch(`/api/contributors/${contributorId}/send-invite-sms`, { method: 'POST' });
-      if (res.ok) setSentSmsIds((prev) => new Set(prev).add(contributorId));
+      if (res.ok) {
+        setSentSmsIds((prev) => new Set(prev).add(contributorId));
+        toast('Invite SMS sent!', { type: 'success' });
+      } else {
+        toast('Could not send SMS.', { type: 'error' });
+      }
+    } catch {
+      toast('Could not send SMS.', { type: 'error' });
     } finally {
       setSendingSmsContributorId(null);
     }
@@ -2470,10 +2479,14 @@ export default function KipemberWikiContent({
   const [copiedContributorId, setCopiedContributorId] = useState<string | null>(null);
   function copyContributorLink(contributorId: string, token: string) {
     const url = `${window.location.origin}/inbound/${token}`;
-    void navigator.clipboard.writeText(url).then(() => {
-      setCopiedContributorId(contributorId);
-      setTimeout(() => setCopiedContributorId((prev) => prev === contributorId ? null : prev), 2000);
-    });
+    void navigator.clipboard.writeText(url).then(
+      () => {
+        setCopiedContributorId(contributorId);
+        setTimeout(() => setCopiedContributorId((prev) => prev === contributorId ? null : prev), 2000);
+        toast('Invite link copied!', { type: 'success' });
+      },
+      () => toast('Could not copy link.', { type: 'error' })
+    );
   }
 
   const [callingContributorId, setCallingContributorId] = useState<string | null>(null);
@@ -2486,7 +2499,14 @@ export default function KipemberWikiContent({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contributorId }),
       });
-      if (res.ok) setCalledIds((prev) => new Set(prev).add(contributorId));
+      if (res.ok) {
+        setCalledIds((prev) => new Set(prev).add(contributorId));
+        toast('Calling contributor…', { type: 'success' });
+      } else {
+        toast('Could not place call.', { type: 'error' });
+      }
+    } catch {
+      toast('Could not place call.', { type: 'error' });
     } finally {
       setCallingContributorId(null);
     }
@@ -2836,6 +2856,7 @@ export default function KipemberWikiContent({
                     </span>
                     <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       <div
+                        title="Send invite SMS"
                         className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                         style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
                         onClick={() => void sendInviteSms(contributor.id)}
@@ -2843,6 +2864,7 @@ export default function KipemberWikiContent({
                         <MessageSquareShare size={14} color={contributor.inviteSent || sentSmsIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
                       </div>
                       <div
+                        title="Call contributor"
                         className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                         style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
                         onClick={() => void callContributor(contributor.id)}
@@ -2851,6 +2873,7 @@ export default function KipemberWikiContent({
                       </div>
                       {contributor.token ? (
                         <div
+                          title="Copy invite link"
                           className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                           style={{ width: 30, height: 30 }}
                           onClick={() => copyContributorLink(contributor.id, contributor.token!)}
@@ -2859,7 +2882,11 @@ export default function KipemberWikiContent({
                         </div>
                       ) : null}
                       <span style={{ color: 'var(--border-default)', fontSize: 12 }}>|</span>
-                      <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
+                      <div
+                        title={contributor.user?.hasPassword ? 'Account created' : 'No account yet'}
+                        className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]"
+                        style={{ width: 30, height: 30 }}
+                      >
                         {contributor.user?.hasPassword
                           ? <CircleCheckBig size={17} color="rgba(34,197,94,0.7)" />
                           : <CircleHelp size={17} color="var(--text-muted)" />
@@ -2892,6 +2919,7 @@ export default function KipemberWikiContent({
                   </span>
                   <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     <div
+                      title="Send invite SMS"
                       className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                       style={{ width: 30, height: 30, opacity: sendingSmsContributorId === contributor.id ? 0.5 : 1 }}
                       onClick={() => void sendInviteSms(contributor.id)}
@@ -2899,6 +2927,7 @@ export default function KipemberWikiContent({
                       <MessageSquareShare size={14} color={contributor.inviteSent || sentSmsIds.has(contributor.id) ? 'var(--color-success)' : 'var(--text-muted)'} />
                     </div>
                     <div
+                      title="Call contributor"
                       className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                       style={{ width: 30, height: 30, opacity: callingContributorId === contributor.id ? 0.5 : 1 }}
                       onClick={() => void callContributor(contributor.id)}
@@ -2907,6 +2936,7 @@ export default function KipemberWikiContent({
                     </div>
                     {contributor.token ? (
                       <div
+                        title="Copy invite link"
                         className="flex items-center justify-center rounded-full transition-colors cursor-pointer bg-white/[0.07] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.14]"
                         style={{ width: 30, height: 30 }}
                         onClick={() => copyContributorLink(contributor.id, contributor.token!)}
@@ -2915,7 +2945,11 @@ export default function KipemberWikiContent({
                       </div>
                     ) : null}
                     <span style={{ color: 'var(--border-default)', fontSize: 12 }}>|</span>
-                    <div className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]" style={{ width: 30, height: 30 }}>
+                    <div
+                      title="No account yet"
+                      className="flex items-center justify-center rounded-full flex-shrink-0 bg-white/[0.07]"
+                      style={{ width: 30, height: 30 }}
+                    >
                       <CircleHelp size={17} color="var(--text-muted)" />
                     </div>
                   </div>
