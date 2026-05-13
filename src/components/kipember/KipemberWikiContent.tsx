@@ -30,6 +30,7 @@ import {
   Mic,
   PencilLine,
   Phone,
+  Plus,
   ScanEye,
   ShieldUser,
   Sparkles,
@@ -2316,7 +2317,7 @@ export default function KipemberWikiContent({
   // beneath it) mounted while the user edits a single field. Closing
   // the overlay returns to the wiki with scroll, expanded sections,
   // and progress-bar config all preserved.
-  type EditingSlug = 'title' | 'snapshot' | 'time-place' | 'contributors' | 'tag-people' | null;
+  type EditingSlug = 'title' | 'snapshot' | 'time-place' | 'contributors' | 'add-contributor' | 'tag-people' | null;
   const [editingSlug, setEditingSlug] = useState<EditingSlug>(null);
   // Visual open state — drives a CSS transition on `transform` so the
   // overlay slides in from the right on open and back out to the right
@@ -2335,7 +2336,6 @@ export default function KipemberWikiContent({
     setOverlayOpen(false);
     setTimeout(() => {
       setEditingSlug(null);
-      setOpenAddOnSliderMount(false);
       // Always pull fresh detail on close — covers Tag People (which
       // mutates tags via its own fetches without a refresh callback)
       // and any other slider that saved data while open. Title /
@@ -2512,8 +2512,6 @@ export default function KipemberWikiContent({
       setCallingContributorId(null);
     }
   }
-
-  const [openAddOnSliderMount, setOpenAddOnSliderMount] = useState(false);
 
   // A real pending contributor has at least one identifier (name / email /
   // phoneNumber). Rows with all identity fields null are share-link
@@ -2773,6 +2771,7 @@ export default function KipemberWikiContent({
     snapshot: { label: 'Edit Snapshot', icon: <ScanEye size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
     'time-place': { label: 'Edit Time & Place', icon: <Clock size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
     contributors: { label: 'Contributors', icon: <Users size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
+    'add-contributor': { label: 'Contributors', icon: <Users size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
     'tag-people': { label: 'Tag People', icon: <Users size={22} color="var(--text-primary)" strokeWidth={1.6} /> },
   };
   const activeEditMeta = editingSlug ? editingMeta[editingSlug] : null;
@@ -2957,21 +2956,25 @@ export default function KipemberWikiContent({
               </WikiCard>
               );
             })}
-            <button
-              type="button"
-              onClick={() => { setOpenAddOnSliderMount(true); setEditingSlug('contributors'); }}
-              disabled={!detail?.id}
-              className="w-full rounded-xl px-4 py-3.5 flex items-center justify-center text-white text-sm font-medium cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150 disabled:opacity-50"
-              style={{
-                background: 'var(--bg-overlay)',
-                border: '2px dashed rgba(255, 255, 255, 0.18)',
-                minHeight: 44,
-              }}
-            >
-              Add A Contributor
-            </button>
           </div>
       </WikiSection>
+
+      {/* Rendered outside WikiSection so the section's whole-card hover
+          doesn't glow this button along with it. */}
+      <button
+        type="button"
+        onClick={() => setEditingSlug('add-contributor')}
+        disabled={!detail?.id}
+        className="w-full rounded-xl px-4 py-3.5 flex items-center justify-center text-white text-sm font-medium cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150 disabled:opacity-50"
+        style={{
+          background: 'var(--bg-overlay)',
+          border: '2px dashed rgba(255, 255, 255, 0.18)',
+          minHeight: 44,
+          marginTop: -4,
+        }}
+      >
+        Add A Contributor
+      </button>
 
       {(() => {
         const detected = detectedPeopleCount;
@@ -3608,7 +3611,19 @@ export default function KipemberWikiContent({
                     await refreshDetail();
                   }}
                   onStatus={onStatus}
-                  startAdding={openAddOnSliderMount}
+                  mode="manage"
+                />
+              ) : null}
+              {editingSlug === 'add-contributor' ? (
+                <ContributorsSlider
+                  detail={detail}
+                  emberId={emberId}
+                  refreshDetail={async () => {
+                    await refreshDetail();
+                  }}
+                  onStatus={onStatus}
+                  mode="add"
+                  onSaved={() => closeEditOverlay()}
                 />
               ) : null}
               {editingSlug === 'tag-people' && detail ? (

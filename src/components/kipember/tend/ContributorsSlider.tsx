@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, Plus, Settings, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { KipemberContributor } from '@/components/kipember/KipemberWikiContent';
 import { pastelForContributorIdentity } from '@/lib/contributor-color';
@@ -109,14 +109,16 @@ export default function ContributorsSlider({
   refreshDetail,
   onStatus,
   status,
-  startAdding = false,
+  mode = 'manage',
+  onSaved,
 }: {
   detail: ContributorsDetail | null;
   emberId: string | null;
   refreshDetail: () => Promise<unknown>;
   onStatus?: (message: string) => void;
   status?: string;
-  startAdding?: boolean;
+  mode?: 'manage' | 'add';
+  onSaved?: () => void;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
@@ -131,7 +133,7 @@ export default function ContributorsSlider({
   const [addLangOpen, setAddLangOpen] = useState(false);
   const [settingsCommOpen, setSettingsCommOpen] = useState(false);
   const [settingsAttemptsOpen, setSettingsAttemptsOpen] = useState(false);
-  const [adding, setAdding] = useState(startAdding);
+  const [adding, setAdding] = useState(mode === 'add');
   const [addError, setAddError] = useState<string | null>(null);
   const [addForm, setAddForm] = useState({ firstName: '', lastName: '', phone: '', language: 'English' });
   // Filter pill (This Ember / All) and sort dropdown — restored from the
@@ -278,7 +280,10 @@ export default function ContributorsSlider({
     onStatus?.('Contributor added.');
     setAddForm({ firstName: '', lastName: '', phone: '', language: 'English' });
     setAdding(false);
-    await Promise.all([refreshDetail(), refreshPool()]);
+    onSaved?.();
+    // Fire-and-forget — the wiki repaints once these resolve, no need
+    // to keep the slider on screen while they're in flight.
+    void Promise.all([refreshDetail(), refreshPool()]);
   }
 
   async function callContributor(emberContributorId: string) {
@@ -326,6 +331,14 @@ export default function ContributorsSlider({
 
   return (
     <div className="flex flex-col gap-3">
+      {mode === 'manage' ? (
+      <>
+      {/* Section: Manage Contributors */}
+      <div className="flex items-center gap-2">
+        <Users size={17} color="var(--text-secondary)" strokeWidth={1.8} />
+        <h3 className="text-white font-medium text-base">Manage</h3>
+      </div>
+
       {/* Toolbar — filter pill (This Ember / All) + sort dropdown */}
       <div className="flex items-center justify-between gap-2">
         <div
@@ -814,6 +827,14 @@ export default function ContributorsSlider({
         });
       })()}
 
+      {/* Section: Preferences */}
+      {canManageContributors && (
+        <div className="flex items-center gap-2 mt-3">
+          <Settings size={17} color="var(--text-secondary)" strokeWidth={1.8} />
+          <h3 className="text-white font-medium text-base">Preferences</h3>
+        </div>
+      )}
+
       {/* No-contributors toggle */}
       {canManageContributors && (
         <button
@@ -853,6 +874,16 @@ export default function ContributorsSlider({
           </div>
         </button>
       )}
+      </>
+      ) : null}
+
+      {/* Section: Add New Contributor */}
+      {!expandedId && !expandedPoolKey && adding ? (
+        <div className="flex items-center gap-2 mt-3">
+          <Plus size={17} color="var(--text-secondary)" strokeWidth={1.8} />
+          <h3 className="text-white font-medium text-base">Add New</h3>
+        </div>
+      ) : null}
 
       {/* Add Contributor form — only shown when add was triggered from the wiki block */}
       {!expandedId && !expandedPoolKey && adding ? (
@@ -919,6 +950,7 @@ export default function ContributorsSlider({
                 setAdding(false);
                 setAddError(null);
                 setAddForm({ firstName: '', lastName: '', phone: '', language: 'English' });
+                if (mode === 'add') onSaved?.();
               }}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium btn-secondary"
               style={{
