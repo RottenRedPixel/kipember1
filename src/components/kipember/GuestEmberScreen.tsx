@@ -247,7 +247,7 @@ export default function GuestEmberScreen({
   return (
     <div className="fixed inset-0" style={{ background: 'var(--bg-screen)' }}>
       <div style={{ '--border-subtle': 'transparent' } as React.CSSProperties}>
-        <AppHeader avatarUrl={null} hasPassword={false} />
+        <AppHeader />
       </div>
 
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
