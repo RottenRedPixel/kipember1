@@ -3489,7 +3489,7 @@ export default function KipemberWikiContent({
         capture our `fixed` and shift the peek off-axis). */}
     {editingSlug && emberId && activeEditMeta && refreshDetail && typeof document !== 'undefined'
       ? createPortal(
-      <div className="fixed inset-0 z-50 flex justify-center">
+      <div className="fixed inset-0 z-50 flex justify-end">
         <div className="relative w-full max-w-xl h-full flex">
           <button
             type="button"

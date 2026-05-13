@@ -532,7 +532,7 @@ export default function AccountScreen({
                   type="button"
                   onClick={saveProfile}
                   className="w-1/2 rounded-full px-5 text-white text-sm font-medium"
-                  style={{ background: '#f97316', minHeight: 36, cursor: 'pointer' }}
+                  style={{ background: '#f97316', minHeight: 44, cursor: 'pointer' }}
                 >
                   Update
                 </button>

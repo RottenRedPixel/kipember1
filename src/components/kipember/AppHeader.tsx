@@ -139,15 +139,15 @@ export default function AppHeader({
         className="flex items-center gap-2 ml-2"
         style={{ opacity: authLoading ? 0 : 1, transition: 'opacity 0.25s ease' }}
       >
-        <Link href="/about" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : 'rgba(255,255,255,0.5)' }}>
+        <Link href="/about" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: pathname === '/about' ? '#ffffff' : 'rgba(255,255,255,0.3)' }}>
           about
         </Link>
         {authenticated && hasPassword && (
           <>
-            <Link href="/home" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : 'rgba(255,255,255,0.5)' }}>
+            <Link href="/home" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isHomeDashboard ? '#ffffff' : 'rgba(255,255,255,0.3)' }}>
               home
             </Link>
-            <Link href="/embers" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isEmbersList ? '#ffffff' : 'rgba(255,255,255,0.5)' }}>
+            <Link href="/embers" className="px-1 py-3 text-sm nav-link flex-shrink-0" style={{ color: isEmbersList ? '#ffffff' : 'rgba(255,255,255,0.3)' }}>
               embers
             </Link>
           </>
