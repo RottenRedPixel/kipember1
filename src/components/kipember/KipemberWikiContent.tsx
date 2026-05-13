@@ -2825,22 +2825,7 @@ export default function KipemberWikiContent({
         loading={wikiClaimsLoading}
         id="tracker-contributors"
       >
-        {activeContributors.length === 0 && pendingContributors.length === 0 ? (
-          <button
-            type="button"
-            onClick={() => { setOpenAddOnSliderMount(true); setEditingSlug('contributors'); }}
-            disabled={!detail?.id}
-            className="w-full rounded-xl px-4 py-3.5 flex items-center justify-center text-white text-sm font-medium cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150 disabled:opacity-50"
-            style={{
-              background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
-              border: '1px solid var(--border-subtle)',
-              minHeight: 44,
-            }}
-          >
-            Add A Contributor
-          </button>
-        ) : (
-          <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2.5">
             {activeContributors.map((contributor) => {
               const contributorName =
                 contributor.name ||
@@ -2972,8 +2957,20 @@ export default function KipemberWikiContent({
               </WikiCard>
               );
             })}
+            <button
+              type="button"
+              onClick={() => { setOpenAddOnSliderMount(true); setEditingSlug('contributors'); }}
+              disabled={!detail?.id}
+              className="w-full rounded-xl px-4 py-3.5 flex items-center justify-center text-white text-sm font-medium cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150 disabled:opacity-50"
+              style={{
+                background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+                border: '1px solid var(--border-subtle)',
+                minHeight: 44,
+              }}
+            >
+              Add A Contributor
+            </button>
           </div>
-        )}
       </WikiSection>
 
       {(() => {
