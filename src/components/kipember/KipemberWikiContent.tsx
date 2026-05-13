@@ -2963,8 +2963,8 @@ export default function KipemberWikiContent({
               disabled={!detail?.id}
               className="w-full rounded-xl px-4 py-3.5 flex items-center justify-center text-white text-sm font-medium cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150 disabled:opacity-50"
               style={{
-                background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
-                border: '1px solid var(--border-subtle)',
+                background: 'var(--bg-overlay)',
+                border: '2px dashed rgba(255, 255, 255, 0.18)',
                 minHeight: 44,
               }}
             >
