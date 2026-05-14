@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Phone, Play } from 'lucide-react';
+import { ChevronDown, Phone, Play, RotateCw } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { pastelForContributor, pastelForContributorIdentity } from '@/lib/contributor-color';
 
@@ -96,6 +96,8 @@ function CallHeaderAvatar({
 export default function EmberCallCard({
   block,
   hideHeader = false,
+  defaultCollapsed = false,
+  onRefresh,
 }: {
   block: EmberCallBlock;
   // Inside the Ember Chat shell's Call tab the user already knows whose
@@ -104,14 +106,17 @@ export default function EmberCallCard({
   // strip to avoid redundancy. The wiki Story Circle keeps it because
   // the same surface lists multiple people's calls in one scroll.
   hideHeader?: boolean;
+  // Story Circle opens with everything else closed; pass true there so
+  // call cards match. Ember Chat leaves this false to keep segments
+  // visible on the Call tab.
+  defaultCollapsed?: boolean;
+  // When set, renders a REFRESH affordance below the segments that
+  // re-fetches the wiki detail so the block reflects current DB state.
+  onRefresh?: () => void | Promise<void>;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  // Match Ember Chat / Ember Voice — calls expand by default in the
-  // Ember Chat workflow so segments are visible immediately. The header
-  // toggle still collapses them on click for users who want to focus.
-  // When hideHeader is true the toggle is gone and segments stay open.
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const stopAtMsRef = useRef<number | null>(null);
 
   const playSegment = (segment: EmberCallSegment) => {
@@ -304,6 +309,20 @@ export default function EmberCallCard({
           );
         })}
       </div>
+      ) : null}
+      {segmentsVisible && onRefresh ? (
+        <>
+          <div className="mt-3 h-px" style={{ background: 'var(--border-subtle)' }} />
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); void onRefresh(); }}
+            className="flex flex-col items-center gap-1 mx-auto mt-2 cursor-pointer text-white/40 text-[10px] font-semibold uppercase tracking-wider [@media(hover:hover)]:hover:text-white/70 transition-colors"
+            style={{ background: 'transparent', border: 'none', padding: '4px 8px' }}
+          >
+            <RotateCw size={14} strokeWidth={2} />
+            Refresh
+          </button>
+        </>
       ) : null}
     </div>
   );

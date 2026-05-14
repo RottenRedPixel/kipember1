@@ -815,6 +815,22 @@ export async function reconcileEmberMessageSafely(messageId: string, context = '
   await safeRun(() => extractStoriesForMessage(messageId), `${context}: extra stories`);
   await safeRun(() => extractPlacesForMessage(messageId), `${context}: places`);
   await safeRun(() => extractPeopleForMessage(messageId), `${context}: people`);
+
+  // Regenerate the wiki snapshot so the next Retell call (and every other
+  // surface that reads Wiki.content) sees the just-extracted claims. Today
+  // the wiki only refreshed after voice calls finished — chat / voice
+  // message facts were stranded in MemoryClaim until the next call.
+  await safeRun(async () => {
+    const message = await prisma.emberMessage.findUnique({
+      where: { id: messageId },
+      select: { session: { select: { emberId: true } } },
+    });
+    const emberId = message?.session?.emberId;
+    if (!emberId) return;
+    const { generateWikiForImage } = await import('@/lib/wiki-generator');
+    await generateWikiForImage(emberId);
+  }, `${context}: wiki refresh`);
+
   return { claimsCreated: 0, conflictsCreated: 0 };
 }
 

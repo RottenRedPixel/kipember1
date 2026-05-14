@@ -31,6 +31,7 @@ import {
   PencilLine,
   Phone,
   Plus,
+  RotateCw,
   ScanEye,
   ShieldUser,
   Sparkles,
@@ -592,8 +593,10 @@ function claimSourceLabelFromMetadata(metadata: unknown): string {
 
 function VoiceBlockCard({
   block,
+  onRefresh,
 }: {
   block: NonNullable<KipemberWikiDetail['voiceBlocks']>[number];
+  onRefresh?: () => void | Promise<void>;
 }) {
   const [collapsed, setCollapsed] = useState(true);
   const messages: VoiceMessage[] = block.messages.map((m) => ({
@@ -656,6 +659,7 @@ function VoiceBlockCard({
             emptyHint=""
             selfLabel={block.personName.split(' ')[0] || block.personName}
           />
+          <RefreshFooter onRefresh={onRefresh} />
         </div>
       ) : null}
     </WikiCard>
@@ -1919,9 +1923,27 @@ type ChatBlock = {
   }>;
 };
 
+function RefreshFooter({ onRefresh }: { onRefresh?: () => void | Promise<void> }) {
+  if (!onRefresh) return null;
+  return (
+    <>
+      <div className="mt-3 h-px" style={{ background: 'var(--border-subtle)' }} />
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); void onRefresh(); }}
+        className="flex flex-col items-center gap-1 mx-auto mt-2 cursor-pointer text-white/40 text-[10px] font-semibold uppercase tracking-wider [@media(hover:hover)]:hover:text-white/70 transition-colors"
+        style={{ background: 'transparent', border: 'none', padding: '4px 8px' }}
+      >
+        <RotateCw size={14} strokeWidth={2} />
+        Refresh
+      </button>
+    </>
+  );
+}
+
 // Story Circle entries default to collapsed so the wiki opens compact.
 // Click the header row to expand and read the messages.
-function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
+function CollapsibleChatBlock({ block, onRefresh }: { block: ChatBlock; onRefresh?: () => void | Promise<void> }) {
   const [collapsed, setCollapsed] = useState(true);
   const messageCount = block.messages.length;
   return (
@@ -1982,6 +2004,7 @@ function CollapsibleChatBlock({ block }: { block: ChatBlock }) {
             }))}
             selfLabel={block.personName.split(' ')[0] || block.personName}
           />
+          <RefreshFooter onRefresh={onRefresh} />
         </div>
       ) : null}
     </WikiCard>
@@ -3245,12 +3268,12 @@ export default function KipemberWikiContent({
                 );
                 return (
                   <Fragment key={`person-${block.personName}`}>
-                    <CollapsibleChatBlock block={block} />
+                    <CollapsibleChatBlock block={block} onRefresh={refreshDetail} />
                     {voiceForPerson ? (
-                      <VoiceBlockCard block={voiceForPerson} />
+                      <VoiceBlockCard block={voiceForPerson} onRefresh={refreshDetail} />
                     ) : null}
                     {callsForPerson.map((call) => (
-                      <EmberCallCard key={call.voiceCallId} block={call} />
+                      <EmberCallCard key={call.voiceCallId} block={call} defaultCollapsed onRefresh={refreshDetail} />
                     ))}
                   </Fragment>
                 );
@@ -3262,7 +3285,7 @@ export default function KipemberWikiContent({
                   )
                 )
                 .map((voice) => (
-                  <VoiceBlockCard key={`voice-${voice.personName}`} block={voice} />
+                  <VoiceBlockCard key={`voice-${voice.personName}`} block={voice} onRefresh={refreshDetail} />
                 ))}
               {(detail?.callBlocks ?? [])
                 .filter(
@@ -3275,7 +3298,7 @@ export default function KipemberWikiContent({
                     )
                 )
                 .map((call) => (
-                  <EmberCallCard key={call.voiceCallId} block={call} />
+                  <EmberCallCard key={call.voiceCallId} block={call} defaultCollapsed onRefresh={refreshDetail} />
                 ))}
             </>
           ) : (
