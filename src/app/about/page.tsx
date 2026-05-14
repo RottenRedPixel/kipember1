@@ -181,18 +181,20 @@ export default async function AboutPage() {
 
           <div className="flex flex-col gap-3">
             <Link
-              href="/signup"
+              href={auth ? '/home' : '/signup'}
               className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-primary"
               style={{ background: '#f97316', minHeight: 44 }}
             >
-              Sign Up
+              {auth ? 'Get Started' : 'Sign Up'}
             </Link>
-            <p className="text-center text-white/60 text-sm">
-              Already have an account?{' '}
-              <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
-                Login
-              </Link>
-            </p>
+            {auth ? null : (
+              <p className="text-center text-white/60 text-sm">
+                Already have an account?{' '}
+                <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
+                  Login
+                </Link>
+              </p>
+            )}
           </div>
         </div>
       </div>

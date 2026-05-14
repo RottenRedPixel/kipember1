@@ -21,6 +21,7 @@ import {
   Image as ImageIcon,
   Lightbulb,
   ListChecks,
+  LoaderCircle,
   Lock,
   LockKeyhole,
   Map as MapIcon,
@@ -1622,7 +1623,9 @@ function WikiBadge({
       {!loading && tracksProgress && complete ? (
         <Check size={11} strokeWidth={3} color="#ffffff" aria-hidden />
       ) : null}
-      {loading ? '—' : (label ?? (tracksProgress ? (complete ? 'Complete' : 'Not Complete') : collectedDefault))}
+      {loading ? (
+        <LoaderCircle size={11} strokeWidth={2.5} className="animate-spin" aria-hidden />
+      ) : (label ?? (tracksProgress ? (complete ? 'Complete' : 'Not Complete') : collectedDefault))}
     </span>
   );
 }
