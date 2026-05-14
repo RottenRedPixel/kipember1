@@ -12,6 +12,7 @@ import EmberTitleBlock from './EmberTitleBlock';
 import HelloSheet from './HelloSheet';
 import ShareSheet from './ShareSheet';
 import StoriesSheet from './StoriesSheet';
+import Story2Sheet from './Story2Sheet';
 import TendSheet from './TendSheet';
 
 type EmberSummary = {
@@ -41,6 +42,7 @@ const tabItems = [
   { label: 'hello', icon: Hand },
   { label: 'ember', icon: MessageCirclePlus },
   { label: 'stories', icon: Flame },
+  { label: 'story2', icon: Flame },
   { label: 'tend', icon: Leaf },
   { label: 'share', icon: Share },
 ] as const;
@@ -244,9 +246,11 @@ function EmberViewContent() {
     ? '28vh'
     : activeTab === 'stories'
     ? '35vh'
+    : activeTab === 'story2'
+    ? '35vh'
     : TAB_H;
 
-  const tabHidden = activeTab === 'stories' || activeTab === 'hello' || activeTab === 'share' || emberOpen || modal === 'account';
+  const tabHidden = activeTab === 'stories' || activeTab === 'story2' || activeTab === 'hello' || activeTab === 'share' || emberOpen || modal === 'account';
 
   return (
     <>
@@ -322,6 +326,7 @@ function EmberViewContent() {
       <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} emberId={id} />
       <HelloSheet isOpen={activeTab === 'hello'} onClose={closePanel} emberId={id} accessType={ember?.accessType ?? null} />
       <StoriesSheet isOpen={activeTab === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
+      <Story2Sheet isOpen={activeTab === 'story2'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
       <ShareSheet isOpen={activeTab === 'share'} onClose={closePanel} emberId={id} />
       <TendSheet isOpen={activeTab === 'tend'} onClose={closePanel} emberId={id} />
 
