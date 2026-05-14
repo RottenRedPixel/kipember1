@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 
-const SHEET_H = '35vh';
+const SHEET_H = '40vh';
 const SNAP_MS = 320;
 
 const BADGES = [
@@ -353,7 +353,7 @@ export default function Story2Sheet({
             their own slider color; name capsules use the lighter grey selection. */}
         <div className="flex flex-wrap gap-2 pb-4">
           {[
-            'Luca', 'Zia', 'Amado', 'Bob', 'Maya', 'Theo', 'Owen', 'Ivy',
+            'Luca', 'Zia', 'Amado',
             'place & time', 'friends & family', 'interesting stories', 'feelings & emotions', 'snapshot',
           ].map((name) => {
             const topicToBadge: Record<string, number> = {
