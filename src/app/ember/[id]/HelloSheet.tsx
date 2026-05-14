@@ -77,7 +77,8 @@ export default function HelloSheet({
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
       style={{
         height: '50vh',
-        background: 'var(--bg-chrome)',
+        background: 'var(--bg-sheets)',
+        borderTop: '1px solid var(--border-subtle)',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,

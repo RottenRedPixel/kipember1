@@ -1595,18 +1595,18 @@ function WikiBadge({
   // bg-screen so the pill stays fully opaque even when the wiki overlay
   // itself is partially transparent. Visual matches the original tinted
   // pills exactly in both dark and light themes.
-  const grey = { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(148,163,184) 15%)', fg: '#94a3b8' };
+  const grey = { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(148,163,184) 15%)', fg: '#94a3b8' };
   const palette = loading
     ? grey
     : tracksProgress
     ? complete
-      ? { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(34,197,94) 15%)', fg: 'var(--color-success)' }
+      ? { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(34,197,94) 15%)', fg: 'var(--color-success)' }
       : hasCustomLabel
-        ? { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(249,115,22) 15%)', fg: 'var(--color-accent)' }
-        : { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(239,68,68) 15%)', fg: '#f87171' }
+        ? { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(249,115,22) 15%)', fg: 'var(--color-accent)' }
+        : { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(239,68,68) 15%)', fg: '#f87171' }
     : count === 0
       ? grey
-      : { bg: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(59,130,246) 15%)', fg: '#60a5fa' };
+      : { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(59,130,246) 15%)', fg: '#60a5fa' };
   const collectedDefault =
     typeof count === 'number' ? (
       <>
@@ -1725,7 +1725,7 @@ function EmberProgressBar({
               onClick={() => handleChipClick(step.slug)}
               className="text-xs font-medium px-2.5 py-1 rounded-full can-hover cursor-pointer inline-flex items-center gap-1.5"
               style={{
-                background: 'color-mix(in srgb, var(--bg-chrome) 85%, rgb(148,163,184) 15%)',
+                background: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(148,163,184) 15%)',
                 color: '#94a3b8',
                 minHeight: 28,
                 border: 'none',
@@ -1872,11 +1872,7 @@ function WikiCard({ children, onClick }: { children: React.ReactNode; onClick?: 
       onClick={onClick}
       className={`rounded-xl px-4 py-3.5 flex flex-col gap-1 ${onClick ? 'cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150' : ''}`}
       style={{
-        // Pre-composite the translucent --bg-surface against --bg-screen
-        // so the card stays fully opaque even when the wiki overlay's
-        // own background is partially transparent. Matches the visual
-        // of the original translucent surface in either theme.
-        background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+        background: 'var(--bg-drill-blocks)',
         border: '1px solid var(--border-subtle)',
       }}
     >
@@ -3495,7 +3491,7 @@ export default function KipemberWikiContent({
           <div
             className="flex-1 h-full flex flex-col"
             style={{
-              background: 'var(--bg-overlay)',
+              background: 'var(--bg-drill)',
               borderLeft: '1px solid var(--border-subtle)',
               transform: overlayOpen ? 'translateX(0)' : 'translateX(100%)',
               transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',

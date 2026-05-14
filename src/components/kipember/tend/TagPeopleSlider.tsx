@@ -627,7 +627,7 @@ export default function TagPeopleSlider({
                 key={tag.id}
                 className="rounded-xl"
                 style={{
-                  background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+                  background: 'var(--bg-drill-blocks)',
                   border: '1px solid var(--border-subtle)',
                 }}
               >

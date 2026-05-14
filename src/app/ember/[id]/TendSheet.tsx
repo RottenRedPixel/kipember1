@@ -58,7 +58,7 @@ export default function TendSheet({
       className="fixed left-0 right-0 bottom-0 z-50 flex flex-col"
       style={{
         top: 0,
-        background: 'var(--bg-chrome)',
+        background: 'var(--bg-sheets)',
         borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,

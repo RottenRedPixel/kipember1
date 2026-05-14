@@ -24,7 +24,7 @@ function WikiCard({ children }: { children: React.ReactNode }) {
     <div
       className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
       style={{
-        background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+        background: 'var(--bg-drill-blocks)',
         border: '1px solid var(--border-subtle)',
       }}
     >
@@ -195,7 +195,7 @@ export default function EditTitleSlider({
         <div
           className="rounded-xl px-4 py-3.5 flex flex-col gap-1"
           style={{
-            background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+            background: 'var(--bg-drill-blocks)',
             border: '1px solid var(--border-subtle)',
           }}
         >

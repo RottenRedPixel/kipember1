@@ -293,7 +293,7 @@ export default function EditTimePlaceSlider({
           readOnly={isView}
           className="w-full h-12 px-4 rounded-xl text-sm text-white outline-none"
           style={{
-            background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+            background: 'var(--bg-drill-blocks)',
             border: '1px solid var(--border-subtle)',
             colorScheme: 'dark',
             cursor: isView ? 'default' : 'pointer',
@@ -310,7 +310,7 @@ export default function EditTimePlaceSlider({
         </div>
         <div
           className="rounded-xl px-4"
-          style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}
+          style={{ background: 'var(--bg-drill-blocks)', border: '1px solid var(--border-subtle)' }}
         >
           <input
             type="text"
@@ -358,7 +358,7 @@ export default function EditTimePlaceSlider({
         </div>
         <div
           className="rounded-xl px-4 flex items-center gap-2 min-h-[48px]"
-          style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}
+          style={{ background: 'var(--bg-drill-blocks)', border: '1px solid var(--border-subtle)' }}
         >
           {locationLatitude && locationLongitude ? (
             <>

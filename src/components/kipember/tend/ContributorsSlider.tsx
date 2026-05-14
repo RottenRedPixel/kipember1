@@ -89,7 +89,7 @@ const LANGUAGE_OPTIONS = [
 // alone provides the affordance, so the input visually sits on the
 // same surface as the surrounding card without competing for depth.
 const fieldStyle = {
-  background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+  background: 'var(--bg-drill-blocks)',
   border: '1px solid var(--border-subtle)',
 };
 
@@ -345,7 +345,7 @@ export default function ContributorsSlider({
       <div className="flex items-center justify-between gap-2">
         <div
           className="flex items-center gap-1 rounded-xl p-1"
-          style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)' }}
+          style={{ background: 'var(--bg-drill-blocks)' }}
         >
           <button
             type="button"
@@ -379,7 +379,7 @@ export default function ContributorsSlider({
             onClick={() => setSortOpen((s) => !s)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl can-hover"
             style={{
-              background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+              background: 'var(--bg-drill-blocks)',
               cursor: 'pointer',
               border: 'none',
             }}
@@ -391,7 +391,7 @@ export default function ContributorsSlider({
             <div
               className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-10"
               style={{
-                background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+                background: 'var(--bg-drill-blocks)',
                 border: '1px solid var(--border-subtle)',
                 minWidth: 140,
               }}
@@ -445,7 +445,7 @@ export default function ContributorsSlider({
             <div
               className="rounded-xl px-4 py-3"
               style={{
-                background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+                background: 'var(--bg-drill-blocks)',
                 border: '1px solid var(--border-subtle)',
               }}
             >
@@ -489,9 +489,9 @@ export default function ContributorsSlider({
         return (
           <div
             key={contributor.key}
-            className="rounded-xl"
+            className={`rounded-xl ${expandable && !isExpanded ? '[@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150' : ''}`}
             style={{
-              background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+              background: 'var(--bg-drill-blocks)',
               border: '1px solid var(--border-subtle)',
             }}
           >
@@ -607,7 +607,7 @@ export default function ContributorsSlider({
                     <h3 className="text-white/40 text-xs uppercase tracking-wider font-medium">Profile</h3>
                     <div
                       className="rounded-xl px-4"
-                      style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)', border: '1px solid var(--border-subtle)' }}
+                      style={{ background: 'var(--bg-drill-blocks)', border: '1px solid var(--border-subtle)' }}
                     >
                       <input readOnly value={poolFirst} placeholder="First name" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" />
                       <input readOnly value={poolLast} placeholder="Last name" className="w-full h-12 px-0 text-sm text-white placeholder-white/30 outline-none bg-transparent opacity-70" style={{ borderTop: '1px solid var(--border-subtle)' }} />
@@ -632,7 +632,7 @@ export default function ContributorsSlider({
                   <div
                     className="rounded-xl px-4"
                     style={{
-                      background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+                      background: 'var(--bg-drill-blocks)',
                       border: '1px solid var(--border-subtle)',
                     }}
                   >
@@ -677,7 +677,7 @@ export default function ContributorsSlider({
                   <div
                     className="rounded-xl px-4"
                     style={{
-                      background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+                      background: 'var(--bg-drill-blocks)',
                       border: '1px solid var(--border-subtle)',
                     }}
                   >
@@ -689,7 +689,7 @@ export default function ContributorsSlider({
                           type="button"
                           onClick={() => { setSettingsLangOpen((v) => !v); setSettingsCommOpen(false); setSettingsAttemptsOpen(false); }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer"
-                          style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
+                          style={{ background: 'color-mix(in srgb, var(--bg-sheets), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
                         >
                           <span className="text-white text-xs font-medium">{editForm.language}</span>
                           <ChevronDown size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
@@ -697,7 +697,7 @@ export default function ContributorsSlider({
                         {settingsLangOpen ? (
                           <div
                             className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
-                            style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
+                            style={{ background: 'color-mix(in srgb, var(--bg-sheets), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
                           >
                             {LANGUAGE_OPTIONS.map((lang) => lang === 'English' ? (
                               <button
@@ -727,7 +727,7 @@ export default function ContributorsSlider({
                           type="button"
                           onClick={() => { setSettingsCommOpen((v) => !v); setSettingsLangOpen(false); setSettingsAttemptsOpen(false); }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer"
-                          style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
+                          style={{ background: 'color-mix(in srgb, var(--bg-sheets), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
                         >
                           <span className="text-white text-xs font-medium">
                             {settingsPreferredComm === 'call' ? 'Phone Call' : settingsPreferredComm === 'sms' ? 'Text Message' : settingsPreferredComm === 'email' ? 'Email' : 'WhatsApp'}
@@ -737,7 +737,7 @@ export default function ContributorsSlider({
                         {settingsCommOpen ? (
                           <div
                             className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
-                            style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
+                            style={{ background: 'color-mix(in srgb, var(--bg-sheets), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}
                           >
                             <button
                               type="button"
@@ -769,7 +769,7 @@ export default function ContributorsSlider({
                           type="button"
                           onClick={() => { setSettingsAttemptsOpen((v) => !v); setSettingsLangOpen(false); setSettingsCommOpen(false); }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl cursor-pointer"
-                          style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
+                          style={{ background: 'color-mix(in srgb, var(--bg-sheets), var(--text-primary) 12%)', border: '1px solid var(--border-subtle)' }}
                         >
                           <span className="text-white text-xs font-medium">
                             {settingsAttempts === 'once' ? 'Once' : settingsAttempts === 'twice' ? 'Twice' : settingsAttempts === 'three' ? 'Three Times' : 'Keep Trying'}
@@ -779,7 +779,7 @@ export default function ContributorsSlider({
                         {settingsAttemptsOpen ? (
                           <div
                             className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20"
-                            style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 200 }}
+                            style={{ background: 'color-mix(in srgb, var(--bg-sheets), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 200 }}
                           >
                             {([['once', 'Once'], ['twice', 'Twice'], ['three', 'Three Times'], ['forever', 'Keep Trying Until Successful']] as const).map(([val, label]) => (
                               <button
@@ -844,7 +844,7 @@ export default function ContributorsSlider({
           onClick={() => { if (!savingNoContributors) void toggleNoContributors(!noContributors); }}
           className="flex items-center justify-between gap-3 w-full rounded-xl px-4 text-left"
           style={{
-            background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+            background: 'var(--bg-drill-blocks)',
             border: '1px solid var(--border-subtle)',
             minHeight: 56,
             cursor: savingNoContributors ? 'default' : 'pointer',
@@ -892,7 +892,7 @@ export default function ContributorsSlider({
         <div
           className="rounded-xl px-4 py-4 flex flex-col gap-3"
           style={{
-            background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 7%)',
+            background: 'var(--bg-drill-blocks)',
             border: '1px solid var(--border-subtle)',
           }}
         >
@@ -926,7 +926,7 @@ export default function ContributorsSlider({
             {addLangOpen ? (
               <div
                 className="absolute left-0 right-0 bottom-full mb-1 rounded-xl overflow-hidden z-20"
-                style={{ background: 'color-mix(in srgb, var(--bg-chrome), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)' }}
+                style={{ background: 'color-mix(in srgb, var(--bg-sheets), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)' }}
               >
                 {LANGUAGE_OPTIONS.map((lang) => (
                   <button

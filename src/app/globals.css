@@ -8,18 +8,21 @@
 :root {
   --bg-body: #0d0d0f;
   /* Surface palette — ascending elevation. Use these for any new surface. */
-  --bg-screen: #141414;   /* Page: landing, about, home, embers, ember view */
-  --bg-frame:  #0a0a0a;   /* Chrome: header + tab bar */
-  --bg-chrome: #151515;   /* Sheet: EmberSheet, TendSheet, HelloSheet, StoriesSheet, ShareSheet */
-  --bg-overlay:#262626;   /* Overlay: wiki edit sliders, /account outer overlay */
-  --bg-drill:  #303030;   /* Drill: /account inner sliders (Profile, Contacts, Voices, etc.) */
-  --bg-modal: rgba(0, 0, 0, 0.75);
+  --bg-screen: #111111;   /* Page: landing, about, home, embers, ember view */
+  --bg-frame:  #000000;   /* Chrome: header + tab bar — pure black */
+  --bg-sheets: #1a1a1a;   /* Sheet: EmberSheet, TendSheet, HelloSheet, StoriesSheet, ShareSheet */
+  --bg-overlay:var(--bg-sheets);   /* Overlay: wiki edit sliders, /account outer overlay */
+  --bg-drill:  #1e1e1e;   /* Drill: /account inner sliders (Profile, Contacts, Voices, etc.) */
   /* Opaque pre-composite of 7% white over bg-screen — keeps the same
      visual weight as the legacy translucent surface but doesn't let
      anything bleed through. Required because the wiki overlay is now
      partly transparent over the ember view; translucent surfaces
      used to ride on the wiki's solid bg. */
-  --bg-surface: #272525;
+  --bg-surface: #1a1a1a;
+  /* Cards/data blocks inside wiki + sheets: bg-sheets tinted with 7%
+     text-primary so they read as a soft step above the sheet surface
+     while staying fully opaque. */
+  --bg-drill-blocks: #222222;
   --bg-input: rgba(255, 255, 255, 0.08);
   --bg-chat-user: #2e3a4e;
   /* Same rationale as --bg-surface — opaque pre-composite of 8% white
@@ -72,10 +75,10 @@
   --color-white: #1c1917;
   --bg-body: #faf7f3;
   --bg-screen: #ece9e5;
-  --bg-chrome: #ece9e5;
-  --bg-modal: rgba(250, 247, 243, 0.92);
+  --bg-sheets: #ece9e5;
   /* Opaque pre-composite (5% black over bg-screen). */
   --bg-surface: #ece9e5;
+  --bg-drill-blocks: #222222;
   --bg-input: rgba(0, 0, 0, 0.05);
   --bg-chat-user: #3a5a7a;
   --bg-ember-bubble: #ece9e5;
