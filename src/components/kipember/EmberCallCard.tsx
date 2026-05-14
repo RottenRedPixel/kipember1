@@ -112,7 +112,7 @@ export default function EmberCallCard({
   defaultCollapsed?: boolean;
   // When set, renders a REFRESH affordance below the segments that
   // re-fetches the wiki detail so the block reflects current DB state.
-  onRefresh?: () => void | Promise<void>;
+  onRefresh?: () => unknown;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);

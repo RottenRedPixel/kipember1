@@ -596,7 +596,7 @@ function VoiceBlockCard({
   onRefresh,
 }: {
   block: NonNullable<KipemberWikiDetail['voiceBlocks']>[number];
-  onRefresh?: () => void | Promise<void>;
+  onRefresh?: () => unknown;
 }) {
   const [collapsed, setCollapsed] = useState(true);
   const messages: VoiceMessage[] = block.messages.map((m) => ({
@@ -1923,7 +1923,7 @@ type ChatBlock = {
   }>;
 };
 
-function RefreshFooter({ onRefresh }: { onRefresh?: () => void | Promise<void> }) {
+function RefreshFooter({ onRefresh }: { onRefresh?: () => unknown }) {
   if (!onRefresh) return null;
   return (
     <>
@@ -1943,7 +1943,7 @@ function RefreshFooter({ onRefresh }: { onRefresh?: () => void | Promise<void> }
 
 // Story Circle entries default to collapsed so the wiki opens compact.
 // Click the header row to expand and read the messages.
-function CollapsibleChatBlock({ block, onRefresh }: { block: ChatBlock; onRefresh?: () => void | Promise<void> }) {
+function CollapsibleChatBlock({ block, onRefresh }: { block: ChatBlock; onRefresh?: () => unknown }) {
   const [collapsed, setCollapsed] = useState(true);
   const messageCount = block.messages.length;
   return (
