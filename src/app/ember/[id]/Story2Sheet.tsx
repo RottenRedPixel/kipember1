@@ -65,7 +65,15 @@ export default function Story2Sheet({
   const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState(2);
-  const [badgeColors, setBadgeColors] = useState<Record<string, string>>({});
+  // BADGES[2] is the snapshot slider (orange). Preselect it on open.
+  const [badgeColors, setBadgeColors] = useState<Record<string, string>>(
+    () => ({ snapshot: 'rgba(249,115,22,0.55)' })
+  );
+  // Re-apply the snapshot preselection every time the sheet opens.
+  useEffect(() => {
+    if (!isOpen) return;
+    setBadgeColors({ snapshot: 'rgba(249,115,22,0.55)' });
+  }, [isOpen]);
   const IDLE_PROMPTS = useMemo(() => [
     'choose your own adventure...',
     'listen to different versions...',
