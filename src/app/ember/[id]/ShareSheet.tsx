@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Copy, Link2, MessageCircle, MoreHorizontal, Share2, X } from 'lucide-react';
 import { useToast } from '@/lib/toast';
+import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 
 const SNAP_MS = 320;
 
@@ -28,6 +29,7 @@ export default function ShareSheet({
   const [showing, setShowing] = useState(isOpen);
   const [shareToken, setShareToken] = useState<string | null>(null);
   const { toast } = useToast();
+  useResetZoomOnOpen(isOpen);
 
   useEffect(() => { if (isOpen) setShowing(true); else setShowing(false); }, [isOpen]);
 

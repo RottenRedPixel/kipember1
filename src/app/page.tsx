@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getCurrentAuth } from '@/lib/auth-server';
 import AppHeader from '@/components/kipember/AppHeader';
+import { ZoomReset } from '@/lib/reset-zoom';
 
 export default async function LandingPage() {
   const auth = await getCurrentAuth();
@@ -11,6 +12,7 @@ export default async function LandingPage() {
       className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4"
       style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
     >
+      <ZoomReset />
       <AppHeader />
       <div className="flex w-full max-w-xl flex-col gap-8 pt-6 pb-16">
         <div className="flex flex-col gap-3">

@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import AppHeader from '@/components/kipember/AppHeader';
 import { getCurrentAuth } from '@/lib/auth-server';
+import { ZoomReset } from '@/lib/reset-zoom';
 
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
@@ -160,6 +161,7 @@ export default async function AboutPage() {
         className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4"
         style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
       >
+        <ZoomReset />
         <AppHeader avatarUrl={avatarUrl} userInitials={initials} hasPassword={hasPassword} />
         <div className="flex w-full max-w-xl flex-col gap-6 pt-6 pb-16 fade-in">
           <div className="flex flex-col gap-3">

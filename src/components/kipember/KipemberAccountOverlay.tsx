@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import AccountScreen from '@/components/kipember/AccountScreen';
 import { getUserDisplayName } from '@/lib/user-name';
+import { useResetZoomOnMount } from '@/lib/reset-zoom';
 
 // Account overlay — same modal pattern as KipemberWikiOverlay. Renders
 // inside /ember/[id]?m=account or /home?m=account as a layer over the
@@ -35,6 +36,7 @@ function initialsOf(value: string) {
 }
 
 export default function KipemberAccountOverlay({ closeHref }: { closeHref: string }) {
+  useResetZoomOnMount();
   const router = useRouter();
   const [user, setUser] = useState<AccountUser | null>(null);
   const [overlayOpen, setOverlayOpen] = useState(false);

@@ -11,6 +11,7 @@ import type { EmberMediaType } from '@/lib/media';
 import { getPreviewMediaUrl } from '@/lib/media';
 import type { EmberSummary as BaseEmberSummary } from '@/lib/ember';
 import { writeEmberPreview } from '@/lib/ember-preview-cache';
+import { useResetZoomOnMount } from '@/lib/reset-zoom';
 
 type EmberSummary = BaseEmberSummary & {
   mediaType: EmberMediaType;
@@ -39,6 +40,7 @@ export default function MyEmbersScreen({
   userInitials?: string;
   hasPassword?: boolean;
 }) {
+  useResetZoomOnMount();
   const searchParams = useSearchParams();
   const modal = searchParams.get('m');
   // Account modal — clicking the avatar appends ?m=account to the

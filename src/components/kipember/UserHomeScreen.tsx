@@ -9,6 +9,7 @@ import EmberCreateFlow from '@/components/kipember/EmberCreateFlow';
 import KipemberAccountOverlay from '@/components/kipember/KipemberAccountOverlay';
 import { getPreviewMediaUrl, type EmberMediaType } from '@/lib/media';
 import { getUserDisplayName } from '@/lib/user-name';
+import { useResetZoomOnMount } from '@/lib/reset-zoom';
 
 function EmberMark({ size = 18 }: { size?: number }) {
   return (
@@ -248,6 +249,7 @@ export default function UserHomeScreen({
   };
   initialChecklist?: ChecklistItemProp[];
 }) {
+  useResetZoomOnMount();
   const totalEmbers = initialEmbers?.filter((ember) => ember.accessType === 'owner').length ?? 0;
   const totalContributors = initialTotalContributors ?? 0;
 

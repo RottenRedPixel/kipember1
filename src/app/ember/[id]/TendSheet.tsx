@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Leaf, X } from 'lucide-react';
 import KipemberWikiContent, { type KipemberWikiDetail } from '@/components/kipember/KipemberWikiContent';
 import { useToast } from '@/lib/toast';
+import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 
 const SNAP_MS = 320;
 
@@ -19,6 +20,7 @@ export default function TendSheet({
   const [showing, setShowing] = useState(isOpen);
   const [detail, setDetail] = useState<KipemberWikiDetail | null>(null);
   const { toast } = useToast();
+  useResetZoomOnOpen(isOpen);
   const loadedRef = useRef(false);
 
   const fetchDetail = useCallback(async () => {

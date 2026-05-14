@@ -10,6 +10,7 @@ import EmberChatMessages, { type EmberChatMessage } from '@/components/kipember/
 import { EmberMark } from '@/components/kipember/EmberModalShell';
 import type { EmberModalSurface } from '@/components/kipember/EmberModalShell';
 import { useToast } from '@/lib/toast';
+import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 
 const SNAP_MS = 320;
 
@@ -64,6 +65,7 @@ export default function EmberSheet({
 
   const voice = useVoiceRecording(emberId ?? '');
   const { toast } = useToast();
+  useResetZoomOnOpen(isOpen);
 
   // Scroll to latest message
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);

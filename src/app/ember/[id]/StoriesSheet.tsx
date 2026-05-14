@@ -3,6 +3,7 @@
 import { Flame, Heart, MapPinned, ScanEye, Smile, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
+import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 
 const SHEET_H = '35vh';
 const SNAP_MS = 320;
@@ -58,6 +59,7 @@ export default function StoriesSheet({
 }) {
   const [showing, setShowing] = useState(isOpen);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
+  useResetZoomOnOpen(isOpen);
   const [error, setError] = useState('');
   const [lineIndex, setLineIndex] = useState(0);
   const [fading, setFading] = useState(false);

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Hand, X } from 'lucide-react';
+import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 
 const SNAP_MS = 320;
 
@@ -31,6 +32,7 @@ export default function HelloSheet({
   const [firstName, setFirstName] = useState<string | null>(guest?.firstName ?? null);
   const [hasPassword, setHasPassword] = useState(guest?.hasPassword ?? true);
   const [helloDismissed, setHelloDismissed] = useState(false);
+  useResetZoomOnOpen(isOpen);
 
   useEffect(() => {
     if (guest) return;
