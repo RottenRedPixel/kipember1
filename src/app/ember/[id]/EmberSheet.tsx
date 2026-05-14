@@ -32,10 +32,12 @@ export default function EmberSheet({
   isOpen,
   onClose,
   emberId,
+  onAction,
 }: {
   isOpen: boolean;
   onClose: () => void;
   emberId: string | null;
+  onAction?: (action: { type: string; target: string; label: string }) => void;
 }) {
   const [showing, setShowing] = useState(isOpen);
   const [expanded, setExpanded] = useState(false);
@@ -164,7 +166,8 @@ export default function EmberSheet({
       });
       const d = await r.json();
       const reply = d?.reply ?? d?.response;
-      if (reply) setMessages((prev) => [...prev, { role: 'assistant', content: reply, createdAt: new Date().toISOString() }]);
+      const actions = Array.isArray(d?.actions) ? d.actions : undefined;
+      if (reply) setMessages((prev) => [...prev, { role: 'assistant', content: reply, createdAt: new Date().toISOString(), actions }]);
     } catch { toast('Something went wrong.', { type: 'error' }); }
     finally { setIsSending(false); }
   }, [input, isSending, emberId, toast]);
@@ -382,7 +385,7 @@ export default function EmberSheet({
         ) : isLoadingHistory ? (
           <div className="flex-1 min-h-0" />
         ) : (
-          <EmberChatMessages messages={messages} isSending={isSending || isLoadingWelcome} endRef={messagesEndRef} selfLabel={selfLabel} />
+          <EmberChatMessages messages={messages} isSending={isSending || isLoadingWelcome} endRef={messagesEndRef} selfLabel={selfLabel} onAction={onAction} />
         )}
       </div>
 

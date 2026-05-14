@@ -319,7 +319,20 @@ function EmberViewContent() {
         <div style={{ flexShrink: 0, height: spacerHeight, transition: 'height 320ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
       </div>
 
-      <EmberSheet isOpen={emberOpen} onClose={() => setEmberOpen(false)} emberId={id} />
+      <EmberSheet
+        isOpen={emberOpen}
+        onClose={() => setEmberOpen(false)}
+        emberId={id}
+        onAction={(action) => {
+          // Test handler — handles ember_chat_action buttons emitted by
+          // the chat reply. open_sheet:hello closes the ember sheet and
+          // opens the hello sheet on the same surface.
+          if (action.type === 'open_sheet') {
+            setEmberOpen(false);
+            setActiveTab(action.target);
+          }
+        }}
+      />
       <HelloSheet isOpen={activeTab === 'hello'} onClose={closePanel} emberId={id} accessType={ember?.accessType ?? null} />
       <StoriesSheet isOpen={activeTab === 'stories'} onClose={closePanel} emberId={id} storyScript={ember?.snapshot?.script ?? null} />
       <ShareSheet isOpen={activeTab === 'share'} onClose={closePanel} emberId={id} />

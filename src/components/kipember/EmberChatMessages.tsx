@@ -3,6 +3,12 @@
 import { Pause, Phone, Play } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+export type EmberChatAction = {
+  type: string;
+  target: string;
+  label: string;
+};
+
 export type EmberChatMessage = {
   role: 'user' | 'assistant';
   content: string;
@@ -11,6 +17,7 @@ export type EmberChatMessage = {
   imageFilename?: string | null;
   audioUrl?: string | null;
   createdAt?: string;
+  actions?: EmberChatAction[];
 };
 
 function AudioPlayer({ src }: { src: string }) {
@@ -81,12 +88,14 @@ export default function EmberChatMessages({
   emberLabel = 'ember',
   isSending = false,
   endRef,
+  onAction,
 }: {
   messages: EmberChatMessage[];
   selfLabel?: string;
   emberLabel?: string;
   isSending?: boolean;
   endRef?: React.RefObject<HTMLDivElement | null>;
+  onAction?: (action: EmberChatAction) => void;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -158,6 +167,21 @@ export default function EmberChatMessages({
                   {message.audioUrl ? <AudioPlayer src={message.audioUrl} /> : null}
                 </div>
               )}
+              {!isUser && message.actions && message.actions.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-1 pl-1">
+                  {message.actions.map((action, i) => (
+                    <button
+                      key={`${action.type}-${action.target}-${i}`}
+                      type="button"
+                      onClick={() => onAction?.(action)}
+                      className="rounded-full px-4 py-1.5 text-xs font-medium text-white cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150"
+                      style={{ background: 'var(--bubble-chat-accent)' }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               {timeLabel ? (
                 <span
                   className={`text-white/25 text-[10px] mt-0.5 ${isUser ? 'pr-1' : 'pl-1'}`}

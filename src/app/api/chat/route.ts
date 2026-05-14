@@ -104,6 +104,22 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Dev test: typing "buttonme" returns an inline action button instead
+    // of the normal AI reply. Lets us prove the ember_chat_action wiring
+    // end-to-end. Actions live only on this live response — not persisted.
+    if (message.trim().toLowerCase() === 'buttonme') {
+      const reply = "Here's a test action button:";
+      await prisma.emberMessage.create({
+        data: { sessionId: session.id, role: 'assistant', content: reply },
+      });
+      return NextResponse.json({
+        response: reply,
+        actions: [
+          { type: 'open_sheet', target: 'hello', label: 'Open Hello Sheet' },
+        ],
+      });
+    }
+
     const response = await generateEmberChatReply({
       emberId,
       sessionId: session.id,

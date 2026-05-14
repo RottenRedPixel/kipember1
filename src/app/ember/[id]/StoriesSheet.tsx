@@ -306,27 +306,33 @@ export default function StoriesSheet({
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
-      {/* Play button — floats on the header divider line, centered.
-          Color tracks the selected topic; click toggles playback. */}
-      <button
-        type="button"
-        onClick={handleToggle}
-        disabled={!hasPlayableContent || playbackState === 'loading'}
-        className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full cursor-pointer [@media(hover:hover)]:hover:brightness-110 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-        style={{
-          top: 31,
-          width: 44,
-          height: 44,
-          background: BADGES[selectedBadge].vizColor,
-        }}
-        aria-label={isPlaying ? 'Pause' : 'Play'}
-      >
-        {isPlaying ? (
-          <Pause size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
-        ) : (
-          <Play size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
-        )}
-      </button>
+      {/* Play button — floats on the sheet's top edge, centered. Color
+          tracks the selected topic; click toggles playback. Gated on
+          isOpen (not showing) so it unmounts the instant the tab
+          changes — otherwise during the slide-out the button leaks
+          above the sheet's translated-down top edge. */}
+      {isOpen ? (
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={!hasPlayableContent}
+          className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full cursor-pointer [@media(hover:hover)]:hover:brightness-110 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            top: -24,
+            width: 48,
+            height: 48,
+            background: BADGES[selectedBadge].vizColor,
+            border: '6px solid var(--bg-sheets)',
+          }}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isPlaying ? (
+            <Pause size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
+          ) : (
+            <Play size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
+          )}
+        </button>
+      ) : null}
 
       {/* Header */}
       <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
@@ -346,7 +352,11 @@ export default function StoriesSheet({
       {/* All content anchored to bottom: story text → visualizer → capsule → label.
           Container is pointer-events-none so empty space doesn't intercept clicks
           on badges/topics above; interactive children re-enable pointer-events. */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto">
+      <div className="absolute left-0 right-0 bottom-0 px-4 flex flex-col pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto" style={{ top: 56 }}>
+
+        {/* Story text + visualizer: centered in the space between header
+            and the capsule row at the bottom. */}
+        <div className="flex-1 flex flex-col items-center justify-center">
 
         {/* Story text — or idle prompt when nothing is playing */}
         <div className="text-center mb-5 pointer-events-none">
@@ -381,7 +391,7 @@ export default function StoriesSheet({
         </div>
 
         {/* Mic visualizer — above capsules, only shown when playing */}
-        <div className="flex justify-center mb-4" style={{ minHeight: 20 }}>
+        <div className="flex justify-center mb-4 w-full" style={{ minHeight: 20 }}>
           {isPlaying ? (
             <MicLevelMeter
               analyser={analyserRef.current}
@@ -390,6 +400,8 @@ export default function StoriesSheet({
               className="w-[70%] h-5"
             />
           ) : null}
+        </div>
+
         </div>
 
         {/* All capsules — one continuous wrapping list. Topic capsules carry
