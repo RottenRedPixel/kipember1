@@ -351,33 +351,40 @@ export default function Story2Sheet({
 
         {/* All capsules — one continuous wrapping list. Topic capsules carry
             their own slider color; name capsules use the lighter grey selection. */}
-        <div className="flex flex-wrap gap-2 pb-4">
+        <div className="flex flex-wrap justify-center gap-2 pb-4">
           {[
             'Luca', 'Zia', 'Amado',
-            'place & time', 'friends & family', 'interesting stories', 'feelings & emotions', 'snapshot',
+            'place', 'time', 'friends', 'family', 'anecdotes', 'feelings', 'emotions', 'snapshot',
           ].map((name) => {
             const topicToBadge: Record<string, number> = {
-              'place & time':         0,
-              'friends & family':     1,
-              'snapshot':             2,
-              'interesting stories':  3,
-              'feelings & emotions':  4,
+              'place':     0,
+              'time':      0,
+              'friends':   1,
+              'family':    1,
+              'snapshot':  2,
+              'anecdotes': 3,
+              'feelings':  4,
+              'emotions':  4,
             };
             const badgeIdx = topicToBadge[name];
             const isTopic = badgeIdx !== undefined;
-            const isSelected = isTopic
-              ? selectedBadge === badgeIdx
-              : Boolean(badgeColors[name]);
-            const bg = isTopic
-              ? (isSelected ? BADGES[badgeIdx].active : 'var(--bg-drill-blocks)')
-              : (badgeColors[name] ?? 'var(--bg-drill-blocks)');
+            const isSelected = Boolean(badgeColors[name]);
+            const bg = badgeColors[name] ?? 'var(--bg-drill-blocks)';
+            void isSelected;
             return (
               <button
                 key={name}
                 type="button"
                 onClick={() => {
                   if (isTopic) {
-                    switchBadge(badgeIdx);
+                    const wasSelected = Boolean(badgeColors[name]);
+                    setBadgeColors((prev) => {
+                      const next = { ...prev };
+                      if (next[name]) delete next[name];
+                      else next[name] = BADGES[badgeIdx].active;
+                      return next;
+                    });
+                    if (!wasSelected) switchBadge(badgeIdx);
                   } else {
                     setBadgeColors((prev) => {
                       const next = { ...prev };
