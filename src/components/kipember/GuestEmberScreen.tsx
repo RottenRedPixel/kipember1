@@ -236,7 +236,7 @@ export default function GuestEmberScreen({
         <Link
           href="/"
           className="px-8 rounded-full text-white text-sm font-medium"
-          style={{ background: '#f97316', minHeight: 44, display: 'flex', alignItems: 'center' }}
+          style={{ background: 'var(--color-accent)', minHeight: 44, display: 'flex', alignItems: 'center' }}
         >
           Back to Ember
         </Link>
@@ -360,7 +360,7 @@ export default function GuestEmberScreen({
               style={{ minWidth: 44, opacity: isDimmed ? 0.25 : 1 }}
               onClick={() => setActiveTab((prev) => prev === label ? null : label)}
             >
-              <Icon size={25} color={isActive ? '#f97316' : 'white'} strokeWidth={1.5} />
+              <Icon size={25} color={isActive ? 'var(--color-accent)' : 'white'} strokeWidth={1.5} />
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{label}</span>
             </button>
           );

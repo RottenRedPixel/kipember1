@@ -556,7 +556,7 @@ export default function ContributorsSlider({
                     style={{
                       width: 28,
                       height: 28,
-                      background: isAdding ? 'rgba(249,115,22,0.4)' : '#f97316',
+                      background: isAdding ? 'rgba(249,115,22,0.4)' : 'var(--color-accent)',
                       cursor: isAdding ? 'default' : 'pointer',
                     }}
                     onClick={(e) => {
@@ -705,7 +705,7 @@ export default function ContributorsSlider({
                                 type="button"
                                 onClick={() => { setEditForm((f) => ({ ...f, language: lang })); setSettingsLangOpen(false); }}
                                 className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
-                                style={{ color: editForm.language === lang ? '#f97316' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                                style={{ color: editForm.language === lang ? 'var(--color-accent)' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
                               >
                                 {lang}
                               </button>
@@ -743,7 +743,7 @@ export default function ContributorsSlider({
                               type="button"
                               onClick={() => { setSettingsPreferredComm('call'); setSettingsCommOpen(false); }}
                               className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
-                              style={{ color: settingsPreferredComm === 'call' ? '#f97316' : 'var(--text-primary)', background: settingsPreferredComm === 'call' ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                              style={{ color: settingsPreferredComm === 'call' ? 'var(--color-accent)' : 'var(--text-primary)', background: settingsPreferredComm === 'call' ? 'rgba(249,115,22,0.08)' : 'transparent' }}
                             >
                               Phone Call
                             </button>
@@ -787,7 +787,7 @@ export default function ContributorsSlider({
                                 type="button"
                                 onClick={() => { setSettingsAttempts(val); setSettingsAttemptsOpen(false); }}
                                 className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors"
-                                style={{ color: settingsAttempts === val ? '#f97316' : 'var(--text-primary)', background: settingsAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                                style={{ color: settingsAttempts === val ? 'var(--color-accent)' : 'var(--text-primary)', background: settingsAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}
                               >
                                 {label}
                               </button>
@@ -807,7 +807,7 @@ export default function ContributorsSlider({
                       disabled={savingContributor || !isDirty || !canManageContributors}
                       className="w-1/2 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50 transition-colors"
                       style={{
-                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                        background: isDirty ? 'var(--color-accent)' : 'var(--bg-surface)',
                         border: isDirty ? 'none' : '1px solid var(--border-subtle)',
                         minHeight: 44,
                         cursor: isDirty && !savingContributor ? 'pointer' : 'default',
@@ -857,7 +857,7 @@ export default function ContributorsSlider({
             style={{
               width: 44,
               height: 26,
-              background: noContributors ? '#f97316' : 'rgba(255,255,255,0.15)',
+              background: noContributors ? 'var(--color-accent)' : 'rgba(255,255,255,0.15)',
               position: 'relative',
             }}
           >
@@ -934,7 +934,7 @@ export default function ContributorsSlider({
                     type="button"
                     onClick={() => { setAddForm((f) => ({ ...f, language: lang })); setAddLangOpen(false); }}
                     className="w-full text-left px-4 py-2.5 text-sm cursor-pointer transition-colors"
-                    style={{ color: addForm.language === lang ? '#f97316' : 'var(--text-primary)', background: addForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                    style={{ color: addForm.language === lang ? 'var(--color-accent)' : 'var(--text-primary)', background: addForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
                   >
                     {lang}
                   </button>
@@ -968,7 +968,7 @@ export default function ContributorsSlider({
               onClick={() => void addContributor()}
               disabled={!canManageContributors || !addForm.firstName.trim() || !addForm.phone.trim()}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50"
-              style={{ background: '#f97316', minHeight: 44 }}
+              style={{ background: 'var(--color-accent)', minHeight: 44 }}
             >
               Save
             </button>

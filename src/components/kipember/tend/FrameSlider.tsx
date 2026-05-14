@@ -168,7 +168,7 @@ export default function FrameSlider({
                 }
               }}
               className="w-full"
-              style={{ accentColor: '#f97316' }}
+              style={{ accentColor: 'var(--color-accent)' }}
             />
             <p className="text-center text-xs text-white/40">
               Drag to reframe · Pinch or slide to zoom
@@ -193,7 +193,7 @@ export default function FrameSlider({
           disabled={saving || !isDirty || (!frameCroppedArea && !resetPending)}
           className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
           style={{
-            background: isDirty ? '#f97316' : 'var(--bg-surface)',
+            background: isDirty ? 'var(--color-accent)' : 'var(--bg-surface)',
             border: isDirty ? 'none' : '1px solid var(--border-subtle)',
             minHeight: 44,
             cursor: isDirty ? 'pointer' : 'default',

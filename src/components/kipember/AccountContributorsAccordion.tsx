@@ -373,7 +373,7 @@ export default function AccountContributorsAccordion({
                           {settingsLangOpen ? (
                             <div className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}>
                               {LANGUAGE_OPTIONS.map((lang) => lang === 'English' ? (
-                                <button key={lang} type="button" onClick={() => { setEditForm((f) => ({ ...f, language: lang })); setSettingsLangOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: editForm.language === lang ? '#f97316' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
+                                <button key={lang} type="button" onClick={() => { setEditForm((f) => ({ ...f, language: lang })); setSettingsLangOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: editForm.language === lang ? 'var(--color-accent)' : 'var(--text-primary)', background: editForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
                                   {lang}
                                 </button>
                               ) : (
@@ -393,7 +393,7 @@ export default function AccountContributorsAccordion({
                           </button>
                           {settingsCommOpen ? (
                             <div className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 160 }}>
-                              <button type="button" onClick={() => { setSettingsPreferredComm('call'); setSettingsCommOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: settingsPreferredComm === 'call' ? '#f97316' : 'var(--text-primary)', background: settingsPreferredComm === 'call' ? 'rgba(249,115,22,0.08)' : 'transparent' }}>Phone Call</button>
+                              <button type="button" onClick={() => { setSettingsPreferredComm('call'); setSettingsCommOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: settingsPreferredComm === 'call' ? 'var(--color-accent)' : 'var(--text-primary)', background: settingsPreferredComm === 'call' ? 'rgba(249,115,22,0.08)' : 'transparent' }}>Phone Call</button>
                               <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>Text Message</button>
                               <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>Email</button>
                               <button type="button" disabled className="w-full text-left px-4 py-2.5 text-xs font-medium" style={{ color: 'rgba(255,255,255,0.25)', cursor: 'default' }}>WhatsApp</button>
@@ -412,7 +412,7 @@ export default function AccountContributorsAccordion({
                           {settingsAttemptsOpen ? (
                             <div className="absolute right-0 top-full mt-1 rounded-xl overflow-hidden z-20" style={{ background: 'color-mix(in srgb, var(--bg-screen), var(--text-primary) 10%)', border: '1px solid var(--border-subtle)', minWidth: 200 }}>
                               {([['once', 'Once'], ['twice', 'Twice'], ['three', 'Three Times'], ['forever', 'Keep Trying Until Successful']] as const).map(([val, label]) => (
-                                <button key={val} type="button" onClick={() => { setSettingsAttempts(val); setSettingsAttemptsOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: settingsAttempts === val ? '#f97316' : 'var(--text-primary)', background: settingsAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
+                                <button key={val} type="button" onClick={() => { setSettingsAttempts(val); setSettingsAttemptsOpen(false); }} className="w-full text-left px-4 py-2.5 text-xs font-medium cursor-pointer transition-colors" style={{ color: settingsAttempts === val ? 'var(--color-accent)' : 'var(--text-primary)', background: settingsAttempts === val ? 'rgba(249,115,22,0.08)' : 'transparent' }}>
                                   {label}
                                 </button>
                               ))}
@@ -431,7 +431,7 @@ export default function AccountContributorsAccordion({
                       disabled={savingContributor || !isDirty}
                       className="w-1/2 ml-auto flex items-center justify-center rounded-full text-white text-sm font-medium transition-colors"
                       style={{
-                        background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                        background: isDirty ? 'var(--color-accent)' : 'var(--bg-surface)',
                         border: isDirty ? 'none' : '1px solid var(--border-subtle)',
                         minHeight: 44,
                         cursor: isDirty && !savingContributor ? 'pointer' : 'default',
@@ -489,7 +489,7 @@ export default function AccountContributorsAccordion({
                     type="button"
                     onClick={() => { setAddForm((f) => ({ ...f, language: lang })); setAddLangOpen(false); }}
                     className="w-full text-left px-4 py-2.5 text-sm cursor-pointer transition-colors"
-                    style={{ color: addForm.language === lang ? '#f97316' : 'var(--text-primary)', background: addForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
+                    style={{ color: addForm.language === lang ? 'var(--color-accent)' : 'var(--text-primary)', background: addForm.language === lang ? 'rgba(249,115,22,0.08)' : 'transparent' }}
                   >
                     {lang}
                   </button>
@@ -524,7 +524,7 @@ export default function AccountContributorsAccordion({
               onClick={() => void addContributor()}
               disabled={addBusy || !addForm.firstName.trim() || !addForm.phone.trim()}
               className="flex-1 flex items-center justify-center rounded-full text-white text-sm font-medium can-hover-dim btn-primary disabled:opacity-50"
-              style={{ background: '#f97316', minHeight: 44 }}
+              style={{ background: 'var(--color-accent)', minHeight: 44 }}
             >
               {addBusy ? 'Saving…' : 'Save'}
             </button>
@@ -536,7 +536,7 @@ export default function AccountContributorsAccordion({
             type="button"
             onClick={() => setAdding(true)}
             className="w-1/2 flex items-center justify-center rounded-full text-white text-sm font-medium cursor-pointer"
-            style={{ background: '#f97316', minHeight: 44 }}
+            style={{ background: 'var(--color-accent)', minHeight: 44 }}
           >
             Add Contact
           </button>

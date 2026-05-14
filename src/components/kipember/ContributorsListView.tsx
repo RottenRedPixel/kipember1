@@ -256,7 +256,7 @@ export default function ContributorsListView({
                     type="button"
                     onClick={() => { setSort(option); setSortOpen(false); }}
                     className="px-4 py-2.5 text-xs font-medium can-hover text-left"
-                    style={{ color: option === sort ? '#f97316' : 'var(--text-primary)', opacity: 0.9, cursor: 'pointer' }}
+                    style={{ color: option === sort ? 'var(--color-accent)' : 'var(--text-primary)', opacity: 0.9, cursor: 'pointer' }}
                   >
                     {option}
                   </button>
@@ -365,7 +365,7 @@ export default function ContributorsListView({
                     style={{
                       width: 32,
                       height: 32,
-                      background: '#f97316',
+                      background: 'var(--color-accent)',
                       flexShrink: 0,
                       cursor: pendingAdd === c.key ? 'default' : 'pointer',
                     }}
@@ -404,7 +404,7 @@ export default function ContributorsListView({
           <Link
             href={context.addNewHref}
             className="w-1/2 flex items-center justify-center gap-2 rounded-full px-5 text-white text-sm font-medium can-hover-dim"
-            style={{ background: '#f97316', minHeight: 44 }}
+            style={{ background: 'var(--color-accent)', minHeight: 44 }}
           >
             Add Contributor
           </Link>

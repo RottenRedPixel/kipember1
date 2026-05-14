@@ -82,7 +82,7 @@ function ToggleRow({
         <input type="checkbox" checked={enabled} onChange={onToggle} className="sr-only" />
         <span
           className="absolute inset-0 rounded-full transition-colors duration-200"
-          style={{ background: enabled ? '#f97316' : 'rgba(255,255,255,0.15)' }}
+          style={{ background: enabled ? 'var(--color-accent)' : 'rgba(255,255,255,0.15)' }}
         />
         <span
           className="absolute top-0.5 left-0.5 rounded-full bg-white shadow transition-transform duration-200"
@@ -532,7 +532,7 @@ export default function AccountScreen({
                   type="button"
                   onClick={saveProfile}
                   className="w-1/2 rounded-full px-5 text-white text-sm font-medium"
-                  style={{ background: '#f97316', minHeight: 44, cursor: 'pointer' }}
+                  style={{ background: 'var(--color-accent)', minHeight: 44, cursor: 'pointer' }}
                 >
                   Update
                 </button>
@@ -593,8 +593,8 @@ export default function AccountScreen({
                           style={{
                             width: 22,
                             height: 22,
-                            border: `2px solid ${selectedVoice === voice.id ? '#f97316' : 'rgba(255,255,255,0.2)'}`,
-                            background: selectedVoice === voice.id ? '#f97316' : 'transparent',
+                            border: `2px solid ${selectedVoice === voice.id ? 'var(--color-accent)' : 'rgba(255,255,255,0.2)'}`,
+                            background: selectedVoice === voice.id ? 'var(--color-accent)' : 'transparent',
                             transition: 'all 0.15s ease',
                           }}
                         >
@@ -623,7 +623,7 @@ export default function AccountScreen({
                   disabled={!voiceDirty || voiceSaving}
                   className="flex-1 rounded-full text-white text-sm font-medium"
                   style={{
-                    background: voiceDirty ? '#f97316' : 'var(--bg-surface)',
+                    background: voiceDirty ? 'var(--color-accent)' : 'var(--bg-surface)',
                     border: voiceDirty ? 'none' : '1px solid var(--border-subtle)',
                     minHeight: 44,
                     cursor: voiceDirty ? 'pointer' : 'default',
@@ -680,7 +680,7 @@ export default function AccountScreen({
                     disabled={!pwDirty || pwSaving}
                     className="flex-1 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
                     style={{
-                      background: pwDirty ? '#f97316' : 'var(--bg-surface)',
+                      background: pwDirty ? 'var(--color-accent)' : 'var(--bg-surface)',
                       border: pwDirty ? 'none' : '1px solid var(--border-subtle)',
                       minHeight: 44,
                       cursor: pwDirty ? 'pointer' : 'default',

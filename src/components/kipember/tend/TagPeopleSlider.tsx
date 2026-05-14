@@ -68,7 +68,7 @@ type DetectedFace = {
 
 const CIRCLE_SIZE = 12; // % of image width
 const TAG_COLORS = [
-  '#f97316',
+  'var(--color-accent)',
   '#3b82f6',
   '#10b981',
   '#f59e0b',
@@ -787,7 +787,7 @@ export default function TagPeopleSlider({
           disabled={!hasChanges}
           className="flex-1 rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
           style={{
-            background: hasChanges ? '#f97316' : 'var(--bg-surface)',
+            background: hasChanges ? 'var(--color-accent)' : 'var(--bg-surface)',
             border: hasChanges ? 'none' : '1px solid var(--border-subtle)',
             minHeight: 44,
             cursor: hasChanges ? 'pointer' : 'default',

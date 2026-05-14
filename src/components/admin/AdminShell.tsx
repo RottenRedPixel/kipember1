@@ -37,7 +37,7 @@ function EmberAdminBrand({ size = 22 }: { size?: number }) {
         <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
       </svg>
       <span className="font-semibold text-sm">
-        <span style={{ color: '#f97316' }}>Ember</span>{' '}
+        <span style={{ color: 'var(--color-accent)' }}>Ember</span>{' '}
         <span className="text-gray-900">Admin</span>
       </span>
     </span>

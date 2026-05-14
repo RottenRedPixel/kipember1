@@ -8,7 +8,7 @@ import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 const BADGES = [
   { icon: MapPinned, active: 'rgba(134,239,172,0.55)', vizColor: '#86efac', label: 'place & time (coming soon)' },
   { icon: Users,     active: 'rgba(96,165,250,0.55)',  vizColor: '#60a5fa', label: 'friends & family (coming soon)' },
-  { icon: ScanEye,   active: 'rgba(249,115,22,0.55)',  vizColor: '#f97316', label: 'snapshot of this memory' },
+  { icon: ScanEye,   active: 'rgba(249,115,22,0.55)',  vizColor: 'var(--color-accent)', label: 'snapshot of this memory' },
   { icon: Smile,     active: 'rgba(253,224,71,0.55)',  vizColor: '#fde047', label: 'interesting stories (coming soon)' },
   { icon: Heart,     active: 'rgba(244,114,182,0.55)', vizColor: '#f472b6', label: 'feelings & emotions (coming soon)' },
 ];

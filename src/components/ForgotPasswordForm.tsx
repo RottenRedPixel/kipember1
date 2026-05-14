@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import AppHeader from '@/components/kipember/AppHeader';
+import PageShell from '@/components/PageShell';
 
 export default function ForgotPasswordForm() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -37,12 +38,7 @@ export default function ForgotPasswordForm() {
   };
 
   return (
-    <div
-      className="flex flex-col items-center justify-start w-full px-6"
-      style={{ minHeight: '100dvh', background: 'var(--bg-screen)', paddingTop: 56 }}
-    >
-      <AppHeader />
-      <div className="flex flex-col gap-8 w-full max-w-sm pt-6 pb-16 fade-in">
+    <PageShell header={<AppHeader />} width="sm">
         {success ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
@@ -52,7 +48,7 @@ export default function ForgotPasswordForm() {
             <Link
               href="/login"
               className="flex items-center justify-center rounded-full text-white text-sm font-medium"
-              style={{ background: '#f97316', minHeight: 44 }}
+              style={{ background: 'var(--color-accent)', minHeight: 44 }}
             >
               Back to Login
             </Link>
@@ -85,7 +81,7 @@ export default function ForgotPasswordForm() {
                 type="submit"
                 disabled={isSubmitting}
                 className="flex items-center justify-center rounded-full text-white text-sm font-medium transition-opacity hover:opacity-80 w-full disabled:cursor-not-allowed disabled:opacity-60"
-                style={{ background: '#f97316', minHeight: 44 }}
+                style={{ background: 'var(--color-accent)', minHeight: 44 }}
               >
                 {isSubmitting ? 'Sending reset link...' : 'Send reset link'}
               </button>
@@ -99,7 +95,6 @@ export default function ForgotPasswordForm() {
             </p>
           </>
         )}
-      </div>
-    </div>
+    </PageShell>
   );
 }

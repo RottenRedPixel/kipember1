@@ -226,7 +226,7 @@ export default function UserActionScreen({
               <Link
                 href="/home?mode=first-ember"
                 className="w-11 h-11 flex items-center justify-center rounded-full can-hover"
-                style={{ background: '#f97316' }}
+                style={{ background: 'var(--color-accent)' }}
               >
                 <Plus size={20} color="white" strokeWidth={2} />
               </Link>
@@ -264,7 +264,7 @@ export default function UserActionScreen({
                           key={option}
                           href={buildHref({ sort: option, 'sort-open': '0' })}
                           className="px-4 py-2.5 text-xs font-medium can-hover"
-                          style={{ color: option === sort ? '#f97316' : 'var(--text-primary)', opacity: 0.9 }}
+                          style={{ color: option === sort ? 'var(--color-accent)' : 'var(--text-primary)', opacity: 0.9 }}
                         >
                           {option}
                         </Link>
@@ -344,7 +344,7 @@ export default function UserActionScreen({
                   </div>
                   <div
                     className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center"
-                    style={{ background: '#f97316', border: '2px solid var(--bg-screen)' }}
+                    style={{ background: 'var(--color-accent)', border: '2px solid var(--bg-screen)' }}
                   >
                     <Camera size={12} color="white" strokeWidth={2} />
                   </div>
@@ -381,7 +381,7 @@ export default function UserActionScreen({
                   type="button"
                   onClick={saveProfile}
                   className="w-1/2 rounded-full px-5 text-white text-sm font-medium btn-primary"
-                  style={{ background: '#f97316', minHeight: 44 }}
+                  style={{ background: 'var(--color-accent)', minHeight: 44 }}
                 >
                   Save Profile
                 </button>

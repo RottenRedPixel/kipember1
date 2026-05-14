@@ -2242,7 +2242,7 @@ async function fetchReconciliationState(emberId: string, signal?: AbortSignal): 
 }
 
 
-const TAG_COLORS = ['#f97316', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
+const TAG_COLORS = ['var(--color-accent)', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
 
 export default function KipemberWikiContent({
   detail,

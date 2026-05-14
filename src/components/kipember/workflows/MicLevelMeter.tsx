@@ -14,7 +14,7 @@ export default function MicLevelMeter({
   stream,
   analyser: externalAnalyser,
   className,
-  color = '#f97316',
+  color = 'var(--color-accent)',
   bars = 28,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

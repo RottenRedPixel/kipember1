@@ -458,7 +458,7 @@ export default function UserHomeScreen({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm leading-snug" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                              <span style={{ color: '#f97316', fontWeight: 700 }}>{item.count}</span>{' '}
+                              <span style={{ color: 'var(--color-accent)', fontWeight: 700 }}>{item.count}</span>{' '}
                               {item.count === 1 ? meta.singular : meta.plural}
                             </p>
                             <p className="text-xs leading-snug mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>

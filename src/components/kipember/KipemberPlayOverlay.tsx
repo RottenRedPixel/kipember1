@@ -309,7 +309,7 @@ export default function KipemberPlayOverlay({
                   width: 3,
                   height,
                   borderRadius: 3,
-                  background: '#f97316',
+                  background: 'var(--color-accent)',
                   transformOrigin: 'center',
                   animation: `vizPulse ${PLAY_BAR_DURATIONS[index]}s ease-in-out infinite alternate`,
                   animationDelay: `${(index * 0.04).toFixed(2)}s`,

@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import AppHeader from '@/components/kipember/AppHeader';
+import PageShell from '@/components/PageShell';
 import { getCurrentAuth } from '@/lib/auth-server';
 import { ZoomReset } from '@/lib/reset-zoom';
 
@@ -68,7 +69,7 @@ function EmberDiagram() {
         </div>
         <div
           className="rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0"
-          style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}
+          style={{ background: 'rgba(249,115,22,0.12)', color: 'var(--color-accent)' }}
         >
           1
         </div>
@@ -97,7 +98,7 @@ function EmberDiagram() {
           </div>
           <div
             className="rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0"
-            style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}
+            style={{ background: 'rgba(249,115,22,0.12)', color: 'var(--color-accent)' }}
           >
             2
           </div>
@@ -135,7 +136,7 @@ function EmberDiagram() {
         </div>
         <div
           className="rounded-full px-2 py-0.5 text-xs font-medium flex-shrink-0"
-          style={{ background: 'rgba(249,115,22,0.12)', color: '#f97316' }}
+          style={{ background: 'rgba(249,115,22,0.12)', color: 'var(--color-accent)' }}
         >
           3
         </div>
@@ -157,47 +158,43 @@ export default async function AboutPage() {
 
   return (
     <Suspense>
-      <div
-        className="flex min-h-[100dvh] w-full flex-col items-center justify-start px-4"
-        style={{ background: 'var(--bg-screen)', paddingTop: 56 }}
+      <PageShell
+        header={<><ZoomReset /><AppHeader avatarUrl={avatarUrl} userInitials={initials} hasPassword={hasPassword} /></>}
+        contentClassName="gap-6 pt-6 pb-16 fade-in"
       >
-        <ZoomReset />
-        <AppHeader avatarUrl={avatarUrl} userInitials={initials} hasPassword={hasPassword} />
-        <div className="flex w-full max-w-xl flex-col gap-6 pt-6 pb-16 fade-in">
-          <div className="flex flex-col gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
-              What is ember?
-            </h1>
-            <p className="text-base leading-relaxed text-white/60">
-              An ember is a living memory — a photo or video anchored to the real voices of the people who were there, capturing not just the moment but how it felt and what it meant.
-            </p>
-          </div>
-
-          <EmberDiagram />
-
+        <div className="flex flex-col gap-3">
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            What is ember?
+          </h1>
           <p className="text-base leading-relaxed text-white/60">
-            As friends and family contribute their own stories over time, each ember grows richer, building a shared archive that no single person could create alone.
+            An ember is a living memory — a photo or video anchored to the real voices of the people who were there, capturing not just the moment but how it felt and what it meant.
           </p>
-
-          <div className="flex flex-col gap-3">
-            <Link
-              href={auth ? '/home' : '/signup'}
-              className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-primary"
-              style={{ background: '#f97316', minHeight: 44 }}
-            >
-              {auth ? 'Get Started' : 'Sign Up'}
-            </Link>
-            {auth ? null : (
-              <p className="text-center text-white/60 text-sm">
-                Already have an account?{' '}
-                <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
-                  Login
-                </Link>
-              </p>
-            )}
-          </div>
         </div>
-      </div>
+
+        <EmberDiagram />
+
+        <p className="text-base leading-relaxed text-white/60">
+          As friends and family contribute their own stories over time, each ember grows richer, building a shared archive that no single person could create alone.
+        </p>
+
+        <div className="flex flex-col gap-3">
+          <Link
+            href={auth ? '/home' : '/signup'}
+            className="flex w-full items-center justify-center rounded-full text-sm font-medium text-white btn-primary"
+            style={{ background: 'var(--color-accent)', minHeight: 44 }}
+          >
+            {auth ? 'Get Started' : 'Sign Up'}
+          </Link>
+          {auth ? null : (
+            <p className="text-center text-white/60 text-sm">
+              Already have an account?{' '}
+              <Link href="/login" className="text-white font-medium hover:opacity-70 transition-opacity">
+                Login
+              </Link>
+            </p>
+          )}
+        </div>
+      </PageShell>
     </Suspense>
   );
 }

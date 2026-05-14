@@ -60,13 +60,13 @@ function TypingIndicator({ emberLabel }: { emberLabel: string }) {
         style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
       >
         <div className="flex gap-1">
-          <span className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]" />
+          <span className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-accent)]" />
           <span
-            className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]"
+            className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-accent)]"
             style={{ animationDelay: '0.1s' }}
           />
           <span
-            className="h-2 w-2 animate-bounce rounded-full bg-[#f97316]"
+            className="h-2 w-2 animate-bounce rounded-full bg-[var(--color-accent)]"
             style={{ animationDelay: '0.2s' }}
           />
         </div>

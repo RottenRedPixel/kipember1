@@ -89,7 +89,7 @@ export default function AvatarCropModal({
               value={zoom}
               onChange={(e) => { setZoom(Number(e.target.value)); setIsDirty(true); }}
               className="w-full"
-              style={{ accentColor: '#f97316' }}
+              style={{ accentColor: 'var(--color-accent)' }}
             />
             <p className="text-center text-xs text-white/40">Pinch or drag to adjust</p>
           </div>
@@ -113,7 +113,7 @@ export default function AvatarCropModal({
               className="flex-1 rounded-full text-white text-sm font-medium"
               style={{
                 minHeight: 44,
-                background: isDirty ? '#f97316' : 'var(--bg-surface)',
+                background: isDirty ? 'var(--color-accent)' : 'var(--bg-surface)',
                 border: isDirty ? 'none' : '1px solid var(--border-subtle)',
                 cursor: isDirty ? 'pointer' : 'default',
               }}

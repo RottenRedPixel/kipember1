@@ -72,7 +72,7 @@ export default function EmberModalShell({
           <Link href={closeHref} className="flex-1 text-left">
             <span className="flex items-center gap-1">
               <EmberMark />
-              <span className="text-base font-medium" style={{ color: '#f97316' }}>
+              <span className="text-base font-medium" style={{ color: 'var(--color-accent)' }}>
                 Ember
               </span>
             </span>

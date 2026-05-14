@@ -93,7 +93,7 @@ export default function HelloSheet({
       </div>
 
       <div className="flex flex-col items-center pt-4 pb-4 gap-2">
-        <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, background: '#f97316' }}>
+        <div className="rounded-full flex items-center justify-center" style={{ width: 44, height: 44, background: 'var(--color-accent)' }}>
           <Hand size={22} color="#fff" strokeWidth={1.6} />
         </div>
         <span className="text-white text-base font-medium">
@@ -113,7 +113,7 @@ export default function HelloSheet({
           <Link
             href={guest?.createAccountHref ?? '/set-password'}
             className="flex-1 ml-auto flex items-center justify-center rounded-full text-white text-sm font-medium"
-            style={{ background: '#f97316', minHeight: 44 }}
+            style={{ background: 'var(--color-accent)', minHeight: 44 }}
           >
             Create Account
           </Link>

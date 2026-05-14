@@ -408,7 +408,7 @@ export default function EditTimePlaceSlider({
           disabled={isSaving || !isDirty}
           className="w-1/2 ml-auto rounded-full px-5 text-white text-sm font-medium disabled:opacity-60"
           style={{
-            background: isDirty ? '#f97316' : 'var(--bg-surface)',
+            background: isDirty ? 'var(--color-accent)' : 'var(--bg-surface)',
             border: isDirty ? 'none' : '1px solid var(--border-subtle)',
             minHeight: 44,
             cursor: isDirty ? 'pointer' : 'default',

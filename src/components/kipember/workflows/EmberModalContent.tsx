@@ -339,7 +339,7 @@ export default function EmberModalContent({
             type="submit"
             disabled={isSending}
             className="flex h-11 w-11 items-center justify-center rounded-full text-white transition disabled:opacity-40 cursor-pointer"
-            style={{ background: '#f97316' }}
+            style={{ background: 'var(--color-accent)' }}
             aria-label="Send message"
           >
             <SendHorizontal size={18} />

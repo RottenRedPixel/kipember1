@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/kipember/AppHeader';
+import PageShell from '@/components/PageShell';
 import { useState } from 'react';
 import { Send } from 'lucide-react';
 
@@ -87,12 +88,7 @@ export default function AuthForm({
   }
 
   return (
-    <div
-      className="flex flex-col items-center justify-start w-full px-6"
-      style={{ minHeight: '100dvh', background: 'var(--bg-screen)', paddingTop: 56 }}
-    >
-      <AppHeader />
-      <div className="flex flex-col gap-8 w-full max-w-sm pt-6 pb-16 fade-in">
+    <PageShell header={<AppHeader />} width="sm">
         <div className="flex flex-col gap-1">
           <h1 className="text-white text-2xl font-bold tracking-tight">
             {isSignup ? 'Create your account' : 'Welcome back'}
@@ -150,7 +146,7 @@ export default function AuthForm({
             className={`${
               isSignup ? 'mt-2' : ''
             } flex items-center justify-center rounded-full text-white text-sm font-medium transition-opacity hover:opacity-80 w-full btn-primary disabled:cursor-not-allowed disabled:opacity-60`}
-            style={{ background: '#f97316', minHeight: 44 }}
+            style={{ background: 'var(--color-accent)', minHeight: 44 }}
           >
             {isSubmitting
               ? isSignup
@@ -184,8 +180,7 @@ export default function AuthForm({
             {isSignup ? 'Login' : 'Sign Up'}
           </Link>
         </p>
-      </div>
-    </div>
+    </PageShell>
   );
 }
 

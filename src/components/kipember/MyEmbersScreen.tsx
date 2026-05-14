@@ -168,7 +168,7 @@ export default function MyEmbersScreen({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center justify-center rounded-full can-hover-dim cursor-pointer"
-              style={{ width: 32, height: 32, background: '#f97316', flexShrink: 0 }}
+              style={{ width: 32, height: 32, background: 'var(--color-accent)', flexShrink: 0 }}
               aria-label="Create new ember"
             >
               <Plus size={16} color="white" strokeWidth={2.5} />
@@ -218,7 +218,7 @@ export default function MyEmbersScreen({
                     key={option}
                     href={buildHref({ sort: option, 'sort-open': '0' })}
                     className="px-4 py-2.5 text-xs font-medium can-hover"
-                    style={{ color: option === sort ? '#f97316' : 'var(--text-primary)', opacity: 0.9 }}
+                    style={{ color: option === sort ? 'var(--color-accent)' : 'var(--text-primary)', opacity: 0.9 }}
                   >
                     {option}
                   </Link>
@@ -264,7 +264,7 @@ export default function MyEmbersScreen({
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="w-full flex items-center justify-center rounded-full text-white text-sm font-semibold cursor-pointer"
-                      style={{ background: '#f97316', minHeight: 44 }}
+                      style={{ background: 'var(--color-accent)', minHeight: 44 }}
                     >
                       Choose Photo
                     </button>
@@ -328,7 +328,7 @@ export default function MyEmbersScreen({
                       <div className="flex items-center gap-3 mt-2">
                         {/* Contributor count */}
                         <div className="flex items-center gap-1">
-                          <Users size={12} style={{ color: ember.contributorCount > 0 ? '#f97316' : 'var(--text-secondary)' }} />
+                          <Users size={12} style={{ color: ember.contributorCount > 0 ? 'var(--color-accent)' : 'var(--text-secondary)' }} />
                           <span className="text-xs" style={{ color: ember.contributorCount > 0 ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)' }}>
                             {ember.contributorCount}
                           </span>
@@ -336,14 +336,14 @@ export default function MyEmbersScreen({
 
                         {/* Wiki completeness bar */}
                         <div className="flex items-center gap-1.5 flex-1">
-                          <BookOpen size={12} style={{ color: ember.hasWiki ? '#f97316' : 'var(--text-secondary)', flexShrink: 0 }} />
+                          <BookOpen size={12} style={{ color: ember.hasWiki ? 'var(--color-accent)' : 'var(--text-secondary)', flexShrink: 0 }} />
                           <div className="flex-1 rounded-full overflow-hidden" style={{ height: 4, background: 'rgba(255,255,255,0.08)' }}>
                             <div
                               className="h-full rounded-full transition-all"
                               style={{
                                 width: `${completenessPercent}%`,
                                 background: completenessPercent === 100
-                                  ? '#f97316'
+                                  ? 'var(--color-accent)'
                                   : completenessPercent >= 60
                                     ? 'rgba(249,115,22,0.6)'
                                     : 'rgba(255,255,255,0.25)',

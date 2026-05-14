@@ -145,7 +145,7 @@ export default function EmberCreateFlow({
               type="button"
               onClick={handleCreate}
               className="flex-1 flex items-center justify-center rounded-full text-sm font-medium text-white can-hover-dim"
-              style={{ minHeight: 44, background: '#f97316' }}
+              style={{ minHeight: 44, background: 'var(--color-accent)' }}
             >
               Create Ember
             </button>
