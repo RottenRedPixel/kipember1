@@ -151,6 +151,24 @@ export default function StoriesSheet({
     return () => cancelAnimationFrame(raf);
   }, [isPlaying]);
 
+  // Cycle the idle prompt every time the sheet opens.
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (!isOpen) { wasOpenRef.current = false; return; }
+    if (wasOpenRef.current) return;
+    wasOpenRef.current = true;
+    setIdlePromptVisible(false);
+    const t = setTimeout(() => {
+      setIdlePromptIdx((i) => {
+        let next = Math.floor(Math.random() * IDLE_PROMPTS.length);
+        if (next === i) next = (i + 1) % IDLE_PROMPTS.length;
+        return next;
+      });
+      setIdlePromptVisible(true);
+    }, 600);
+    return () => clearTimeout(t);
+  }, [isOpen, IDLE_PROMPTS.length]);
+
   // Cycle the idle prompt on each play/pause transition — fade out, swap,
   // fade in. No auto-timer.
   const isPlayingPrevRef = useRef(isPlaying);
@@ -332,6 +350,17 @@ export default function StoriesSheet({
             <Play size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
           )}
         </button>
+      ) : null}
+
+      {/* Loading caption — under the play button, above the header
+          divider. Only rendered while audio is being prepared. */}
+      {isOpen && playbackState === 'loading' ? (
+        <p
+          className="absolute left-0 right-0 text-center pointer-events-none text-xs"
+          style={{ top: 30, color: 'rgba(255,255,255,0.45)' }}
+        >
+          preparing audio…
+        </p>
       ) : null}
 
       {/* Header */}
