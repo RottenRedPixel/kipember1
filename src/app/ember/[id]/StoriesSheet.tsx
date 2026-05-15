@@ -263,8 +263,17 @@ export default function StoriesSheet({
   const toggleKey = useCallback((key: string) => {
     setSelectedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+        // snapshot is mutually exclusive with everything else
+        if (key === 'snapshot') {
+          for (const k of next) { if (k !== 'snapshot') next.delete(k); }
+        } else {
+          next.delete('snapshot');
+        }
+      }
       return next;
     });
     // Changing selection invalidates the current composed script.
