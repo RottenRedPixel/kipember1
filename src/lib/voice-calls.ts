@@ -13,9 +13,9 @@ import { getEmberTitle } from '@/lib/ember-title';
 import { getUserDisplayName } from '@/lib/user-name';
 import { createRetellPhoneCall, createRetellWebCall, retrieveRetellCall } from '@/lib/retell';
 import {
-  extractImportantVoiceCallClips,
-  parseVoiceCallTranscriptSegments,
-} from '@/lib/voice-call-clips';
+  extractImportantEmberCallClips,
+  parseCallTranscriptSegments,
+} from '@/lib/ember-clips';
 import { maybeNotifyFailedCall } from '@/lib/voice-call-notifications';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { extractAllClaimsFromContent } from '@/lib/memory-reconciliation';
@@ -541,15 +541,14 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     voiceCall.emberContributor.user?.email?.trim() ||
     voiceCall.emberContributor.user?.phoneNumber?.trim() ||
     'Contributor';
-  const transcriptSegments = parseVoiceCallTranscriptSegments({
+  const transcriptSegments = parseCallTranscriptSegments({
     transcript: voiceCall.transcript,
     transcriptObjectJson: voiceCall.transcriptObjectJson,
     contributorName: contributorLabel,
   });
-  const extractedClips = await extractImportantVoiceCallClips({
-    imageTitle: getEmberTitle(voiceCall.emberContributor.ember),
+  const extractedClips = await extractImportantEmberCallClips({
+    emberTitle: getEmberTitle(voiceCall.emberContributor.ember),
     contributorName: contributorLabel,
-    transcript: voiceCall.transcript,
     segments: transcriptSegments,
   });
   const hasInterviewResponses = extracted.responses.length > 0;
@@ -619,12 +618,12 @@ async function syncVoiceCallToEmberSession(voiceCallId: string) {
     },
   });
 
-  await prisma.voiceCallClip.deleteMany({
+  await prisma.emberCallClip.deleteMany({
     where: { voiceCallId: voiceCall.id },
   });
 
   if (extractedClips.length > 0) {
-    await prisma.voiceCallClip.createMany({
+    await prisma.emberCallClip.createMany({
       data: extractedClips.map((clip) => ({
         emberId: voiceCall.emberContributor.emberId,
         emberContributorId: voiceCall.emberContributorId,

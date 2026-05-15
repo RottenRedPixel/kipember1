@@ -59,7 +59,7 @@ export class SimpleRetriever implements ContextRetriever {
       return '';
     }
 
-    let voiceCallClips: Array<{
+    let emberCallClips: Array<{
       title: string;
       quote: string;
       significance: string | null;
@@ -74,7 +74,7 @@ export class SimpleRetriever implements ContextRetriever {
     }> = [];
 
     try {
-      voiceCallClips = await prisma.voiceCallClip.findMany({
+      emberCallClips = await prisma.emberCallClip.findMany({
         where: { emberId },
         orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
         select: {
@@ -129,7 +129,7 @@ export class SimpleRetriever implements ContextRetriever {
     }
 
     const voiceClips: string[] = [];
-    for (const clip of voiceCallClips) {
+    for (const clip of emberCallClips) {
       const contributorName =
         getUserDisplayName(clip.emberContributor.user) ||
         clip.emberContributor.user?.email ||

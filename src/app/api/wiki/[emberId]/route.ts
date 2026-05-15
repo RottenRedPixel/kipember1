@@ -116,7 +116,7 @@ export async function GET(
       }
     }
 
-    let voiceCallClips: Array<{
+    let emberCallClips: Array<{
       id: string;
       title: string;
       quote: string;
@@ -129,7 +129,7 @@ export async function GET(
     }> = [];
 
     try {
-      const clips = await prisma.voiceCallClip.findMany({
+      const clips = await prisma.emberCallClip.findMany({
         where: { emberId },
         orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
         select: {
@@ -156,7 +156,7 @@ export async function GET(
         },
       });
 
-      voiceCallClips = clips.map((clip) => {
+      emberCallClips = clips.map((clip) => {
         const u = clip.emberContributor.user;
         return {
           id: clip.id,
@@ -180,7 +180,7 @@ export async function GET(
 
     return NextResponse.json({
       ...wiki,
-      voiceCallClips,
+      emberCallClips,
       canManage: accessType === 'owner',
       ownerConversationTarget: ownerConversationTarget
         ? {

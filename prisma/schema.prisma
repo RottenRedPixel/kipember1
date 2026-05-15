@@ -41,7 +41,8 @@ model Ember {
   emberSessions EmberSession[]
   tags         EmberTag[]
   attachments  EmberAttachment[]
-  voiceCallClips VoiceCallClip[]
+  emberCallClips EmberCallClip[]
+  emberVoiceClips EmberVoiceClip[]
   memoryClaims MemoryClaim[]
   memoryConflicts MemoryConflict[]
   stories      EmberStory[]
@@ -113,7 +114,8 @@ model EmberContributor {
   inviteSent         Boolean       @default(false)
   emberSession       EmberSession?
   voiceCalls         VoiceCall[]
-  voiceCallClips     VoiceCallClip[]
+  emberCallClips     EmberCallClip[]
+  emberVoiceClips    EmberVoiceClip[]
   tags               EmberTag[]
   memoryClaims       MemoryClaim[]
   guestViews         GuestView[]
@@ -180,6 +182,7 @@ model EmberMessage {
   questionType         String?      // context, who, what, when, where, why, how, followup
   createdAt            DateTime     @default(now())
   memoryClaims         MemoryClaim[]
+  emberVoiceClips      EmberVoiceClip[]
 
   @@index([sessionId, createdAt])
 }
@@ -504,36 +507,60 @@ model VoiceCall {
   failureNotifiedAt          DateTime?
   createdAt                  DateTime         @default(now())
   updatedAt                  DateTime         @updatedAt
-  clips                      VoiceCallClip[]
+  clips                      EmberCallClip[]
   events                     VoiceCallEvent[]
 
   @@index([emberContributorId, createdAt])
   @@index([emberSessionId, createdAt])
 }
 
-model VoiceCallClip {
+model EmberCallClip {
   id                 String      @id @default(cuid())
   emberId            String
   emberContributorId String
   voiceCallId        String
-  sortOrder     Int         @default(0)
-  title         String
-  quote         String
-  significance  String?
-  speaker       String?
-  audioUrl      String?
-  startMs       Int?
-  endMs         Int?
-  canUseForTitle Boolean    @default(false)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  ember            Ember            @relation(fields: [emberId], references: [id], onDelete: Cascade)
-  emberContributor EmberContributor @relation(fields: [emberContributorId], references: [id], onDelete: Cascade)
-  voiceCall        VoiceCall        @relation(fields: [voiceCallId], references: [id], onDelete: Cascade)
+  sortOrder          Int         @default(0)
+  title              String
+  quote              String
+  significance       String?
+  speaker            String?
+  audioUrl           String?
+  startMs            Int?
+  endMs              Int?
+  canUseForTitle     Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  ember              Ember            @relation(fields: [emberId], references: [id], onDelete: Cascade)
+  emberContributor   EmberContributor @relation(fields: [emberContributorId], references: [id], onDelete: Cascade)
+  voiceCall          VoiceCall        @relation(fields: [voiceCallId], references: [id], onDelete: Cascade)
 
   @@index([emberId, createdAt])
   @@index([emberContributorId, createdAt])
   @@index([voiceCallId, createdAt])
+}
+
+model EmberVoiceClip {
+  id                 String           @id @default(cuid())
+  emberId            String
+  emberContributorId String?
+  emberMessageId     String
+  sortOrder          Int              @default(0)
+  title              String
+  quote              String
+  significance       String?
+  speaker            String?
+  audioFilename      String
+  startMs            Int
+  endMs              Int
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  ember              Ember            @relation(fields: [emberId], references: [id], onDelete: Cascade)
+  emberContributor   EmberContributor? @relation(fields: [emberContributorId], references: [id], onDelete: SetNull)
+  emberMessage       EmberMessage     @relation(fields: [emberMessageId], references: [id], onDelete: Cascade)
+
+  @@index([emberId, createdAt])
+  @@index([emberMessageId, createdAt])
+  @@index([emberContributorId, createdAt])
 }
 
 model VoiceCallEvent {

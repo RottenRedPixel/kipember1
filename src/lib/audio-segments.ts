@@ -17,7 +17,7 @@ export async function resolveAudioSourceForMedia(
   emberId: string,
   mediaId: string
 ): Promise<ResolvedAudioSource | null> {
-  const [attachment, imageMedia, voiceClip] = await Promise.all([
+  const [attachment, imageMedia, voiceClip, voiceMessageClip] = await Promise.all([
     prisma.emberAttachment.findFirst({
       where: {
         emberId,
@@ -41,17 +41,13 @@ export async function resolveAudioSourceForMedia(
         },
       })
       .catch(() => null),
-    prisma.voiceCallClip.findFirst({
-      where: {
-        emberId,
-        id: mediaId,
-      },
-      select: {
-        id: true,
-        audioUrl: true,
-        startMs: true,
-        endMs: true,
-      },
+    prisma.emberCallClip.findFirst({
+      where: { emberId, id: mediaId },
+      select: { id: true, audioUrl: true, startMs: true, endMs: true },
+    }),
+    prisma.emberVoiceClip.findFirst({
+      where: { emberId, id: mediaId },
+      select: { id: true, audioFilename: true, startMs: true, endMs: true },
     }),
   ]);
 
@@ -76,6 +72,14 @@ export async function resolveAudioSourceForMedia(
       source: voiceClip.audioUrl,
       fallbackStartMs: voiceClip.startMs ?? null,
       fallbackEndMs: voiceClip.endMs ?? null,
+    };
+  }
+
+  if (voiceMessageClip?.audioFilename) {
+    return {
+      source: getUploadPath(voiceMessageClip.audioFilename),
+      fallbackStartMs: voiceMessageClip.startMs,
+      fallbackEndMs: voiceMessageClip.endMs,
     };
   }
 

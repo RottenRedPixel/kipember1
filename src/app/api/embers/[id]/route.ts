@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { ensureOwnerContributorForImage } from '@/lib/owner-contributor';
 import { refreshVoiceCallFromProvider, shouldRefreshVoiceCallStatus } from '@/lib/voice-calls';
-import { parseVoiceCallTranscriptSegments } from '@/lib/voice-call-clips';
+import { parseCallTranscriptSegments } from '@/lib/ember-clips';
 import { invalidateAccessibleEmbersForUser } from '@/lib/ember';
 import { toTitleCase } from '@/lib/ember-title';
 import { getUserDisplayName } from '@/lib/user-name';
@@ -346,7 +346,7 @@ export async function GET(
         analysis: ember.analysis
           ? { noContributors: parseNoContributors(ember.analysis.metadataJson) }
           : null,
-        voiceCallClips: [],
+        emberCallClips: [],
         wiki: null,
         snapshot: null,
       });
@@ -546,9 +546,9 @@ export async function GET(
         },
       });
 
-    const loadVoiceCallClips = async () => {
+    const loadEmberCallClips = async () => {
       try {
-        return await prisma.voiceCallClip.findMany({
+        return await prisma.emberCallClip.findMany({
           where: { emberId: id },
           orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
           select: {
@@ -582,7 +582,7 @@ export async function GET(
           },
         });
       } catch (voiceClipError) {
-        console.error('Failed to load voice call clips for ember payload:', voiceClipError);
+        console.error('Failed to load ember call clips for ember payload:', voiceClipError);
         return [];
       }
     };
@@ -759,7 +759,7 @@ export async function GET(
       }
     }
 
-    const voiceCallClips = await loadVoiceCallClips();
+    const emberCallClips = await loadEmberCallClips();
 
     // Build chatBlocks: one block per person, merging their chat + call sessions.
     // Only authentic messages (typed or transcribed); synthetic AI-extracted rows
@@ -1044,7 +1044,7 @@ export async function GET(
           ? `/api/uploads/${ec.user.avatarFilename}`
           : null;
         for (const voiceCall of ec.voiceCalls) {
-          const segments = parseVoiceCallTranscriptSegments({
+          const segments = parseCallTranscriptSegments({
             transcript: voiceCall.transcript ?? null,
             transcriptObjectJson: voiceCall.transcriptObjectJson ?? null,
             contributorName: personName,
@@ -1179,7 +1179,7 @@ export async function GET(
             noContributors: parseNoContributors(ember.analysis.metadataJson),
           }
         : null,
-      voiceCallClips: voiceCallClips.map((clip) => ({
+      emberCallClips: emberCallClips.map((clip) => ({
         id: clip.id,
         voiceCallId: clip.voiceCallId,
         contributorId: clip.emberContributorId,

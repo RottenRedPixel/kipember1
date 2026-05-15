@@ -26,7 +26,9 @@ import {
   getOpenAIClient,
 } from '@/lib/openai';
 import { persistUploadedMedia } from '@/lib/media-upload';
+import { persistEmberVoiceClips } from '@/lib/ember-clips';
 import { synthesizeSpeech } from '@/lib/tts';
+import { getUserDisplayName } from '@/lib/user-name';
 
 const HISTORY_LIMIT = 30;
 
@@ -34,22 +36,37 @@ type ResolvedToken = {
   emberId: string;
   emberContributorId: string;
   imageIsPrivate: boolean;
+  emberTitle: string;
+  speakerName: string;
 };
 
 async function resolveToken(token: string): Promise<ResolvedToken | null> {
   const emberContributor = await prisma.emberContributor.findUnique({
     where: { token },
     include: {
-      ember: { select: { id: true, keepPrivate: true } },
+      ember: { select: { id: true, keepPrivate: true, title: true, originalName: true } },
+      user: { select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true } },
     },
   });
 
   if (!emberContributor) return null;
 
+  const emberTitle =
+    emberContributor.ember.title ||
+    (emberContributor.ember.originalName ?? 'Ember').replace(/\.[^.]+$/, '');
+
+  const speakerName =
+    getUserDisplayName(emberContributor.user) ||
+    emberContributor.user?.email ||
+    emberContributor.user?.phoneNumber ||
+    'Contributor';
+
   return {
     emberId: emberContributor.ember.id,
     emberContributorId: emberContributor.id,
     imageIsPrivate: emberContributor.ember.keepPrivate ?? false,
+    emberTitle,
+    speakerName,
   };
 }
 
@@ -153,6 +170,22 @@ export async function POST(
       }),
       reconcileEmberMessageSafely(userMessage.id, 'contributor voice housekeeping'),
     ]);
+
+    // Fire-and-forget: extract memorable voice clips from this message
+    if (transcript) {
+      persistEmberVoiceClips({
+        emberId: resolved.emberId,
+        emberContributorId: resolved.emberContributorId,
+        emberMessageId: userMessage.id,
+        emberTitle: resolved.emberTitle,
+        speakerName: resolved.speakerName,
+        transcript,
+        audioFilename: persistedAudio.filename,
+        transcriptObjectJson,
+      }).catch((err) => {
+        console.error('Contributor EmberVoice clip extraction error:', err);
+      });
+    }
 
     let replyAudioFilename: string | null = null;
     try {

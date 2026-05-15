@@ -435,7 +435,7 @@ export async function generateWikiForImage(emberId: string): Promise<string> {
   const voiceCallIds = ember.emberContributors.flatMap((ec) =>
     ec.voiceCalls.map((voiceCall) => voiceCall.id)
   );
-  const voiceCallClipsByVoiceCallId = new Map<
+  const emberCallClipsByVoiceCallId = new Map<
     string,
     Array<{
       title: string;
@@ -450,7 +450,7 @@ export async function generateWikiForImage(emberId: string): Promise<string> {
 
   if (voiceCallIds.length > 0) {
     try {
-      const clips = await prisma.voiceCallClip.findMany({
+      const clips = await prisma.emberCallClip.findMany({
         where: {
           voiceCallId: {
             in: voiceCallIds,
@@ -470,7 +470,7 @@ export async function generateWikiForImage(emberId: string): Promise<string> {
       });
 
       for (const clip of clips) {
-        const existing = voiceCallClipsByVoiceCallId.get(clip.voiceCallId) || [];
+        const existing = emberCallClipsByVoiceCallId.get(clip.voiceCallId) || [];
         existing.push({
           title: clip.title,
           quote: clip.quote,
@@ -480,7 +480,7 @@ export async function generateWikiForImage(emberId: string): Promise<string> {
           endMs: clip.endMs,
           canUseForTitle: clip.canUseForTitle,
         });
-        voiceCallClipsByVoiceCallId.set(clip.voiceCallId, existing);
+        emberCallClipsByVoiceCallId.set(clip.voiceCallId, existing);
       }
     } catch (voiceClipError) {
       console.error('Voice clip load failed during wiki generation:', voiceClipError);
@@ -557,7 +557,7 @@ export async function generateWikiForImage(emberId: string): Promise<string> {
     for (const voiceCall of ec.voiceCalls) {
       const summary = cleanInlineText(voiceCall.callSummary);
       const transcript = cleanInlineText(voiceCall.transcript);
-      const voiceCallClips = voiceCallClipsByVoiceCallId.get(voiceCall.id) || [];
+      const voiceCallClips = emberCallClipsByVoiceCallId.get(voiceCall.id) || [];
 
       storyCircleEntries.push({
         contributorLabel,

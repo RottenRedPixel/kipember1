@@ -175,7 +175,7 @@ export type KipemberAttachment = {
   createdAt: string;
 };
 
-export type KipemberVoiceCallClip = {
+export type KipemberEmberCallClip = {
   id: string;
   contributorName: string;
   title: string;
@@ -241,7 +241,7 @@ export type KipemberWikiDetail = {
   contributors: KipemberContributor[];
   attachments: KipemberAttachment[];
   tags?: KipemberTag[];
-  voiceCallClips?: KipemberVoiceCallClip[];
+  emberCallClips?: KipemberEmberCallClip[];
   chatBlocks?: Array<{
     personName: string;
     avatarUrl?: string | null;

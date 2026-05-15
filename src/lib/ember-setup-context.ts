@@ -34,7 +34,7 @@ export async function loadEmberSetupContext(emberId: string) {
         },
       },
       analysis: true,
-      voiceCallClips: {
+      emberCallClips: {
         orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
         select: {
           id: true,
@@ -213,7 +213,7 @@ export async function loadEmberSetupContext(emberId: string) {
         summary,
       }))
   );
-  const callHighlights = ember.voiceCallClips.map((clip) => ({
+  const callHighlights = ember.emberCallClips.map((clip) => ({
     id: clip.id,
     voiceCallId: clip.voiceCallId,
     contributorId: clip.emberContributorId,

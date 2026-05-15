@@ -19,6 +19,7 @@ import {
   getOpenAIClient,
 } from '@/lib/openai';
 import { persistUploadedMedia } from '@/lib/media-upload';
+import { persistEmberVoiceClips } from '@/lib/ember-clips';
 import { synthesizeSpeech } from '@/lib/tts';
 import { getVoiceEntry } from '@/lib/voice-catalog';
 
@@ -192,6 +193,26 @@ export async function POST(request: NextRequest) {
       ).then(() => generateWikiForImage(emberId)).catch((err) => {
         console.error('Voice housekeeping extraction error:', err);
       });
+
+      // Fire-and-forget: extract memorable voice clips from this message
+      const speakerName = getUserDisplayName(auth.user) || auth.user.email || 'Contributor';
+      prisma.ember.findUnique({ where: { id: emberId }, select: { title: true, originalName: true } })
+        .then((ember) => {
+          const emberTitle = ember?.title || (ember?.originalName ?? 'Ember').replace(/\.[^.]+$/, '');
+          return persistEmberVoiceClips({
+            emberId,
+            emberContributorId: session.emberContributorId ?? null,
+            emberMessageId: userMessage.id,
+            emberTitle,
+            speakerName,
+            transcript,
+            audioFilename: persistedAudio.filename,
+            transcriptObjectJson,
+          });
+        })
+        .catch((err) => {
+          console.error('EmberVoice clip extraction error:', err);
+        });
     }
 
     const userRecord = await prisma.user.findUnique({

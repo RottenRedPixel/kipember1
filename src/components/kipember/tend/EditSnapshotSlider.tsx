@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import type {
   KipemberAttachment,
   KipemberContributor,
-  KipemberVoiceCallClip,
+  KipemberEmberCallClip,
 } from '@/components/kipember/KipemberWikiContent';
 import { type EmberMediaType } from '@/lib/media';
 
@@ -25,7 +25,7 @@ type SnapshotDetail = {
   } | null;
   attachments: KipemberAttachment[];
   contributors: KipemberContributor[];
-  voiceCallClips?: KipemberVoiceCallClip[];
+  emberCallClips?: KipemberEmberCallClip[];
   tags?: Array<{ id: string; label: string }>;
   snapshot?: {
     script: string;
