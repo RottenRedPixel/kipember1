@@ -18,18 +18,21 @@ type Facet = {
   isSnapshot?: boolean;
 };
 
-// Static topic facets ordered by warmth.
+const ORANGE = 'rgba(249,115,22,0.55)';
+const GREEN  = 'rgba(134,239,172,0.55)';
+
+// Static topic facets — all orange.
 const TOPIC_FACETS: Omit<Facet, 'key'>[] & { key: string }[] = [
-  { key: 'why',         label: 'why',       color: 'rgba(167,139,250,0.55)', vizColor: '#a78bfa' },
-  { key: 'emotion',     label: 'feelings',  color: 'rgba(244,114,182,0.55)', vizColor: '#f472b6' },
-  { key: 'extra_story', label: 'anecdotes', color: 'rgba(253,224,71,0.55)',  vizColor: '#fde047' },
-  { key: 'place',       label: 'place',     color: 'rgba(134,239,172,0.55)', vizColor: '#86efac' },
+  { key: 'why',         label: 'why',       color: ORANGE, vizColor: 'var(--color-accent)' },
+  { key: 'emotion',     label: 'feelings',  color: ORANGE, vizColor: 'var(--color-accent)' },
+  { key: 'extra_story', label: 'anecdotes', color: ORANGE, vizColor: 'var(--color-accent)' },
+  { key: 'place',       label: 'place',     color: ORANGE, vizColor: 'var(--color-accent)' },
 ];
 
 const SNAPSHOT_FACET: Facet = {
   key: 'snapshot',
   label: 'snapshot',
-  color: 'rgba(249,115,22,0.55)',
+  color: ORANGE,
   vizColor: 'var(--color-accent)',
   isSnapshot: true,
 };
@@ -108,8 +111,8 @@ export default function StoriesSheet({
       result.push({
         key: name,
         label: name,
-        color: 'rgba(255,255,255,0.25)',
-        vizColor: 'rgba(255,255,255,0.6)',
+        color: GREEN,
+        vizColor: '#86efac',
         isPerson: true,
       });
     }
@@ -117,10 +120,13 @@ export default function StoriesSheet({
     return result;
   }, [availableClaimTypes, taggedNames, storyScript]);
 
-  // Derive viz color from the first selected non-person topic, else snapshot.
+  // Derive viz color from the first selected facet (topic takes priority over person).
   const vizColor = useMemo(() => {
     for (const f of facets) {
       if (selectedKeys.has(f.key) && !f.isPerson) return f.vizColor;
+    }
+    for (const f of facets) {
+      if (selectedKeys.has(f.key)) return f.vizColor;
     }
     return SNAPSHOT_FACET.vizColor;
   }, [facets, selectedKeys]);
@@ -442,8 +448,8 @@ export default function StoriesSheet({
         <button
           type="button"
           onClick={() => void handleToggle()}
-          disabled={!hasSelection || playbackState === 'composing' || playbackState === 'loading'}
-          className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full cursor-pointer [@media(hover:hover)]:hover:brightness-110 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={playbackState === 'composing' || playbackState === 'loading'}
+          className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full cursor-pointer [@media(hover:hover)]:hover:brightness-110 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150"
           style={{
             top: -24,
             width: 48,
