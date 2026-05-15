@@ -167,18 +167,19 @@ model EmberSession {
 }
 
 model EmberMessage {
-  id            String       @id @default(cuid())
-  sessionId     String
-  session       EmberSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role          String       // user | assistant
-  content       String
-  source        String       @default("web") // web, sms, voice
-  imageFilename String?
-  audioFilename String?
-  question      String?      // for structured Q&A (from interview responses)
-  questionType  String?      // context, who, what, when, where, why, how, followup
-  createdAt     DateTime     @default(now())
-  memoryClaims  MemoryClaim[]
+  id                   String       @id @default(cuid())
+  sessionId            String
+  session              EmberSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role                 String       // user | assistant
+  content              String
+  source               String       @default("web") // web, sms, voice
+  imageFilename        String?
+  audioFilename        String?
+  transcriptObjectJson String?      // word-level timestamps from Whisper verbose_json [{word,startMs,endMs}]
+  question             String?      // for structured Q&A (from interview responses)
+  questionType         String?      // context, who, what, when, where, why, how, followup
+  createdAt            DateTime     @default(now())
+  memoryClaims         MemoryClaim[]
 
   @@index([sessionId, createdAt])
 }

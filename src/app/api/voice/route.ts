@@ -78,7 +78,7 @@ async function ensureVoiceSession({
   });
 }
 
-async function transcribeUploadedAudio(file: File) {
+async function transcribeUploadedAudio(file: File): Promise<{ text: string; transcriptObjectJson: string | null }> {
   try {
     const client = getOpenAIClient();
     const transcription = await client.audio.transcriptions.create({
@@ -87,12 +87,23 @@ async function transcribeUploadedAudio(file: File) {
         'audio.transcription',
         getAudioTranscriptionModel()
       ),
-    });
-    const text = transcription.text?.replace(/\s+/g, ' ').trim() || '';
-    return text || null;
+      response_format: 'verbose_json',
+      timestamp_granularities: ['word'],
+    } as Parameters<typeof client.audio.transcriptions.create>[0]);
+    const text = (transcription.text ?? '').replace(/\s+/g, ' ').trim();
+    // Normalise Whisper words (seconds) → ms to match VoiceCall.transcriptObjectJson shape
+    const raw = transcription as unknown as { words?: Array<{ word: string; start: number; end: number }> };
+    const transcriptObjectJson = Array.isArray(raw.words) && raw.words.length > 0
+      ? JSON.stringify(raw.words.map((w) => ({
+          word: w.word,
+          startMs: Math.round(w.start * 1000),
+          endMs: Math.round(w.end * 1000),
+        })))
+      : null;
+    return { text: text || '', transcriptObjectJson };
   } catch (error) {
     console.error('Voice mode transcription error:', error);
-    return null;
+    return { text: '', transcriptObjectJson: null };
   }
 }
 
@@ -142,7 +153,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const transcript = (await transcribeUploadedAudio(audio)) || '';
+    const { text: transcript, transcriptObjectJson } = await transcribeUploadedAudio(audio);
 
     const userMessage = await prisma.emberMessage.create({
       data: {
@@ -151,6 +162,7 @@ export async function POST(request: NextRequest) {
         content: transcript,
         source: 'voice',
         audioFilename: persistedAudio.filename,
+        transcriptObjectJson,
       },
     });
 
