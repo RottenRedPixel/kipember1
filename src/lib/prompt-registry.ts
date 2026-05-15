@@ -2,6 +2,7 @@ export type PromptGroup =
   | 'Image Analysis'
   | 'Title Generation'
   | 'Snapshot Generation'
+  | 'Story Generation'
   | 'Wiki'
   | 'Captions'
   | 'Ember Modal'
@@ -128,6 +129,24 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
       { label: 'The updated Snapshot script and play-button audio', on: true },
       { label: 'The Story Snapshot block in the wiki', on: true },
       { label: 'The first auto-generated snapshot at creation time (uses snapshot_generation.initial)', on: false },
+    ],
+  },
+
+  {
+    key: 'story_generation.compose',
+    label: 'Story Generation - Compose',
+    group: 'Story Generation',
+    description: 'Fires when a user selects topic facets (why, feelings, anecdotes, place) and/or person name chips in the Stories sheet and presses play. Composes a very short micro-story (~7 seconds) from the selected subset of MemoryClaims and contributor memories. Receives `targetWords`, `durationSeconds`, and `peopleInstruction`.',
+    variables: ['targetWords', 'durationSeconds', 'peopleInstruction'],
+    whatItDoes:
+      'Narrates a tiny on-demand story built only from the facets and people the user selected. Unlike the Snapshot (which summarises everything), this prompt is intentionally scoped — it only draws from the material passed in the user message. The output is spoken aloud via ElevenLabs TTS and then auto-saved under the ember\'s Stories section.',
+    whenItFires: [
+      'User selects chips in the Stories sheet (facets and/or people) and presses the play button',
+    ],
+    affects: [
+      { label: 'The audio narration played in the Stories sheet', on: true },
+      { label: 'The story script saved to the EmberStory DB table (PUBLIC → Stories)', on: true },
+      { label: 'The Snapshot script or play-button audio (uses snapshot_generation.*)', on: false },
     ],
   },
 
@@ -585,6 +604,7 @@ export const PROMPT_GROUPS: PromptGroup[] = [
   'Image Analysis',
   'Title Generation',
   'Snapshot Generation',
+  'Story Generation',
   'Wiki',
   'Captions',
   'Ember Modal',
