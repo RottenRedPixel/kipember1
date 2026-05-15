@@ -18,15 +18,16 @@ type Facet = {
   isSnapshot?: boolean;
 };
 
-const ORANGE = 'rgba(249,115,22,0.55)';
-const GREEN  = 'rgba(134,239,172,0.55)';
+const ORANGE = 'rgba(249,115,22,0.6)';
+const BLUE   = 'rgba(96,165,250,0.6)';
+const RED    = 'rgba(248,113,113,0.6)';
 
-// Static topic facets — all orange.
+// Static topic facets — all blue.
 const TOPIC_FACETS: Omit<Facet, 'key'>[] & { key: string }[] = [
-  { key: 'why',         label: 'why',       color: ORANGE, vizColor: 'var(--color-accent)' },
-  { key: 'emotion',     label: 'feelings',  color: ORANGE, vizColor: 'var(--color-accent)' },
-  { key: 'extra_story', label: 'anecdotes', color: ORANGE, vizColor: 'var(--color-accent)' },
-  { key: 'place',       label: 'place',     color: ORANGE, vizColor: 'var(--color-accent)' },
+  { key: 'why',         label: 'why',       color: BLUE, vizColor: '#60a5fa' },
+  { key: 'emotion',     label: 'feelings',  color: BLUE, vizColor: '#60a5fa' },
+  { key: 'extra_story', label: 'anecdotes', color: BLUE, vizColor: '#60a5fa' },
+  { key: 'place',       label: 'place',     color: BLUE, vizColor: '#60a5fa' },
 ];
 
 const SNAPSHOT_FACET: Facet = {
@@ -111,8 +112,8 @@ export default function StoriesSheet({
       result.push({
         key: name,
         label: name,
-        color: GREEN,
-        vizColor: '#86efac',
+        color: RED,
+        vizColor: '#f87171',
         isPerson: true,
       });
     }
@@ -120,15 +121,19 @@ export default function StoriesSheet({
     return result;
   }, [availableClaimTypes, taggedNames, storyScript]);
 
-  // Derive viz color from the first selected facet (topic takes priority over person).
+  // Play button colour:
+  //   snapshot only      → orange
+  //   topics only        → blue
+  //   names only         → red
+  //   topics + names mix → purple
   const vizColor = useMemo(() => {
-    for (const f of facets) {
-      if (selectedKeys.has(f.key) && !f.isPerson) return f.vizColor;
-    }
-    for (const f of facets) {
-      if (selectedKeys.has(f.key)) return f.vizColor;
-    }
-    return SNAPSHOT_FACET.vizColor;
+    if (selectedKeys.has('snapshot')) return SNAPSHOT_FACET.vizColor;
+    const hasTopics  = facets.some((f) => !f.isPerson && !f.isSnapshot && selectedKeys.has(f.key));
+    const hasPersons = facets.some((f) => f.isPerson && selectedKeys.has(f.key));
+    if (hasTopics && hasPersons) return '#a78bfa'; // purple
+    if (hasTopics)  return '#60a5fa'; // blue
+    if (hasPersons) return '#f87171'; // red
+    return SNAPSHOT_FACET.vizColor;  // nothing selected — default orange
   }, [facets, selectedKeys]);
 
   const activeScript = composedScript;
