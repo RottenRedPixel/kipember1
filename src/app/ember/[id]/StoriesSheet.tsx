@@ -82,6 +82,7 @@ export default function StoriesSheet({
   // Available facets — built from claim types that have data + tagged people.
   const [availableClaimTypes, setAvailableClaimTypes] = useState<Set<string>>(new Set());
   const [taggedNames, setTaggedNames] = useState<string[]>([]);
+  const [hasConfirmedLocation, setHasConfirmedLocation] = useState(false);
 
   // Which facet keys the user has selected.
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(['snapshot']));
@@ -106,7 +107,11 @@ export default function StoriesSheet({
   const facets: Facet[] = useMemo(() => {
     const result: Facet[] = [];
     for (const tf of TOPIC_FACETS) {
-      if (availableClaimTypes.has(tf.key)) result.push(tf);
+      // Place chip shows if confirmed location exists OR extractor place claims exist.
+      const available = tf.key === 'place'
+        ? (availableClaimTypes.has('place') || hasConfirmedLocation)
+        : availableClaimTypes.has(tf.key);
+      if (available) result.push(tf);
     }
     for (const name of taggedNames) {
       result.push({
@@ -119,7 +124,7 @@ export default function StoriesSheet({
     }
     if (storyScript) result.push(SNAPSHOT_FACET);
     return result;
-  }, [availableClaimTypes, taggedNames, storyScript]);
+  }, [availableClaimTypes, taggedNames, storyScript, hasConfirmedLocation]);
 
   // Play button colour:
   //   snapshot only      → orange
@@ -222,10 +227,13 @@ export default function StoriesSheet({
       })
       .catch(() => {});
 
-    // Fetch tagged people names
+    // Fetch tagged people names + confirmed location
     fetch(`/api/embers/${encodeURIComponent(emberId)}`, { cache: 'no-store' })
       .then((r) => r.json())
-      .then((d: { tags?: Array<{ user?: { firstName?: string | null } | null; emberContributor?: { user?: { firstName?: string | null } | null } | null; label?: string | null }> } ) => {
+      .then((d: {
+        tags?: Array<{ user?: { firstName?: string | null } | null; emberContributor?: { user?: { firstName?: string | null } | null } | null; label?: string | null }>;
+        analysis?: { confirmedLocation?: { label?: string | null } | null } | null;
+      }) => {
         if (cancelled) return;
         const tags = Array.isArray(d?.tags) ? d.tags : [];
         const seen = new Set<string>();
@@ -240,6 +248,7 @@ export default function StoriesSheet({
           names.push(first);
         }
         setTaggedNames(names);
+        setHasConfirmedLocation(Boolean(d?.analysis?.confirmedLocation?.label));
       })
       .catch(() => {});
 
