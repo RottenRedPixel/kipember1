@@ -47,8 +47,8 @@ export async function POST(
         ? Math.min(body.durationSeconds, 10)
         : 7;
 
-    if (facets.length === 0) {
-      return NextResponse.json({ error: 'Select at least one facet.' }, { status: 400 });
+    if (facets.length === 0 && people.length === 0) {
+      return NextResponse.json({ error: 'Select at least one facet or person.' }, { status: 400 });
     }
 
     // Load ember base data
