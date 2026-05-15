@@ -82,7 +82,7 @@ async function ensureVoiceSession({
 async function transcribeUploadedAudio(file: File): Promise<{ text: string; transcriptObjectJson: string | null }> {
   try {
     const client = getOpenAIClient();
-    const transcription = await client.audio.transcriptions.create({
+    const raw = await client.audio.transcriptions.create({
       file,
       model: await getConfiguredOpenAIModel(
         'audio.transcription',
@@ -90,10 +90,12 @@ async function transcribeUploadedAudio(file: File): Promise<{ text: string; tran
       ),
       response_format: 'verbose_json',
       timestamp_granularities: ['word'],
-    } as Parameters<typeof client.audio.transcriptions.create>[0]);
-    const text = (transcription.text ?? '').replace(/\s+/g, ' ').trim();
+    } as Parameters<typeof client.audio.transcriptions.create>[0]) as unknown as {
+      text: string;
+      words?: Array<{ word: string; start: number; end: number }>;
+    };
+    const text = (raw.text ?? '').replace(/\s+/g, ' ').trim();
     // Normalise Whisper words (seconds) → ms to match VoiceCall.transcriptObjectJson shape
-    const raw = transcription as unknown as { words?: Array<{ word: string; start: number; end: number }> };
     const transcriptObjectJson = Array.isArray(raw.words) && raw.words.length > 0
       ? JSON.stringify(raw.words.map((w) => ({
           word: w.word,
