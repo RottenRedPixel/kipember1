@@ -3357,6 +3357,14 @@ export default function KipemberWikiContent({
         <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
       </WikiSection>
 
+      </WikiGroup>
+
+      {/* PUBLIC — activity from share-link visitors who are not on the
+          account. Kept separate from Conversations (which covers
+          owner / contributor / voice / call) so there's a clear line
+          between people-on-the-account and anonymous viewers. */}
+      <WikiGroup label="Public">
+
       {/* Guest Talk — share-link visitor conversations live here as their
           own block, separate from Story Circle (which is about
           owner/contributor/voice/call). Lifted out so the wiki keeps a
