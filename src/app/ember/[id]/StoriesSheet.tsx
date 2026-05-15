@@ -1,6 +1,6 @@
 'use client';
 
-import { Flame, Heart, MapPinned, Pause, Play, ScanEye, Smile, Users, X } from 'lucide-react';
+import { Flame, Pause, Play, ScanEye, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import { useResetZoomOnOpen } from '@/lib/reset-zoom';
@@ -8,23 +8,33 @@ import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 const SHEET_H = '40vh';
 const SNAP_MS = 320;
 
-const BADGES = [
-  { icon: MapPinned, active: 'rgba(134,239,172,0.55)', vizColor: '#86efac', label: 'place & time (coming soon)' },
-  { icon: Users,     active: 'rgba(96,165,250,0.55)',  vizColor: '#60a5fa', label: 'friends & family (coming soon)' },
-  { icon: ScanEye,   active: 'rgba(249,115,22,0.55)',  vizColor: 'var(--color-accent)', label: 'snapshot of this memory' },
-  { icon: Smile,     active: 'rgba(253,224,71,0.55)',  vizColor: '#fde047', label: 'interesting stories (coming soon)' },
-  { icon: Heart,     active: 'rgba(244,114,182,0.55)', vizColor: '#f472b6', label: 'feelings & emotions (coming soon)' },
+// Facet definition — what shows in the chip row.
+type Facet = {
+  key: string;       // claimType key OR person first-name OR 'snapshot'
+  label: string;     // display text
+  color: string;     // highlight background when selected
+  vizColor: string;  // play-button / visualizer colour
+  isPerson?: boolean;
+  isSnapshot?: boolean;
+};
+
+// Static topic facets ordered by warmth.
+const TOPIC_FACETS: Omit<Facet, 'key'>[] & { key: string }[] = [
+  { key: 'why',         label: 'why',       color: 'rgba(167,139,250,0.55)', vizColor: '#a78bfa' },
+  { key: 'emotion',     label: 'feelings',  color: 'rgba(244,114,182,0.55)', vizColor: '#f472b6' },
+  { key: 'extra_story', label: 'anecdotes', color: 'rgba(253,224,71,0.55)',  vizColor: '#fde047' },
+  { key: 'place',       label: 'place',     color: 'rgba(134,239,172,0.55)', vizColor: '#86efac' },
 ];
 
-const FACET_SCRIPTS: (string | null)[] = [
-  'Ember will find some interesting bits about the time and place of this memory as told by the contributors.',
-  'Friends and family will tell us about who was there and what was going on.',
-  null,
-  'We will discover new facts and anecdotes about this memory.',
-  'Hearing about how everyone felt in their own voices will be an awesome experience.',
-];
+const SNAPSHOT_FACET: Facet = {
+  key: 'snapshot',
+  label: 'snapshot',
+  color: 'rgba(249,115,22,0.55)',
+  vizColor: 'var(--color-accent)',
+  isSnapshot: true,
+};
 
-type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
+type PlaybackState = 'idle' | 'composing' | 'loading' | 'playing' | 'paused';
 
 function buildStoryLines(value: string | null | undefined) {
   const text = value?.replace(/\s+/g, ' ').trim();
@@ -64,16 +74,22 @@ export default function StoriesSheet({
   const [lineIndex, setLineIndex] = useState(0);
   const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
-  const [selectedBadge, setSelectedBadge] = useState(2);
-  // BADGES[2] is the snapshot slider (orange). Preselect it on open.
-  const [badgeColors, setBadgeColors] = useState<Record<string, string>>(
-    () => ({ snapshot: 'rgba(249,115,22,0.55)' })
-  );
-  // Re-apply the snapshot preselection every time the sheet opens.
-  useEffect(() => {
-    if (!isOpen) return;
-    setBadgeColors({ snapshot: 'rgba(249,115,22,0.55)' });
-  }, [isOpen]);
+
+  // Available facets — built from claim types that have data + tagged people.
+  const [availableClaimTypes, setAvailableClaimTypes] = useState<Set<string>>(new Set());
+  const [taggedNames, setTaggedNames] = useState<string[]>([]);
+
+  // Which facet keys the user has selected.
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(['snapshot']));
+
+  // The composed script for the current selection (null = not yet composed).
+  const [composedScript, setComposedScript] = useState<string | null>(null);
+
+  // Duration slider
+  const [durationSeconds, setDurationSeconds] = useState(20);
+
+  const savedRef = useRef(false); // prevent double-save per play session
+
   const IDLE_PROMPTS = useMemo(() => [
     'choose your own adventure...',
     'listen to different versions...',
@@ -82,56 +98,44 @@ export default function StoriesSheet({
   ], []);
   const [idlePromptIdx, setIdlePromptIdx] = useState(() => Math.floor(Math.random() * 4));
   const [idlePromptVisible, setIdlePromptVisible] = useState(true);
-  const [taggedNames, setTaggedNames] = useState<string[]>([]);
 
-  // Fetch tagged-people first names from the ember when the sheet opens.
-  useEffect(() => {
-    if (!isOpen || !emberId) return;
-    let cancelled = false;
-    fetch(`/api/embers/${encodeURIComponent(emberId)}`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        const tags: Array<{
-          user?: { firstName?: string | null } | null;
-          emberContributor?: { user?: { firstName?: string | null } | null } | null;
-          label?: string | null;
-        }> = Array.isArray(d?.tags) ? d.tags : [];
-        const seen = new Set<string>();
-        const names: string[] = [];
-        for (const t of tags) {
-          const first = (
-            t.user?.firstName ?? t.emberContributor?.user?.firstName ?? t.label ?? ''
-          )
-            .toString()
-            .trim()
-            .split(/\s+/)[0];
-          if (!first) continue;
-          const key = first.toLowerCase();
-          if (seen.has(key)) continue;
-          seen.add(key);
-          names.push(first);
-        }
-        setTaggedNames(names);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [isOpen, emberId]);
+  // Build the chip row: topic facets with data → person chips → snapshot at tail.
+  const facets: Facet[] = useMemo(() => {
+    const result: Facet[] = [];
+    for (const tf of TOPIC_FACETS) {
+      if (availableClaimTypes.has(tf.key)) result.push(tf);
+    }
+    for (const name of taggedNames) {
+      result.push({
+        key: name,
+        label: name,
+        color: 'rgba(255,255,255,0.25)',
+        vizColor: 'rgba(255,255,255,0.6)',
+        isPerson: true,
+      });
+    }
+    if (storyScript) result.push(SNAPSHOT_FACET);
+    return result;
+  }, [availableClaimTypes, taggedNames, storyScript]);
 
+  // Derive viz color from the first selected non-person topic, else snapshot.
+  const vizColor = useMemo(() => {
+    for (const f of facets) {
+      if (selectedKeys.has(f.key) && !f.isPerson) return f.vizColor;
+    }
+    return SNAPSHOT_FACET.vizColor;
+  }, [facets, selectedKeys]);
+
+  const activeScript = composedScript;
+  const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
+  const shouldAnimate = playbackState === 'playing' && !done;
+  const isPlaying = playbackState === 'playing';
+
+  // ── Audio refs ───────────────────────────────────────────────────────────
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const prepareAttemptedRef = useRef(false);
-  const selectedBadgeRef = useRef(2);
-
-  useEffect(() => { selectedBadgeRef.current = selectedBadge; }, [selectedBadge]);
-
-  const activeScript = selectedBadge === 2 ? storyScript : FACET_SCRIPTS[selectedBadge];
-  const hasPlayableContent = Boolean(emberId) && Boolean(activeScript ?? (selectedBadge === 2 ? storyScript : null));
-  const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
-  const shouldAnimate = playbackState === 'playing' && !done;
-  const isPlaying = playbackState === 'playing';
 
   const disposeAudio = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; audioRef.current = null; }
@@ -142,8 +146,7 @@ export default function StoriesSheet({
 
   useEffect(() => () => { disposeAudio(); }, [disposeAudio]);
 
-  // Story text fade-in: when isPlaying flips true, mount the text at opacity
-  // 0 then flip to 1 on the next frame so the transition has a from-state.
+  // ── Story text fade-in ───────────────────────────────────────────────────
   const [storyEntered, setStoryEntered] = useState(false);
   useEffect(() => {
     if (!isPlaying) { setStoryEntered(false); return; }
@@ -151,7 +154,7 @@ export default function StoriesSheet({
     return () => cancelAnimationFrame(raf);
   }, [isPlaying]);
 
-  // Cycle the idle prompt every time the sheet opens.
+  // ── Idle prompt cycling ──────────────────────────────────────────────────
   const wasOpenRef = useRef(false);
   useEffect(() => {
     if (!isOpen) { wasOpenRef.current = false; return; }
@@ -159,49 +162,25 @@ export default function StoriesSheet({
     wasOpenRef.current = true;
     setIdlePromptVisible(false);
     const t = setTimeout(() => {
-      setIdlePromptIdx((i) => {
-        let next = Math.floor(Math.random() * IDLE_PROMPTS.length);
-        if (next === i) next = (i + 1) % IDLE_PROMPTS.length;
-        return next;
-      });
+      setIdlePromptIdx((i) => { let n = Math.floor(Math.random() * IDLE_PROMPTS.length); if (n === i) n = (i + 1) % IDLE_PROMPTS.length; return n; });
       setIdlePromptVisible(true);
     }, 600);
     return () => clearTimeout(t);
   }, [isOpen, IDLE_PROMPTS.length]);
 
-  // Cycle the idle prompt on each play/pause transition — fade out, swap,
-  // fade in. No auto-timer.
   const isPlayingPrevRef = useRef(isPlaying);
   useEffect(() => {
     if (isPlayingPrevRef.current === isPlaying) return;
     isPlayingPrevRef.current = isPlaying;
     setIdlePromptVisible(false);
     const t = setTimeout(() => {
-      setIdlePromptIdx((i) => {
-        let next = Math.floor(Math.random() * IDLE_PROMPTS.length);
-        if (next === i) next = (i + 1) % IDLE_PROMPTS.length;
-        return next;
-      });
+      setIdlePromptIdx((i) => { let n = Math.floor(Math.random() * IDLE_PROMPTS.length); if (n === i) n = (i + 1) % IDLE_PROMPTS.length; return n; });
       setIdlePromptVisible(true);
     }, 600);
     return () => clearTimeout(t);
   }, [isPlaying, IDLE_PROMPTS.length]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setShowing(true);
-    } else {
-      setShowing(false);
-      disposeAudio();
-      setPlaybackState('idle');
-      setLineIndex(0);
-      setFading(false);
-      setDone(false);
-      setSelectedBadge(2);
-      prepareAttemptedRef.current = false;
-    }
-  }, [isOpen, disposeAudio]);
-
+  // ── Line advance animation ───────────────────────────────────────────────
   useEffect(() => {
     if (!shouldAnimate || fading) return;
     const hasNextPair = lineIndex + 2 < storyLines.length;
@@ -213,47 +192,100 @@ export default function StoriesSheet({
   useEffect(() => {
     if (!fading) return;
     const timer = setTimeout(() => {
-      setLineIndex((current) => Math.min(current + 2, Math.max(storyLines.length - 1, 0)));
+      setLineIndex((c) => Math.min(c + 2, Math.max(storyLines.length - 1, 0)));
       setFading(false);
     }, 600);
     return () => clearTimeout(timer);
   }, [fading, storyLines.length]);
 
-  const fetchAudioBlob = useCallback(async () => {
-    if (!emberId) throw new Error('No ember selected.');
-    const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
-    const badge = selectedBadgeRef.current;
-    const facetScript = FACET_SCRIPTS[badge];
-    if (facetScript) {
-      const response = await fetch(`/api/embers/${emberId}/snapshot-audio${tokenQs}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script: facetScript }),
-      });
-      if (response.ok) return await response.blob();
-      const payload = await response.json().catch(() => null);
-      throw new Error(typeof payload?.error === 'string' ? payload.error : 'Audio not available.');
-    }
-    if (!storyScript) throw new Error('This ember does not have a snapshot yet.');
-    const response = await fetch(`/api/embers/${emberId}/snapshot-audio${tokenQs}`, { cache: 'no-store' });
-    if (response.ok) return await response.blob();
-    const payload = await response.json().catch(() => null);
-    throw new Error(typeof payload?.error === 'string' ? payload.error : 'Story audio is not available yet.');
-  }, [emberId, storyScript, accessToken]);
+  // ── Fetch available claim types + tagged names when sheet opens ──────────
+  useEffect(() => {
+    if (!isOpen || !emberId) return;
+    let cancelled = false;
 
-  const buildAudio = useCallback(async () => {
-    const audioBlob = await fetchAudioBlob();
-    const audioUrl = URL.createObjectURL(audioBlob);
+    // Fetch claim types from reconciliation endpoint
+    fetch(`/api/embers/${encodeURIComponent(emberId)}/reconciliation`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { claims?: Array<{ claimType: string }> } | null) => {
+        if (cancelled || !d?.claims) return;
+        setAvailableClaimTypes(new Set(d.claims.map((c) => c.claimType)));
+      })
+      .catch(() => {});
+
+    // Fetch tagged people names
+    fetch(`/api/embers/${encodeURIComponent(emberId)}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: { tags?: Array<{ user?: { firstName?: string | null } | null; emberContributor?: { user?: { firstName?: string | null } | null } | null; label?: string | null }> } ) => {
+        if (cancelled) return;
+        const tags = Array.isArray(d?.tags) ? d.tags : [];
+        const seen = new Set<string>();
+        const names: string[] = [];
+        for (const t of tags) {
+          const first = (t.user?.firstName ?? t.emberContributor?.user?.firstName ?? t.label ?? '')
+            .toString().trim().split(/\s+/)[0];
+          if (!first) continue;
+          const key = first.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          names.push(first);
+        }
+        setTaggedNames(names);
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [isOpen, emberId]);
+
+  // ── Reset on close ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isOpen) {
+      setShowing(true);
+    } else {
+      setShowing(false);
+      disposeAudio();
+      setPlaybackState('idle');
+      setLineIndex(0);
+      setFading(false);
+      setDone(false);
+      setComposedScript(null);
+      setSelectedKeys(new Set(['snapshot']));
+      setError('');
+      savedRef.current = false;
+    }
+  }, [isOpen, disposeAudio]);
+
+  // ── Chip toggle — resets composition when selection changes ─────────────
+  const toggleKey = useCallback((key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    // Changing selection invalidates the current composed script.
+    disposeAudio();
+    setPlaybackState('idle');
+    setComposedScript(null);
+    setLineIndex(0);
+    setFading(false);
+    setDone(false);
+    setError('');
+    savedRef.current = false;
+  }, [disposeAudio]);
+
+  // ── Build audio element from a blob ──────────────────────────────────────
+  const buildAudioFromBlob = useCallback(async (blob: Blob) => {
+    const audioUrl = URL.createObjectURL(blob);
     const audio = new Audio(audioUrl);
     audio.preload = 'auto';
     audio.addEventListener('play', () => setPlaybackState('playing'));
-    audio.addEventListener('pause', () => setPlaybackState((current) => (current === 'loading' ? current : 'paused')));
+    audio.addEventListener('pause', () => setPlaybackState((c) => c === 'loading' ? c : 'paused'));
     audio.addEventListener('ended', () => { setPlaybackState('paused'); setDone(true); });
-    audio.addEventListener('error', () => { setPlaybackState('paused'); });
+    audio.addEventListener('error', () => setPlaybackState('paused'));
     audioRef.current = audio;
     audioUrlRef.current = audioUrl;
     try {
-      const AudioCtor: typeof AudioContext | undefined =
+      const AudioCtor =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (AudioCtor) {
@@ -269,48 +301,130 @@ export default function StoriesSheet({
       }
     } catch { /* visualizer unavailable */ }
     return audio;
-  }, [fetchAudioBlob]);
+  }, []);
 
-  const startPlayback = useCallback(async ({ restart = false }: { restart?: boolean } = {}) => {
-    if (!emberId || !hasPlayableContent) return;
+  // ── Save a played story to the DB ────────────────────────────────────────
+  const saveStory = useCallback(async (script: string) => {
+    if (!emberId || savedRef.current) return;
+    savedRef.current = true;
+    const facetKeys = Array.from(selectedKeys).filter((k) => k !== 'snapshot' && !taggedNames.includes(k));
+    const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
+    try {
+      await fetch(`/api/embers/${encodeURIComponent(emberId)}/stories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script, facets: facetKeys, people: personKeys, durationSeconds }),
+      });
+    } catch { /* non-blocking */ }
+  }, [emberId, selectedKeys, taggedNames, durationSeconds]);
+
+  // ── Main play handler ─────────────────────────────────────────────────────
+  const handleToggle = useCallback(async () => {
+    if (playbackState === 'composing' || playbackState === 'loading') return;
+
+    // Pause if already playing
+    if (audioRef.current && playbackState === 'playing') {
+      audioRef.current.pause();
+      return;
+    }
+
+    // Resume if paused and audio already built
+    if (audioRef.current && playbackState === 'paused') {
+      try { await audioRef.current.play(); } catch { /* ignore */ }
+      return;
+    }
+
+    // ── Need to start fresh ──
+    if (!emberId) return;
     setError('');
+
+    const isSnapshotMode = selectedKeys.has('snapshot') && selectedKeys.size === 1;
+    const hasNonSnapshot = Array.from(selectedKeys).some((k) => k !== 'snapshot');
+
+    let script = composedScript;
+
+    if (!script) {
+      if (isSnapshotMode || (!hasNonSnapshot && storyScript)) {
+        // Snapshot shortcut — use the pre-generated script
+        if (!storyScript) { setError('No snapshot yet.'); return; }
+        script = storyScript;
+        setComposedScript(script);
+      } else {
+        // Compose on demand
+        const facetKeys = Array.from(selectedKeys).filter((k) =>
+          k !== 'snapshot' && !taggedNames.includes(k)
+        );
+        const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
+
+        if (facetKeys.length === 0 && personKeys.length === 0) {
+          setError('Select at least one facet or person.');
+          return;
+        }
+
+        setPlaybackState('composing');
+        try {
+          const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+          const response = await fetch(
+            `/api/embers/${encodeURIComponent(emberId)}/stories/compose${tokenQs}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }),
+            }
+          );
+          const payload = await response.json().catch(() => null);
+          if (!response.ok) throw new Error(payload?.error ?? 'Failed to compose story.');
+          script = payload.script as string;
+          setComposedScript(script);
+        } catch (err) {
+          setPlaybackState('idle');
+          setError(err instanceof Error ? err.message : 'Failed to compose story.');
+          return;
+        }
+      }
+    }
+
+    // Fetch audio for the script
     setPlaybackState('loading');
     try {
-      const audio = audioRef.current || (await buildAudio());
-      if (restart) { audio.currentTime = 0; setLineIndex(0); setFading(false); setDone(false); }
+      const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+      const response = await fetch(
+        `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ script }),
+        }
+      );
+      if (!response.ok) {
+        const p = await response.json().catch(() => null);
+        throw new Error(p?.error ?? 'Audio not available.');
+      }
+      const blob = await response.blob();
+      const audio = await buildAudioFromBlob(blob);
       await audio.play();
-    } catch (playError) {
+      void saveStory(script);
+    } catch (err) {
       setPlaybackState('paused');
-      setError(playError instanceof Error ? playError.message : 'Audio could not be played.');
+      setError(err instanceof Error ? err.message : 'Audio could not be played.');
     }
-  }, [buildAudio, emberId, hasPlayableContent]);
-
-  useEffect(() => {
-    if (prepareAttemptedRef.current || !emberId || !storyScript || !isOpen) return;
-    prepareAttemptedRef.current = true;
-    void buildAudio().catch(() => undefined);
-  }, [emberId, storyScript, isOpen, buildAudio]);
-
-  const handleToggle = useCallback(() => {
-    if (playbackState === 'loading') return;
-    if (audioRef.current && playbackState === 'playing') { audioRef.current.pause(); return; }
-    void startPlayback();
-  }, [playbackState, startPlayback]);
-
-  const switchBadge = useCallback((i: number) => {
-    disposeAudio();
-    setPlaybackState('idle');
-    setLineIndex(0);
-    setFading(false);
-    setDone(false);
-    setError('');
-    setSelectedBadge(i);
-  }, [disposeAudio]);
+  }, [
+    playbackState, emberId, selectedKeys, composedScript,
+    storyScript, taggedNames, durationSeconds, accessToken,
+    buildAudioFromBlob, saveStory,
+  ]);
 
   function handleClose() {
     setShowing(false);
     setTimeout(onClose, SNAP_MS);
   }
+
+  const statusLabel =
+    playbackState === 'composing' ? 'writing story…' :
+    playbackState === 'loading'   ? 'preparing audio…' :
+    null;
+
+  const hasSelection = selectedKeys.size > 0;
 
   return (
     <div
@@ -324,22 +438,18 @@ export default function StoriesSheet({
         transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
-      {/* Play button — floats on the sheet's top edge, centered. Color
-          tracks the selected topic; click toggles playback. Gated on
-          isOpen (not showing) so it unmounts the instant the tab
-          changes — otherwise during the slide-out the button leaks
-          above the sheet's translated-down top edge. */}
+      {/* Play / Pause button — floats on the sheet's top edge */}
       {isOpen ? (
         <button
           type="button"
-          onClick={handleToggle}
-          disabled={!hasPlayableContent}
+          onClick={() => void handleToggle()}
+          disabled={!hasSelection || playbackState === 'composing' || playbackState === 'loading'}
           className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full cursor-pointer [@media(hover:hover)]:hover:brightness-110 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           style={{
             top: -24,
             width: 48,
             height: 48,
-            background: BADGES[selectedBadge].vizColor,
+            background: vizColor,
             border: '6px solid var(--bg-sheets)',
           }}
           aria-label={isPlaying ? 'Pause' : 'Play'}
@@ -352,14 +462,13 @@ export default function StoriesSheet({
         </button>
       ) : null}
 
-      {/* Loading caption — under the play button, above the header
-          divider. Only rendered while audio is being prepared. */}
-      {isOpen && playbackState === 'loading' ? (
+      {/* Status label under play button */}
+      {isOpen && statusLabel ? (
         <p
           className="absolute left-0 right-0 text-center pointer-events-none text-xs"
           style={{ top: 30, color: 'rgba(255,255,255,0.45)' }}
         >
-          preparing audio…
+          {statusLabel}
         </p>
       ) : null}
 
@@ -378,120 +487,82 @@ export default function StoriesSheet({
         </p>
       ) : null}
 
-      {/* All content anchored to bottom: story text → visualizer → capsule → label.
-          Container is pointer-events-none so empty space doesn't intercept clicks
-          on badges/topics above; interactive children re-enable pointer-events. */}
-      <div className="absolute left-0 right-0 bottom-0 px-4 flex flex-col pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto" style={{ top: 56 }}>
-
-        {/* Story text + visualizer: centered in the space between header
-            and the capsule row at the bottom. */}
+      {/* Body — story text + visualizer + chips */}
+      <div
+        className="absolute left-0 right-0 bottom-0 px-4 flex flex-col pointer-events-none [&_button]:pointer-events-auto"
+        style={{ top: 56 }}
+      >
+        {/* Story text / idle prompt */}
         <div className="flex-1 flex flex-col items-center justify-center">
-
-        {/* Story text — or idle prompt when nothing is playing */}
-        <div className="text-center mb-5 pointer-events-none">
-          {isPlaying ? (
-            <div style={{ opacity: storyEntered ? 1 : 0, transition: 'opacity 0.8s ease' }}>
+          <div className="text-center mb-5 pointer-events-none">
+            {isPlaying ? (
+              <div style={{ opacity: storyEntered ? 1 : 0, transition: 'opacity 0.8s ease' }}>
+                <p
+                  className="font-medium leading-snug w-full truncate"
+                  style={{ fontSize: '1.2rem', color: !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
+                >
+                  {storyLines[lineIndex] ?? ' '}
+                </p>
+                <p
+                  className="font-medium leading-snug w-full truncate"
+                  style={{ fontSize: '1.2rem', color: !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
+                >
+                  {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
+                </p>
+              </div>
+            ) : (
               <p
-                className="font-medium leading-snug w-full truncate"
-                style={{ fontSize: '1.2rem', color: !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
+                className="font-medium leading-snug w-full"
+                style={{
+                  fontSize: '1.2rem',
+                  color: 'rgba(255,255,255,0.6)',
+                  opacity: idlePromptVisible ? 1 : 0,
+                  transition: 'opacity 0.6s ease',
+                }}
               >
-                {storyLines[lineIndex] ?? ' '}
+                {IDLE_PROMPTS[idlePromptIdx]}
               </p>
-              <p
-                className="font-medium leading-snug w-full truncate"
-                style={{ fontSize: '1.2rem', color: !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
-              >
-                {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
-              </p>
-            </div>
-          ) : (
-            <p
-              className="font-medium leading-snug w-full"
-              style={{
-                fontSize: '1.2rem',
-                color: 'rgba(255,255,255,0.6)',
-                opacity: idlePromptVisible ? 1 : 0,
-                transition: 'opacity 0.6s ease',
-              }}
-            >
-              {IDLE_PROMPTS[idlePromptIdx]}
-            </p>
-          )}
+            )}
+          </div>
+
+          {/* Mic visualizer */}
+          <div className="flex justify-center mb-4 w-full" style={{ minHeight: 20 }}>
+            {isPlaying ? (
+              <MicLevelMeter
+                analyser={analyserRef.current}
+                color={vizColor}
+                bars={22}
+                className="w-[70%] h-5"
+              />
+            ) : null}
+          </div>
         </div>
 
-        {/* Mic visualizer — above capsules, only shown when playing */}
-        <div className="flex justify-center mb-4 w-full" style={{ minHeight: 20 }}>
-          {isPlaying ? (
-            <MicLevelMeter
-              analyser={analyserRef.current}
-              color={BADGES[selectedBadge].vizColor}
-              bars={22}
-              className="w-[70%] h-5"
-            />
-          ) : null}
-        </div>
-
-        </div>
-
-        {/* All capsules — one continuous wrapping list. Topic capsules carry
-            their own slider color; name capsules use the lighter grey selection. */}
+        {/* Facet / person chips */}
         <div className="flex flex-wrap justify-center gap-2 pb-4">
-          {[
-            ...taggedNames,
-            'place', 'time', 'friends', 'family', 'anecdotes', 'feelings', 'emotions', 'snapshot',
-          ].map((name) => {
-            const topicToBadge: Record<string, number> = {
-              'place':     0,
-              'time':      0,
-              'friends':   1,
-              'family':    1,
-              'snapshot':  2,
-              'anecdotes': 3,
-              'feelings':  4,
-              'emotions':  4,
-            };
-            const badgeIdx = topicToBadge[name];
-            const isTopic = badgeIdx !== undefined;
-            const isSelected = Boolean(badgeColors[name]);
-            const bg = badgeColors[name] ?? 'var(--bg-drill-blocks)';
-            void isSelected;
+          {facets.map((facet) => {
+            const isSelected = selectedKeys.has(facet.key);
+            // Snapshot chip gets its own icon
+            const showIcon = facet.isSnapshot;
             return (
               <button
-                key={name}
+                key={facet.key}
                 type="button"
-                onClick={() => {
-                  if (isTopic) {
-                    const wasSelected = Boolean(badgeColors[name]);
-                    setBadgeColors((prev) => {
-                      const next = { ...prev };
-                      if (next[name]) delete next[name];
-                      else next[name] = BADGES[badgeIdx].active;
-                      return next;
-                    });
-                    if (!wasSelected) switchBadge(badgeIdx);
-                  } else {
-                    setBadgeColors((prev) => {
-                      const next = { ...prev };
-                      if (next[name]) delete next[name];
-                      else next[name] = 'rgba(255,255,255,0.32)';
-                      return next;
-                    });
-                  }
-                }}
-                className="flex-shrink-0 flex items-center justify-center rounded-full px-4 text-sm font-normal cursor-pointer [@media(hover:hover)]:hover:brightness-125 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform] duration-150"
+                onClick={() => toggleKey(facet.key)}
+                className="flex-shrink-0 flex items-center justify-center gap-1.5 rounded-full px-4 text-sm font-normal cursor-pointer [@media(hover:hover)]:hover:brightness-125 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150"
                 style={{
                   height: 26,
-                  background: bg,
+                  background: isSelected ? facet.color : 'var(--bg-drill-blocks)',
                   border: '1px solid var(--border-subtle)',
                   color: 'rgba(255,255,255,0.7)',
                 }}
               >
-                {name}
+                {showIcon ? <ScanEye size={12} strokeWidth={2} /> : null}
+                {facet.label}
               </button>
             );
           })}
         </div>
-
       </div>
     </div>
   );

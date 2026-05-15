@@ -44,6 +44,7 @@ model Ember {
   voiceCallClips VoiceCallClip[]
   memoryClaims MemoryClaim[]
   memoryConflicts MemoryConflict[]
+  stories      EmberStory[]
 
   @@index([ownerId, createdAt])
   @@index([shareToNetwork, createdAt])
@@ -405,6 +406,22 @@ model ShortLink {
   lastVisitedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+// Each row is one composed-and-played story from StoriesSheet.
+// facetsJson  — JSON array of claimType keys used (e.g. ["why","emotion"])
+// peopleJson  — JSON array of person first-names filtered to ([] = all)
+model EmberStory {
+  id              String   @id @default(cuid())
+  emberId         String
+  ember           Ember    @relation(fields: [emberId], references: [id], onDelete: Cascade)
+  script          String
+  facetsJson      String   @default("[]")
+  peopleJson      String   @default("[]")
+  durationSeconds Int      @default(20)
+  createdAt       DateTime @default(now())
+
+  @@index([emberId, createdAt])
 }
 
 model Friendship {
