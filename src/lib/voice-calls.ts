@@ -1,4 +1,6 @@
 import type Retell from 'retell-sdk';
+import { randomUUID } from 'crypto';
+import { mkdir, unlink, writeFile } from 'fs/promises';
 import { chat } from '@/lib/claude';
 import { renderPromptTemplate } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
@@ -17,6 +19,9 @@ import {
 import { maybeNotifyFailedCall } from '@/lib/voice-call-notifications';
 import { generateWikiForImage } from '@/lib/wiki-generator';
 import { extractAllClaimsFromContent } from '@/lib/memory-reconciliation';
+import { transcodeAudioToM4a } from '@/lib/audio-processing';
+import { getUploadPath, getUploadsDir, getUploadUrl } from '@/lib/uploads';
+import { uploadLocalFileToObjectStorage } from '@/lib/object-storage';
 
 const QUESTION_TYPES = ['context', 'who', 'when', 'where', 'what', 'why', 'how'] as const;
 
@@ -905,6 +910,11 @@ export async function processRetellWebhook(rawPayload: unknown) {
 
   if (eventType === 'call_analyzed') {
     await syncVoiceCallToEmberSession(voiceCall.id);
+    // Pull Retell recording into our own storage so it survives Retell's
+    // retention window and shares the same audio path as EmberVoice clips.
+    pullRetellRecordingToStorage(voiceCall.id).catch((err) => {
+      console.error('Retell recording pull error:', err);
+    });
   }
 
   if (eventType === 'call_ended' || eventType === 'call_analyzed') {
@@ -914,4 +924,65 @@ export async function processRetellWebhook(rawPayload: unknown) {
   }
 
   return voiceCall;
+}
+
+/**
+ * Download a Retell call recording, transcode it to the same normalised
+ * format used by EmberVoice (AAC 128k, 44100 Hz, mono, faststart .m4a),
+ * upload to object storage, and update VoiceCall.recordingUrl to point
+ * to our own /api/uploads/{filename} URL.
+ *
+ * Safe to call multiple times — skips calls that already point at our storage.
+ */
+export async function pullRetellRecordingToStorage(voiceCallId: string): Promise<void> {
+  const voiceCall = await prisma.voiceCall.findUnique({
+    where: { id: voiceCallId },
+    select: { id: true, recordingUrl: true },
+  });
+
+  if (!voiceCall?.recordingUrl) return; // no recording available
+  if (voiceCall.recordingUrl.startsWith('/api/uploads/')) return; // already migrated
+
+  const retellUrl = voiceCall.recordingUrl;
+
+  // Download from Retell
+  const response = await fetch(retellUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download Retell recording: ${response.status}`);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  // Determine source extension from Content-Type or URL
+  const contentType = response.headers.get('content-type') ?? '';
+  const srcExt = contentType.includes('mp4') || retellUrl.endsWith('.mp4') ? 'mp4'
+    : contentType.includes('mpeg') || retellUrl.endsWith('.mp3') ? 'mp3'
+    : contentType.includes('wav') || retellUrl.endsWith('.wav') ? 'wav'
+    : 'mp4'; // Retell default is mp4
+
+  await mkdir(getUploadsDir(), { recursive: true });
+
+  const tmpFilename = `${randomUUID()}.${srcExt}`;
+  const tmpPath = getUploadPath(tmpFilename);
+  await writeFile(tmpPath, buffer);
+
+  // Transcode to normalised m4a — same as EmberVoice (AAC 128k, 44100Hz, mono)
+  const outFilename = `${randomUUID()}.m4a`;
+  const outPath = getUploadPath(outFilename);
+
+  try {
+    await transcodeAudioToM4a({ inputPath: tmpPath, outputPath: outPath });
+  } finally {
+    await unlink(tmpPath).catch(() => undefined);
+  }
+
+  // Upload to object storage
+  await uploadLocalFileToObjectStorage({ filename: outFilename, filePath: outPath });
+
+  // Point the DB record at our own URL
+  await prisma.voiceCall.update({
+    where: { id: voiceCallId },
+    data: { recordingUrl: getUploadUrl(outFilename) },
+  });
+
+  console.log(`Retell recording migrated → ${getUploadUrl(outFilename)} (call ${voiceCallId})`);
 }
