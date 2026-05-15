@@ -586,6 +586,86 @@ function useReconciliationClaims(emberId: string | null | undefined) {
   return claims;
 }
 
+// ── Ember Stories (PUBLIC section) ───────────────────────────────────────────
+
+type EmberStoryRecord = {
+  id: string;
+  script: string;
+  facets: string[];
+  people: string[];
+  authorType: string | null;
+  authorName: string | null;
+  createdAt: string;
+};
+
+function useEmberStories(emberId: string | null | undefined) {
+  const [stories, setStories] = useState<EmberStoryRecord[] | null>(null);
+
+  useEffect(() => {
+    if (!emberId) { setStories(null); return; }
+    let cancelled = false;
+    fetch(`/api/embers/${emberId}/stories`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { stories?: EmberStoryRecord[] } | null) => {
+        if (cancelled) return;
+        setStories(d?.stories ?? []);
+      })
+      .catch(() => { if (!cancelled) setStories([]); });
+    return () => { cancelled = true; };
+  }, [emberId]);
+
+  return stories;
+}
+
+function StoriesCard({ stories }: { stories: EmberStoryRecord[] | null }) {
+  if (!stories || stories.length === 0) {
+    return (
+      <WikiCard>
+        <p className="text-white/30 text-sm">No stories composed yet.</p>
+      </WikiCard>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {stories.map((story) => {
+        const chips = [...story.facets, ...story.people];
+        return (
+          <div
+            key={story.id}
+            className="rounded-lg px-3 py-2.5 flex flex-col gap-1.5"
+            style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-white text-xs font-medium">
+                {story.authorName ?? 'Unknown'}
+                {story.authorType ? (
+                  <span className="text-white/40 font-normal ml-1">({story.authorType})</span>
+                ) : null}
+              </span>
+              <span className="text-white/30 text-[10px] flex-shrink-0">{relativeAt(story.createdAt)}</span>
+            </div>
+            {chips.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {chips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-full px-2 text-[10px] font-medium"
+                    style={{ background: 'var(--bg-drill-blocks)', color: 'rgba(255,255,255,0.5)', border: '1px solid var(--border-subtle)' }}
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <p className="text-white/60 text-xs leading-relaxed">&ldquo;{story.script}&rdquo;</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function claimSourceLabelFromMetadata(metadata: unknown): string {
   if (!metadata || typeof metadata !== 'object') return 'Someone';
   const label = (metadata as Record<string, unknown>).sourceLabel;
@@ -2380,6 +2460,7 @@ export default function KipemberWikiContent({
   );
 
   const wikiClaims = useReconciliationClaims(emberId);
+  const emberStories = useEmberStories(emberId);
   // null = still fetching; used to keep tracker badges grey until resolved
   const wikiClaimsLoading = wikiClaims === null;
   const whyClaims = useMemo(
@@ -3365,18 +3446,15 @@ export default function KipemberWikiContent({
           between people-on-the-account and anonymous viewers. */}
       <WikiGroup label="Public">
 
-      {/* Stories — placeholder for the upcoming public Stories feature. */}
       <WikiSection
         icon={<Sparkles size={17} />}
         title="Stories"
-        complete={false}
-        count={0}
+        complete={Boolean(emberStories && emberStories.length > 0)}
+        count={emberStories?.length ?? 0}
         collapsible
         defaultCollapsed
       >
-        <WikiCard>
-          <p className="text-white/30 text-sm">Stories coming soon.</p>
-        </WikiCard>
+        <StoriesCard stories={emberStories} />
       </WikiSection>
 
       {/* Guest Talk — share-link visitor conversations live here as their
