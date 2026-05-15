@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess } from '@/lib/ember';
+import { ensureEmberOwnerAccess, getEmberAccessType } from '@/lib/ember';
+import { getUserDisplayName } from '@/lib/user-name';
 
 import { prisma } from '@/lib/db';
 
@@ -29,6 +30,9 @@ export async function GET(
         facetsJson: true,
         peopleJson: true,
         durationSeconds: true,
+        authorType: true,
+        authorId: true,
+        authorName: true,
         createdAt: true,
       },
     });
@@ -40,6 +44,9 @@ export async function GET(
         facets: JSON.parse(s.facetsJson) as string[],
         people: JSON.parse(s.peopleJson) as string[],
         durationSeconds: s.durationSeconds,
+        authorType: s.authorType,
+        authorId: s.authorId,
+        authorName: s.authorName,
         createdAt: s.createdAt.toISOString(),
       })),
     });
@@ -73,6 +80,12 @@ export async function POST(
 
     if (!script) return NextResponse.json({ error: 'Script is required.' }, { status: 400 });
 
+    // Resolve author type (owner / contributor) and display name.
+    const accessType = await getEmberAccessType(auth.user.id, id);
+    const authorType = accessType === 'owner' ? 'owner' : 'contributor';
+    const authorId   = auth.user.id;
+    const authorName = getUserDisplayName(auth.user) || auth.user.email || 'Unknown';
+
     const story = await prisma.emberStory.create({
       data: {
         emberId: id,
@@ -80,6 +93,9 @@ export async function POST(
         facetsJson: JSON.stringify(facets),
         peopleJson: JSON.stringify(people),
         durationSeconds,
+        authorType,
+        authorId,
+        authorName,
       },
     });
 
@@ -89,6 +105,8 @@ export async function POST(
         facets,
         people,
         durationSeconds: story.durationSeconds,
+        authorType: story.authorType,
+        authorName: story.authorName,
         createdAt: story.createdAt.toISOString(),
       },
     });

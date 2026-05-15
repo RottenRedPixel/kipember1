@@ -419,9 +419,13 @@ model EmberStory {
   facetsJson      String   @default("[]")
   peopleJson      String   @default("[]")
   durationSeconds Int      @default(20)
+  authorType      String?  // 'owner' | 'contributor' | 'guest'
+  authorId        String?  // userId for owner/contributor, browserId for guest
+  authorName      String?  // display name at time of generation
   createdAt       DateTime @default(now())
 
   @@index([emberId, createdAt])
+  @@index([emberId, authorId])
 }
 
 model Friendship {
