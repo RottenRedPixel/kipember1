@@ -3365,6 +3365,20 @@ export default function KipemberWikiContent({
           between people-on-the-account and anonymous viewers. */}
       <WikiGroup label="Public">
 
+      {/* Stories — placeholder for the upcoming public Stories feature. */}
+      <WikiSection
+        icon={<Sparkles size={17} />}
+        title="Stories"
+        complete={false}
+        count={0}
+        collapsible
+        defaultCollapsed
+      >
+        <WikiCard>
+          <p className="text-white/30 text-sm">Stories coming soon.</p>
+        </WikiCard>
+      </WikiSection>
+
       {/* Guest Talk — share-link visitor conversations live here as their
           own block, separate from Story Circle (which is about
           owner/contributor/voice/call). Lifted out so the wiki keeps a
