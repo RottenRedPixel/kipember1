@@ -71,7 +71,7 @@ export async function POST(
           },
         },
         memoryClaims: {
-          where: { status: 'active', claimType: { in: facets } },
+          where: { claimType: { in: facets } },
           select: { claimType: true, subject: true, value: true, metadataJson: true },
           orderBy: { createdAt: 'asc' },
         },
