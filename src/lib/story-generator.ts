@@ -14,9 +14,10 @@ export async function generateStoryScript({
   location,
   taggedPeople,
   selectedPeople,
-  durationSeconds = 20,
+  durationSeconds = 7,
   claimsContext,
   contributorMemoriesContext,
+  wikiContent = null,
 }: {
   title: string;
   location: string | null;
@@ -25,6 +26,7 @@ export async function generateStoryScript({
   durationSeconds?: number;
   claimsContext: string;       // pre-formatted facet claims
   contributorMemoriesContext: string; // pre-formatted contributor memories
+  wikiContent?: string | null; // fallback when no specific claims matched
 }): Promise<string> {
   const targetWords = Math.round((durationSeconds / 60) * 150);
 
@@ -52,6 +54,7 @@ Rules:
     location ? `LOCATION\n${location}` : null,
     claimsContext ? `WHAT PEOPLE HAVE SAID\n${claimsContext}` : null,
     contributorMemoriesContext ? `CONTRIBUTOR MEMORIES\n${contributorMemoriesContext}` : null,
+    wikiContent && !claimsContext ? `MEMORY WIKI\n${wikiContent.slice(0, 4000)}` : null,
   ]
     .filter(Boolean)
     .join('\n\n');

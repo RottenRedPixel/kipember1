@@ -70,6 +70,7 @@ export async function POST(
             },
           },
         },
+        wiki: { select: { content: true } },
         memoryClaims: {
           where: { claimType: { in: facets } },
           select: { claimType: true, subject: true, value: true, metadataJson: true },
@@ -122,9 +123,12 @@ export async function POST(
           })
         : emberRecord.memoryClaims;
 
-    if (claimsToUse.length === 0) {
+    const wikiContent = emberRecord.wiki?.content ?? null;
+
+    // Only bail if there is truly nothing to work with
+    if (claimsToUse.length === 0 && !wikiContent) {
       return NextResponse.json(
-        { error: 'No material found for the selected facets and people.' },
+        { error: 'No material found for this ember yet.' },
         { status: 400 }
       );
     }
@@ -195,6 +199,7 @@ export async function POST(
       durationSeconds,
       claimsContext,
       contributorMemoriesContext,
+      wikiContent,
     });
 
     if (!script.trim()) {
