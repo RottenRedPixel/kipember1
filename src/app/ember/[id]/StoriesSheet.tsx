@@ -86,7 +86,7 @@ export default function StoriesSheet({
   const [composedScript, setComposedScript] = useState<string | null>(null);
 
   // Duration slider
-  const [durationSeconds, setDurationSeconds] = useState(20);
+  const [durationSeconds, setDurationSeconds] = useState(7);
 
   const savedRef = useRef(false); // prevent double-save per play session
 

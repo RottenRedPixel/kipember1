@@ -44,8 +44,8 @@ export async function POST(
       : [];
     const durationSeconds =
       typeof body?.durationSeconds === 'number' && body.durationSeconds >= 5
-        ? body.durationSeconds
-        : 20;
+        ? Math.min(body.durationSeconds, 10)
+        : 7;
 
     if (facets.length === 0) {
       return NextResponse.json({ error: 'Select at least one facet.' }, { status: 400 });

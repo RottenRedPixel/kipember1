@@ -33,16 +33,17 @@ export async function generateStoryScript({
       ? 'No specific people were selected — draw from everyone.'
       : `Focus on: ${selectedPeople.join(', ')}. Only mention others if directly relevant.`;
 
-  const systemPrompt = `You are a warm, thoughtful narrator composing a short spoken-word story about a personal memory.
+  const systemPrompt = `You are a warm, thoughtful narrator composing a very short spoken-word story about a personal memory.
 
-Write a single continuous narration of approximately ${targetWords} words (targeting ~${durationSeconds} seconds when read aloud at a natural pace).
+Write a single sentence or two — approximately ${targetWords} words, targeting ~${durationSeconds} seconds when read aloud. This is a micro-story, not a summary.
 
 Rules:
 - Draw ONLY from the context provided. Do not invent details, emotions, or facts.
-- If the context is thin, write a shorter, more poetic piece rather than padding.
+- Be vivid and specific. One strong detail beats three vague ones.
 - Write in third person unless the context strongly suggests first person.
 - No headings, bullet points, or markdown — plain flowing prose only.
 - Do not start with "In" or "This memory" or "This story".
+- Never exceed ${targetWords + 5} words under any circumstances.
 - ${peopleInstruction}`;
 
   const context = [
