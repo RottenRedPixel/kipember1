@@ -279,6 +279,8 @@ export default function StoriesSheet({
           next.delete('snapshot');
         }
       }
+      // Never leave the selection empty — fall back to snapshot.
+      if (next.size === 0) next.add('snapshot');
       return next;
     });
     // Changing selection invalidates the current composed script.
