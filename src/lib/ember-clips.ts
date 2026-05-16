@@ -190,19 +190,24 @@ export function parseVoiceMessageWords(transcriptObjectJson: string | null | und
 
 // ── Clip extraction prompt ────────────────────────────────────────────────────
 
-const CLIP_EXTRACTION_SYSTEM = `You are extracting memorable voice quotes from a memory conversation.
+const CLIP_EXTRACTION_SYSTEM = `You are extracting voice clips from a memory recording to capture the contributor's voice.
 
-Find 1–3 short quotes from the CONTRIBUTOR (not from Ember/agent) that are:
-- Vivid, specific, and personal — a detail only they would know
-- Emotionally resonant — joy, pride, tenderness, surprise
-- Complete thoughts — not mid-sentence fragments
+Find ALL verbatim quotes from the CONTRIBUTOR (not from Ember/agent) that contain any of:
+- A reason or motivation — why this moment/photo matters to them
+- An emotion or feeling — how they felt or feel about it
+- A story detail — something that happened, a specific memory or anecdote
+- A place — where something happened or a location they mention
+- A person — someone they name or describe
 
-Return JSON: {"clips": [{"title": "short label", "quote": "exact words spoken", "significance": "why this matters", "segmentIndex": 0, "canUseForTitle": false}]}
+Extract every distinct moment that qualifies — there is no cap. Even a single sentence counts if it captures one of the above.
+
+Return JSON: {"clips": [{"title": "short label (3–6 words)", "quote": "exact verbatim words from transcript", "significance": "which category: why / emotion / story / place / person", "segmentIndex": 0, "canUseForTitle": false}]}
 
 Rules:
-- quote must be verbatim from the transcript — do not paraphrase
+- quote must be verbatim from the transcript — do not paraphrase or summarise
+- quote should be the shortest span that captures the complete thought
 - canUseForTitle: true only if the quote could stand alone as an ember title
-- Return {"clips": []} if nothing qualifies`;
+- Return {"clips": []} only if the contributor said nothing meaningful`;
 
 // ── EmberCall clip extractor ──────────────────────────────────────────────────
 
