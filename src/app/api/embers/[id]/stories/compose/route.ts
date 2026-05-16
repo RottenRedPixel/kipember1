@@ -44,7 +44,7 @@ export async function POST(
       : [];
     const durationSeconds =
       typeof body?.durationSeconds === 'number' && body.durationSeconds >= 5
-        ? Math.min(body.durationSeconds, 10)
+        ? body.durationSeconds
         : 7;
 
     if (facets.length === 0 && people.length === 0) {

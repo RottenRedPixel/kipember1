@@ -72,7 +72,7 @@ export async function POST(
       : [];
     const durationSeconds =
       typeof body?.durationSeconds === 'number' && body.durationSeconds >= 5
-        ? Math.min(body.durationSeconds, 10)
+        ? body.durationSeconds
         : 7;
 
     // Load ember context + all clips in parallel
