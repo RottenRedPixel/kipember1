@@ -6,7 +6,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { createPortal } from 'react-dom';
 import {
   ArrowRightLeft,
-  Check,
   ChevronDown,
   Link2,
   CircleCheckBig,
@@ -21,7 +20,6 @@ import {
   Image as ImageIcon,
   Lightbulb,
   ListChecks,
-  LoaderCircle,
   Lock,
   LockKeyhole,
   Map as MapIcon,
@@ -34,7 +32,6 @@ import {
   Phone,
   Play,
   Plus,
-  RotateCw,
   ScanEye,
   ShieldUser,
   Sparkles,
@@ -97,6 +94,15 @@ import {
   initials,
   relativeAt,
 } from './wiki/utils';
+import {
+  AvatarCircle,
+  ReconciliationPill,
+  RefreshFooter,
+  WikiBadge,
+  WikiCard,
+  WikiGroup,
+  WikiSection,
+} from './wiki/atoms';
 
 function ClaimRow({
   name,
@@ -619,39 +625,6 @@ function PeopleMentionedCard({
   );
 }
 
-function AvatarCircle({
-  name,
-  avatarUrl,
-  size = 29,
-  bgColor,
-}: {
-  name: string;
-  avatarUrl?: string | null;
-  size?: number;
-  bgColor?: string;
-}) {
-  // No explicit color → deterministic pastel keyed on the person's name so
-  // their bubble looks the same everywhere (chat blocks, claim rows, tag
-  // chips, etc.). Initials read in white when the bg matches the orange
-  // owner swatch and in dark grey on the lighter pastel palette.
-  const fallbackBg = bgColor ?? pastelForContributor(name);
-  const initialsColor = fallbackBg === OWNER_AVATAR_BG ? '#ffffff' : '#1f2937';
-  return avatarUrl ? (
-    <img
-      src={avatarUrl}
-      alt={name}
-      className="rounded-full object-cover flex-shrink-0"
-      style={{ width: size, height: size }}
-    />
-  ) : (
-    <div
-      className="rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
-      style={{ width: size, height: size, background: fallbackBg, color: initialsColor }}
-    >
-      {initials(name)}
-    </div>
-  );
-}
 
 
 
@@ -953,107 +926,7 @@ function DeleteEmberCard({
   );
 }
 
-// Collapsible cluster of wiki sections. Tapping the label toggles the
-// whole group, including all sections inside it. Used for the five
-// bands (Identity, Curation, Observed, Conversations, Control).
-function WikiGroup({
-  label,
-  defaultCollapsed = false,
-  children,
-}: {
-  label: string;
-  defaultCollapsed?: boolean;
-  children: React.ReactNode;
-}) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  return (
-    <div className="flex flex-col gap-7">
-      <button
-        type="button"
-        onClick={() => setCollapsed((v) => !v)}
-        aria-expanded={!collapsed}
-        className="flex items-center gap-3 px-1 py-2 cursor-pointer w-full"
-        style={{ background: 'transparent', border: 'none' }}
-      >
-        <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
-        <span className="text-white/30 text-xs uppercase tracking-wider font-medium">
-          {label}
-        </span>
-        <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
-      </button>
-      {collapsed ? null : children}
-    </div>
-  );
-}
 
-function WikiBadge({
-  complete,
-  label,
-  tracksProgress = false,
-  count,
-  loading = false,
-}: {
-  complete: boolean;
-  label?: React.ReactNode;
-  // When true, the badge is one of the steps that feeds the universal
-  // ember progress tracker. We render a small white check inside the pill
-  // so contributors can see at a glance which sections actually move the
-  // progress bar.
-  tracksProgress?: boolean;
-  // For non-tracker badges only. When provided, the badge renders as
-  // "Collected N" with N highlighted white. count === 0 flips the pill
-  // grey to make it visually obvious nothing has been gathered yet.
-  count?: number;
-  // When true, data is still loading — render a neutral grey pill so the
-  // badge doesn't flash from "Not Complete" to "Complete" on initial load.
-  loading?: boolean;
-}) {
-  // Six palettes:
-  //   loading                                                       → grey "—"
-  //   tracksProgress + complete (a tracker step done)              → green "Complete" + check
-  //   tracksProgress + !complete + custom label (e.g. "Need 1 …")  → orange
-  //   tracksProgress + !complete + default                         → red "Not Complete"
-  //   !tracksProgress + count === 0                                → grey "Collected 0"
-  //   !tracksProgress + count > 0 (or no count given)              → blue "Collected [N]"
-  const hasCustomLabel = label != null;
-  // Each background pre-composites the 15% alpha tint against the wiki's
-  // bg-screen so the pill stays fully opaque even when the wiki overlay
-  // itself is partially transparent. Visual matches the original tinted
-  // pills exactly in both dark and light themes.
-  const grey = { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(148,163,184) 15%)', fg: '#94a3b8' };
-  const palette = loading
-    ? grey
-    : tracksProgress
-    ? complete
-      ? { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(34,197,94) 15%)', fg: 'var(--color-success)' }
-      : hasCustomLabel
-        ? { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(249,115,22) 15%)', fg: 'var(--color-accent)' }
-        : { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(239,68,68) 15%)', fg: '#f87171' }
-    : count === 0
-      ? grey
-      : { bg: 'color-mix(in srgb, var(--bg-sheets) 85%, rgb(59,130,246) 15%)', fg: '#60a5fa' };
-  const collectedDefault =
-    typeof count === 'number' ? (
-      <>
-        Collected <span className="text-white">{count}</span>
-      </>
-    ) : (
-      'Collected'
-    );
-  return (
-    <span
-      className="text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 inline-flex items-center gap-1"
-      style={{ background: palette.bg, color: palette.fg }}
-    >
-      {!loading && tracksProgress && complete ? (
-        <Check size={11} strokeWidth={3} color="#ffffff" aria-hidden />
-      ) : null}
-      {loading ? (
-        <LoaderCircle size={11} strokeWidth={2.5} className="animate-spin" aria-hidden />
-      ) : (label ?? (tracksProgress ? (complete ? 'Complete' : 'Not Complete') : collectedDefault))}
-    </span>
-  );
-}
 
 // Universal ember progress bar — sits above the IDENTITY group at the
 // top of the wiki. One green fill driven by completed tracker steps;
@@ -1168,143 +1041,6 @@ function EmberProgressBar({
   );
 }
 
-function WikiSection({
-  icon,
-  title,
-  complete,
-  badgeLabel,
-  editHref,
-  onEdit,
-  collapsible = false,
-  defaultCollapsed = false,
-  hideBadge = false,
-  tracksProgress = false,
-  count,
-  id,
-  loading = false,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  complete: boolean;
-  badgeLabel?: React.ReactNode;
-  editHref?: string;
-  // When onEdit is set, the pencil renders as a button that opens the
-  // in-page edit overlay instead of navigating. Takes precedence over
-  // editHref so sections can opt into the overlay one at a time.
-  onEdit?: () => void;
-  collapsible?: boolean;
-  defaultCollapsed?: boolean;
-  // Sections under the Control group don't have a meaningful "complete"
-  // state — Download, Privacy, and Delete are actions, not progress
-  // milestones — so they suppress the green/red/orange badge entirely.
-  hideBadge?: boolean;
-  // True for the badges that feed the universal ember progress tracker
-  // (the 11-item checklist). Rendered with a small white check inside the
-  // pill so it's visually obvious which sections move the progress bar.
-  tracksProgress?: boolean;
-  // For non-tracker sections: the number of collected items. Drives the
-  // "Collected N" label and flips the pill grey when N === 0.
-  count?: number;
-  // DOM id used by the progress-bar chips to scrollIntoView. Only
-  // set on tracker sections (slugs match the trackerSteps list).
-  id?: string;
-  // When true, badge stays grey while async data is still loading.
-  loading?: boolean;
-  children: React.ReactNode;
-}) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  const isHidden = collapsible && collapsed;
-
-  const headerInner = (
-    <>
-      <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
-      <h3 className="text-white font-medium text-base">{title}</h3>
-      {collapsible ? (
-        <ChevronDown
-          size={14}
-          color="var(--text-secondary)"
-          style={{
-            transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.15s ease',
-          }}
-        />
-      ) : null}
-    </>
-  );
-
-  return (
-    <div id={id} className="flex flex-col gap-3 scroll-mt-4">
-      <div className="flex items-center justify-between">
-        {collapsible ? (
-          <button
-            type="button"
-            onClick={() => setCollapsed((value) => !value)}
-            aria-expanded={!collapsed}
-            className="flex items-center gap-2 cursor-pointer"
-            style={{ background: 'transparent', border: 'none', padding: 0, minHeight: 44 }}
-          >
-            {headerInner}
-          </button>
-        ) : (
-          <div className="flex items-center gap-2">{headerInner}</div>
-        )}
-        <div className="flex items-center gap-2">
-          {editHref ? (
-            <Link
-              href={editHref}
-              aria-label={`Edit ${title}`}
-              className="flex items-center justify-center rounded-full can-hover"
-              style={{
-                width: 28,
-                height: 28,
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              <PencilLine size={13} />
-            </Link>
-          ) : null}
-          {hideBadge ? null : (
-            <WikiBadge
-              complete={complete}
-              label={badgeLabel}
-              tracksProgress={tracksProgress}
-              count={count}
-              loading={loading}
-            />
-          )}
-        </div>
-      </div>
-      {isHidden ? null : onEdit ? (
-        <button
-          type="button"
-          onClick={onEdit}
-          className="w-full text-left cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150"
-          style={{ background: 'none', border: 'none', padding: 0 }}
-        >
-          {children}
-        </button>
-      ) : children}
-    </div>
-  );
-}
-
-function WikiCard({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
-  return (
-    <div
-      onClick={onClick}
-      className={`rounded-xl px-4 py-3.5 flex flex-col gap-1 ${onClick ? 'cursor-pointer [@media(hover:hover)]:hover:brightness-110 transition-[filter] duration-150' : ''}`}
-      style={{
-        background: 'var(--bg-drill-blocks)',
-        border: '1px solid var(--border-subtle)',
-      }}
-    >
-      {children}
-    </div>
-  );
-}
 
 // Place card with a collapse toggle. Collapsed (default) shows just the
 // place name; expanded shows exact address, coordinates, and source.
@@ -1399,24 +1135,6 @@ type ChatBlock = {
     createdAt: string;
   }>;
 };
-
-function RefreshFooter({ onRefresh }: { onRefresh?: () => unknown }) {
-  if (!onRefresh) return null;
-  return (
-    <>
-      <div className="mt-3 h-px" style={{ background: 'var(--border-subtle)' }} />
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); void onRefresh(); }}
-        className="flex flex-col items-center gap-1 mx-auto mt-2 cursor-pointer text-white/40 text-[10px] font-semibold uppercase tracking-wider [@media(hover:hover)]:hover:text-white/70 transition-colors"
-        style={{ background: 'transparent', border: 'none', padding: '4px 8px' }}
-      >
-        <RotateCw size={14} strokeWidth={2} />
-        Refresh
-      </button>
-    </>
-  );
-}
 
 // Story Circle entries default to collapsed so the wiki opens compact.
 // Click the header row to expand and read the messages.
@@ -1852,41 +1570,6 @@ function AudioClipRow({ clip }: { clip: AudioClipItem }) {
         preload="none"
       />
     </div>
-  );
-}
-
-function ReconciliationPill({
-  children,
-  tone = 'neutral',
-}: {
-  children: React.ReactNode;
-  tone?: 'neutral' | 'warn' | 'good';
-}) {
-  const stylesByTone = {
-    neutral: {
-      background: 'var(--bg-input)',
-      color: 'rgba(255,255,255,0.55)',
-      border: '1px solid var(--border-subtle)',
-    },
-    warn: {
-      background: 'var(--bubble-chat-bg)',
-      color: 'rgba(253,186,116,0.95)',
-      border: '1px solid var(--bubble-chat-border)',
-    },
-    good: {
-      background: 'var(--color-success-bg)',
-      color: 'rgba(134,239,172,0.95)',
-      border: '1px solid var(--color-success-border)',
-    },
-  } as const;
-
-  return (
-    <span
-      className="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em]"
-      style={stylesByTone[tone]}
-    >
-      {children}
-    </span>
   );
 }
 
