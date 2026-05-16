@@ -54,420 +54,49 @@ import TagPeopleSlider from '@/components/kipember/tend/TagPeopleSlider';
 import { getPreviewMediaUrl } from '@/lib/media';
 import { usePlaceResolution } from '@/components/kipember/usePlaceResolution';
 import { pastelForContributor, pastelForContributorIdentity } from '@/lib/contributor-color';
-import { isAudioLikeFilename, type EmberMediaType } from '@/lib/media';
+import { isAudioLikeFilename } from '@/lib/media';
 import { getUserDisplayName } from '@/lib/user-name';
 import { useToast } from '@/lib/toast';
+import type {
+  KipemberAttachment,
+  KipemberContributor,
+  KipemberEmberCallClip,
+  KipemberEmberVoiceClip,
+  KipemberTag,
+  KipemberWikiDetail,
+} from './wiki/types';
 
-type ConversationMessage = {
-  id: string;
-  role?: string | null;
-  content: string;
-  createdAt: string;
-  source?: string | null;
-  questionType?: string | null;
-};
+// Re-export public types so existing import paths keep working.
+export type {
+  KipemberAttachment,
+  KipemberContributor,
+  KipemberEmberCallClip,
+  KipemberEmberVoiceClip,
+  KipemberTag,
+  KipemberWikiDetail,
+} from './wiki/types';
+import type {
+  EmberStoryRecord,
+  ReconciliationClaim,
+} from './wiki/hooks';
+import {
+  useEmberStories,
+  useReconciliationClaims,
+  useTrackerConfig,
+} from './wiki/hooks';
 
-type ConversationResponse = {
-  id: string;
-  questionType?: string | null;
-  question?: string | null;
-  answer: string;
-  source?: string | null;
-  createdAt: string;
-};
-
-type ContributorVoiceCall = {
-  id: string;
-  createdAt: string;
-  startedAt: string | null;
-  callSummary: string | null;
-  emberSession?: {
-    id: string;
-    messages: ConversationMessage[];
-  } | null;
-};
-
-type AnalysisSceneInsights = {
-  peopleAndDemographics?: {
-    numberOfPeopleVisible?: number | null;
-    estimatedAgeRanges?: string[];
-    genderPresentation?: string | null;
-    clothingAndStyle?: string | null;
-    bodyLanguageAndExpressions?: string | null;
-    spatialRelationships?: string | null;
-    relationshipInference?: string | null;
-  } | null;
-  settingAndEnvironment?: {
-    environmentType?: string | null;
-    locationType?: string | null;
-    timeOfDayAndLighting?: string | null;
-    lightingDescription?: string | null;
-    weatherConditions?: string | null;
-    backgroundDetails?: string | null;
-    architectureOrLandscape?: string | null;
-  } | null;
-  activitiesAndContext?: {
-    whatAppearsToBeHappening?: string | null;
-    socialDynamics?: string | null;
-    interactionsBetweenPeople?: string | null;
-    eventType?: string | null;
-    visibleActivities?: string[];
-  } | null;
-  emotionalContext?: {
-    overallMoodAndAtmosphere?: string | null;
-    emotionalExpressions?: string | null;
-    individualEmotions?: string | null;
-    energyLevel?: string | null;
-    socialEnergy?: string | null;
-  } | null;
-} | null;
-
-export type KipemberContributor = {
-  id: string;
-  userId?: string | null;
-  name: string | null;
-  email: string | null;
-  phoneNumber: string | null;
-  avatarColor?: string | null;
-  inviteSent?: boolean;
-  token?: string | null;
-  createdAt: string;
-  user?: {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string;
-    phoneNumber: string | null;
-    avatarFilename?: string | null;
-    hasPassword?: boolean;
-  } | null;
-  voiceCalls?: ContributorVoiceCall[];
-  conversation: {
-    messages: ConversationMessage[];
-    responses?: ConversationResponse[];
-  } | null;
-};
-
-export type KipemberTag = {
-  id: string;
-  label: string;
-  leftPct?: number | null;
-  topPct?: number | null;
-  widthPct?: number | null;
-  heightPct?: number | null;
-  createdAt?: string | Date;
-  createdBy?: {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string;
-    avatarUrl: string | null;
-  } | null;
-};
-
-export type KipemberAttachment = {
-  id: string;
-  filename: string;
-  mediaType: EmberMediaType;
-  posterFilename: string | null;
-  durationSeconds: number | null;
-  originalName: string;
-  description: string | null;
-  analysisText?: string | null;
-  createdAt: string;
-};
-
-export type KipemberEmberCallClip = {
-  id: string;
-  contributorName: string;
-  title: string;
-  quote: string;
-  significance: string | null;
-  audioUrl: string | null;
-  startMs: number | null;
-  endMs: number | null;
-  createdAt: string;
-};
-
-export type KipemberEmberVoiceClip = {
-  id: string;
-  emberMessageId: string;
-  contributorName: string;
-  title: string;
-  quote: string;
-  significance: string | null;
-  speaker: string | null;
-  audioUrl: string;
-  startMs: number;
-  endMs: number;
-  createdAt: string;
-};
-
-export type KipemberWikiDetail = {
-  id: string;
-  filename: string;
-  mediaType: EmberMediaType;
-  posterFilename: string | null;
-  title: string | null;
-  titleUpdatedAt?: string | null;
-  originalName: string;
-  description: string | null;
-  canManage?: boolean;
-  createdAt: string;
-  // Per-ember privacy / sharing flags. Surfaced by the wiki's Control
-  // group as inline toggles — flipping either calls PATCH /api/embers
-  // immediately and the parent refreshes detail.
-  shareToNetwork?: boolean;
-  keepPrivate?: boolean;
-  snapshot?: {
-    script: string;
-  } | null;
-  owner?: {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string;
-    phoneNumber?: string | null;
-    avatarFilename?: string | null;
-    createdAt?: string | null;
-  } | null;
-  analysis: {
-    status?: string;
-    summary: string | null;
-    visualDescription?: string | null;
-    metadataSummary?: string | null;
-    mood?: string | null;
-    activities?: string[];
-    sceneInsights?: AnalysisSceneInsights;
-    capturedAt: string | null;
-    updatedAt?: string;
-    latitude?: number | null;
-    longitude?: number | null;
-    confirmedLocation?: {
-      label?: string;
-      detail?: string | null;
-      kind?: string;
-      latitude?: number | null;
-      longitude?: number | null;
-      confirmedAt?: string | null;
-    } | null;
-    noContributors?: boolean | null;
-    peopleObserved?: Array<unknown> | null;
-  } | null;
-  contributors: KipemberContributor[];
-  attachments: KipemberAttachment[];
-  tags?: KipemberTag[];
-  emberCallClips?: KipemberEmberCallClip[];
-  emberVoiceClips?: KipemberEmberVoiceClip[];
-  chatBlocks?: Array<{
-    personName: string;
-    avatarUrl?: string | null;
-    isOwner?: boolean;
-    personUserId?: string | null;
-    personEmail?: string | null;
-    personPhoneNumber?: string | null;
-    personAvatarColor?: string | null;
-    messages: Array<{
-      role: string;
-      content: string;
-      source: string;
-      imageFilename?: string | null;
-      audioUrl?: string | null;
-      createdAt: string;
-    }>;
-  }>;
-  voiceBlocks?: Array<{
-    personName: string;
-    avatarUrl: string | null;
-    isOwner: boolean;
-    personUserId?: string | null;
-    personEmail?: string | null;
-    personPhoneNumber?: string | null;
-    personAvatarColor?: string | null;
-    messages: Array<{
-      role: string;
-      content: string;
-      audioUrl: string | null;
-      createdAt: string;
-    }>;
-  }>;
-  callBlocks?: Array<{
-    personName: string;
-    avatarUrl: string | null;
-    personUserId?: string | null;
-    personEmail?: string | null;
-    personPhoneNumber?: string | null;
-    personAvatarColor?: string | null;
-    voiceCallId: string;
-    recordingUrl: string | null;
-    startedAt: string | null;
-    endedAt: string | null;
-    status: string;
-    segments: Array<{
-      index: number;
-      role: string;
-      speaker: string;
-      content: string;
-      startMs: number | null;
-      endMs: number | null;
-    }>;
-  }>;
-  guestChatBlock?: {
-    // One entry per anonymous share-link visitor (keyed by the
-    // kb-guest-browser cookie). Each visitor can have a chat timeline
-    // and a voice timeline; either may be empty but at least one is
-    // non-empty for the visitor to land here.
-    visitors: Array<{
-      visitorId: string;
-      firstMessageAt: string;
-      chatMessages: Array<{
-        role: string;
-        content: string;
-        source: string;
-        imageFilename?: string | null;
-        audioUrl?: string | null;
-        createdAt: string;
-      }>;
-      voiceMessages: Array<{
-        role: string;
-        content: string;
-        audioUrl: string | null;
-        createdAt: string;
-      }>;
-    }>;
-    sessionCount: number;
-  } | null;
-};
-
-type ReconciliationClaim = {
-  id: string;
-  claimType: string;
-  subject: string;
-  value: string;
-  normalizedValue: string;
-  rawText: string | null;
-  confidence: number | null;
-  evidenceKind: string;
-  resolutionMode: string;
-  status: string;
-  questionType: string | null;
-  source: string;
-  contributorId: string | null;
-  userId: string | null;
-  metadata: unknown;
-  createdAt: string;
-};
-
-type ReconciliationConflict = {
-  id: string;
-  claimType: string;
-  subject: string;
-  summary: string;
-  status: string;
-  resolutionMode: string;
-  resolutionValue: string | null;
-  resolutionNote: string | null;
-  outreachQuestion: string | null;
-  confidence: number | null;
-  resolvedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  claims: Array<{
-    stance: string;
-    claim: ReconciliationClaim;
-  }>;
-};
-
-type ReconciliationResponse = {
-  claims: ReconciliationClaim[];
-  conflicts: ReconciliationConflict[];
-};
-
-type ReconciliationRefreshResponse = {
-  processedMessages: number;
-  claimsCreated: number;
-  conflictsCreated: number;
-  openConflictCount: number;
-};
-
-function formatLongDate(value: string | null | undefined) {
-  if (!value) {
-    return 'Unknown';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-function initials(value: string) {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-// Identity bundle a single resolver hands back to every avatar surface.
-// One person → one record, regardless of where they're being rendered.
-// userId / email / phoneNumber drive the pool-stable color via
-// pastelForContributorIdentity; avatarUrl wins over color when present.
-type PersonIdentity = {
-  userId: string | null;
-  email: string | null;
-  phoneNumber: string | null;
-  id: string | null;
-  avatarColor?: string | null;
-  avatarUrl: string | null;
-  // Owner gets a dedicated orange swatch so their avatar stays consistent
-  // with the AppHeader, /account, and the wiki Owner card. Without this
-  // flag the owner falls into the pool-key pastel and breaks the visual
-  // continuity their other surfaces establish.
-  isOwner?: boolean;
-};
-
-// Single source for the owner's bubble color. Matches AppHeader and the
-// Account avatar so the owner reads as the same person on every surface.
-const OWNER_AVATAR_BG = 'color-mix(in srgb, var(--color-accent) 60%, transparent)';
-
-// Pastels are pale enough that dark text reads cleanly. The owner's
-// orange tint is dark enough that white text reads better — same
-// treatment AppHeader and the /account avatar use.
-function avatarStylesForPerson(person: PersonIdentity | null, fallbackName: string) {
-  if (person?.isOwner) return { background: OWNER_AVATAR_BG, color: '#ffffff' };
-  if (person) return { background: person.avatarColor ?? pastelForContributorIdentity(person), color: '#1f2937' };
-  return { background: pastelForContributor(fallbackName), color: '#1f2937' };
-}
-
-// Backwards-compat alias for sites that only need the bg.
-function colorForPerson(person: PersonIdentity | null, fallbackName: string) {
-  return avatarStylesForPerson(person, fallbackName).background;
-}
-
-function relativeAt(value: string) {
-  const then = new Date(value).getTime();
-  if (Number.isNaN(then)) return '';
-  const diff = Date.now() - then;
-  const m = Math.round(diff / 60_000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.round(h / 24);
-  if (d < 7) return `${d}d`;
-  return `${Math.round(d / 7)}w`;
-}
+import type { FindAvatar, FindPerson, PersonIdentity } from './wiki/utils';
+import {
+  OWNER_AVATAR_BG,
+  avatarStylesForPerson,
+  buildStructuredAnalysisText,
+  claimSourceLabelFromMetadata,
+  colorForPerson,
+  formatAnalysisFooterDate,
+  formatLongDate,
+  initials,
+  relativeAt,
+} from './wiki/utils';
 
 function ClaimRow({
   name,
@@ -533,106 +162,7 @@ function ClaimRow({
   );
 }
 
-// Single resolver passed to every avatar surface. Returns the full
-// identity bundle (or null if we don't recognize the name). Callers use
-// person.avatarUrl when present, otherwise pastelForContributorIdentity
-// for the color so the same person always lands on the same swatch.
-type FindPerson = (name: string) => PersonIdentity | null;
-// Backwards-compat alias for older call sites that only need the URL.
-type FindAvatar = (name: string) => string | null;
-
-type TrackerStepConfig = {
-  slug: string;
-  ownerRequired: boolean;
-  contributorMin: number | null;
-};
-
-// Pulls the current admin tracker config (which slugs are enabled +
-// completion rule per step). Returns null while loading — caller treats
-// as "show all enabled steps with default rules" until we know better.
-function useTrackerConfig() {
-  const [config, setConfig] = useState<TrackerStepConfig[] | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/progress-tracker', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { steps?: TrackerStepConfig[] } | null) => {
-        if (cancelled) return;
-        if (data?.steps) {
-          setConfig(data.steps);
-        }
-      })
-      .catch(() => {
-        // Silently keep null — wiki falls back to showing all steps.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return config;
-}
-
-function useReconciliationClaims(emberId: string | null | undefined) {
-  const [claims, setClaims] = useState<ReconciliationClaim[] | null>(null);
-
-  useEffect(() => {
-    if (!emberId) {
-      setClaims(null);
-      return;
-    }
-
-    let cancelled = false;
-    fetch(`/api/embers/${emberId}/reconciliation`, { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: ReconciliationResponse | null) => {
-        if (cancelled) return;
-        setClaims(data?.claims ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setClaims([]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [emberId]);
-
-  return claims;
-}
-
 // ── Ember Stories (PUBLIC section) ───────────────────────────────────────────
-
-type EmberStoryRecord = {
-  id: string;
-  script: string;
-  facets: string[];
-  people: string[];
-  authorType: string | null;
-  authorName: string | null;
-  createdAt: string;
-};
-
-function useEmberStories(emberId: string | null | undefined) {
-  const [stories, setStories] = useState<EmberStoryRecord[] | null>(null);
-
-  useEffect(() => {
-    if (!emberId) { setStories(null); return; }
-    let cancelled = false;
-    fetch(`/api/embers/${emberId}/stories`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { stories?: EmberStoryRecord[] } | null) => {
-        if (cancelled) return;
-        setStories(d?.stories ?? []);
-      })
-      .catch(() => { if (!cancelled) setStories([]); });
-    return () => { cancelled = true; };
-  }, [emberId]);
-
-  return stories;
-}
 
 function StoriesCard({ stories }: { stories: EmberStoryRecord[] | null }) {
   if (!stories || stories.length === 0) {
@@ -683,11 +213,6 @@ function StoriesCard({ stories }: { stories: EmberStoryRecord[] | null }) {
   );
 }
 
-function claimSourceLabelFromMetadata(metadata: unknown): string {
-  if (!metadata || typeof metadata !== 'object') return 'Someone';
-  const label = (metadata as Record<string, unknown>).sourceLabel;
-  return typeof label === 'string' && label.trim() ? label.trim() : 'Someone';
-}
 
 function VoiceBlockCard({
   block,
@@ -1128,204 +653,7 @@ function AvatarCircle({
   );
 }
 
-function formatLocationLine(
-  label: string | null | undefined,
-  detail: string | null | undefined
-) {
-  const parts = [label, detail]
-    .map((value) => (typeof value === 'string' ? value.trim() : ''))
-    .filter(Boolean);
 
-  return parts.length > 0 ? parts.join(', ') : null;
-}
-
-function joinDistinct(values: Array<string | null | undefined>) {
-  const seen = new Set<string>();
-  const result: string[] = [];
-
-  for (const value of values) {
-    const trimmed = typeof value === 'string' ? value.trim() : '';
-    if (!trimmed) {
-      continue;
-    }
-
-    const normalized = trimmed.toLowerCase();
-    if (seen.has(normalized)) {
-      continue;
-    }
-
-    seen.add(normalized);
-    result.push(trimmed);
-  }
-
-  return result;
-}
-
-function formatAnalysisList(values: string[] | undefined) {
-  const items = joinDistinct(values || []);
-  return items.length > 0 ? items.join(', ') : null;
-}
-
-function formatAnalysisFooterDate(value: string | null | undefined) {
-  if (!value) {
-    return null;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function appendAnalysisLine(
-  lines: string[],
-  label: string,
-  value: string | null | undefined
-) {
-  const trimmed = typeof value === 'string' ? value.trim() : '';
-  if (trimmed) {
-    lines.push(`- **${label}:** ${trimmed}`);
-  }
-}
-
-function buildStructuredAnalysisText(
-  analysis: KipemberWikiDetail['analysis']
-) {
-  const sceneInsights = analysis?.sceneInsights;
-  const people = sceneInsights?.peopleAndDemographics;
-  const setting = sceneInsights?.settingAndEnvironment;
-  const activities = sceneInsights?.activitiesAndContext;
-  const emotional = sceneInsights?.emotionalContext;
-
-  const numberOfPeople =
-    typeof people?.numberOfPeopleVisible === 'number'
-      ? `${people.numberOfPeopleVisible}`
-      : null;
-  const ageRanges = formatAnalysisList(people?.estimatedAgeRanges);
-  const visibleActivities = formatAnalysisList(activities?.visibleActivities);
-  const relationships = joinDistinct([
-    people?.relationshipInference,
-    people?.spatialRelationships,
-  ]).join('. ');
-  const background = joinDistinct([
-    setting?.backgroundDetails,
-    setting?.architectureOrLandscape,
-  ]).join('. ');
-  const overallMood = joinDistinct([
-    emotional?.overallMoodAndAtmosphere,
-    analysis?.mood,
-  ]).join('. ');
-  const socialDynamics = joinDistinct([
-    activities?.socialDynamics,
-    activities?.interactionsBetweenPeople,
-    emotional?.socialEnergy,
-  ]).join('. ');
-  const summary = analysis?.summary || null;
-
-  const hasStructuredContent = Boolean(
-    numberOfPeople ||
-      ageRanges ||
-      people?.genderPresentation ||
-      people?.clothingAndStyle ||
-      people?.bodyLanguageAndExpressions ||
-      relationships ||
-      setting?.locationType ||
-      setting?.timeOfDayAndLighting ||
-      background ||
-      activities?.whatAppearsToBeHappening ||
-      activities?.eventType ||
-      visibleActivities ||
-      overallMood ||
-      emotional?.emotionalExpressions ||
-      socialDynamics ||
-      summary
-  );
-
-  if (!hasStructuredContent) {
-    return [
-      analysis?.summary,
-      analysis?.visualDescription,
-      analysis?.metadataSummary,
-    ]
-      .filter((value): value is string => Boolean(value && value.trim()))
-      .join('\n\n');
-  }
-
-  const sections: string[] = [];
-
-  const peopleLines: string[] = [];
-  appendAnalysisLine(peopleLines, 'Number of People', numberOfPeople);
-  appendAnalysisLine(peopleLines, 'Estimated Age Ranges', ageRanges);
-  appendAnalysisLine(peopleLines, 'Gender', people?.genderPresentation);
-  appendAnalysisLine(peopleLines, 'Clothing', people?.clothingAndStyle);
-  appendAnalysisLine(peopleLines, 'Body Language', people?.bodyLanguageAndExpressions);
-  appendAnalysisLine(peopleLines, 'Relationships', relationships);
-  if (peopleLines.length > 0) {
-    sections.push('**PEOPLE:**');
-    sections.push(...peopleLines);
-  }
-
-  const settingLines: string[] = [];
-  appendAnalysisLine(
-    settingLines,
-    'Location Type',
-    setting?.locationType || setting?.environmentType
-  );
-  appendAnalysisLine(
-    settingLines,
-    'Time of Day',
-    setting?.timeOfDayAndLighting || setting?.lightingDescription
-  );
-  appendAnalysisLine(settingLines, 'Background', background);
-  if (settingLines.length > 0) {
-    sections.push('');
-    sections.push('**SETTING & ENVIRONMENT:**');
-    sections.push(...settingLines);
-  }
-
-  const activityLines: string[] = [];
-  appendAnalysisLine(
-    activityLines,
-    "What's Happening",
-    activities?.whatAppearsToBeHappening || visibleActivities
-  );
-  appendAnalysisLine(activityLines, 'Event Type', activities?.eventType);
-  if (activityLines.length > 0) {
-    sections.push('');
-    sections.push('**ACTIVITIES & CONTEXT:**');
-    sections.push(...activityLines);
-  }
-
-  const emotionalLines: string[] = [];
-  appendAnalysisLine(emotionalLines, 'Overall Mood', overallMood);
-  appendAnalysisLine(
-    emotionalLines,
-    'Emotional Expressions',
-    emotional?.emotionalExpressions || emotional?.individualEmotions
-  );
-  appendAnalysisLine(emotionalLines, 'Social Dynamics', socialDynamics);
-  if (emotionalLines.length > 0) {
-    sections.push('');
-    sections.push('**EMOTIONAL CONTEXT:**');
-    sections.push(...emotionalLines);
-  }
-
-  const summaryLines: string[] = [];
-  appendAnalysisLine(summaryLines, 'Summary', summary);
-  if (summaryLines.length > 0) {
-    sections.push('');
-    sections.push('**SUMMARY:**');
-    sections.push(...summaryLines);
-  }
-
-  return sections.join('\n');
-}
 
 // Per-block collapsible card for the Image Analysis section. Header shows
 // the thumbnail + filename and toggles open/closed independently of the
@@ -2527,37 +1855,6 @@ function AudioClipRow({ clip }: { clip: AudioClipItem }) {
   );
 }
 
-function getSourceName(claim: ReconciliationClaim) {
-  const metadata = claim.metadata;
-  if (
-    metadata &&
-    typeof metadata === 'object' &&
-    'sourceLabel' in metadata &&
-    typeof metadata.sourceLabel === 'string' &&
-    metadata.sourceLabel.trim()
-  ) {
-    return metadata.sourceLabel.trim();
-  }
-
-  return 'Contributor';
-}
-
-function formatClaimType(value: string) {
-  return value
-    .split('_')
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function formatConfidence(value: number | null) {
-  if (typeof value !== 'number') {
-    return null;
-  }
-
-  return `${Math.round(value * 100)}% confidence`;
-}
-
 function ReconciliationPill({
   children,
   tone = 'neutral',
@@ -2592,23 +1889,6 @@ function ReconciliationPill({
     </span>
   );
 }
-
-async function fetchReconciliationState(emberId: string, signal?: AbortSignal): Promise<ReconciliationResponse> {
-  const response = await fetch(`/api/embers/${emberId}/reconciliation`, {
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to load reconciliation state');
-  }
-
-  const payload = (await response.json()) as ReconciliationResponse;
-  return {
-    claims: Array.isArray(payload.claims) ? payload.claims : [],
-    conflicts: Array.isArray(payload.conflicts) ? payload.conflicts : [],
-  };
-}
-
 
 const TAG_COLORS = ['var(--color-accent)', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#ef4444'];
 
