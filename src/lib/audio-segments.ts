@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { extractAudioClipToM4a, transcodeAudioToM4a } from '@/lib/audio-processing';
 import { prisma } from '@/lib/db';
-import { getUploadPath, getUploadsDir } from '@/lib/uploads';
+import { getUploadFallbackUrl, getUploadPath, getUploadsDir } from '@/lib/uploads';
 
 const AUDIO_SEGMENT_VERSION = 'v2';
 
@@ -76,8 +76,19 @@ export async function resolveAudioSourceForMedia(
   }
 
   if (voiceMessageClip?.audioFilename) {
+    // Prefer local disk (fast). If the file was uploaded to R2 and the local
+    // copy is gone (e.g. after a Render restart), fall back to the hosted URL
+    // so ffmpeg can fetch directly from the uploads API (which reads from R2).
+    const localPath = getUploadPath(voiceMessageClip.audioFilename);
+    let source = localPath;
+    try {
+      await fs.access(localPath);
+    } catch {
+      const fallbackUrl = getUploadFallbackUrl(voiceMessageClip.audioFilename);
+      if (fallbackUrl) source = fallbackUrl;
+    }
     return {
-      source: getUploadPath(voiceMessageClip.audioFilename),
+      source,
       fallbackStartMs: voiceMessageClip.startMs,
       fallbackEndMs: voiceMessageClip.endMs,
     };
