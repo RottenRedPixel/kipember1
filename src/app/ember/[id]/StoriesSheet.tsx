@@ -151,24 +151,52 @@ export default function StoriesSheet({
     return SNAPSHOT_FACET.vizColor;  // nothing selected — default orange
   }, [facets, selectedKeys]);
 
-  // In playlist mode composedScript stays null, so derive display text from
-  // the narration segments inside composedBlocks (voice blocks only — media
-  // blocks are audio-only and don't produce readable on-screen text).
+  // Single-script display (snapshot / compose modes) — flat text split into lines.
   const activeScript = useMemo(() => {
     if (composedScript) return composedScript;
-    if (composedBlocks) {
-      type B = { type: string; content?: string; order?: number };
-      return (composedBlocks as B[])
-        .filter((b) => b.type === 'voice' && b.content)
-        .sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)))
-        .map((b) => b.content as string)
-        .join(' ')
-        .trim() || null;
-    }
     return null;
-  }, [composedScript, composedBlocks]);
+  }, [composedScript]);
   const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
-  const shouldAnimate = playbackState === 'playing' && !done;
+
+  // Playlist mode: ordered segments with estimated cumulative audio start times.
+  // Narrator blocks use ~150 WPM; clip blocks use actual clip length when
+  // available, otherwise ~120 WPM estimate.
+  const displaySegments = useMemo(() => {
+    if (!composedBlocks) return null;
+    type B = {
+      type: string;
+      content?: string;
+      speaker?: string;
+      quote?: string;
+      clipStartMs?: number;
+      clipEndMs?: number;
+      order?: number;
+    };
+    let cumSec = 0;
+    const segs: Array<{ text: string; speaker?: string; cumStart: number }> = [];
+    for (const b of (composedBlocks as B[]).slice().sort((a, bn) => (a.order ?? 0) - (bn.order ?? 0))) {
+      if (b.type === 'voice' && b.content) {
+        const words = b.content.trim().split(/\s+/).length;
+        const dur = Math.max(0.5, words / 2.5);
+        segs.push({ text: b.content, cumStart: cumSec });
+        cumSec += dur;
+      } else if (b.type === 'media' && b.quote) {
+        const dur =
+          b.clipStartMs != null && b.clipEndMs != null
+            ? Math.max(0.5, (b.clipEndMs - b.clipStartMs) / 1000)
+            : Math.max(0.5, b.quote.trim().split(/\s+/).length / 2.0);
+        segs.push({ text: b.quote, speaker: b.speaker, cumStart: cumSec });
+        cumSec += dur;
+      }
+    }
+    return segs.length > 0 ? segs : null;
+  }, [composedBlocks]);
+
+  const [currentSegmentIdx, setCurrentSegmentIdx] = useState(0);
+
+  // Timer-based line scroll is only used for single-script mode.
+  // In playlist mode the timeupdate effect drives both paths.
+  const shouldAnimate = playbackState === 'playing' && !done && !displaySegments;
   const isPlaying = playbackState === 'playing';
 
   // ── Audio refs ───────────────────────────────────────────────────────────
@@ -237,6 +265,32 @@ export default function StoriesSheet({
     }, 600);
     return () => clearTimeout(timer);
   }, [fading, storyLines.length]);
+
+  // ── Audio-driven text sync ────────────────────────────────────────────────
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!isPlaying || !audio) return;
+    const onTimeUpdate = () => {
+      const t = audio.currentTime;
+      if (displaySegments) {
+        // Playlist mode: find the last segment whose cumStart <= current time
+        let idx = 0;
+        for (let i = displaySegments.length - 1; i >= 0; i--) {
+          if (t >= displaySegments[i].cumStart) { idx = i; break; }
+        }
+        setCurrentSegmentIdx((prev) => (prev === idx ? prev : idx));
+      } else if (storyLines.length > 0) {
+        // Single-script mode: advance lines proportionally through the audio
+        const dur = audio.duration;
+        if (!dur || !isFinite(dur)) return;
+        const pairs = Math.ceil(storyLines.length / 2);
+        const targetPair = Math.min(Math.floor((t / dur) * pairs), pairs - 1);
+        setLineIndex(targetPair * 2);
+      }
+    };
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    return () => audio.removeEventListener('timeupdate', onTimeUpdate);
+  }, [isPlaying, displaySegments, storyLines.length]);
 
   // ── Fetch available claim types + tagged names when sheet opens ──────────
   useEffect(() => {
@@ -328,6 +382,7 @@ export default function StoriesSheet({
       setComposedBlocks(null);
       setSelectedKeys(new Set(['snapshot']));
       setError('');
+      setCurrentSegmentIdx(0);
       savedRef.current = false;
     }
   }, [isOpen, disposeAudio]);
@@ -360,6 +415,7 @@ export default function StoriesSheet({
     setFading(false);
     setDone(false);
     setError('');
+    setCurrentSegmentIdx(0);
     savedRef.current = false;
   }, [disposeAudio]);
 
@@ -671,18 +727,49 @@ export default function StoriesSheet({
           <div className="text-center mb-5 pointer-events-none">
             {isPlaying ? (
               <div style={{ opacity: storyEntered ? 1 : 0, transition: 'opacity 0.8s ease' }}>
-                <p
-                  className="font-medium leading-snug w-full truncate"
-                  style={{ fontSize: '1.2rem', color: !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
-                >
-                  {storyLines[lineIndex] ?? ' '}
-                </p>
-                <p
-                  className="font-medium leading-snug w-full truncate"
-                  style={{ fontSize: '1.2rem', color: !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
-                >
-                  {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
-                </p>
+                {displaySegments ? (
+                  // Playlist mode — show the current segment, colour-coded by speaker type
+                  (() => {
+                    const seg = displaySegments[currentSegmentIdx];
+                    if (!seg) return <p style={{ fontSize: '1.2rem', color: 'transparent' }}>&nbsp;</p>;
+                    // Determine colour: contributor quote vs narrator
+                    const segColor = seg.speaker ? '#4ade80' : 'rgba(255,255,255,0.85)';
+                    return (
+                      <>
+                        {seg.speaker ? (
+                          <p
+                            className="font-normal leading-snug w-full text-center mb-1"
+                            style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}
+                          >
+                            {seg.speaker}
+                          </p>
+                        ) : null}
+                        <p
+                          className="font-medium leading-snug w-full text-center"
+                          style={{ fontSize: '1.2rem', color: segColor, transition: 'color 0.4s ease' }}
+                        >
+                          {seg.text}
+                        </p>
+                      </>
+                    );
+                  })()
+                ) : (
+                  // Single-script mode — timer-driven two-line scroll
+                  <>
+                    <p
+                      className="font-medium leading-snug w-full truncate"
+                      style={{ fontSize: '1.2rem', color: !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
+                    >
+                      {storyLines[lineIndex] ?? ' '}
+                    </p>
+                    <p
+                      className="font-medium leading-snug w-full truncate"
+                      style={{ fontSize: '1.2rem', color: !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
+                    >
+                      {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <p
