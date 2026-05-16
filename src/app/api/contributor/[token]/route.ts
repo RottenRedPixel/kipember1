@@ -43,6 +43,7 @@ export async function GET(
               visualDescription: true,
               mood: true,
               errorMessage: true,
+              capturedAt: true,
             },
           },
           wiki: {
@@ -129,6 +130,7 @@ export async function GET(
           title: refreshedContributor.ember.title,
           description: refreshedContributor.ember.description,
           createdAt: refreshedContributor.ember.createdAt,
+          capturedAt: refreshedContributor.ember.analysis?.capturedAt ?? null,
         },
         analysis: refreshedContributor.ember.analysis,
         conversation: refreshedContributor.emberSession

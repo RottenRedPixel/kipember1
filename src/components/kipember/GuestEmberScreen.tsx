@@ -39,6 +39,7 @@ type GuestData = {
     title: string | null;
     description: string | null;
     createdAt: string;
+    capturedAt: string | null;
   };
   attachments: GuestAttachment[];
   snapshotScript: string | null;
@@ -251,7 +252,7 @@ export default function GuestEmberScreen({
       </div>
 
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        <EmberTitleBlock title={data.ember.title} createdAt={data.ember.createdAt} />
+        <EmberTitleBlock title={data.ember.title} capturedAt={data.ember.capturedAt} createdAt={data.ember.createdAt} />
 
         {/* Photo card */}
         <div className={`flex-1 min-h-0 px-[10px] pb-3 flex ${orientation === 'portrait' ? 'items-start' : 'items-center'} justify-center overflow-hidden`}>

@@ -37,6 +37,11 @@ export async function GET(
               email: true,
             },
           },
+          analysis: {
+            select: {
+              capturedAt: true,
+            },
+          },
         },
       },
       emberSession: {
@@ -126,6 +131,9 @@ export async function GET(
           title: refreshedContributor.ember.title,
           description: refreshedContributor.ember.description,
           createdAt: refreshedContributor.ember.createdAt,
+          capturedAt: refreshedContributor.ember.analysis?.capturedAt
+            ? refreshedContributor.ember.analysis.capturedAt.toISOString()
+            : null,
         },
         conversation: refreshedContributor.emberSession,
         latestVoiceCall: refreshedContributor.voiceCalls[0] ?? null,

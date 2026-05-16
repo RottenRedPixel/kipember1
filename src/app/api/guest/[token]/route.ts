@@ -34,7 +34,7 @@ export async function GET(
     const ember = await prisma.ember.findUnique({
       where: { shareToken: token },
       include: {
-        analysis: { select: { status: true, summary: true, visualDescription: true, mood: true, errorMessage: true } },
+        analysis: { select: { status: true, summary: true, visualDescription: true, mood: true, errorMessage: true, capturedAt: true } },
         wiki: { select: { id: true, content: true, version: true, updatedAt: true } },
       },
     });
@@ -72,6 +72,7 @@ export async function GET(
           title: ember.title,
           description: ember.description,
           createdAt: ember.createdAt,
+          capturedAt: ember.analysis?.capturedAt ?? null,
         },
         analysis: ember.analysis,
         conversation: null,

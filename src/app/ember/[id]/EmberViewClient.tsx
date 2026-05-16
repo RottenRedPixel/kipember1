@@ -22,6 +22,10 @@ type EmberSummary = {
   title: string | null;
   originalName: string;
   createdAt: string;
+  // Wiki "when" date — EXIF capture or user-edited via EditTimePlaceSlider.
+  // Shown under the title in place of the upload timestamp so it matches the
+  // date the wiki uses.
+  analysis: { capturedAt: string | null } | null;
   snapshot: { script: string } | null;
   accessType: 'owner' | 'contributor' | 'network' | null;
 };
@@ -68,7 +72,7 @@ function EmberViewContent() {
   // the full /api/embers/[id] fetch resolves.
   const cached = typeof window !== 'undefined' ? readEmberPreview(routeId) : null;
   const [ember, setEmber] = useState<EmberSummary | null>(
-    cached ? { ...cached, snapshot: null, accessType: null } as EmberSummary : null
+    cached ? { ...cached, analysis: null, snapshot: null, accessType: null } as EmberSummary : null
   );
   const [emberIds, setEmberIds] = useState<string[]>([]);
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
@@ -280,7 +284,7 @@ function EmberViewContent() {
         <AppHeader userModalHref={accountOpenHref} />
       </div>
       <div className="fixed inset-0 flex flex-col" style={{ paddingTop: 56 }}>
-        <EmberTitleBlock title={ember?.title} createdAt={ember?.createdAt} />
+        <EmberTitleBlock title={ember?.title} capturedAt={ember?.analysis?.capturedAt} createdAt={ember?.createdAt} />
         <div
           className={`flex-1 min-h-0 px-[10px] pb-3 flex ${orientation === 'portrait' ? 'items-start' : 'items-center'} justify-center overflow-hidden cursor-pointer`}
           onPointerDown={handlePointerDown}
