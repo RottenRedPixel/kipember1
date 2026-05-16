@@ -58,7 +58,7 @@ export default function AppHeader({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(externalAvatarUrl ?? cached?.avatarUrl ?? null);
   const [authenticated, setAuthenticated] = useState(externalAvatarUrl !== undefined ? true : (cached?.authenticated ?? false));
   const [hasPassword, setHasPassword] = useState<boolean>(externalHasPassword ?? cached?.hasPassword ?? true);
-  const [localInitials, setLocalInitials] = useState<string>(cached?.initials ?? userInitials);
+  const [localInitials, setLocalInitials] = useState<string>(userInitials || cached?.initials || '');
   // authLoading stays true only when we have no cached state and no external
   // state — i.e. the very first page load in this session.
   const [authLoading, setAuthLoading] = useState(externalAvatarUrl === undefined && cached === null);
@@ -73,6 +73,13 @@ export default function AppHeader({
       setAuthenticated(true);
       setAuthLoading(false);
       if (externalHasPassword !== undefined) setHasPassword(externalHasPassword);
+      if (userInitials) setLocalInitials(userInitials);
+      writeCache({
+        authenticated: true,
+        hasPassword: externalHasPassword ?? true,
+        avatarUrl: externalAvatarUrl,
+        initials: userInitials || '',
+      });
       return;
     }
 
