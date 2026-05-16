@@ -2411,12 +2411,6 @@ function UnifiedExtractionBlock({
       {/* Clip row — verbatim audio */}
       {clip && (
         <div className="flex items-center gap-2">
-          <div
-            className="rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-subtle)' }}
-          >
-            {clip.kind === 'call' ? <Phone size={13} className="text-white/50" /> : <Mic size={13} className="text-white/50" />}
-          </div>
           <button
             type="button"
             onClick={toggle}
