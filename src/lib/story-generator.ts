@@ -1,6 +1,95 @@
 import { chat } from '@/lib/claude';
 import { renderPromptTemplate } from '@/lib/control-plane';
 
+// ── Playlist narration ────────────────────────────────────────────────────────
+
+export type PlaylistSegment =
+  | { type: 'narration'; text: string }
+  | { type: 'clip'; index: number };
+
+const PLAYLIST_PROMPT_FALLBACK = `You are composing a short audio story that weaves Ember's narration with real voice recordings from contributors.
+
+You will receive MEMORY TITLE, CLIPS (an indexed list of contributor quotes), and optional context.
+
+Write narration that naturally leads into each clip, then bridges to the next. Do not quote or repeat what the clip says — just set the scene.
+
+Target: {{targetWords}} words of narration text total (clips play separately, do not count them).
+
+Return ONLY valid JSON in exactly this shape:
+{"segments":[{"type":"narration","text":"..."},{"type":"clip","index":0},{"type":"narration","text":"..."}]}
+
+Rules:
+- Each narration segment is 1–3 sentences
+- Lead into clips naturally — never say "and now we hear from X" or "here is X speaking"
+- Always end with a brief closing narration after the last clip
+- Return ONLY the JSON object, no other text`;
+
+/**
+ * Generate playlist narration — bridging text segments that weave around
+ * pre-recorded contributor clips. Returns an ordered array of narration
+ * segments and clip references so the caller can assemble snapshot blocks.
+ */
+export async function generatePlaylistNarration({
+  title,
+  location,
+  clips,
+  claimsContext,
+  durationSeconds,
+}: {
+  title: string;
+  location: string | null;
+  clips: Array<{ index: number; speaker: string; quote: string }>;
+  claimsContext: string;
+  durationSeconds: number;
+}): Promise<PlaylistSegment[]> {
+  // Narration is roughly half the target duration — the other half is clips
+  const targetWords = Math.round((durationSeconds / 60) * 150 * 0.5);
+
+  const systemPrompt = await renderPromptTemplate(
+    'story_generation.playlist',
+    PLAYLIST_PROMPT_FALLBACK,
+    { targetWords, durationSeconds, clipCount: clips.length }
+  );
+
+  const clipsText = clips.map((c) => `[${c.index}] ${c.speaker}: "${c.quote}"`).join('\n');
+
+  const context = [
+    `MEMORY TITLE\n${title}`,
+    location ? `LOCATION\n${location}` : null,
+    `CLIPS\n${clipsText}`,
+    claimsContext ? `ADDITIONAL CONTEXT\n${claimsContext}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  let raw: string;
+  try {
+    raw = await chat(systemPrompt, [{ role: 'user', content: context }]);
+  } catch {
+    return [];
+  }
+
+  try {
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch?.[0] ?? '{}') as { segments?: unknown[] };
+    const segs = Array.isArray(parsed.segments) ? parsed.segments : [];
+    return segs.flatMap((s: unknown): PlaylistSegment[] => {
+      if (typeof s !== 'object' || !s) return [];
+      const seg = s as Record<string, unknown>;
+      if (seg.type === 'narration' && typeof seg.text === 'string' && seg.text.trim()) {
+        return [{ type: 'narration', text: seg.text.trim() }];
+      }
+      if (seg.type === 'clip' && typeof seg.index === 'number') {
+        return [{ type: 'clip', index: seg.index }];
+      }
+      return [];
+    });
+  } catch {
+    // Fallback: treat the whole response as a single narration segment
+    return raw.trim() ? [{ type: 'narration', text: raw.trim() }] : [];
+  }
+}
+
 /**
  * Generate a short narration script for a facet-composed Story.
  *

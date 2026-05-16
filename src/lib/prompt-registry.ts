@@ -151,6 +151,23 @@ export const PROMPT_REGISTRY: PromptDefinition[] = [
   },
 
   {
+    key: 'story_generation.playlist',
+    label: 'Story Generation - Playlist',
+    group: 'Story Generation',
+    description: 'Fires when StoriesSheet builds a mixed-audio story that weaves Ember narration with real contributor voice clips. Receives `targetWords`, `durationSeconds`, and `clipCount`.',
+    variables: ['targetWords', 'durationSeconds', 'clipCount'],
+    whatItDoes:
+      'Writes bridging narration segments that introduce and connect contributor audio clips. The output is JSON with interleaved narration and clip references — Ember speaks, then the contributor\'s real voice plays, then Ember bridges to the next clip.',
+    whenItFires: [
+      'User presses play in StoriesSheet when contributor clips are available for the selected facets or people',
+    ],
+    affects: [
+      { label: 'The mixed audio narration in StoriesSheet (Ember voice + contributor clips)', on: true },
+      { label: 'The story script saved to DB', on: false },
+    ],
+  },
+
+  {
     key: 'wiki.structure',
     label: 'Wiki - Structure (JSON)',
     group: 'Wiki',

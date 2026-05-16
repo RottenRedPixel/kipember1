@@ -1,6 +1,6 @@
 'use client';
 
-import { Flame, Pause, Play, ScanEye, X } from 'lucide-react';
+import { Flame, Mic, Pause, Play, ScanEye, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import { useResetZoomOnOpen } from '@/lib/reset-zoom';
@@ -84,11 +84,19 @@ export default function StoriesSheet({
   const [taggedNames, setTaggedNames] = useState<string[]>([]);
   const [hasConfirmedLocation, setHasConfirmedLocation] = useState(false);
 
+  // Speakers who have real recorded clips (EmberVoiceClip / EmberCallClip).
+  // Used to distinguish contributor chips (real audio) from referenced chips.
+  const [clipSpeakers, setClipSpeakers] = useState<string[]>([]);
+
   // Which facet keys the user has selected.
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(['snapshot']));
 
   // The composed script for the current selection (null = not yet composed).
   const [composedScript, setComposedScript] = useState<string | null>(null);
+
+  // Playlist blocks (narration + clips) — set when playlist mode was used.
+  // Mutually exclusive with composedScript.
+  const [composedBlocks, setComposedBlocks] = useState<unknown[] | null>(null);
 
   const durationSeconds = 7; // fixed short-form story length
 
@@ -227,6 +235,15 @@ export default function StoriesSheet({
       })
       .catch(() => {});
 
+    // Fetch which speakers have real recorded clips
+    fetch(`/api/embers/${encodeURIComponent(emberId)}/stories/clips-availability`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { speakers?: string[] } | null) => {
+        if (cancelled || !d?.speakers) return;
+        setClipSpeakers(d.speakers);
+      })
+      .catch(() => {});
+
     // Fetch tagged people names + confirmed location
     fetch(`/api/embers/${encodeURIComponent(emberId)}`, { cache: 'no-store' })
       .then((r) => r.json())
@@ -267,6 +284,7 @@ export default function StoriesSheet({
       setFading(false);
       setDone(false);
       setComposedScript(null);
+      setComposedBlocks(null);
       setSelectedKeys(new Set(['snapshot']));
       setError('');
       savedRef.current = false;
@@ -292,10 +310,11 @@ export default function StoriesSheet({
       if (next.size === 0) next.add('snapshot');
       return next;
     });
-    // Changing selection invalidates the current composed script.
+    // Changing selection invalidates any cached composition.
     disposeAudio();
     setPlaybackState('idle');
     setComposedScript(null);
+    setComposedBlocks(null);
     setLineIndex(0);
     setFading(false);
     setDone(false);
@@ -371,59 +390,83 @@ export default function StoriesSheet({
     const isSnapshotMode = selectedKeys.has('snapshot') && selectedKeys.size === 1;
     const hasNonSnapshot = Array.from(selectedKeys).some((k) => k !== 'snapshot');
 
-    let script = composedScript;
+    const facetKeys = Array.from(selectedKeys).filter((k) => k !== 'snapshot' && !taggedNames.includes(k));
+    const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
 
-    if (!script) {
+    let script = composedScript;
+    let blocks = composedBlocks;
+
+    if (!script && !blocks) {
       if (isSnapshotMode || (!hasNonSnapshot && storyScript)) {
         // Snapshot shortcut — use the pre-generated script
         if (!storyScript) { setError('No snapshot yet.'); return; }
         script = storyScript;
         setComposedScript(script);
       } else {
-        // Compose on demand
-        const facetKeys = Array.from(selectedKeys).filter((k) =>
-          k !== 'snapshot' && !taggedNames.includes(k)
-        );
-        const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
-
         if (facetKeys.length === 0 && personKeys.length === 0) {
           setError('Select at least one facet or person.');
           return;
         }
 
         setPlaybackState('composing');
+
+        // Try playlist first — if the ember has real clips for this selection
+        // the endpoint returns blocks (Ember narration + contributor clips).
+        // Falls back to pure narration via /compose if no clips exist.
         try {
-          const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
-          const response = await fetch(
-            `/api/embers/${encodeURIComponent(emberId)}/stories/compose${tokenQs}`,
+          const playlistRes = await fetch(
+            `/api/embers/${encodeURIComponent(emberId)}/stories/playlist`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }),
             }
           );
-          const payload = await response.json().catch(() => null);
-          if (!response.ok) throw new Error(payload?.error ?? 'Failed to compose story.');
-          script = payload.script as string;
-          setComposedScript(script);
-        } catch (err) {
-          setPlaybackState('idle');
-          setError(err instanceof Error ? err.message : 'Failed to compose story.');
-          return;
+          if (playlistRes.ok) {
+            const playlistPayload = await playlistRes.json().catch(() => null) as { blocks?: unknown[] | null } | null;
+            if (Array.isArray(playlistPayload?.blocks) && playlistPayload.blocks.length > 0) {
+              blocks = playlistPayload.blocks;
+              setComposedBlocks(blocks);
+            }
+          }
+        } catch { /* non-fatal — fall through to compose */ }
+
+        // If playlist returned nothing, compose pure narration
+        if (!blocks) {
+          try {
+            const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+            const response = await fetch(
+              `/api/embers/${encodeURIComponent(emberId)}/stories/compose${tokenQs}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }),
+              }
+            );
+            const payload = await response.json().catch(() => null);
+            if (!response.ok) throw new Error(payload?.error ?? 'Failed to compose story.');
+            script = payload.script as string;
+            setComposedScript(script);
+          } catch (err) {
+            setPlaybackState('idle');
+            setError(err instanceof Error ? err.message : 'Failed to compose story.');
+            return;
+          }
         }
       }
     }
 
-    // Fetch audio for the script
+    // Fetch audio — pass blocks if we have them, otherwise a plain script
     setPlaybackState('loading');
     try {
       const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+      const audioBody = blocks ? { blocks } : { script };
       const response = await fetch(
         `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ script }),
+          body: JSON.stringify(audioBody),
         }
       );
       if (!response.ok) {
@@ -433,13 +476,13 @@ export default function StoriesSheet({
       const blob = await response.blob();
       const audio = await buildAudioFromBlob(blob);
       await audio.play();
-      void saveStory(script);
+      if (script) void saveStory(script);
     } catch (err) {
       setPlaybackState('paused');
       setError(err instanceof Error ? err.message : 'Audio could not be played.');
     }
   }, [
-    playbackState, emberId, selectedKeys, composedScript,
+    playbackState, emberId, selectedKeys, composedScript, composedBlocks,
     storyScript, taggedNames, durationSeconds, accessToken,
     buildAudioFromBlob, saveStory,
   ]);
@@ -572,8 +615,12 @@ export default function StoriesSheet({
         <div className="flex flex-wrap justify-center gap-2 pb-4">
           {facets.map((facet) => {
             const isSelected = selectedKeys.has(facet.key);
-            // Snapshot chip gets its own icon
-            const showIcon = facet.isSnapshot;
+            // A person chip is a "contributor chip" if that person has real recorded clips.
+            const isContributor = facet.isPerson && clipSpeakers.some((s) => {
+              const speakerFirst = s.toLowerCase().split(' ')[0];
+              const chipFirst = facet.key.toLowerCase().split(' ')[0];
+              return speakerFirst === chipFirst || s.toLowerCase().includes(facet.key.toLowerCase());
+            });
             return (
               <button
                 key={facet.key}
@@ -583,11 +630,14 @@ export default function StoriesSheet({
                 style={{
                   height: 26,
                   background: isSelected ? facet.color : 'var(--bg-drill-blocks)',
-                  border: '1px solid var(--border-subtle)',
+                  border: isContributor
+                    ? `1px solid ${isSelected ? 'rgba(248,113,113,0.6)' : 'rgba(248,113,113,0.35)'}`
+                    : '1px solid var(--border-subtle)',
                   color: 'rgba(255,255,255,0.7)',
                 }}
               >
-                {showIcon ? <ScanEye size={12} strokeWidth={2} /> : null}
+                {facet.isSnapshot ? <ScanEye size={12} strokeWidth={2} /> : null}
+                {isContributor ? <Mic size={11} strokeWidth={2} style={{ opacity: 0.7 }} /> : null}
                 {facet.label}
               </button>
             );
