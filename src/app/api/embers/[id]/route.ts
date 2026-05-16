@@ -61,18 +61,29 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireApiUser();
-
-    if (!auth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { id } = await params;
-    const accessType = await getEmberAccessType(auth.user.id, id);
     const scope = request.nextUrl.searchParams.get('scope');
 
-    if (!accessType) {
-      return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+    let accessType: Awaited<ReturnType<typeof getEmberAccessType>> | 'network';
+    let auth: Awaited<ReturnType<typeof requireApiUser>> = null;
+    let currentUserId: string | null = null;
+
+    // Accept session auth OR token-based guest/contributor access.
+    const tokenParam = request.nextUrl.searchParams.get('token');
+    if (tokenParam) {
+      const [contributor, emberByShare] = await Promise.all([
+        prisma.emberContributor.findUnique({ where: { token: tokenParam }, select: { emberId: true } }),
+        prisma.ember.findUnique({ where: { shareToken: tokenParam }, select: { id: true } }),
+      ]);
+      const allowed = contributor?.emberId === id || emberByShare?.id === id;
+      if (!allowed) return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+      accessType = 'network';
+    } else {
+      auth = await requireApiUser();
+      if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      currentUserId = auth.user.id;
+      accessType = await getEmberAccessType(auth.user.id, id);
+      if (!accessType) return NextResponse.json({ error: 'Image not found' }, { status: 404 });
     }
 
     if (scope === 'play') {
@@ -237,11 +248,11 @@ export async function GET(
 
       if (accessType === 'owner') {
         const ownerContributorExists = ember.emberContributors.some(
-          (ec) => ec.userId === auth.user.id
+          (ec) => ec.userId === currentUserId
         );
 
         if (!ownerContributorExists) {
-          await ensureOwnerContributorForImage(id, auth.user.id);
+          await ensureOwnerContributorForImage(id, currentUserId!);
           ember = await loadContributorImage();
         }
       }
@@ -251,7 +262,7 @@ export async function GET(
       }
 
       const viewerContributor =
-        ember.emberContributors.find((ec) => ec.userId === auth.user.id) || null;
+        ember.emberContributors.find((ec) => ec.userId === currentUserId) || null;
 
       // Load all chat sessions for this ember in one query so we can match
       // them to contributors below. The Prisma EmberContributor.emberSession
@@ -331,13 +342,13 @@ export async function GET(
         owner: ember.owner,
         accessType,
         canManage: accessType === 'owner',
-        currentUserId: auth.user.id,
+        currentUserId: currentUserId,
         viewerContributorId: viewerContributor?.id || null,
         viewerCanLeave: accessType === 'contributor' && Boolean(viewerContributor),
         contributors: flattenedContributors,
         ownerConversationTarget:
           accessType === 'owner'
-            ? flattenedContributors.find((c) => c.userId === auth.user.id) || null
+            ? flattenedContributors.find((c) => c.userId === currentUserId) || null
             : null,
         attachments: [],
         tags: [],
@@ -637,11 +648,11 @@ export async function GET(
 
     if (accessType === 'owner') {
       const ownerContributorExists = ember.emberContributors.some(
-        (ec) => ec.userId === auth.user.id
+        (ec) => ec.userId === currentUserId
       );
 
       if (!ownerContributorExists) {
-        await ensureOwnerContributorForImage(id, auth.user.id);
+        await ensureOwnerContributorForImage(id, currentUserId!);
         ember = await loadImage();
       }
 
@@ -650,7 +661,7 @@ export async function GET(
       }
 
       const ownerContributor = ember.emberContributors.find(
-        (ec) => ec.userId === auth.user.id
+        (ec) => ec.userId === currentUserId
       );
       const latestVoiceCall = ownerContributor?.voiceCalls[0] || null;
 
@@ -668,9 +679,9 @@ export async function GET(
       return NextResponse.json({ error: 'Image not found' }, { status: 404 });
     }
 
-    const friends = accessType === 'owner' ? await getAcceptedFriends(auth.user.id) : [];
+    const friends = accessType === 'owner' ? await getAcceptedFriends(currentUserId!) : [];
     const viewerContributor =
-      ember.emberContributors.find((ec) => ec.userId === auth.user.id) || null;
+      ember.emberContributors.find((ec) => ec.userId === currentUserId) || null;
 
     // Load all chat sessions for this ember to correctly populate conversation
     // counts. The Prisma EmberContributor.emberSession relation only joins on
@@ -727,7 +738,7 @@ export async function GET(
         where: {
           emberId: { not: id },
           ember: {
-            ownerId: auth.user.id,
+            ownerId: currentUserId!,
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -1141,7 +1152,7 @@ export async function GET(
       owner: ember.owner,
       accessType,
       canManage: accessType === 'owner',
-      currentUserId: auth.user.id,
+      currentUserId: currentUserId,
       viewerContributorId: viewerContributor?.id || null,
       viewerCanLeave: accessType === 'contributor' && Boolean(viewerContributor),
       contributors: ember.emberContributors.map((ec) => {
@@ -1168,7 +1179,7 @@ export async function GET(
         accessType === 'owner'
           ? (() => {
               const ec = ember.emberContributors.find(
-                (e) => e.userId === auth.user.id
+                (e) => e.userId === currentUserId
               );
               if (!ec) return null;
               const displayName = [ec.user?.firstName, ec.user?.lastName].filter(Boolean).join(' ') || null;

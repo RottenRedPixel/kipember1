@@ -243,8 +243,10 @@ export default function StoriesSheet({
     if (!isOpen || !emberId) return;
     let cancelled = false;
 
+    const tqs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+
     // Fetch claim types from reconciliation endpoint
-    fetch(`/api/embers/${encodeURIComponent(emberId)}/reconciliation`, { cache: 'no-store' })
+    fetch(`/api/embers/${encodeURIComponent(emberId)}/reconciliation${tqs}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((d: { claims?: Array<{ claimType: string }> } | null) => {
         if (cancelled || !d?.claims) return;
@@ -253,7 +255,7 @@ export default function StoriesSheet({
       .catch(() => {});
 
     // Fetch which speakers have real recorded clips, split by clip type
-    fetch(`/api/embers/${encodeURIComponent(emberId)}/stories/clips-availability`, { cache: 'no-store' })
+    fetch(`/api/embers/${encodeURIComponent(emberId)}/stories/clips-availability${tqs}`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
       .then((d: { voiceSpeakers?: string[]; callSpeakers?: string[] } | null) => {
         if (cancelled) return;
@@ -263,7 +265,7 @@ export default function StoriesSheet({
       .catch(() => {});
 
     // Fetch tagged people names + contributor names + confirmed location
-    fetch(`/api/embers/${encodeURIComponent(emberId)}`, { cache: 'no-store' })
+    fetch(`/api/embers/${encodeURIComponent(emberId)}${tqs}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((d: {
         tags?: Array<{ user?: { firstName?: string | null } | null; emberContributor?: { user?: { firstName?: string | null } | null } | null; label?: string | null }>;
@@ -309,7 +311,7 @@ export default function StoriesSheet({
       .catch(() => {});
 
     return () => { cancelled = true; };
-  }, [isOpen, emberId]);
+  }, [isOpen, emberId, accessToken]);
 
   // ── Reset on close ───────────────────────────────────────────────────────
   useEffect(() => {

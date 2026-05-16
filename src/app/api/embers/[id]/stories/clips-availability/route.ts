@@ -18,12 +18,23 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireApiUser();
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     const { id } = await params;
-    const accessType = await getEmberAccessType(auth.user.id, id);
-    if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+
+    // Accept session auth (any access level) OR token-based guest access.
+    const tokenParam = request.nextUrl.searchParams.get('token');
+    if (tokenParam) {
+      const [contributor, emberByShare] = await Promise.all([
+        prisma.emberContributor.findUnique({ where: { token: tokenParam }, select: { emberId: true } }),
+        prisma.ember.findUnique({ where: { shareToken: tokenParam }, select: { id: true } }),
+      ]);
+      const allowed = contributor?.emberId === id || emberByShare?.id === id;
+      if (!allowed) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    } else {
+      const auth = await requireApiUser();
+      if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const accessType = await getEmberAccessType(auth.user.id, id);
+      if (!accessType) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
 
     const [voiceClips, callClips] = await Promise.all([
       prisma.emberVoiceClip.findMany({
