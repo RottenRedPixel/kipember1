@@ -131,6 +131,9 @@ export default function StoriesSheet({
       });
     }
     if (storyScript) result.push(SNAPSHOT_FACET);
+    // ── TEST CHIP — remove after confirming clip playback works ──────────────
+    result.push({ key: '__test__', label: '🧪 test', color: 'rgba(34,197,94,0.5)', vizColor: '#22c55e' });
+    // ────────────────────────────────────────────────────────────────────────
     return result;
   }, [availableClaimTypes, taggedNames, storyScript, hasConfirmedLocation]);
 
@@ -416,6 +419,48 @@ export default function StoriesSheet({
 
     let script = composedScript;
     let blocks = composedBlocks;
+
+    // ── TEST CHIP — hardcoded narration + first available clip, no LLM ───────
+    // Remove this block once we've confirmed clip playback works end-to-end.
+    if (selectedKeys.has('__test__') && !blocks && !script) {
+      setPlaybackState('composing');
+      try {
+        const playlistRes = await fetch(
+          `/api/embers/${encodeURIComponent(emberId)}/stories/playlist`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ facets: [], people: [], durationSeconds }),
+          }
+        );
+        if (playlistRes.ok) {
+          const payload = await playlistRes.json().catch(() => null) as { blocks?: unknown[] | null } | null;
+          const firstMedia = Array.isArray(payload?.blocks)
+            ? payload.blocks.find((b) => (b as { type?: string }).type === 'media')
+            : null;
+          if (firstMedia) {
+            blocks = [
+              { type: 'voice', content: 'Hello, this is Ember, and this is what they had to say.', order: 1 },
+              { ...(firstMedia as object), order: 2 },
+            ];
+            setComposedBlocks(blocks);
+          } else {
+            setPlaybackState('idle');
+            setError('TEST: no clips found for this ember.');
+            return;
+          }
+        } else {
+          setPlaybackState('idle');
+          setError('TEST: playlist endpoint failed.');
+          return;
+        }
+      } catch {
+        setPlaybackState('idle');
+        setError('TEST: exception calling playlist endpoint.');
+        return;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
 
     if (!script && !blocks) {
       if (isSnapshotMode || (!hasNonSnapshot && storyScript)) {
