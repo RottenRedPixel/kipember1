@@ -450,7 +450,7 @@ export default function StoriesSheet({
           return;
         }
 
-        // 2. Debug-probe the clip before trying to render it
+        // 2. Debug-probe the clip — show info and bail only if source is unresolvable
         const clipMediaId = (firstMedia as { mediaId?: string }).mediaId;
         if (clipMediaId) {
           const debugRes = await fetch(
@@ -458,6 +458,7 @@ export default function StoriesSheet({
           );
           const debug = await debugRes.json().catch(() => null) as Record<string, unknown> | null;
           if (debug) {
+            const sourceOk = debug.localFileExists === true || (debug.sourceIsUrl === true && debug.urlOk === true);
             const lines = [
               `mediaId: ${clipMediaId}`,
               `voiceClip: ${debug.dbRecords ? JSON.stringify((debug.dbRecords as Record<string, unknown>).voiceClip) : '?'}`,
@@ -473,9 +474,14 @@ export default function StoriesSheet({
               `segmentCached: ${debug.segmentCached ?? debug.normalizedCached ?? 'N/A'}`,
               `verdict: ${debug.verdict}`,
             ];
-            setPlaybackState('idle');
-            setError('TEST DEBUG:\n' + lines.join('\n'));
-            return;
+            if (!sourceOk) {
+              // Source unresolvable — bail with full debug dump
+              setPlaybackState('idle');
+              setError('TEST DEBUG:\n' + lines.join('\n'));
+              return;
+            }
+            // Source looks good — log to console and proceed to play
+            console.log('[TEST] clip debug OK, proceeding to play:', lines.join(' | '));
           }
         }
 
