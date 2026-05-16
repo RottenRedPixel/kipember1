@@ -29,10 +29,13 @@ import {
   MessageSquareShare,
   MessagesSquare,
   Mic,
+  Pause,
   PencilLine,
   Phone,
+  Play,
   Plus,
   RotateCw,
+  Volume2,
   ScanEye,
   ShieldUser,
   Sparkles,
@@ -187,6 +190,20 @@ export type KipemberEmberCallClip = {
   createdAt: string;
 };
 
+export type KipemberEmberVoiceClip = {
+  id: string;
+  emberMessageId: string;
+  contributorName: string;
+  title: string;
+  quote: string;
+  significance: string | null;
+  speaker: string | null;
+  audioUrl: string;
+  startMs: number;
+  endMs: number;
+  createdAt: string;
+};
+
 export type KipemberWikiDetail = {
   id: string;
   filename: string;
@@ -242,6 +259,7 @@ export type KipemberWikiDetail = {
   attachments: KipemberAttachment[];
   tags?: KipemberTag[];
   emberCallClips?: KipemberEmberCallClip[];
+  emberVoiceClips?: KipemberEmberVoiceClip[];
   chatBlocks?: Array<{
     personName: string;
     avatarUrl?: string | null;
@@ -2288,6 +2306,86 @@ function CollapsibleGuestVisitorVoiceBlock({
   );
 }
 
+type AudioClipItem = {
+  id: string;
+  kind: 'call' | 'voice';
+  contributorName: string;
+  title: string;
+  quote: string;
+  significance: string | null;
+  audioUrl: string;
+  startMs: number | null;
+  endMs: number | null;
+  createdAt: string;
+};
+
+function AudioClipRow({ clip }: { clip: AudioClipItem }) {
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  function toggle() {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+    } else {
+      void el.play();
+    }
+  }
+
+  const durationLabel = (() => {
+    if (clip.startMs === null || clip.endMs === null) return null;
+    const secs = Math.round((clip.endMs - clip.startMs) / 1000);
+    return `${secs}s`;
+  })();
+
+  return (
+    <div
+      className="flex flex-col gap-2 py-3 border-b last:border-b-0"
+      style={{ borderColor: 'var(--border-subtle)' }}
+    >
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex-shrink-0 flex items-center justify-center rounded-full cursor-pointer"
+          style={{
+            width: 32,
+            height: 32,
+            background: 'var(--color-accent)',
+            border: 'none',
+          }}
+        >
+          {playing ? <Pause size={14} className="text-white" /> : <Play size={14} className="text-white" style={{ marginLeft: 2 }} />}
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white text-sm font-medium">{clip.title}</span>
+            <span
+              className="text-xs px-1.5 py-0.5 rounded"
+              style={{ background: clip.kind === 'call' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)', color: clip.kind === 'call' ? '#93c5fd' : '#6ee7b7' }}
+            >
+              {clip.kind === 'call' ? 'Call' : 'Voice'}
+            </span>
+            {durationLabel ? <span className="text-white/30 text-xs">{durationLabel}</span> : null}
+          </div>
+          <p className="text-white/50 text-xs mt-0.5">{clip.contributorName}</p>
+          <p className="text-white/70 text-xs mt-1 italic">&ldquo;{clip.quote}&rdquo;</p>
+          {clip.significance ? <p className="text-white/40 text-xs mt-0.5">{clip.significance}</p> : null}
+        </div>
+      </div>
+      <audio
+        ref={audioRef}
+        src={clip.audioUrl}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => setPlaying(false)}
+        preload="none"
+      />
+    </div>
+  );
+}
+
 function getSourceName(claim: ReconciliationClaim) {
   const metadata = claim.metadata;
   if (
@@ -3453,52 +3551,115 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
+        icon={<Volume2 size={17} />}
+        title="Audio Clips"
+        complete={Boolean((detail?.emberCallClips?.length ?? 0) + (detail?.emberVoiceClips?.length ?? 0) > 0)}
+        count={(detail?.emberCallClips?.length ?? 0) + (detail?.emberVoiceClips?.length ?? 0)}
+        collapsible
+        defaultCollapsed
+      >
+        {(() => {
+          const callClips: AudioClipItem[] = (detail?.emberCallClips ?? []).map((c) => ({
+            id: c.id,
+            kind: 'call' as const,
+            contributorName: c.contributorName,
+            title: c.title,
+            quote: c.quote,
+            significance: c.significance,
+            audioUrl: c.audioUrl ?? '',
+            startMs: c.startMs,
+            endMs: c.endMs,
+            createdAt: c.createdAt,
+          })).filter((c) => c.audioUrl);
+          const voiceClips: AudioClipItem[] = (detail?.emberVoiceClips ?? []).map((c) => ({
+            id: c.id,
+            kind: 'voice' as const,
+            contributorName: c.contributorName,
+            title: c.title,
+            quote: c.quote,
+            significance: c.significance,
+            audioUrl: c.audioUrl,
+            startMs: c.startMs,
+            endMs: c.endMs,
+            createdAt: c.createdAt,
+          }));
+          const all = [...callClips, ...voiceClips].sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          if (all.length === 0) {
+            return (
+              <WikiCard>
+                <p className="text-white/30 text-sm">No audio clips extracted yet.</p>
+              </WikiCard>
+            );
+          }
+          return (
+            <WikiCard>
+              {all.map((clip) => (
+                <AudioClipRow key={clip.id} clip={clip} />
+              ))}
+            </WikiCard>
+          );
+        })()}
+      </WikiSection>
+
+      <WikiSection
         icon={<Lightbulb size={17} />}
-        title="Why"
-        complete={whyComplete}
-        tracksProgress
+        title="Extractions"
+        complete={Boolean(
+          whyComplete || emotionComplete ||
+          (extraStoryClaims && extraStoryClaims.length > 0) ||
+          (placeClaims && placeClaims.length > 0) ||
+          (personClaims && personClaims.length > 0)
+        )}
+        count={
+          (whyClaims?.length ?? 0) +
+          (emotionClaims?.length ?? 0) +
+          (extraStoryClaims?.length ?? 0) +
+          (placeClaims?.length ?? 0) +
+          (personClaims?.length ?? 0)
+        }
+        collapsible
+        defaultCollapsed
         loading={wikiClaimsLoading}
-        id="tracker-why"
       >
-        <WhyCard claims={whyClaims} findPerson={findPerson} />
-      </WikiSection>
-
-      <WikiSection
-        icon={<Heart size={17} />}
-        title="Emotional States"
-        complete={emotionComplete}
-        tracksProgress
-        loading={wikiClaimsLoading}
-        id="tracker-emotional-states"
-      >
-        <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
-      </WikiSection>
-
-      <WikiSection
-        icon={<Sparkles size={17} />}
-        title="Extra Stories"
-        complete={Boolean(extraStoryClaims && extraStoryClaims.length > 0)}
-        count={extraStoryClaims?.length ?? 0}
-      >
-        <ExtraStoriesCard claims={extraStoryClaims} findPerson={findPerson} />
-      </WikiSection>
-
-      <WikiSection
-        icon={<MapIcon size={17} />}
-        title="Places Mentioned"
-        complete={Boolean(placeClaims && placeClaims.length > 0)}
-        count={placeClaims?.length ?? 0}
-      >
-        <PlacesMentionedCard claims={placeClaims} findPerson={findPerson} />
-      </WikiSection>
-
-      <WikiSection
-        icon={<Users size={17} />}
-        title="People Mentioned"
-        complete={Boolean(personClaims && personClaims.length > 0)}
-        count={personClaims?.length ?? 0}
-      >
-        <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ color: 'var(--text-secondary)' }}><Lightbulb size={15} /></span>
+              <h4 className="text-white/70 font-medium text-sm">Why</h4>
+            </div>
+            <WhyCard claims={whyClaims} findPerson={findPerson} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ color: 'var(--text-secondary)' }}><Heart size={15} /></span>
+              <h4 className="text-white/70 font-medium text-sm">Emotional States</h4>
+            </div>
+            <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ color: 'var(--text-secondary)' }}><Sparkles size={15} /></span>
+              <h4 className="text-white/70 font-medium text-sm">Extra Stories</h4>
+            </div>
+            <ExtraStoriesCard claims={extraStoryClaims} findPerson={findPerson} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ color: 'var(--text-secondary)' }}><MapIcon size={15} /></span>
+              <h4 className="text-white/70 font-medium text-sm">Places Mentioned</h4>
+            </div>
+            <PlacesMentionedCard claims={placeClaims} findPerson={findPerson} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span style={{ color: 'var(--text-secondary)' }}><Users size={15} /></span>
+              <h4 className="text-white/70 font-medium text-sm">People Mentioned</h4>
+            </div>
+            <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
+          </div>
+        </div>
       </WikiSection>
 
       </WikiGroup>

@@ -347,6 +347,7 @@ export async function GET(
           ? { noContributors: parseNoContributors(ember.analysis.metadataJson) }
           : null,
         emberCallClips: [],
+        emberVoiceClips: [],
         wiki: null,
         snapshot: null,
       });
@@ -587,6 +588,47 @@ export async function GET(
       }
     };
 
+    const loadEmberVoiceClips = async () => {
+      try {
+        return await prisma.emberVoiceClip.findMany({
+          where: { emberId: id },
+          orderBy: [{ createdAt: 'asc' }, { sortOrder: 'asc' }],
+          select: {
+            id: true,
+            emberMessageId: true,
+            emberContributorId: true,
+            sortOrder: true,
+            title: true,
+            quote: true,
+            significance: true,
+            speaker: true,
+            audioFilename: true,
+            startMs: true,
+            endMs: true,
+            createdAt: true,
+            emberContributor: {
+              select: {
+                id: true,
+                userId: true,
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    email: true,
+                    phoneNumber: true,
+                  },
+                },
+              },
+            },
+          },
+        });
+      } catch (voiceClipError) {
+        console.error('Failed to load ember voice clips for ember payload:', voiceClipError);
+        return [];
+      }
+    };
+
     let ember = await loadImage();
 
     if (!ember) {
@@ -760,6 +802,7 @@ export async function GET(
     }
 
     const emberCallClips = await loadEmberCallClips();
+    const emberVoiceClips = await loadEmberVoiceClips();
 
     // Build chatBlocks: one block per person, merging their chat + call sessions.
     // Only authentic messages (typed or transcribed); synthetic AI-extracted rows
@@ -1200,6 +1243,25 @@ export async function GET(
         startMs: clip.startMs,
         endMs: clip.endMs,
         canUseForTitle: clip.canUseForTitle,
+        createdAt: clip.createdAt,
+      })),
+      emberVoiceClips: emberVoiceClips.map((clip) => ({
+        id: clip.id,
+        emberMessageId: clip.emberMessageId,
+        contributorId: clip.emberContributorId,
+        contributorName:
+          getUserDisplayName(clip.emberContributor?.user) ||
+          clip.emberContributor?.user?.email ||
+          clip.emberContributor?.user?.phoneNumber ||
+          clip.speaker ||
+          'Contributor',
+        title: clip.title,
+        quote: clip.quote,
+        significance: clip.significance,
+        speaker: clip.speaker,
+        audioUrl: `/api/uploads/${clip.audioFilename}`,
+        startMs: clip.startMs,
+        endMs: clip.endMs,
         createdAt: clip.createdAt,
       })),
       wiki: ember.wiki,
