@@ -82,28 +82,40 @@ async function ensureVoiceSession({
 async function transcribeUploadedAudio(file: File): Promise<{ text: string; transcriptObjectJson: string | null }> {
   try {
     const client = getOpenAIClient();
-    const raw = await client.audio.transcriptions.create({
-      file,
-      model: await getConfiguredOpenAIModel(
-        'audio.transcription',
-        getAudioTranscriptionModel()
-      ),
-      response_format: 'verbose_json',
-      timestamp_granularities: ['word'],
-    } as Parameters<typeof client.audio.transcriptions.create>[0]) as unknown as {
-      text: string;
-      words?: Array<{ word: string; start: number; end: number }>;
-    };
-    const text = (raw.text ?? '').replace(/\s+/g, ' ').trim();
-    // Normalise Whisper words (seconds) → ms to match VoiceCall.transcriptObjectJson shape
-    const transcriptObjectJson = Array.isArray(raw.words) && raw.words.length > 0
-      ? JSON.stringify(raw.words.map((w) => ({
-          word: w.word,
-          startMs: Math.round(w.start * 1000),
-          endMs: Math.round(w.end * 1000),
-        })))
-      : null;
-    return { text: text || '', transcriptObjectJson };
+    const model = await getConfiguredOpenAIModel(
+      'audio.transcription',
+      getAudioTranscriptionModel()
+    );
+
+    // verbose_json + timestamp_granularities=['word'] is only supported by whisper-1.
+    // Newer models (gpt-4o-transcribe, gpt-4o-mini-transcribe, etc.) reject these params,
+    // which causes the API call to throw and the catch block to return empty text.
+    if (model === 'whisper-1') {
+      const raw = await client.audio.transcriptions.create({
+        file,
+        model,
+        response_format: 'verbose_json',
+        timestamp_granularities: ['word'],
+      } as Parameters<typeof client.audio.transcriptions.create>[0]) as unknown as {
+        text: string;
+        words?: Array<{ word: string; start: number; end: number }>;
+      };
+      const text = (raw.text ?? '').replace(/\s+/g, ' ').trim();
+      // Normalise Whisper words (seconds) → ms to match VoiceCall.transcriptObjectJson shape
+      const transcriptObjectJson = Array.isArray(raw.words) && raw.words.length > 0
+        ? JSON.stringify(raw.words.map((w) => ({
+            word: w.word,
+            startMs: Math.round(w.start * 1000),
+            endMs: Math.round(w.end * 1000),
+          })))
+        : null;
+      return { text: text || '', transcriptObjectJson };
+    }
+
+    // For gpt-4o-transcribe, gpt-4o-mini-transcribe, and any future models: plain transcription.
+    const result = await client.audio.transcriptions.create({ file, model });
+    const text = (result.text ?? '').replace(/\s+/g, ' ').trim();
+    return { text: text || '', transcriptObjectJson: null };
   } catch (error) {
     console.error('Voice mode transcription error:', error);
     return { text: '', transcriptObjectJson: null };
