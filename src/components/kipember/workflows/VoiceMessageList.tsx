@@ -152,7 +152,7 @@ export default function VoiceMessageList({
                 }}
               >
                 <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">
-                  {message.content || (isUser ? 'Recording…' : '')}
+                  {message.content || (isUser ? 'Transcribing…' : '')}
                 </p>
                 {message.audioUrl ? <AudioPlayButton src={message.audioUrl} onPlaybackChange={onPlaybackChange} /> : null}
               </div>
