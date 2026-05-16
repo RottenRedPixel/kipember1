@@ -249,7 +249,7 @@ export default function StoriesSheet({
       .then((r) => r.json())
       .then((d: {
         tags?: Array<{ user?: { firstName?: string | null } | null; emberContributor?: { user?: { firstName?: string | null } | null } | null; label?: string | null }>;
-        analysis?: { confirmedLocation?: { label?: string | null } | null } | null;
+        analysis?: { confirmedLocation?: { label?: string | null } | null; latitude?: number | null; longitude?: number | null } | null;
       }) => {
         if (cancelled) return;
         const tags = Array.isArray(d?.tags) ? d.tags : [];
@@ -265,7 +265,12 @@ export default function StoriesSheet({
           names.push(first);
         }
         setTaggedNames(names);
-        setHasConfirmedLocation(Boolean(d?.analysis?.confirmedLocation?.label));
+        // Show place chip if the location was explicitly confirmed OR if GPS
+        // coordinates are present (wiki resolves place from coords via reverse geocoding).
+        setHasConfirmedLocation(
+          Boolean(d?.analysis?.confirmedLocation?.label) ||
+          (d?.analysis?.latitude != null && d?.analysis?.longitude != null)
+        );
       })
       .catch(() => {});
 
