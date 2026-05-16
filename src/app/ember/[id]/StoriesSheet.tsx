@@ -520,13 +520,30 @@ export default function StoriesSheet({
       if (script) {
         void saveStory(script);
       } else if (blocks) {
-        // Playlist mode — concatenate narration blocks as the saved script
-        const narratedText = (blocks as Array<{ type: string; content?: string }>)
-          .filter((b) => b.type === 'voice' && b.content)
-          .map((b) => b.content as string)
-          .join(' ')
-          .trim();
-        if (narratedText) void saveStory(narratedText);
+        // Playlist mode — build a structured script that interleaves Ember
+        // narrator text with contributor voice/call transcripts, sorted by
+        // playback order. Saved as JSON so the wiki can render each segment
+        // with its own colour (narrator = muted, voice-clip = green, call-clip = blue).
+        type PlaylistBlock =
+          | { type: 'voice'; content?: string; order?: number }
+          | { type: 'media'; clipKind?: 'voice' | 'call'; speaker?: string; quote?: string; order?: number };
+        const segments = (blocks as PlaylistBlock[])
+          .slice()
+          .sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)))
+          .flatMap((b): { type: string; speaker?: string; text: string }[] => {
+            if (b.type === 'voice' && b.content) {
+              return [{ type: 'narration', text: b.content }];
+            }
+            if (b.type === 'media' && b.quote) {
+              return [{
+                type: b.clipKind === 'call' ? 'call-clip' : 'voice-clip',
+                speaker: b.speaker ?? 'Contributor',
+                text: b.quote,
+              }];
+            }
+            return [];
+          });
+        if (segments.length > 0) void saveStory(JSON.stringify(segments));
       }
     } catch (err) {
       setPlaybackState('paused');

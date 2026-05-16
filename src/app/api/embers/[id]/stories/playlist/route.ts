@@ -189,19 +189,28 @@ export async function POST(
       durationSeconds,
     });
 
-    // Helper: build a media block for a clip
+    // Helper: build a media block for a clip.
+    // clipKind / speaker / quote are included so the client can build a
+    // structured story script that interleaves narrator text with contributor
+    // transcripts (used when persisting the played story to EmberStory).
     type SnapshotBlock =
       | { type: 'voice'; content: string; order: number }
-      | { type: 'media'; mediaId: string; mediaType: string; clipStartMs?: number; clipEndMs?: number; order: number };
+      | { type: 'media'; mediaId: string; mediaType: string; clipKind: 'voice' | 'call'; speaker: string; quote: string; clipStartMs?: number; clipEndMs?: number; order: number };
 
     const clipBlock = (clip: ClipItem, ord: number): SnapshotBlock => {
-      if (clip.kind === 'voice') {
-        return { type: 'media', mediaId: clip.id, mediaType: 'AUDIO', order: ord };
-      }
+      const base = {
+        type: 'media' as const,
+        mediaId: clip.id,
+        mediaType: 'AUDIO',
+        clipKind: clip.kind,
+        speaker: clip.speaker || 'Contributor',
+        quote: clip.quote,
+        order: ord,
+      };
       if (clip.startMs != null && clip.endMs != null && clip.endMs > clip.startMs) {
-        return { type: 'media', mediaId: clip.id, mediaType: 'AUDIO', clipStartMs: clip.startMs, clipEndMs: clip.endMs, order: ord };
+        return { ...base, clipStartMs: clip.startMs, clipEndMs: clip.endMs };
       }
-      return { type: 'media', mediaId: clip.id, mediaType: 'AUDIO', order: ord };
+      return base;
     };
 
     // Assemble blocks from LLM segments

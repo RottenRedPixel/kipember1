@@ -100,6 +100,63 @@ function ClaimRow({
   );
 }
 
+// ── StoriesCard helpers ───────────────────────────────────────────────────────
+
+type ScriptSegment =
+  | { type: 'narration'; text: string }
+  | { type: 'voice-clip' | 'call-clip'; speaker: string; text: string };
+
+/** Try to parse a structured script (JSON array). Returns null for legacy plain text. */
+function parseScriptSegments(script: string): ScriptSegment[] | null {
+  if (!script.startsWith('[')) return null;
+  try {
+    const parsed: unknown = JSON.parse(script);
+    if (
+      Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      typeof (parsed[0] as { type?: unknown }).type === 'string'
+    ) {
+      return parsed as ScriptSegment[];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Renders a story script with coloured segments:
+ *   narrator (Ember TTS)     → white/60 (muted)
+ *   voice-clip (contributor voice message) → green
+ *   call-clip  (contributor call audio)    → blue
+ */
+function ScriptDisplay({ script }: { script: string }) {
+  const segments = parseScriptSegments(script);
+  if (!segments) {
+    // Legacy plain-text script
+    return <p className="text-white/60 text-xs leading-relaxed">&ldquo;{script}&rdquo;</p>;
+  }
+  return (
+    <div className="flex flex-col gap-0.5">
+      {segments.map((seg, i) => {
+        if (seg.type === 'narration') {
+          return (
+            <p key={i} className="text-white/60 text-xs leading-relaxed">{seg.text}</p>
+          );
+        }
+        // voice-clip = green (#4ade80), call-clip = blue (#60a5fa)
+        const color = seg.type === 'call-clip' ? '#60a5fa' : '#4ade80';
+        return (
+          <p key={i} className="text-xs leading-relaxed" style={{ color }}>
+            <span className="text-white/30">{seg.speaker}: </span>
+            &ldquo;{seg.text}&rdquo;
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── StoriesCard ───────────────────────────────────────────────────────────────
 
 export function StoriesCard({ stories }: { stories: EmberStoryRecord[] | null }) {
@@ -143,7 +200,7 @@ export function StoriesCard({ stories }: { stories: EmberStoryRecord[] | null })
                 ))}
               </div>
             ) : null}
-            <p className="text-white/60 text-xs leading-relaxed">&ldquo;{story.script}&rdquo;</p>
+            <ScriptDisplay script={story.script} />
           </div>
         );
       })}
