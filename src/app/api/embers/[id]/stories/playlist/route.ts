@@ -176,11 +176,22 @@ export async function POST(
       durationSeconds,
     });
 
-    // Assemble snapshot-audio blocks
+    // Helper: build a media block for a clip
     type SnapshotBlock =
       | { type: 'voice'; content: string; order: number }
       | { type: 'media'; mediaId: string; mediaType: string; clipStartMs?: number; clipEndMs?: number; order: number };
 
+    const clipBlock = (clip: ClipItem, ord: number): SnapshotBlock => {
+      if (clip.kind === 'voice') {
+        return { type: 'media', mediaId: clip.id, mediaType: 'AUDIO', order: ord };
+      }
+      if (clip.startMs != null && clip.endMs != null && clip.endMs > clip.startMs) {
+        return { type: 'media', mediaId: clip.id, mediaType: 'AUDIO', clipStartMs: clip.startMs, clipEndMs: clip.endMs, order: ord };
+      }
+      return { type: 'media', mediaId: clip.id, mediaType: 'AUDIO', order: ord };
+    };
+
+    // Assemble blocks from LLM segments
     const blocks: SnapshotBlock[] = [];
     let order = 1;
 
@@ -189,32 +200,19 @@ export async function POST(
         blocks.push({ type: 'voice', content: seg.text, order: order++ });
       } else if (seg.type === 'clip') {
         const clip = ranked[seg.index];
-        if (!clip) continue;
-
-        if (clip.kind === 'voice') {
-          // Pre-trimmed file — play the whole thing
-          blocks.push({ type: 'media', mediaId: clip.id, mediaType: 'AUDIO', order: order++ });
-        } else {
-          // Call clip — full recording URL, must be trimmed to start/end
-          if (clip.startMs != null && clip.endMs != null && clip.endMs > clip.startMs) {
-            blocks.push({
-              type: 'media',
-              mediaId: clip.id,
-              mediaType: 'AUDIO',
-              clipStartMs: clip.startMs,
-              clipEndMs: clip.endMs,
-              order: order++,
-            });
-          } else {
-            blocks.push({ type: 'media', mediaId: clip.id, mediaType: 'AUDIO', order: order++ });
-          }
-        }
+        if (clip) blocks.push(clipBlock(clip, order++));
       }
     }
 
-    // If LLM returned nothing usable, signal fallback
-    if (blocks.length === 0) {
-      return NextResponse.json({ blocks: null });
+    // MANDATORY: if LLM narration failed or produced no clip references,
+    // fall back to playing all ranked clips directly — clips are never optional.
+    const hasClipBlock = blocks.some((b) => b.type === 'media');
+    if (!hasClipBlock) {
+      blocks.length = 0;
+      order = 1;
+      for (const clip of ranked) {
+        blocks.push(clipBlock(clip, order++));
+      }
     }
 
     return NextResponse.json({ blocks });

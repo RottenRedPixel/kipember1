@@ -431,28 +431,44 @@ export default function StoriesSheet({
 
         setPlaybackState('composing');
 
-        // Try playlist first — if the ember has real clips for this selection
-        // the endpoint returns blocks (Ember narration + contributor clips).
-        // Falls back to pure narration via /compose if no clips exist.
-        try {
-          const playlistRes = await fetch(
-            `/api/embers/${encodeURIComponent(emberId)}/stories/playlist`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }),
-            }
-          );
-          if (playlistRes.ok) {
-            const playlistPayload = await playlistRes.json().catch(() => null) as { blocks?: unknown[] | null } | null;
-            if (Array.isArray(playlistPayload?.blocks) && playlistPayload.blocks.length > 0) {
-              blocks = playlistPayload.blocks;
-              setComposedBlocks(blocks);
-            }
-          }
-        } catch { /* non-fatal — fall through to compose */ }
+        // Determine if any selected person has real recorded clips.
+        // When clips exist, using them is MANDATORY — we never fall back to
+        // pure narration for a contributor who has left real audio.
+        const selectedHaveClips = personKeys.some((p) =>
+          clipSpeakers.some((s) => s.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(s.toLowerCase().split(' ')[0]))
+        );
 
-        // If playlist returned nothing, compose pure narration
+        // Always try the playlist endpoint when people are selected —
+        // it guarantees clips are included if they exist.
+        if (personKeys.length > 0 || facetKeys.length > 0) {
+          try {
+            const playlistRes = await fetch(
+              `/api/embers/${encodeURIComponent(emberId)}/stories/playlist`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }),
+              }
+            );
+            if (playlistRes.ok) {
+              const playlistPayload = await playlistRes.json().catch(() => null) as { blocks?: unknown[] | null } | null;
+              if (Array.isArray(playlistPayload?.blocks) && playlistPayload.blocks.length > 0) {
+                blocks = playlistPayload.blocks;
+                setComposedBlocks(blocks);
+              }
+            }
+          } catch { /* non-fatal */ }
+        }
+
+        // If selected person has clips but playlist failed — hard stop.
+        // Do NOT silently drop to a clip-free narration.
+        if (!blocks && selectedHaveClips) {
+          setPlaybackState('idle');
+          setError('Could not load voice clips. Please try again.');
+          return;
+        }
+
+        // No clips for this selection — compose pure narration
         if (!blocks) {
           try {
             const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
