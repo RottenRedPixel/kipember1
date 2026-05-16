@@ -605,17 +605,30 @@ export default function StoriesSheet({
           type="button"
           onClick={() => void handleToggle()}
           disabled={playbackState === 'composing' || playbackState === 'loading'}
-          className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full cursor-pointer [@media(hover:hover)]:hover:brightness-110 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150"
+          className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full [@media(hover:hover)]:hover:brightness-110 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150"
           style={{
             top: -24,
             width: 48,
             height: 48,
             background: vizColor,
             border: '6px solid var(--bg-sheets)',
+            cursor: playbackState === 'composing' || playbackState === 'loading' ? 'default' : 'pointer',
           }}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? (
+          {playbackState === 'composing' || playbackState === 'loading' ? (
+            <svg width={20} height={20} viewBox="0 0 72 72" fill="white" className="animate-spin">
+              <circle cx="36" cy="36" r="7.2" />
+              <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+              <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
+              <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
+              <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(22.02 94.02) rotate(-90)" />
+              <rect x="47.97" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(29.55 -30.48) rotate(45)" />
+              <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(42.45 .66) rotate(45)" />
+              <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
+              <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
+            </svg>
+          ) : isPlaying ? (
             <Pause size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
           ) : (
             <Play size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
