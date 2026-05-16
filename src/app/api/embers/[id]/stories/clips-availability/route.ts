@@ -38,14 +38,10 @@ export async function GET(
       }),
     ]);
 
-    const speakers = Array.from(
-      new Set([
-        ...voiceClips.map((c) => c.speaker).filter((s): s is string => Boolean(s)),
-        ...callClips.map((c) => c.speaker).filter((s): s is string => Boolean(s)),
-      ])
-    );
+    const voiceSpeakers = voiceClips.map((c) => c.speaker).filter((s): s is string => Boolean(s));
+    const callSpeakers  = callClips.map((c) => c.speaker).filter((s): s is string => Boolean(s));
 
-    return NextResponse.json({ speakers });
+    return NextResponse.json({ voiceSpeakers, callSpeakers });
   } catch (error) {
     console.error('Clips availability error:', error);
     return NextResponse.json({ error: 'Failed to load clips availability' }, { status: 500 });

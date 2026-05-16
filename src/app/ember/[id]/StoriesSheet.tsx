@@ -1,6 +1,6 @@
 'use client';
 
-import { Flame, Mic, Pause, Play, ScanEye, X } from 'lucide-react';
+import { Flame, Mic, Pause, Phone, Play, ScanEye, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import { useResetZoomOnOpen } from '@/lib/reset-zoom';
@@ -85,9 +85,10 @@ export default function StoriesSheet({
   const [taggedNames, setTaggedNames] = useState<string[]>([]);
   const [hasConfirmedLocation, setHasConfirmedLocation] = useState(false);
 
-  // Speakers who have real recorded clips (EmberVoiceClip / EmberCallClip).
-  // Used to distinguish contributor chips (real audio) from referenced chips.
-  const [clipSpeakers, setClipSpeakers] = useState<string[]>([]);
+  // Speakers split by clip type — used to show the right icon on person chips
+  // and to gate the playlist-mode hard-stop when clips exist.
+  const [voiceClipSpeakers, setVoiceClipSpeakers] = useState<string[]>([]);
+  const [callClipSpeakers,  setCallClipSpeakers]  = useState<string[]>([]);
 
   // Which facet keys the user has selected.
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(['snapshot']));
@@ -251,12 +252,13 @@ export default function StoriesSheet({
       })
       .catch(() => {});
 
-    // Fetch which speakers have real recorded clips
+    // Fetch which speakers have real recorded clips, split by clip type
     fetch(`/api/embers/${encodeURIComponent(emberId)}/stories/clips-availability`, { cache: 'no-store' })
       .then((r) => r.ok ? r.json() : null)
-      .then((d: { speakers?: string[] } | null) => {
-        if (cancelled || !d?.speakers) return;
-        setClipSpeakers(d.speakers);
+      .then((d: { voiceSpeakers?: string[]; callSpeakers?: string[] } | null) => {
+        if (cancelled) return;
+        if (d?.voiceSpeakers) setVoiceClipSpeakers(d.voiceSpeakers);
+        if (d?.callSpeakers)  setCallClipSpeakers(d.callSpeakers);
       })
       .catch(() => {});
 
@@ -452,8 +454,9 @@ export default function StoriesSheet({
         // Determine if any selected person has real recorded clips.
         // When clips exist, using them is MANDATORY — we never fall back to
         // pure narration for a contributor who has left real audio.
+        const allClipSpeakers = [...voiceClipSpeakers, ...callClipSpeakers];
         const selectedHaveClips = personKeys.some((p) =>
-          clipSpeakers.some((s) => s.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(s.toLowerCase().split(' ')[0]))
+          allClipSpeakers.some((s) => s.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(s.toLowerCase().split(' ')[0]))
         );
 
         // Always try the playlist endpoint when people are selected —
@@ -698,12 +701,14 @@ export default function StoriesSheet({
         <div className="flex flex-wrap justify-center gap-2 pb-4">
           {facets.map((facet) => {
             const isSelected = selectedKeys.has(facet.key);
-            // A person chip is a "contributor chip" if that person has real recorded clips.
-            const isContributor = facet.isPerson && clipSpeakers.some((s) => {
-              const speakerFirst = s.toLowerCase().split(' ')[0];
-              const chipFirst = facet.key.toLowerCase().split(' ')[0];
-              return speakerFirst === chipFirst || s.toLowerCase().includes(facet.key.toLowerCase());
-            });
+            const matchesSpeaker = (list: string[]) =>
+              facet.isPerson && list.some((s) => {
+                const speakerFirst = s.toLowerCase().split(' ')[0];
+                const chipFirst = facet.key.toLowerCase().split(' ')[0];
+                return speakerFirst === chipFirst || s.toLowerCase().includes(facet.key.toLowerCase());
+              });
+            const hasVoiceClip = matchesSpeaker(voiceClipSpeakers);
+            const hasCallClip  = matchesSpeaker(callClipSpeakers);
             return (
               <button
                 key={facet.key}
@@ -718,7 +723,8 @@ export default function StoriesSheet({
                 }}
               >
                 {facet.isSnapshot ? <ScanEye size={12} strokeWidth={2} /> : null}
-                {isContributor ? <Mic size={11} strokeWidth={2} style={{ opacity: 0.7 }} /> : null}
+                {hasCallClip  ? <Phone size={11} strokeWidth={2} style={{ opacity: 0.7 }} /> : null}
+                {hasVoiceClip ? <Mic   size={11} strokeWidth={2} style={{ opacity: 0.7 }} /> : null}
                 {facet.label}
               </button>
             );
