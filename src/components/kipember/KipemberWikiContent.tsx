@@ -1311,7 +1311,7 @@ export default function KipemberWikiContent({
 
       <WikiSection
         icon={<Sparkles size={17} />}
-        title="Stories"
+        title="Guest Stories"
         complete={Boolean(emberStories && emberStories.length > 0)}
         count={emberStories?.length ?? 0}
         collapsible
