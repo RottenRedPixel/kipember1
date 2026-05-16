@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { UserRound } from 'lucide-react';
 
 type AppHeaderProps = {
   avatarUrl?: string | null;
@@ -39,13 +40,13 @@ function computeInitials(value: string): string {
       .map((w) => w[0])
       .join('')
       .slice(0, 2)
-      .toUpperCase() || 'ST'
+      .toUpperCase() || ''
   );
 }
 
 export default function AppHeader({
   avatarUrl: externalAvatarUrl,
-  userInitials = 'ST',
+  userInitials = '',
   userModalHref = '/account',
   hasPassword: externalHasPassword,
 }: AppHeaderProps) {
@@ -83,7 +84,7 @@ export default function AppHeader({
         if (!res.ok) {
           setAuthenticated(false);
           setAuthLoading(false);
-          writeCache({ authenticated: false, hasPassword: false, avatarUrl: null, initials: 'ST' });
+          writeCache({ authenticated: false, hasPassword: false, avatarUrl: null, initials: '' });
           return;
         }
         const payload = await res.json();
@@ -168,8 +169,10 @@ export default function AppHeader({
         >
           {avatarUrl ? (
             <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-          ) : (
+          ) : localInitials ? (
             <span className="text-white text-sm font-medium">{localInitials}</span>
+          ) : (
+            <UserRound size={18} className="text-white" strokeWidth={1.8} />
           )}
         </Link>
       ) : authenticated && !hasPassword ? (
