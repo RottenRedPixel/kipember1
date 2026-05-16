@@ -1,9 +1,9 @@
 import { createHash } from 'crypto';
 import { promises as fs } from 'fs';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { extractAudioClipToM4a, transcodeAudioToM4a } from '@/lib/audio-processing';
 import { prisma } from '@/lib/db';
-import { getUploadFallbackUrl, getUploadPath, getUploadsDir } from '@/lib/uploads';
+import { getUploadFallbackUrl, getUploadPath, getUploadsDir, readUploadBuffer } from '@/lib/uploads';
 
 const AUDIO_SEGMENT_VERSION = 'v2';
 
@@ -76,16 +76,25 @@ export async function resolveAudioSourceForMedia(
   }
 
   if (voiceMessageClip?.audioFilename) {
-    // Prefer local disk (fast). If the file was uploaded to R2 and the local
-    // copy is gone (e.g. after a Render restart), fall back to the hosted URL
-    // so ffmpeg can fetch directly from the uploads API (which reads from R2).
+    // Prefer local disk (fast). If the file is missing (e.g. after a Render
+    // restart), restore it from R2 via readUploadBuffer — which reads R2
+    // directly without going through the HTTP uploads route. Write it back
+    // to local disk so ffmpeg always gets a real file path, not a URL.
     const localPath = getUploadPath(voiceMessageClip.audioFilename);
     let source = localPath;
     try {
       await fs.access(localPath);
     } catch {
-      const fallbackUrl = getUploadFallbackUrl(voiceMessageClip.audioFilename);
-      if (fallbackUrl) source = fallbackUrl;
+      try {
+        const buffer = await readUploadBuffer(voiceMessageClip.audioFilename);
+        await fs.mkdir(dirname(localPath), { recursive: true });
+        await fs.writeFile(localPath, buffer);
+        source = localPath;
+      } catch {
+        // Last resort: URL fallback (may or may not work for ffmpeg)
+        const fallbackUrl = getUploadFallbackUrl(voiceMessageClip.audioFilename);
+        if (fallbackUrl) source = fallbackUrl;
+      }
     }
     return {
       source,
