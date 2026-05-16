@@ -464,6 +464,7 @@ export default function StoriesSheet({
               `callClip: ${debug.dbRecords ? JSON.stringify((debug.dbRecords as Record<string, unknown>).callClip) : '?'}`,
               `r2Configured: ${debug.r2Configured ?? 'N/A'}`,
               `r2HasFile: ${debug.r2HasFile ?? 'N/A'}`,
+              `r2GetResult: ${debug.r2GetResult ?? 'N/A'}`,
               `r2Error: ${debug.r2Error ?? 'none'}`,
               `sourceIsUrl: ${debug.sourceIsUrl}`,
               `source: ${(debug.sourceInfo as { source?: string } | null)?.source ?? 'null'}`,

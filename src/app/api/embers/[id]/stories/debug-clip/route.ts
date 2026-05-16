@@ -9,7 +9,7 @@ import { requireApiUser } from '@/lib/auth-server';
 import { getEmberAccessType } from '@/lib/ember';
 import { resolveAudioSourceForMedia } from '@/lib/audio-segments';
 import { getUploadsDir } from '@/lib/uploads';
-import { isObjectStorageConfigured, objectStorageHasUpload } from '@/lib/object-storage';
+import { isObjectStorageConfigured, objectStorageHasUpload, getUploadFromObjectStorage } from '@/lib/object-storage';
 import { prisma } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -67,6 +67,13 @@ export async function GET(
     } catch (e) {
       result.r2HasFile = false;
       result.r2Error = String(e);
+    }
+    // Also try the actual GET path (same code as /api/uploads/ catch block)
+    try {
+      const obj = await getUploadFromObjectStorage({ filename: voiceClip.audioFilename });
+      result.r2GetResult = obj ? `ok — body type: ${typeof obj.body}, contentType: ${obj.contentType}, bytes: ${obj.contentLength}` : 'null (function returned null)';
+    } catch (e) {
+      result.r2GetResult = `threw: ${String(e)}`;
     }
   }
 
