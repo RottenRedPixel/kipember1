@@ -26,7 +26,7 @@ import {
   getOpenAIClient,
 } from '@/lib/openai';
 import { persistUploadedMedia } from '@/lib/media-upload';
-import { persistEmberVoiceClips } from '@/lib/ember-clips';
+import { persistEmberVoiceClips, syncVoiceClipsFromClaims } from '@/lib/ember-clips';
 import { synthesizeSpeech } from '@/lib/tts';
 import { getUserDisplayName } from '@/lib/user-name';
 
@@ -184,7 +184,9 @@ export async function POST(
       reconcileEmberMessageSafely(userMessage.id, 'contributor voice housekeeping'),
     ]);
 
-    // Fire-and-forget: extract memorable voice clips from this message
+    // Fire-and-forget: LLM clip extraction followed by claim-backed sync.
+    // reconcileEmberMessageSafely already ran above, so claims are available
+    // for syncVoiceClipsFromClaims to fill any gaps the LLM missed.
     if (transcript) {
       persistEmberVoiceClips({
         emberId: resolved.emberId,
@@ -195,9 +197,20 @@ export async function POST(
         transcript,
         audioFilename: persistedAudio.filename,
         transcriptObjectJson,
-      }).catch((err) => {
-        console.error('Contributor EmberVoice clip extraction error:', err);
-      });
+      })
+        .then(() =>
+          syncVoiceClipsFromClaims({
+            emberId: resolved.emberId,
+            emberContributorId: resolved.emberContributorId,
+            emberMessageId: userMessage.id,
+            speakerName: resolved.speakerName,
+            audioFilename: persistedAudio.filename,
+            transcriptObjectJson,
+          })
+        )
+        .catch((err) => {
+          console.error('Contributor EmberVoice clip extraction error:', err);
+        });
     }
 
     let replyAudioFilename: string | null = null;

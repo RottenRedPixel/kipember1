@@ -190,24 +190,30 @@ export function parseVoiceMessageWords(transcriptObjectJson: string | null | und
 
 // ── Clip extraction prompt ────────────────────────────────────────────────────
 
-const CLIP_EXTRACTION_SYSTEM = `You are extracting voice clips from a memory recording to capture the contributor's voice.
+const CLIP_EXTRACTION_SYSTEM = `You are extracting audio clips from a memory recording. Create one clip for EVERY distinct sentence or thought the contributor expresses — this is mandatory, not optional.
 
-Find ALL verbatim quotes from the CONTRIBUTOR (not from Ember/agent) that contain any of:
-- A reason or motivation — why this moment/photo matters to them
-- An emotion or feeling — how they felt or feel about it
-- A story detail — something that happened, a specific memory or anecdote
-- A place — where something happened or a location they mention
-- A person — someone they name or describe
+Work through the CONTRIBUTOR's words sentence by sentence. For EACH sentence or distinct thought, create a clip:
 
-Extract every distinct moment that qualifies — there is no cap. Even a single sentence counts if it captures one of the above.
+Significance categories (pick the best fit):
+- "why"     — a reason, motivation, or what the moment means to them
+- "emotion" — a feeling or emotional state
+- "story"   — something that happened, what someone was doing, an anecdote, a description
+- "place"   — a location or place mentioned
+- "person"  — describing someone: their name, appearance, actions, or role
 
-Return JSON: {"clips": [{"title": "short label (3–6 words)", "quote": "exact verbatim words from transcript", "significance": "which category: why / emotion / story / place / person", "segmentIndex": 0, "canUseForTitle": false}]}
+Every sentence counts. Examples:
+- "He was wearing an orange t-shirt" → person clip
+- "She was laughing the whole time" → emotion clip
+- "They were doing their homework" → story clip
+- "It meant everything to me" → why clip
+
+Return JSON: {"clips": [{"title": "short label (3–6 words)", "quote": "exact verbatim words from transcript", "significance": "why / emotion / story / place / person", "segmentIndex": 0, "canUseForTitle": false}]}
 
 Rules:
-- quote must be verbatim from the transcript — do not paraphrase or summarise
-- quote should be the shortest span that captures the complete thought
+- quote must be verbatim — never paraphrase or summarise
+- one clip per sentence/thought — do not merge multiple sentences into one clip
 - canUseForTitle: true only if the quote could stand alone as an ember title
-- Return {"clips": []} only if the contributor said nothing meaningful`;
+- Return {"clips": []} only if the contributor said absolutely nothing`;
 
 // ── EmberCall clip extractor ──────────────────────────────────────────────────
 
@@ -415,4 +421,136 @@ export async function persistEmberVoiceClips({
       endMs: clip.endMs,
     })),
   });
+}
+
+// ── Claim-to-clip sync ───────────────────────────────────────────────────────
+// Called after claims are extracted for a voice message. Ensures every claim
+// has a corresponding audio clip — filling any gaps the LLM extraction missed.
+
+const CLAIM_SIG: Record<string, string> = {
+  why: 'why',
+  emotion: 'emotion',
+  extra_story: 'story',
+  place: 'place',
+  person: 'person',
+};
+
+export async function syncVoiceClipsFromClaims({
+  emberId,
+  emberContributorId,
+  emberMessageId,
+  speakerName,
+  audioFilename,
+  transcriptObjectJson,
+}: {
+  emberId: string;
+  emberContributorId: string | null;
+  emberMessageId: string;
+  speakerName: string;
+  audioFilename: string;
+  transcriptObjectJson: string | null;
+}): Promise<void> {
+  const words = parseVoiceMessageWords(transcriptObjectJson);
+  if (words.length === 0) return; // no timestamps — nothing to trim
+
+  // Fetch claims and existing clips in parallel
+  const [claims, existingClips] = await Promise.all([
+    prisma.memoryClaim.findMany({
+      where: { emberMessageId },
+      select: { id: true, claimType: true, value: true, rawText: true },
+    }),
+    prisma.emberVoiceClip.findMany({
+      where: { emberMessageId },
+      select: { quote: true },
+    }),
+  ]);
+
+  if (claims.length === 0) return;
+
+  // Build set of already-covered normalised tokens (first 4 words of each clip quote)
+  const coveredTokenSets = existingClips.map((c) =>
+    normalizeForMatch(c.quote).split(' ').slice(0, 4).join(' ')
+  );
+
+  const isCovered = (text: string) => {
+    const tokens = normalizeForMatch(text).split(' ').slice(0, 4).join(' ');
+    return coveredTokenSets.some((covered) => covered === tokens || covered.includes(tokens));
+  };
+
+  // Find the verbatim span in word timestamps for a given search text.
+  // Falls back to searching key words if the full text doesn't match verbatim.
+  const findTiming = (searchText: string): { startMs: number; endMs: number } | null => {
+    const quoteTokens = normalizeForMatch(searchText).split(' ').filter(Boolean);
+    if (quoteTokens.length === 0) return null;
+    const wordTokens = words.map((w) => normalizeForMatch(w.text));
+
+    // Exact token sequence match
+    for (let j = 0; j <= wordTokens.length - quoteTokens.length; j++) {
+      if (quoteTokens.every((t, o) => wordTokens[j + o] === t)) {
+        const startMs = words[j].startMs;
+        const endMs = words[j + quoteTokens.length - 1].endMs;
+        if (startMs !== null && endMs !== null) return { startMs, endMs };
+      }
+    }
+
+    // Partial match: find the first key word (3+ chars) and grab a window around it
+    const keyToken = quoteTokens.find((t) => t.length >= 3);
+    if (!keyToken) return null;
+    const keyIdx = wordTokens.findIndex((t) => t === keyToken);
+    if (keyIdx === -1) return null;
+    const windowEnd = Math.min(keyIdx + quoteTokens.length - 1, words.length - 1);
+    const startMs = words[keyIdx].startMs;
+    const endMs = words[windowEnd].endMs;
+    if (startMs !== null && endMs !== null) return { startMs, endMs };
+    return null;
+  };
+
+  const segmentsDir = join(getUploadsDir(), '.segments');
+  await mkdir(segmentsDir, { recursive: true });
+  const sourcePath = getUploadPath(audioFilename);
+
+  let added = 0;
+  const sortBase = existingClips.length;
+
+  for (let i = 0; i < claims.length; i++) {
+    const claim = claims[i];
+    // Prefer rawText (closer to verbatim) then value
+    const searchText = (claim.rawText?.trim() || claim.value?.trim() || '').slice(0, 200);
+    if (!searchText || isCovered(searchText)) continue;
+
+    const timing = findTiming(searchText);
+    if (!timing) continue;
+
+    const clipFilename = `${randomUUID()}.m4a`;
+    const clipPath = join(segmentsDir, clipFilename);
+    try {
+      await extractAudioClipToM4a({ input: sourcePath, outputPath: clipPath, ...timing });
+      await uploadLocalFileToObjectStorage({ filename: clipFilename, filePath: clipPath });
+    } catch (err) {
+      console.error(`[SyncVoiceClips] Failed to extract clip for claim "${claim.value}":`, err);
+      continue;
+    }
+
+    await prisma.emberVoiceClip.create({
+      data: {
+        emberId,
+        emberContributorId: emberContributorId ?? undefined,
+        emberMessageId,
+        sortOrder: sortBase + i,
+        title: searchText.slice(0, 60),
+        quote: searchText,
+        significance: CLAIM_SIG[claim.claimType] ?? claim.claimType,
+        speaker: speakerName,
+        audioFilename: clipFilename,
+        startMs: timing.startMs,
+        endMs: timing.endMs,
+      },
+    });
+    added++;
+    console.log(`[SyncVoiceClips] Created clip for claim "${claim.claimType}": "${searchText.slice(0, 50)}"`);
+  }
+
+  if (added > 0) {
+    console.log(`[SyncVoiceClips] Added ${added} claim-backed clip(s) for message ${emberMessageId}`);
+  }
 }

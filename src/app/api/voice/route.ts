@@ -19,7 +19,7 @@ import {
   getOpenAIClient,
 } from '@/lib/openai';
 import { persistUploadedMedia } from '@/lib/media-upload';
-import { persistEmberVoiceClips } from '@/lib/ember-clips';
+import { persistEmberVoiceClips, syncVoiceClipsFromClaims } from '@/lib/ember-clips';
 import { synthesizeSpeech } from '@/lib/tts';
 import { getVoiceEntry } from '@/lib/voice-catalog';
 
@@ -190,32 +190,22 @@ export async function POST(request: NextRequest) {
     });
 
     if (transcript) {
-      extractAllClaimsFromContent(
-        {
-          emberId,
-          sessionId: session.id,
-          emberContributorId: session.emberContributorId ?? null,
-          userId,
-          emberMessageId: userMessage.id,
-          source: 'voice',
-          questionType: null,
-          question: null,
-          content: transcript,
-          sourceLabel: getUserDisplayName(auth.user) || auth.user.email || userId,
-        },
-        'voice housekeeping'
-      ).then(() => generateWikiForImage(emberId)).catch((err) => {
-        console.error('Voice housekeeping extraction error:', err);
-      });
-
-      // Fire-and-forget: extract memorable voice clips from this message
       const speakerName = getUserDisplayName(auth.user) || auth.user.email || 'Contributor';
+
+      // Fire-and-forget pipeline:
+      // 1. Extract LLM clips immediately (sentence-by-sentence)
+      // 2. Extract claims in parallel
+      // 3. After claims land, sync any gaps (claim-backed clips for anything the LLM missed)
+      // 4. Regenerate wiki
+
+      const emberContributorId = session.emberContributorId ?? null;
+
       prisma.ember.findUnique({ where: { id: emberId }, select: { title: true, originalName: true } })
         .then((ember) => {
           const emberTitle = ember?.title || (ember?.originalName ?? 'Ember').replace(/\.[^.]+$/, '');
           return persistEmberVoiceClips({
             emberId,
-            emberContributorId: session.emberContributorId ?? null,
+            emberContributorId,
             emberMessageId: userMessage.id,
             emberTitle,
             speakerName,
@@ -226,6 +216,36 @@ export async function POST(request: NextRequest) {
         })
         .catch((err) => {
           console.error('EmberVoice clip extraction error:', err);
+        });
+
+      extractAllClaimsFromContent(
+        {
+          emberId,
+          sessionId: session.id,
+          emberContributorId,
+          userId,
+          emberMessageId: userMessage.id,
+          source: 'voice',
+          questionType: null,
+          question: null,
+          content: transcript,
+          sourceLabel: speakerName,
+        },
+        'voice housekeeping'
+      )
+        .then(() =>
+          syncVoiceClipsFromClaims({
+            emberId,
+            emberContributorId,
+            emberMessageId: userMessage.id,
+            speakerName,
+            audioFilename: persistedAudio.filename,
+            transcriptObjectJson,
+          })
+        )
+        .then(() => generateWikiForImage(emberId))
+        .catch((err) => {
+          console.error('Voice housekeeping extraction error:', err);
         });
     }
 
