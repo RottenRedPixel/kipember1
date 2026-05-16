@@ -2399,8 +2399,10 @@ function UnifiedExtractionBlock({
           </div>
           <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
             {claimSource === 'voice'
-              ? <Phone size={10} fill="currentColor" stroke="currentColor" />
-              : <MessageCircle size={10} fill="currentColor" stroke="currentColor" />}
+              ? <Mic size={10} />
+              : claimSource === 'call'
+                ? <Phone size={10} fill="currentColor" stroke="currentColor" />
+                : <MessageCircle size={10} fill="currentColor" stroke="currentColor" />}
             {claimCreatedAt ? <span>{relativeAt(claimCreatedAt)}</span> : null}
           </div>
         </div>
