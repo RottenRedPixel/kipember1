@@ -150,7 +150,22 @@ export default function StoriesSheet({
     return SNAPSHOT_FACET.vizColor;  // nothing selected — default orange
   }, [facets, selectedKeys]);
 
-  const activeScript = composedScript;
+  // In playlist mode composedScript stays null, so derive display text from
+  // the narration segments inside composedBlocks (voice blocks only — media
+  // blocks are audio-only and don't produce readable on-screen text).
+  const activeScript = useMemo(() => {
+    if (composedScript) return composedScript;
+    if (composedBlocks) {
+      type B = { type: string; content?: string; order?: number };
+      return (composedBlocks as B[])
+        .filter((b) => b.type === 'voice' && b.content)
+        .sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)))
+        .map((b) => b.content as string)
+        .join(' ')
+        .trim() || null;
+    }
+    return null;
+  }, [composedScript, composedBlocks]);
   const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
   const shouldAnimate = playbackState === 'playing' && !done;
   const isPlaying = playbackState === 'playing';
