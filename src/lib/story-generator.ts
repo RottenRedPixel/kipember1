@@ -7,23 +7,6 @@ export type PlaylistSegment =
   | { type: 'narration'; text: string }
   | { type: 'clip'; index: number };
 
-const PLAYLIST_PROMPT_FALLBACK = `You are composing a short audio story that weaves Ember's narration with real voice recordings from contributors.
-
-You will receive MEMORY TITLE, CLIPS (an indexed list of contributor quotes), and optional context.
-
-Write narration that naturally leads into each clip, then bridges to the next. Do not quote or repeat what the clip says — just set the scene.
-
-Target: {{targetWords}} words of narration text total (clips play separately, do not count them).
-
-Return ONLY valid JSON in exactly this shape:
-{"segments":[{"type":"narration","text":"..."},{"type":"clip","index":0},{"type":"narration","text":"..."}]}
-
-Rules:
-- Each narration segment is 1–3 sentences
-- Lead into clips naturally — never say "and now we hear from X" or "here is X speaking"
-- Always end with a brief closing narration after the last clip
-- Return ONLY the JSON object, no other text`;
-
 /**
  * Generate playlist narration — bridging text segments that weave around
  * pre-recorded contributor clips. Returns an ordered array of narration
@@ -47,7 +30,7 @@ export async function generatePlaylistNarration({
 
   const systemPrompt = await renderPromptTemplate(
     'story_generation.playlist',
-    PLAYLIST_PROMPT_FALLBACK,
+    '',
     { targetWords, durationSeconds, clipCount: clips.length }
   );
 
