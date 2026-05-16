@@ -9,6 +9,7 @@ import { requireApiUser } from '@/lib/auth-server';
 import { getEmberAccessType } from '@/lib/ember';
 import { resolveAudioSourceForMedia } from '@/lib/audio-segments';
 import { getUploadsDir } from '@/lib/uploads';
+import { isObjectStorageConfigured, objectStorageHasUpload } from '@/lib/object-storage';
 import { prisma } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -58,7 +59,18 @@ export async function GET(
     return NextResponse.json(result);
   }
 
-  // Step 3: if it's a local path, check if the file exists
+  // Step 3: R2 check — is object storage configured, and is the file there?
+  result.r2Configured = isObjectStorageConfigured();
+  if (voiceClip?.audioFilename) {
+    try {
+      result.r2HasFile = await objectStorageHasUpload(voiceClip.audioFilename);
+    } catch (e) {
+      result.r2HasFile = false;
+      result.r2Error = String(e);
+    }
+  }
+
+  // Step 4: if it's a local path, check if the file exists
   const isUrl = sourceInfo.source.startsWith('http');
   result.sourceIsUrl = isUrl;
 
