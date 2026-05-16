@@ -18,9 +18,10 @@ type Facet = {
   isSnapshot?: boolean;
 };
 
-const ORANGE = 'rgba(249,115,22,0.6)';
-const BLUE   = 'rgba(96,165,250,0.6)';
-const RED    = 'rgba(248,113,113,0.6)';
+const ORANGE  = 'rgba(249,115,22,0.6)';
+const BLUE    = 'rgba(96,165,250,0.6)';
+const RED     = 'rgba(248,113,113,0.6)';
+const PURPLE  = 'rgba(167,139,250,0.6)';
 
 // Static topic facets — all blue.
 const TOPIC_FACETS: Omit<Facet, 'key'>[] & { key: string }[] = [
@@ -667,9 +668,9 @@ export default function StoriesSheet({
                 className="flex-shrink-0 flex items-center justify-center gap-1.5 rounded-full px-4 text-sm font-normal cursor-pointer [@media(hover:hover)]:hover:brightness-125 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150"
                 style={{
                   height: 26,
-                  background: isSelected ? facet.color : 'var(--bg-drill-blocks)',
+                  background: isSelected ? (vizColor === '#a78bfa' ? PURPLE : facet.color) : 'var(--bg-drill-blocks)',
                   border: isContributor
-                    ? `1px solid ${isSelected ? 'rgba(248,113,113,0.6)' : 'rgba(248,113,113,0.35)'}`
+                    ? `1px solid ${isSelected ? (vizColor === '#a78bfa' ? 'rgba(167,139,250,0.6)' : 'rgba(248,113,113,0.6)') : 'rgba(248,113,113,0.35)'}`
                     : '1px solid var(--border-subtle)',
                   color: 'rgba(255,255,255,0.7)',
                 }}
