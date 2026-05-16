@@ -244,26 +244,42 @@ export default function StoriesSheet({
       })
       .catch(() => {});
 
-    // Fetch tagged people names + confirmed location
+    // Fetch tagged people names + contributor names + confirmed location
     fetch(`/api/embers/${encodeURIComponent(emberId)}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((d: {
         tags?: Array<{ user?: { firstName?: string | null } | null; emberContributor?: { user?: { firstName?: string | null } | null } | null; label?: string | null }>;
+        contributors?: Array<{ name?: string | null; voiceCalls?: unknown[]; conversation?: unknown }>;
         analysis?: { confirmedLocation?: { label?: string | null } | null; latitude?: number | null; longitude?: number | null } | null;
       }) => {
         if (cancelled) return;
-        const tags = Array.isArray(d?.tags) ? d.tags : [];
+
         const seen = new Set<string>();
         const names: string[] = [];
-        for (const t of tags) {
-          const first = (t.user?.firstName ?? t.emberContributor?.user?.firstName ?? t.label ?? '')
-            .toString().trim().split(/\s+/)[0];
-          if (!first) continue;
+
+        const addName = (raw: string | null | undefined) => {
+          const first = (raw ?? '').toString().trim().split(/\s+/)[0];
+          if (!first) return;
           const key = first.toLowerCase();
-          if (seen.has(key)) continue;
+          if (seen.has(key)) return;
           seen.add(key);
           names.push(first);
+        };
+
+        // Tagged people in the photo
+        for (const t of Array.isArray(d?.tags) ? d.tags : []) {
+          addName(t.user?.firstName ?? t.emberContributor?.user?.firstName ?? t.label);
         }
+
+        // Contributors who have left chat, voice, or call contributions.
+        // Only include if they have voiceCalls OR a conversation session —
+        // this filters out invited-but-never-contributed people.
+        for (const c of Array.isArray(d?.contributors) ? d.contributors : []) {
+          const hasCall = Array.isArray(c.voiceCalls) && c.voiceCalls.length > 0;
+          const hasSession = c.conversation !== null && c.conversation !== undefined;
+          if (c.name && (hasCall || hasSession)) addName(c.name);
+        }
+
         setTaggedNames(names);
         // Show place chip if the location was explicitly confirmed OR if GPS
         // coordinates are present (wiki resolves place from coords via reverse geocoding).
