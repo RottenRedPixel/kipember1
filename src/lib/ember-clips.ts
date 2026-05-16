@@ -360,7 +360,13 @@ export async function persistEmberVoiceClips({
   transcriptObjectJson: string | null;
 }): Promise<void> {
   const words = parseVoiceMessageWords(transcriptObjectJson);
+  if (words.length === 0) {
+    console.log(`[EmberVoiceClip] No word timestamps for message ${emberMessageId} — skipping clip extraction (need whisper-1)`);
+    return;
+  }
+
   const extracted = await extractImportantEmberVoiceClips({ emberTitle, speakerName, transcript, words });
+  console.log(`[EmberVoiceClip] LLM extracted ${extracted.length} clip(s) for message ${emberMessageId}`);
   if (extracted.length === 0) return;
 
   const segmentsDir = join(getUploadsDir(), '.segments');
@@ -375,7 +381,9 @@ export async function persistEmberVoiceClips({
       try {
         await extractAudioClipToM4a({ input: sourcePath, outputPath: clipPath, startMs: clip.startMs, endMs: clip.endMs });
         await uploadLocalFileToObjectStorage({ filename: clipFilename, filePath: clipPath });
-      } catch {
+        console.log(`[EmberVoiceClip] Saved clip "${clip.title}" (${clip.startMs}–${clip.endMs}ms) as ${clipFilename}`);
+      } catch (err) {
+        console.error(`[EmberVoiceClip] Failed to extract/upload clip "${clip.title}":`, err);
         return null;
       }
       return { ...clip, clipFilename };
@@ -383,6 +391,7 @@ export async function persistEmberVoiceClips({
   );
 
   const valid = clips.filter((c): c is NonNullable<typeof c> => c !== null);
+  console.log(`[EmberVoiceClip] ${valid.length}/${extracted.length} clips saved to DB for message ${emberMessageId}`);
   if (valid.length === 0) return;
 
   await prisma.emberVoiceClip.deleteMany({ where: { emberMessageId } });
