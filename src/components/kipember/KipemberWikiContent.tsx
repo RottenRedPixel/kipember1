@@ -2318,6 +2318,132 @@ type AudioClipItem = {
   createdAt: string;
 };
 
+// Unified block: claim (distilled) + clip (verbatim + player) in one container.
+// Either part may be absent — clip-only shows just the player row,
+// claim-only shows just the claim row.
+function UnifiedExtractionBlock({
+  clip,
+  claimName,
+  claimSubject,
+  claimValue,
+  claimSource,
+  claimCreatedAt,
+  person,
+}: {
+  clip: AudioClipItem | null;
+  claimName: string | null;
+  claimSubject: string | null;
+  claimValue: string | null;
+  claimSource: string | null;
+  claimCreatedAt: string | null;
+  person: PersonIdentity | null;
+}) {
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const startSec = clip?.kind === 'call' && clip.startMs != null ? clip.startMs / 1000 : null;
+  const endSec   = clip?.kind === 'call' && clip.endMs   != null ? clip.endMs   / 1000 : null;
+
+  function toggle() {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) { el.pause(); }
+    else { if (startSec !== null) el.currentTime = startSec; void el.play(); }
+  }
+
+  function handleTimeUpdate() {
+    const el = audioRef.current;
+    if (!el || endSec === null) return;
+    if (el.currentTime >= endSec) {
+      el.pause();
+      if (startSec !== null) el.currentTime = startSec;
+      setPlaying(false);
+    }
+  }
+
+  const durationLabel = (() => {
+    if (!clip || clip.startMs === null || clip.endMs === null) return null;
+    const ms = clip.endMs - clip.startMs;
+    if (ms <= 0) return null;
+    return `${(ms / 1000).toFixed(1).replace(/\.0$/, '')}s`;
+  })();
+
+  const displayName = claimName?.trim() || clip?.contributorName || 'Someone';
+  const avatarUrl = person?.avatarUrl ?? null;
+  const styles = avatarStylesForPerson(person, displayName);
+  const hasClaim = claimName !== null && claimValue !== null;
+
+  return (
+    <div
+      className="rounded-lg px-3 py-2.5 flex flex-col gap-2.5"
+      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+    >
+      {/* Claim row — distilled extraction */}
+      {hasClaim && (
+        <div className="flex items-center gap-2.5">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt={displayName} className="rounded-full object-cover flex-shrink-0" style={{ width: 29, height: 29 }} />
+          ) : (
+            <div className="rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ width: 29, height: 29, background: styles.background, color: styles.color, fontSize: 11, fontWeight: 600 }}>
+              {initials(displayName)}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-xs font-medium">
+              {displayName}
+              {claimSubject ? <span className="text-white/50 font-normal"> on <span className="text-white/70">{claimSubject}</span></span> : null}
+            </p>
+            <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{claimValue}&rdquo;</p>
+          </div>
+          <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
+            {claimSource === 'voice'
+              ? <Phone size={10} fill="currentColor" stroke="currentColor" />
+              : <MessageCircle size={10} fill="currentColor" stroke="currentColor" />}
+            {claimCreatedAt ? <span>{relativeAt(claimCreatedAt)}</span> : null}
+          </div>
+        </div>
+      )}
+
+      {/* Clip row — verbatim audio */}
+      {clip && (
+        <div className="flex items-center gap-2">
+          <div
+            className="rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-subtle)' }}
+          >
+            {clip.kind === 'call' ? <Phone size={13} className="text-white/50" /> : <Mic size={13} className="text-white/50" />}
+          </div>
+          <button
+            type="button"
+            onClick={toggle}
+            className="rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer"
+            style={{ width: 32, height: 32, background: 'var(--color-accent)', border: 'none' }}
+          >
+            {playing ? <Pause size={13} className="text-white" /> : <Play size={13} className="text-white" style={{ marginLeft: 1 }} />}
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-white/70 text-xs italic leading-relaxed">&ldquo;{clip.quote}&rdquo;</p>
+            <p className="text-white/30 text-[10px] mt-0.5">
+              {clip.kind === 'call' ? 'Call' : 'Voice'}{durationLabel ? ` · ${durationLabel}` : ''}
+            </p>
+          </div>
+          <audio
+            ref={audioRef}
+            src={clip.audioUrl}
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onEnded={() => { setPlaying(false); if (startSec !== null && audioRef.current) audioRef.current.currentTime = startSec; }}
+            onTimeUpdate={handleTimeUpdate}
+            preload="none"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AudioClipRow({ clip }: { clip: AudioClipItem }) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -3590,84 +3716,82 @@ export default function KipemberWikiContent({
         loading={wikiClaimsLoading}
       >
         {(() => {
-          // Build AudioClipItem lists keyed by significance category.
-          // Voice clips are pre-trimmed; call clips seek within the full recording.
-          function clipsForCategory(sig: string): AudioClipItem[] {
-            const voice = (detail?.emberVoiceClips ?? [])
-              .filter((c) => (c.significance ?? '').toLowerCase() === sig)
-              .map((c): AudioClipItem => ({ id: c.id, kind: 'voice', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl, startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt }));
-            const call = (detail?.emberCallClips ?? [])
-              .filter((c) => (c.significance ?? '').toLowerCase() === sig && c.audioUrl)
-              .map((c): AudioClipItem => ({ id: c.id, kind: 'call', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl ?? '', startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt }));
-            return [...voice, ...call].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          // Convert a clip source into an AudioClipItem
+          function toItem(c: KipemberEmberVoiceClip): AudioClipItem {
+            return { id: c.id, kind: 'voice', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl, startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt };
           }
-          // Clips that don't match any specific category fall into Extra Stories
-          const knownSigs = new Set(['why', 'emotion', 'story', 'place', 'person']);
-          const uncategorisedVoice = (detail?.emberVoiceClips ?? [])
-            .filter((c) => !knownSigs.has((c.significance ?? '').toLowerCase()))
-            .map((c): AudioClipItem => ({ id: c.id, kind: 'voice', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl, startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt }));
-          const uncategorisedCall = (detail?.emberCallClips ?? [])
-            .filter((c) => !knownSigs.has((c.significance ?? '').toLowerCase()) && c.audioUrl)
-            .map((c): AudioClipItem => ({ id: c.id, kind: 'call', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl ?? '', startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt }));
+          function toCallItem(c: KipemberEmberCallClip): AudioClipItem {
+            return { id: c.id, kind: 'call', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl ?? '', startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt };
+          }
 
-          const whyClips = clipsForCategory('why');
-          const emotionClips = clipsForCategory('emotion');
-          const storyClips = [...clipsForCategory('story'), ...uncategorisedVoice, ...uncategorisedCall];
-          const placeClips = clipsForCategory('place');
-          const personClips = clipsForCategory('person');
+          // Get clips for a significance category, sorted by date
+          function clipsForSig(sig: string): AudioClipItem[] {
+            const v = (detail?.emberVoiceClips ?? []).filter(c => (c.significance ?? '').toLowerCase() === sig).map(toItem);
+            const c = (detail?.emberCallClips ?? []).filter(c => (c.significance ?? '').toLowerCase() === sig && c.audioUrl).map(toCallItem);
+            return [...v, ...c].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          }
+
+          // Match clips to claims by contributor name (best-effort).
+          // Returns unified rows: claim+clip, claim-only, or clip-only.
+          type UnifiedRow = { key: string; clip: AudioClipItem | null; claimName: string | null; claimSubject: string | null; claimValue: string | null; claimSource: string | null; claimCreatedAt: string | null };
+          function unify(clips: AudioClipItem[], claims: ReconciliationClaim[] | null): UnifiedRow[] {
+            const usedClipIds = new Set<string>();
+            const rows: UnifiedRow[] = [];
+            for (const claim of (claims ?? [])) {
+              const name = claimSourceLabelFromMetadata(claim.metadata);
+              const match = clips.find(c => !usedClipIds.has(c.id) && c.contributorName.toLowerCase().trim() === name.toLowerCase().trim());
+              if (match) usedClipIds.add(match.id);
+              rows.push({ key: claim.id, clip: match ?? null, claimName: name, claimSubject: claim.subject || null, claimValue: claim.value, claimSource: claim.source, claimCreatedAt: claim.createdAt });
+            }
+            // Unmatched clips (no corresponding claim)
+            for (const clip of clips) {
+              if (!usedClipIds.has(clip.id)) rows.push({ key: clip.id, clip, claimName: null, claimSubject: null, claimValue: null, claimSource: null, claimCreatedAt: null });
+            }
+            return rows;
+          }
+
+          function renderCategory(icon: React.ReactNode, label: string, clips: AudioClipItem[], claims: ReconciliationClaim[] | null) {
+            const rows = unify(clips, claims);
+            return (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
+                  <h4 className="text-white/70 font-medium text-sm">{label}</h4>
+                </div>
+                {rows.length === 0 ? (
+                  <WikiCard><p className="text-white/30 text-sm">Nothing captured yet.</p></WikiCard>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {rows.map((row) => (
+                      <UnifiedExtractionBlock
+                        key={row.key}
+                        clip={row.clip}
+                        claimName={row.claimName}
+                        claimSubject={row.claimSubject}
+                        claimValue={row.claimValue}
+                        claimSource={row.claimSource}
+                        claimCreatedAt={row.claimCreatedAt}
+                        person={row.claimName ? findPerson(row.claimName) : (row.clip ? findPerson(row.clip.contributorName) : null)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Clips with unrecognised significance → Extra Stories
+          const knownSigs = new Set(['why', 'emotion', 'story', 'place', 'person']);
+          const extraVoice = (detail?.emberVoiceClips ?? []).filter(c => !knownSigs.has((c.significance ?? '').toLowerCase())).map(toItem);
+          const extraCall = (detail?.emberCallClips ?? []).filter(c => !knownSigs.has((c.significance ?? '').toLowerCase()) && c.audioUrl).map(toCallItem);
 
           return (
             <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <span style={{ color: 'var(--text-secondary)' }}><Lightbulb size={15} /></span>
-                  <h4 className="text-white/70 font-medium text-sm">Why</h4>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {whyClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
-                  <WhyCard claims={whyClaims} findPerson={findPerson} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <span style={{ color: 'var(--text-secondary)' }}><Heart size={15} /></span>
-                  <h4 className="text-white/70 font-medium text-sm">Emotional States</h4>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {emotionClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
-                  <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <span style={{ color: 'var(--text-secondary)' }}><Sparkles size={15} /></span>
-                  <h4 className="text-white/70 font-medium text-sm">Extra Stories</h4>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {storyClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
-                  <ExtraStoriesCard claims={extraStoryClaims} findPerson={findPerson} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <span style={{ color: 'var(--text-secondary)' }}><MapIcon size={15} /></span>
-                  <h4 className="text-white/70 font-medium text-sm">Places Mentioned</h4>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {placeClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
-                  <PlacesMentionedCard claims={placeClaims} findPerson={findPerson} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                  <span style={{ color: 'var(--text-secondary)' }}><Users size={15} /></span>
-                  <h4 className="text-white/70 font-medium text-sm">People Mentioned</h4>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {personClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
-                  <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
-                </div>
-              </div>
+              {renderCategory(<Lightbulb size={15} />, 'Why', clipsForSig('why'), whyClaims)}
+              {renderCategory(<Heart size={15} />, 'Emotional States', clipsForSig('emotion'), emotionClaims)}
+              {renderCategory(<Sparkles size={15} />, 'Extra Stories', [...clipsForSig('story'), ...extraVoice, ...extraCall], extraStoryClaims)}
+              {renderCategory(<MapIcon size={15} />, 'Places Mentioned', clipsForSig('place'), placeClaims)}
+              {renderCategory(<Users size={15} />, 'People Mentioned', clipsForSig('person'), personClaims)}
             </div>
           );
         })()}
