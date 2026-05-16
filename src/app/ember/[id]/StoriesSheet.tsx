@@ -380,14 +380,15 @@ export default function StoriesSheet({
     savedRef.current = true;
     const facetKeys = Array.from(selectedKeys).filter((k) => k !== 'snapshot' && !taggedNames.includes(k));
     const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
+    const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
     try {
-      await fetch(`/api/embers/${encodeURIComponent(emberId)}/stories`, {
+      await fetch(`/api/embers/${encodeURIComponent(emberId)}/stories${tokenQs}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ script, facets: facetKeys, people: personKeys, durationSeconds }),
       });
     } catch { /* non-blocking */ }
-  }, [emberId, selectedKeys, taggedNames, durationSeconds]);
+  }, [emberId, accessToken, selectedKeys, taggedNames, durationSeconds]);
 
   // ── Main play handler ─────────────────────────────────────────────────────
   const handleToggle = useCallback(async () => {
@@ -444,8 +445,9 @@ export default function StoriesSheet({
         // it guarantees clips are included if they exist.
         if (personKeys.length > 0 || facetKeys.length > 0) {
           try {
+            const playlistTokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
             const playlistRes = await fetch(
-              `/api/embers/${encodeURIComponent(emberId)}/stories/playlist`,
+              `/api/embers/${encodeURIComponent(emberId)}/stories/playlist${playlistTokenQs}`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -515,7 +517,17 @@ export default function StoriesSheet({
       const blob = await response.blob();
       const audio = await buildAudioFromBlob(blob);
       await audio.play();
-      if (script) void saveStory(script);
+      if (script) {
+        void saveStory(script);
+      } else if (blocks) {
+        // Playlist mode — concatenate narration blocks as the saved script
+        const narratedText = (blocks as Array<{ type: string; content?: string }>)
+          .filter((b) => b.type === 'voice' && b.content)
+          .map((b) => b.content as string)
+          .join(' ')
+          .trim();
+        if (narratedText) void saveStory(narratedText);
+      }
     } catch (err) {
       setPlaybackState('paused');
       setError(err instanceof Error ? err.message : 'Audio could not be played.');

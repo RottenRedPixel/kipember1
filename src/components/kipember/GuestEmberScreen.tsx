@@ -6,6 +6,7 @@ import AppHeader from '@/components/kipember/AppHeader';
 import GuestEmberSheet from '@/components/kipember/GuestEmberSheet';
 import HelloSheet from '@/app/ember/[id]/HelloSheet';
 import ShareSheet from '@/app/ember/[id]/ShareSheet';
+import StoriesSheet from '@/app/ember/[id]/StoriesSheet';
 import EmberTitleBlock from '@/app/ember/[id]/EmberTitleBlock';
 import { getPreviewMediaUrl } from '@/lib/media';
 
@@ -50,6 +51,7 @@ const SWIPE_THRESHOLD = 50;
 const tabItems = [
   { label: 'hello', icon: Hand },
   { label: 'ember', icon: MessageCirclePlus },
+  { label: 'stories', icon: Flame },
   { label: 'share', icon: Share },
 ] as const;
 
@@ -210,9 +212,10 @@ export default function GuestEmberScreen({
   const closePanel = () => setActiveTab(null);
 
   const spacerHeight =
-    activeTab === 'hello' ? '50vh' :
-    activeTab === 'ember' ? '50vh' :
-    activeTab === 'share' ? '20vh' :
+    activeTab === 'hello'    ? '50vh' :
+    activeTab === 'ember'    ? '50vh' :
+    activeTab === 'stories'  ? '40vh' :
+    activeTab === 'share'    ? '20vh' :
     TAB_H;
 
   const tabHidden = panelOpen;
@@ -323,6 +326,13 @@ export default function GuestEmberScreen({
         isOpen={activeTab === 'ember'}
         onClose={closePanel}
         api={guestApi}
+      />
+      <StoriesSheet
+        isOpen={activeTab === 'stories'}
+        onClose={closePanel}
+        emberId={data.ember.id}
+        storyScript={data.snapshotScript}
+        accessToken={token}
       />
       <ShareSheet
         isOpen={activeTab === 'share'}

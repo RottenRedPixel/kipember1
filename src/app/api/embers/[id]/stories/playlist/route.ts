@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess } from '@/lib/ember';
+import { ensureEmberOwnerAccess, getEmberAccessType } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { generatePlaylistNarration } from '@/lib/story-generator';
 import { getEmberTitle } from '@/lib/ember-title';
@@ -43,12 +43,25 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireApiUser();
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     const { id } = await params;
-    const ember = await ensureEmberOwnerAccess(auth.user.id, id);
-    if (!ember) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+
+    // Accept session auth (owner or contributor) OR token-based guest access.
+    const tokenParam = request.nextUrl.searchParams.get('token');
+    if (tokenParam) {
+      const [contributor, emberByShare] = await Promise.all([
+        prisma.emberContributor.findUnique({ where: { token: tokenParam }, select: { emberId: true } }),
+        prisma.ember.findUnique({ where: { shareToken: tokenParam }, select: { id: true } }),
+      ]);
+      const allowed = contributor?.emberId === id || emberByShare?.id === id;
+      if (!allowed) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    } else {
+      const auth = await requireApiUser();
+      if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const accessType = await getEmberAccessType(auth.user.id, id);
+      if (!accessType || accessType === 'network') {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
+    }
 
     const body = await request.json().catch(() => ({}));
     const facets: string[] = Array.isArray(body?.facets)

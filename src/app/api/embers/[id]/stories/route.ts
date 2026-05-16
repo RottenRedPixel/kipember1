@@ -57,17 +57,44 @@ export async function GET(
 }
 
 // POST — save a played story.
+// Accepts three auth paths:
+//   1. ?token= query param (share-link viewer or contributor token) → authorType 'guest'
+//   2. Session auth — owner                                         → authorType 'owner'
+//   3. Session auth — contributor                                   → authorType 'contributor'
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireApiUser();
-    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
     const { id } = await params;
-    const ember = await ensureEmberOwnerAccess(auth.user.id, id);
-    if (!ember) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+
+    let authorType: string;
+    let authorId: string | null;
+    let authorName: string;
+
+    const tokenParam = request.nextUrl.searchParams.get('token');
+    if (tokenParam) {
+      // Validate share token or contributor token for this ember
+      const [contributor, emberByShare] = await Promise.all([
+        prisma.emberContributor.findUnique({ where: { token: tokenParam }, select: { emberId: true } }),
+        prisma.ember.findUnique({ where: { shareToken: tokenParam }, select: { id: true } }),
+      ]);
+      const allowed = contributor?.emberId === id || emberByShare?.id === id;
+      if (!allowed) return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      authorType = 'guest';
+      authorId   = null;
+      authorName = 'Guest';
+    } else {
+      const auth = await requireApiUser();
+      if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const accessType = await getEmberAccessType(auth.user.id, id);
+      if (!accessType || accessType === 'network') {
+        return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+      }
+      authorType = accessType === 'owner' ? 'owner' : 'contributor';
+      authorId   = auth.user.id;
+      authorName = getUserDisplayName(auth.user) || auth.user.email || 'Unknown';
+    }
 
     const body = await request.json().catch(() => ({}));
     const script = typeof body?.script === 'string' && body.script.trim() ? body.script.trim() : '';
@@ -79,12 +106,6 @@ export async function POST(
         : 20;
 
     if (!script) return NextResponse.json({ error: 'Script is required.' }, { status: 400 });
-
-    // Resolve author type (owner / contributor) and display name.
-    const accessType = await getEmberAccessType(auth.user.id, id);
-    const authorType = accessType === 'owner' ? 'owner' : 'contributor';
-    const authorId   = auth.user.id;
-    const authorName = getUserDisplayName(auth.user) || auth.user.email || 'Unknown';
 
     const story = await prisma.emberStory.create({
       data: {
