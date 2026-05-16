@@ -2323,19 +2323,38 @@ function AudioClipRow({ clip }: { clip: AudioClipItem }) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // For 'call' clips the audioUrl is the full recording — we seek to startMs and
+  // stop at endMs. For 'voice' clips the file is already a trimmed segment, so we
+  // play from 0. Only apply seek/stop logic when we have valid timing.
+  const startSec = clip.kind === 'call' && clip.startMs != null ? clip.startMs / 1000 : null;
+  const endSec   = clip.kind === 'call' && clip.endMs   != null ? clip.endMs   / 1000 : null;
+
   function toggle() {
     const el = audioRef.current;
     if (!el) return;
     if (playing) {
       el.pause();
     } else {
+      if (startSec !== null) el.currentTime = startSec;
       void el.play();
+    }
+  }
+
+  function handleTimeUpdate() {
+    const el = audioRef.current;
+    if (!el || endSec === null) return;
+    if (el.currentTime >= endSec) {
+      el.pause();
+      if (startSec !== null) el.currentTime = startSec;
+      setPlaying(false);
     }
   }
 
   const durationLabel = (() => {
     if (clip.startMs === null || clip.endMs === null) return null;
-    const secs = Math.round((clip.endMs - clip.startMs) / 1000);
+    const ms = clip.endMs - clip.startMs;
+    if (ms <= 0) return null;
+    const secs = (ms / 1000).toFixed(1).replace(/\.0$/, '');
     return `${secs}s`;
   })();
 
@@ -2379,7 +2398,8 @@ function AudioClipRow({ clip }: { clip: AudioClipItem }) {
         src={clip.audioUrl}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
-        onEnded={() => setPlaying(false)}
+        onEnded={() => { setPlaying(false); if (startSec !== null && audioRef.current) audioRef.current.currentTime = startSec; }}
+        onTimeUpdate={handleTimeUpdate}
         preload="none"
       />
     </div>
