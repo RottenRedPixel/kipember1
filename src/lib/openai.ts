@@ -42,7 +42,7 @@ export function getAskCaptureModel(): string {
 }
 
 export function getAudioTranscriptionModel(): string {
-  return process.env.OPENAI_AUDIO_TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
+  return process.env.OPENAI_AUDIO_TRANSCRIPTION_MODEL || 'whisper-1';
 }
 
 export async function getConfiguredOpenAIModel(
