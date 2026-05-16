@@ -2421,7 +2421,7 @@ function UnifiedExtractionBlock({
             type="button"
             onClick={toggle}
             className="rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer"
-            style={{ width: 32, height: 32, background: 'var(--color-accent)', border: 'none' }}
+            style={{ width: 32, height: 32, background: clip.kind === 'call' ? '#2563eb' : '#22c55e', border: 'none' }}
           >
             {playing ? <Pause size={13} className="text-white" /> : <Play size={13} className="text-white" style={{ marginLeft: 1 }} />}
           </button>
