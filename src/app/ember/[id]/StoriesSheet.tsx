@@ -131,9 +131,6 @@ export default function StoriesSheet({
       });
     }
     if (storyScript) result.push(SNAPSHOT_FACET);
-    // ── TEST CHIP — remove after confirming clip playback works ──────────────
-    result.push({ key: '__test__', label: '🧪 test', color: 'rgba(34,197,94,0.5)', vizColor: '#22c55e' });
-    // ────────────────────────────────────────────────────────────────────────
     return result;
   }, [availableClaimTypes, taggedNames, storyScript, hasConfirmedLocation]);
 
@@ -420,84 +417,6 @@ export default function StoriesSheet({
     let script = composedScript;
     let blocks = composedBlocks;
 
-    // ── TEST CHIP — hardcoded narration + first available clip, no LLM ───────
-    // Remove this block (and the chip in the facets useMemo) once clip
-    // playback is confirmed working end-to-end.
-    if (selectedKeys.has('__test__') && !blocks && !script) {
-      setPlaybackState('composing');
-      try {
-        // 1. Get the first available clip from the playlist endpoint (no filter)
-        const playlistRes = await fetch(
-          `/api/embers/${encodeURIComponent(emberId)}/stories/playlist`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ facets: [], people: [], durationSeconds }),
-          }
-        );
-        if (!playlistRes.ok) {
-          setPlaybackState('idle');
-          setError('TEST: playlist endpoint failed (' + playlistRes.status + ').');
-          return;
-        }
-        const payload = await playlistRes.json().catch(() => null) as { blocks?: unknown[] | null } | null;
-        const firstMedia = Array.isArray(payload?.blocks)
-          ? payload.blocks.find((b) => (b as { type?: string }).type === 'media')
-          : null;
-        if (!firstMedia) {
-          setPlaybackState('idle');
-          setError('TEST: playlist returned no media blocks — no clips in DB for this ember.');
-          return;
-        }
-
-        // 2. Debug-probe the clip — show info and bail only if source is unresolvable
-        const clipMediaId = (firstMedia as { mediaId?: string }).mediaId;
-        if (clipMediaId) {
-          const debugRes = await fetch(
-            `/api/embers/${encodeURIComponent(emberId)}/stories/debug-clip?mediaId=${encodeURIComponent(clipMediaId)}`
-          );
-          const debug = await debugRes.json().catch(() => null) as Record<string, unknown> | null;
-          if (debug) {
-            const sourceOk = debug.localFileExists === true || (debug.sourceIsUrl === true && debug.urlOk === true);
-            const lines = [
-              `mediaId: ${clipMediaId}`,
-              `voiceClip: ${debug.dbRecords ? JSON.stringify((debug.dbRecords as Record<string, unknown>).voiceClip) : '?'}`,
-              `callClip: ${debug.dbRecords ? JSON.stringify((debug.dbRecords as Record<string, unknown>).callClip) : '?'}`,
-              `r2Configured: ${debug.r2Configured ?? 'N/A'}`,
-              `r2HasFile: ${debug.r2HasFile ?? 'N/A'}`,
-              `r2GetResult: ${debug.r2GetResult ?? 'N/A'}`,
-              `r2Error: ${debug.r2Error ?? 'none'}`,
-              `sourceIsUrl: ${debug.sourceIsUrl}`,
-              `source: ${(debug.sourceInfo as { source?: string } | null)?.source ?? 'null'}`,
-              `localFileExists: ${debug.localFileExists ?? 'N/A'}`,
-              `urlStatus: ${debug.urlStatus ?? 'N/A'}`,
-              `segmentCached: ${debug.segmentCached ?? debug.normalizedCached ?? 'N/A'}`,
-              `verdict: ${debug.verdict}`,
-            ];
-            if (!sourceOk) {
-              // Source unresolvable — bail with full debug dump
-              setPlaybackState('idle');
-              setError('TEST DEBUG:\n' + lines.join('\n'));
-              return;
-            }
-            // Source looks good — log to console and proceed to play
-            console.log('[TEST] clip debug OK, proceeding to play:', lines.join(' | '));
-          }
-        }
-
-        // 3. Build test blocks: hardcoded narration + the first real clip
-        blocks = [
-          { type: 'voice', content: 'Hello, this is Ember, and this is what they had to say.', order: 1 },
-          { ...(firstMedia as object), order: 2 },
-        ];
-        setComposedBlocks(blocks);
-      } catch (e) {
-        setPlaybackState('idle');
-        setError('TEST: exception — ' + String(e));
-        return;
-      }
-    }
-    // ─────────────────────────────────────────────────────────────────────────
 
     if (!script && !blocks) {
       if (isSnapshotMode || (!hasNonSnapshot && storyScript)) {
