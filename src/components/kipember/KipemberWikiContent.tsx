@@ -35,7 +35,6 @@ import {
   Play,
   Plus,
   RotateCw,
-  Volume2,
   ScanEye,
   ShieldUser,
   Sparkles,
@@ -3571,59 +3570,6 @@ export default function KipemberWikiContent({
       </WikiSection>
 
       <WikiSection
-        icon={<Volume2 size={17} />}
-        title="Audio Clips"
-        complete={Boolean((detail?.emberCallClips?.length ?? 0) + (detail?.emberVoiceClips?.length ?? 0) > 0)}
-        count={(detail?.emberCallClips?.length ?? 0) + (detail?.emberVoiceClips?.length ?? 0)}
-        collapsible
-        defaultCollapsed
-      >
-        {(() => {
-          const callClips: AudioClipItem[] = (detail?.emberCallClips ?? []).map((c) => ({
-            id: c.id,
-            kind: 'call' as const,
-            contributorName: c.contributorName,
-            title: c.title,
-            quote: c.quote,
-            significance: c.significance,
-            audioUrl: c.audioUrl ?? '',
-            startMs: c.startMs,
-            endMs: c.endMs,
-            createdAt: c.createdAt,
-          })).filter((c) => c.audioUrl);
-          const voiceClips: AudioClipItem[] = (detail?.emberVoiceClips ?? []).map((c) => ({
-            id: c.id,
-            kind: 'voice' as const,
-            contributorName: c.contributorName,
-            title: c.title,
-            quote: c.quote,
-            significance: c.significance,
-            audioUrl: c.audioUrl,
-            startMs: c.startMs,
-            endMs: c.endMs,
-            createdAt: c.createdAt,
-          }));
-          const all = [...callClips, ...voiceClips].sort(
-            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
-          if (all.length === 0) {
-            return (
-              <WikiCard>
-                <p className="text-white/30 text-sm">No audio clips extracted yet.</p>
-              </WikiCard>
-            );
-          }
-          return (
-            <WikiCard>
-              {all.map((clip) => (
-                <AudioClipRow key={clip.id} clip={clip} />
-              ))}
-            </WikiCard>
-          );
-        })()}
-      </WikiSection>
-
-      <WikiSection
         icon={<Lightbulb size={17} />}
         title="Extractions"
         complete={Boolean(
@@ -3643,43 +3589,88 @@ export default function KipemberWikiContent({
         defaultCollapsed
         loading={wikiClaimsLoading}
       >
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span style={{ color: 'var(--text-secondary)' }}><Lightbulb size={15} /></span>
-              <h4 className="text-white/70 font-medium text-sm">Why</h4>
+        {(() => {
+          // Build AudioClipItem lists keyed by significance category.
+          // Voice clips are pre-trimmed; call clips seek within the full recording.
+          function clipsForCategory(sig: string): AudioClipItem[] {
+            const voice = (detail?.emberVoiceClips ?? [])
+              .filter((c) => (c.significance ?? '').toLowerCase() === sig)
+              .map((c): AudioClipItem => ({ id: c.id, kind: 'voice', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl, startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt }));
+            const call = (detail?.emberCallClips ?? [])
+              .filter((c) => (c.significance ?? '').toLowerCase() === sig && c.audioUrl)
+              .map((c): AudioClipItem => ({ id: c.id, kind: 'call', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl ?? '', startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt }));
+            return [...voice, ...call].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          }
+          // Clips that don't match any specific category fall into Extra Stories
+          const knownSigs = new Set(['why', 'emotion', 'story', 'place', 'person']);
+          const uncategorisedVoice = (detail?.emberVoiceClips ?? [])
+            .filter((c) => !knownSigs.has((c.significance ?? '').toLowerCase()))
+            .map((c): AudioClipItem => ({ id: c.id, kind: 'voice', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl, startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt }));
+          const uncategorisedCall = (detail?.emberCallClips ?? [])
+            .filter((c) => !knownSigs.has((c.significance ?? '').toLowerCase()) && c.audioUrl)
+            .map((c): AudioClipItem => ({ id: c.id, kind: 'call', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl ?? '', startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt }));
+
+          const whyClips = clipsForCategory('why');
+          const emotionClips = clipsForCategory('emotion');
+          const storyClips = [...clipsForCategory('story'), ...uncategorisedVoice, ...uncategorisedCall];
+          const placeClips = clipsForCategory('place');
+          const personClips = clipsForCategory('person');
+
+          return (
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--text-secondary)' }}><Lightbulb size={15} /></span>
+                  <h4 className="text-white/70 font-medium text-sm">Why</h4>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {whyClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
+                  <WhyCard claims={whyClaims} findPerson={findPerson} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--text-secondary)' }}><Heart size={15} /></span>
+                  <h4 className="text-white/70 font-medium text-sm">Emotional States</h4>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {emotionClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
+                  <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--text-secondary)' }}><Sparkles size={15} /></span>
+                  <h4 className="text-white/70 font-medium text-sm">Extra Stories</h4>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {storyClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
+                  <ExtraStoriesCard claims={extraStoryClaims} findPerson={findPerson} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--text-secondary)' }}><MapIcon size={15} /></span>
+                  <h4 className="text-white/70 font-medium text-sm">Places Mentioned</h4>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {placeClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
+                  <PlacesMentionedCard claims={placeClaims} findPerson={findPerson} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span style={{ color: 'var(--text-secondary)' }}><Users size={15} /></span>
+                  <h4 className="text-white/70 font-medium text-sm">People Mentioned</h4>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {personClips.map((clip) => <AudioClipRow key={clip.id} clip={clip} />)}
+                  <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
+                </div>
+              </div>
             </div>
-            <WhyCard claims={whyClaims} findPerson={findPerson} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span style={{ color: 'var(--text-secondary)' }}><Heart size={15} /></span>
-              <h4 className="text-white/70 font-medium text-sm">Emotional States</h4>
-            </div>
-            <EmotionalStateCard claims={emotionClaims} findPerson={findPerson} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span style={{ color: 'var(--text-secondary)' }}><Sparkles size={15} /></span>
-              <h4 className="text-white/70 font-medium text-sm">Extra Stories</h4>
-            </div>
-            <ExtraStoriesCard claims={extraStoryClaims} findPerson={findPerson} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span style={{ color: 'var(--text-secondary)' }}><MapIcon size={15} /></span>
-              <h4 className="text-white/70 font-medium text-sm">Places Mentioned</h4>
-            </div>
-            <PlacesMentionedCard claims={placeClaims} findPerson={findPerson} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span style={{ color: 'var(--text-secondary)' }}><Users size={15} /></span>
-              <h4 className="text-white/70 font-medium text-sm">People Mentioned</h4>
-            </div>
-            <PeopleMentionedCard claims={personClaims} findPerson={findPerson} />
-          </div>
-        </div>
+          );
+        })()}
       </WikiSection>
 
       </WikiGroup>

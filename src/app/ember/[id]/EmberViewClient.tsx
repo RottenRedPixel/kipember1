@@ -164,6 +164,32 @@ function EmberViewContent() {
       .catch(() => {});
   }, [id]);
 
+  // Poll for snapshot when it's missing — the background job that generates it
+  // runs after the ember is created and may not be done by the time the page loads.
+  useEffect(() => {
+    if (!id || ember?.snapshot) return;
+    let stopped = false;
+    let attempts = 0;
+    function poll() {
+      if (stopped || attempts >= 8) return; // give up after ~32s
+      attempts++;
+      fetch(`/api/embers/${id}`)
+        .then((r) => r.json())
+        .then((data: EmberSummary) => {
+          if (stopped) return;
+          if (data.snapshot) {
+            prefetchCacheRef.current[id] = data;
+            setEmber((prev) => prev ? { ...prev, snapshot: data.snapshot } : data);
+          } else {
+            setTimeout(poll, 4000);
+          }
+        })
+        .catch(() => { if (!stopped) setTimeout(poll, 4000); });
+    }
+    const t = setTimeout(poll, 4000);
+    return () => { stopped = true; clearTimeout(t); };
+  }, [id, ember?.snapshot]);
+
   // Fetch attachments when ember changes
   useEffect(() => {
     if (!id) return;
