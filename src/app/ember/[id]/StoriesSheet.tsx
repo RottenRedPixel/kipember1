@@ -713,9 +713,7 @@ export default function StoriesSheet({
                 style={{
                   height: 26,
                   background: isSelected ? (vizColor === '#a78bfa' ? PURPLE : facet.color) : 'var(--bg-drill-blocks)',
-                  border: isContributor
-                    ? `1px solid ${isSelected ? (vizColor === '#a78bfa' ? 'rgba(167,139,250,0.6)' : 'rgba(248,113,113,0.6)') : 'rgba(248,113,113,0.35)'}`
-                    : '1px solid var(--border-subtle)',
+                  border: '1px solid var(--border-subtle)',
                   color: 'rgba(255,255,255,0.7)',
                 }}
               >
