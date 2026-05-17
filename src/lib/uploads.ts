@@ -58,7 +58,9 @@ export function getUploadUrl(filename: string): string {
 
 export function getUploadFallbackBaseUrl(): string | null {
   const value =
-    process.env.UPLOADS_FALLBACK_BASE_URL?.trim() || DEFAULT_UPLOADS_FALLBACK_BASE_URL;
+    process.env.UPLOADS_FALLBACK_BASE_URL?.trim() ||
+    process.env.UPLOADS_SOURCE_BASE_URL?.trim() ||
+    DEFAULT_UPLOADS_FALLBACK_BASE_URL;
   return value ? value.replace(/\/+$/, '') : null;
 }
 
