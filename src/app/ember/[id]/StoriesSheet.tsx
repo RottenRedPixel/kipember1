@@ -63,11 +63,13 @@ export default function StoriesSheet({
   const [showing, setShowing] = useState(isOpen);
 
   // ── Playback ──
-  const [status, setStatus]         = useState<Status>('idle');
-  const [segIdx, setSegIdx]         = useState(0);
-  const [done, setDone]             = useState(false);
+  const [status, setStatus]           = useState<Status>('idle');
+  const [segIdx, setSegIdx]           = useState(0);
+  const [done, setDone]               = useState(false);
   const [showDoneMsg, setShowDoneMsg] = useState(false);
-  const [error, setError]           = useState('');
+  const [fadingOut, setFadingOut]     = useState(false);
+  const [lastText, setLastText]       = useState('');
+  const [error, setError]             = useState('');
 
   // ── Composition cache (cleared when chips change) ──
   const [blocks, setBlocks] = useState<Block[] | null>(null);
@@ -113,11 +115,19 @@ export default function StoriesSheet({
 
   useEffect(() => () => { dispose(); }, [dispose]);
 
-  // 3-second blackout before revealing the end-of-story message
+  // Capture the last displayed text just before playback ends
   useEffect(() => {
-    if (!done) { setShowDoneMsg(false); return; }
-    const t = setTimeout(() => setShowDoneMsg(true), 3000);
-    return () => clearTimeout(t);
+    if (!isPlaying && !done) return;
+    const text = displaySegments && curSeg ? curSeg.text : scriptLines[0] ?? '';
+    if (text) setLastText(text);
+  }, [isPlaying, done, curSeg, displaySegments, scriptLines]);
+
+  // Fade out last phrase → black → "did you like this story?" after 3s
+  useEffect(() => {
+    if (!done) { setShowDoneMsg(false); setFadingOut(false); return; }
+    const t1 = setTimeout(() => setFadingOut(true), 50);  // start fade on next paint
+    const t2 = setTimeout(() => setShowDoneMsg(true), 3000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [done]);
 
   // ─── Sequential playback engine ──────────────────────────────────────────
@@ -620,7 +630,11 @@ export default function StoriesSheet({
               <p className="font-medium leading-snug" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.6)' }}>
                 did you like this story?
               </p>
-            ) : isPlaying || (done && !showDoneMsg) ? (
+            ) : done ? (
+              <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)', opacity: fadingOut ? 0 : 1, transition: 'opacity 0.7s ease' }}>
+                {lastText}
+              </p>
+            ) : isPlaying ? (
               displaySegments && curSeg ? (
                 <>
                   <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)' }}>
