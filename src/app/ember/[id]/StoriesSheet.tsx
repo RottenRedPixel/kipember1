@@ -31,6 +31,13 @@ const IDLE_PROMPTS = [
   'have fun and enjoy these stories...',
 ];
 
+const LOADING_MESSAGES = [
+  'looking through ember wiki...',
+  'composing story...',
+  'looking at available audio...',
+  'preparing story...',
+];
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Status = 'idle' | 'loading' | 'playing' | 'paused';
@@ -87,6 +94,9 @@ export default function StoriesSheet({
   const [idlePromptIdx,     setIdlePromptIdx]     = useState(() => Math.floor(Math.random() * IDLE_PROMPTS.length));
   const [idlePromptVisible, setIdlePromptVisible] = useState(true);
 
+  // ── Loading message cycling ──
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+
   // ── Playback refs (mutated directly, not in React state) ──
   const genRef         = useRef(0);                          // cancel token for active session
   const audiosRef      = useRef<(HTMLAudioElement | null)[]>([]); // one per block (null = pause/skip)
@@ -119,7 +129,7 @@ export default function StoriesSheet({
   useEffect(() => {
     if (!done) { setShowDoneMsg(false); setFadingOut(false); return; }
     const t1 = setTimeout(() => setFadingOut(true), 50);  // start fade on next paint
-    const t2 = setTimeout(() => setShowDoneMsg(true), 3000);
+    const t2 = setTimeout(() => setShowDoneMsg(true), 2000);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [done]);
 
@@ -522,6 +532,13 @@ export default function StoriesSheet({
     return () => clearTimeout(t);
   }, [isOpen]);
 
+  // Loading message cycling — steps through LOADING_MESSAGES while status=loading
+  useEffect(() => {
+    if (status !== 'loading') { setLoadingMsgIdx(0); return; }
+    const t = setInterval(() => setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length), 1800);
+    return () => clearInterval(t);
+  }, [status]);
+
   // ─── Chip toggle ─────────────────────────────────────────────────────────
 
   const toggleKey = useCallback((key: string) => {
@@ -548,7 +565,7 @@ export default function StoriesSheet({
   const isLoading  = status === 'loading';
   const curSeg     = displaySegments?.[segIdx];
 
-  const statusLabel = isLoading ? 'preparing your story…' : null;
+  const statusLabel = null; // loading messages now shown in center text area
 
   return (
     <div
@@ -622,7 +639,11 @@ export default function StoriesSheet({
         {/* Story text — vertically centered, visualizer never affects its position */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center pointer-events-none">
-            {showDoneMsg ? (
+            {isLoading ? (
+              <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.45)' }}>
+                {LOADING_MESSAGES[loadingMsgIdx]}
+              </p>
+            ) : showDoneMsg ? (
               <p className="font-medium leading-snug" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.6)' }}>
                 did you like this story?
               </p>
