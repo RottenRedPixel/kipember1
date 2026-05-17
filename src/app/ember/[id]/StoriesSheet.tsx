@@ -110,6 +110,14 @@ export default function StoriesSheet({
 
   const savedRef = useRef(false); // prevent double-save per play session
 
+  // ── Debug log ────────────────────────────────────────────────────────────
+  type DebugEntry = { ts: string; color: string; text: string };
+  const [debugLog, setDebugLog] = useState<DebugEntry[]>([]);
+  const dbg = useCallback((text: string, color = 'rgba(255,255,255,0.6)') => {
+    const ts = new Date().toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setDebugLog((prev) => [...prev.slice(-30), { ts, color, text }]);
+  }, []);
+
   const IDLE_PROMPTS = useMemo(() => [
     'choose your own adventure...',
     'listen to different versions...',
@@ -596,6 +604,7 @@ export default function StoriesSheet({
     // Fetch audio — playlist mode fetches each block individually and plays
     // them sequentially (ended → next). Single-script mode fetches one file.
     setPlaybackState('loading');
+    setDebugLog([]);
     try {
       const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
 
@@ -603,10 +612,17 @@ export default function StoriesSheet({
         // ── Playlist mode: sequential per-block audio ──────────────────────
         // Each block gets its own audio element. 'ended' advances to the next.
         // No timing estimation needed — clips play fully before the next starts.
-        type DebugBlock = { type: string; speaker?: string; mediaId?: string; order?: number };
+        type DebugBlock = { type: string; content?: string; speaker?: string; quote?: string; mediaId?: string; order?: number; durationMs?: number };
         const sortedBlocks = [...(blocks as Array<DebugBlock>)]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
+        dbg(`▶ ${sortedBlocks.length} blocks`, '#a78bfa');
+        sortedBlocks.forEach((b, i) => {
+          const label = b.type === 'voice' ? `voice: "${(b.content ?? '').slice(0, 40)}"`
+            : b.type === 'emberpause' ? `pause ${b.durationMs ?? 2000}ms`
+            : `media [${b.speaker ?? '?'}] id=${b.mediaId?.slice(0, 8) ?? '?'}`;
+          dbg(`  [${i}] ${label}`, 'rgba(255,255,255,0.4)');
+        });
         console.log('[StoriesSheet] playlist blocks:', sortedBlocks.map((b, i) =>
           `[${i}] ${b.type}${b.speaker ? ` (${b.speaker})` : ''}${b.mediaId ? ` mediaId=${b.mediaId}` : ''}`
         ));
@@ -615,9 +631,14 @@ export default function StoriesSheet({
           sortedBlocks.map(async (block, i) => {
             // emberpause blocks have no audio — client handles with setTimeout
             if (block.type === 'emberpause') {
-              console.log(`[StoriesSheet] segment ${i} is emberpause (${(block as { durationMs?: number }).durationMs ?? 2000}ms)`);
+              dbg(`  [${i}] ⏸ emberpause ${block.durationMs ?? 2000}ms`, '#60a5fa');
+              console.log(`[StoriesSheet] segment ${i} is emberpause (${block.durationMs ?? 2000}ms)`);
               return null;
             }
+            const label = block.type === 'voice'
+              ? `voice "${(block.content ?? '').slice(0, 30)}…"`
+              : `media ${block.speaker ?? block.mediaId?.slice(0, 8) ?? '?'}`;
+            dbg(`  [${i}] fetching ${label}…`, 'rgba(255,255,255,0.5)');
             console.log(`[StoriesSheet] fetching segment ${i}/${sortedBlocks.length - 1}:`, block.type, block.speaker ?? block.mediaId ?? '');
             try {
               const res = await fetch(
@@ -627,13 +648,17 @@ export default function StoriesSheet({
               if (!res.ok) {
                 const p = await res.json().catch(() => null);
                 const msg = p?.error ?? `HTTP ${res.status}`;
+                dbg(`  [${i}] ✗ SKIP — ${msg.slice(0, 80)}`, '#f87171');
                 console.error(`[StoriesSheet] segment ${i} fetch failed (skipping):`, msg, block);
                 return null; // skip unresolvable segments; narrator blocks still play
               }
               const blob = await res.blob();
+              dbg(`  [${i}] ✓ ok ${(blob.size / 1024).toFixed(0)} KB`, '#4ade80');
               console.log(`[StoriesSheet] segment ${i} fetched ok, size=${blob.size}`);
               return blob;
             } catch (fetchErr) {
+              const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+              dbg(`  [${i}] ✗ SKIP — ${msg.slice(0, 80)}`, '#f87171');
               console.error(`[StoriesSheet] segment ${i} unexpected error (skipping):`, fetchErr, block);
               return null;
             }
@@ -643,6 +668,7 @@ export default function StoriesSheet({
         // If every segment failed (no audio at all), surface an error
         const hasAnyAudio = segBlobsOrNull.some((b) => b !== null);
         if (!hasAnyAudio) {
+          dbg('✗ ALL segments failed', '#f87171');
           throw new Error('All audio segments failed to load');
         }
 
@@ -667,9 +693,11 @@ export default function StoriesSheet({
 
         setCurrentSegmentIdx(0);
         setPlaybackState('playing');
+        dbg('▶ playback started', '#a78bfa');
 
         const playSegmentAt = (idx: number) => {
           if (idx >= segAudios.length) {
+            dbg('■ done', '#a78bfa');
             console.log('[StoriesSheet] playlist finished');
             setPlaybackState('paused'); setDone(true); return;
           }
@@ -680,22 +708,29 @@ export default function StoriesSheet({
           if (!seg) {
             const block = sortedBlocks[idx] as { type: string; durationMs?: number };
             const ms = block.durationMs ?? 2000;
-            console.log(`[StoriesSheet] emberpause ${idx}: waiting ${ms}ms`);
+            if (block.type === 'emberpause') dbg(`  [${idx}] ⏸ pause ${ms}ms`, '#60a5fa');
+            else dbg(`  [${idx}] ⏭ skipped (no audio)`, '#f97316');
+            console.log(`[StoriesSheet] emberpause/skip ${idx}: waiting ${ms}ms`);
             setTimeout(() => playSegmentAt(idx + 1), ms);
             return;
           }
 
+          dbg(`  [${idx}] ▶ playing dur=${seg.duration?.toFixed(1) ?? '?'}s`, '#4ade80');
           console.log(`[StoriesSheet] playing segment ${idx}/${segAudios.length - 1}, duration=${seg.duration?.toFixed(2) ?? 'unknown'}`);
           audioRef.current = seg;
           seg.addEventListener('ended', () => {
+            dbg(`  [${idx}] ✓ ended`, '#4ade80');
             console.log(`[StoriesSheet] segment ${idx} ended`);
             playSegmentAt(idx + 1);
           }, { once: true });
           seg.addEventListener('error', (e) => {
-            console.error(`[StoriesSheet] segment ${idx} audio error:`, (e as ErrorEvent).message ?? e, seg.error);
+            const errMsg = (e as ErrorEvent).message || `code=${seg.error?.code ?? '?'}`;
+            dbg(`  [${idx}] ✗ audio error: ${errMsg}`, '#f87171');
+            console.error(`[StoriesSheet] segment ${idx} audio error:`, errMsg, seg.error);
             playSegmentAt(idx + 1);
           }, { once: true });
           seg.play().catch((e) => {
+            dbg(`  [${idx}] ✗ play() rejected: ${e instanceof Error ? e.message : e}`, '#f87171');
             console.error(`[StoriesSheet] segment ${idx} play() rejected:`, e);
             playSegmentAt(idx + 1);
           });
@@ -742,7 +777,7 @@ export default function StoriesSheet({
   }, [
     playbackState, emberId, selectedKeys, composedScript, composedBlocks,
     storyScript, taggedNames, durationSeconds, accessToken,
-    buildAudioFromBlob, saveStory,
+    buildAudioFromBlob, saveStory, dbg,
   ]);
 
   function handleClose() {
@@ -829,6 +864,21 @@ export default function StoriesSheet({
         <p className="text-xs text-center px-4 mt-1 flex-shrink-0" style={{ color: 'rgba(255,100,100,0.8)' }}>
           {error}
         </p>
+      ) : null}
+
+      {/* ── Debug log panel ─────────────────────────────────────────────── */}
+      {debugLog.length > 0 ? (
+        <div
+          className="flex-shrink-0 mx-3 mt-1 rounded-lg overflow-y-auto"
+          style={{ maxHeight: 160, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.08)', padding: '6px 8px' }}
+        >
+          {debugLog.map((e, i) => (
+            <div key={i} style={{ display: 'flex', gap: 6, lineHeight: 1.35 }}>
+              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', flexShrink: 0, fontVariantNumeric: 'tabular-nums', paddingTop: 1 }}>{e.ts}</span>
+              <span style={{ fontSize: '0.65rem', color: e.color, wordBreak: 'break-all' }}>{e.text}</span>
+            </div>
+          ))}
+        </div>
       ) : null}
 
       {/* Body — story text + visualizer + chips */}
