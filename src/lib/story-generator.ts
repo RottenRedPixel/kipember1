@@ -11,6 +11,9 @@ export type PlaylistSegment =
  * Generate playlist narration — bridging text segments that weave around
  * pre-recorded contributor clips. Returns an ordered array of narration
  * segments and clip references so the caller can assemble snapshot blocks.
+ *
+ * Prompt MUST exist in the DB (PromptOverride key: story_generation.playlist).
+ * No hardcoded fallback — missing prompt throws and the caller surfaces the error.
  */
 export async function generatePlaylistNarration({
   title,
@@ -28,37 +31,10 @@ export async function generatePlaylistNarration({
   // Narration is roughly half the target duration — the other half is clips
   const targetWords = Math.round((durationSeconds / 60) * 150 * 0.5);
 
-  const PLAYLIST_PROMPT_FALLBACK = `You are Ember — a warm, personal narrator telling a short audio memory story.
-
-You will receive a memory title, optional location, optional context, and a numbered list of real voice clips from contributors.
-
-Your job: write ONE short intro sentence before each clip that sets context and leads naturally into what the contributor is about to say. Do NOT quote or paraphrase the clip — just introduce it.
-
-Good examples:
-- "They were surprised by how long it took. In Amado's words:"
-- "The moment stayed with her. As Maria described it:"
-- "It wasn't what they expected, and Amado put it plainly:"
-
-Rules:
-- Each narration segment: 1–2 sentences max
-- Never repeat or echo the clip content
-- Warm, third-person, conversational tone
-- Total narration ≈ {{targetWords}} words across all segments
-- You have {{clipCount}} clips to introduce
-
-Return ONLY valid JSON:
-{
-  "segments": [
-    { "type": "narration", "text": "..." },
-    { "type": "clip", "index": 0 },
-    { "type": "narration", "text": "..." },
-    { "type": "clip", "index": 1 }
-  ]
-}`;
-
+  // No fallback — prompt must be in DB
   const systemPrompt = await renderPromptTemplate(
     'story_generation.playlist',
-    PLAYLIST_PROMPT_FALLBACK,
+    '',
     { targetWords, durationSeconds, clipCount: clips.length }
   );
 
@@ -73,12 +49,7 @@ Return ONLY valid JSON:
     .filter(Boolean)
     .join('\n\n');
 
-  let raw: string;
-  try {
-    raw = await chat(systemPrompt, [{ role: 'user', content: context }]);
-  } catch {
-    return [];
-  }
+  const raw = await chat(systemPrompt, [{ role: 'user', content: context }]);
 
   try {
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -96,7 +67,6 @@ Return ONLY valid JSON:
       return [];
     });
   } catch {
-    // Fallback: treat the whole response as a single narration segment
     return raw.trim() ? [{ type: 'narration', text: raw.trim() }] : [];
   }
 }
@@ -104,11 +74,8 @@ Return ONLY valid JSON:
 /**
  * Generate a short narration script for a facet-composed Story.
  *
- * Unlike the Snapshot (which is a comprehensive summary of the whole ember),
- * a Story is composed on-demand from a specific subset of facets the user
- * selected in StoriesSheet — e.g. "Mary + feelings" or "place + why".
- * The LLM only narrates what those facets contain; if a facet has no material
- * it should not be in the context at all.
+ * Prompt MUST exist in the DB (PromptOverride key: story_generation.compose).
+ * No hardcoded fallback — missing prompt throws and the caller surfaces the error.
  */
 export async function generateStoryScript({
   title,
@@ -123,11 +90,11 @@ export async function generateStoryScript({
   title: string;
   location: string | null;
   taggedPeople: string[];
-  selectedPeople: string[];   // empty = no person filter (use all)
+  selectedPeople: string[];
   durationSeconds?: number;
-  claimsContext: string;       // pre-formatted facet claims
-  contributorMemoriesContext: string; // pre-formatted contributor memories
-  wikiContent?: string | null; // fallback when no specific claims matched
+  claimsContext: string;
+  contributorMemoriesContext: string;
+  wikiContent?: string | null;
 }): Promise<string> {
   const targetWords = Math.round((durationSeconds / 60) * 150);
 
@@ -136,6 +103,7 @@ export async function generateStoryScript({
       ? 'No specific people were selected — draw from everyone.'
       : `Focus on: ${selectedPeople.join(', ')}. Only mention others if directly relevant.`;
 
+  // No fallback — prompt must be in DB
   const systemPrompt = await renderPromptTemplate('story_generation.compose', '', {
     targetWords,
     durationSeconds,

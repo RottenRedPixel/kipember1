@@ -154,7 +154,19 @@ export async function POST(
           });
 
     // Fall back to people-only filter if facet filter wiped everything out
-    const selected = facetsFiltered.length > 0 ? facetsFiltered : peopleFiltered;
+    const filtered = facetsFiltered.length > 0 ? facetsFiltered : peopleFiltered;
+
+    // Dedup: if one clip's quote is fully contained within another's, drop the
+    // shorter one — always lean towards the longer, more complete clip.
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    const selected = filtered.filter((c) => {
+      const cn = norm(c.quote);
+      return !filtered.some((other) => {
+        if (other.id === c.id) return false;
+        const on = norm(other.quote);
+        return on.includes(cn) && on.length > cn.length;
+      });
+    });
 
     if (selected.length === 0) {
       // No clips — signal client to fall back to /compose
@@ -219,7 +231,7 @@ export async function POST(
     // ElevenLabs at speed=0.96 speaks at roughly 2.5 WPS.
     const NARRATOR_WPS = 2.5;
 
-    const EMBER_PAUSE_MS = 2000;
+    const EMBER_PAUSE_MS = 1000;
 
     type SnapshotBlock =
       | { type: 'voice'; content: string; order: number; durationMs: number }

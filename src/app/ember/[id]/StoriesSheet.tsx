@@ -295,20 +295,20 @@ export default function StoriesSheet({
       audiosRef.current = audios;
       urlsRef.current   = urls.filter(Boolean) as string[];
 
-      // Wire first real audio element to AudioContext for the visualizer
-      const firstReal = audios.find(Boolean);
-      if (firstReal) {
-        try {
-          const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-          if (Ctor) {
-            const ctx = new Ctor();
-            const src = ctx.createMediaElementSource(firstReal);
-            const an  = ctx.createAnalyser(); an.fftSize = 256; an.smoothingTimeConstant = 0.8;
-            src.connect(an); an.connect(ctx.destination);
-            audioCtxRef.current = ctx; analyserRef.current = an;
+      // Wire ALL real audio elements to a shared AudioContext/analyser so the
+      // visualizer responds to both narrator TTS and contributor clips.
+      try {
+        const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (Ctor && audios.some(Boolean)) {
+          const ctx = new Ctor();
+          const an  = ctx.createAnalyser(); an.fftSize = 256; an.smoothingTimeConstant = 0.8;
+          an.connect(ctx.destination);
+          for (const a of audios) {
+            if (a) { try { ctx.createMediaElementSource(a).connect(an); } catch { /* ignore */ } }
           }
-        } catch { /* no visualizer */ }
-      }
+          audioCtxRef.current = ctx; analyserRef.current = an;
+        }
+      } catch { /* no visualizer */ }
 
       setStatus('playing');
       playFrom(0, gen);
@@ -534,6 +534,8 @@ export default function StoriesSheet({
   const isLoading  = status === 'loading';
   const curSeg     = displaySegments?.[segIdx];
 
+  const statusLabel = isLoading ? 'preparing your story…' : null;
+
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
@@ -574,6 +576,16 @@ export default function StoriesSheet({
         </button>
       ) : null}
 
+      {/* ── Status label (below play button) ── */}
+      {isOpen && statusLabel ? (
+        <p
+          className="absolute left-0 right-0 text-center pointer-events-none text-xs"
+          style={{ top: 30, color: 'rgba(255,255,255,0.45)' }}
+        >
+          {statusLabel}
+        </p>
+      ) : null}
+
       {/* ── Header ── */}
       <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
         <Flame size={18} color="white" strokeWidth={1.6} />
@@ -593,18 +605,13 @@ export default function StoriesSheet({
       {/* ── Body ── */}
       <div className="absolute left-0 right-0 bottom-0 px-4 flex flex-col pointer-events-none [&_button]:pointer-events-auto" style={{ top: 56 }}>
 
-        {/* Story text */}
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="text-center mb-5 pointer-events-none">
+        {/* Story text — vertically centered, visualizer never affects its position */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center pointer-events-none">
             {isPlaying ? (
               displaySegments && curSeg ? (
                 <>
-                  {curSeg.speaker ? (
-                    <p className="font-normal leading-snug text-center mb-1" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
-                      {curSeg.speaker}
-                    </p>
-                  ) : null}
-                  <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: curSeg.speaker ? '#4ade80' : 'rgba(255,255,255,0.85)' }}>
+                  <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)' }}>
                     {curSeg.text}
                   </p>
                 </>
@@ -619,13 +626,13 @@ export default function StoriesSheet({
               </p>
             )}
           </div>
+        </div>
 
-          {/* Visualizer */}
-          <div className="flex justify-center mb-3 w-full" style={{ minHeight: 20 }}>
-            {isPlaying ? (
-              <MicLevelMeter analyser={analyserRef.current} color={vizColor} bars={22} className="w-[70%] h-5" />
-            ) : null}
-          </div>
+        {/* Visualizer — fixed row above chips, never shifts with text */}
+        <div className="flex justify-center flex-shrink-0" style={{ height: 20, marginBottom: 17 }}>
+          {isPlaying ? (
+            <MicLevelMeter analyser={analyserRef.current} color={vizColor} bars={22} className="w-[70%] h-5" />
+          ) : null}
         </div>
 
         {/* Chip row */}
