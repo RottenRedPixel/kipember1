@@ -8,6 +8,12 @@ import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 const SHEET_H = '40vh';
 const SNAP_MS = 320;
 
+function formatTime(secs: number) {
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 // Facet definition — what shows in the chip row.
 type Facet = {
   key: string;       // claimType key OR person first-name OR 'snapshot'
@@ -213,6 +219,12 @@ export default function StoriesSheet({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
 
+  // ── Timeline refs (DOM-mutated directly to avoid per-frame re-renders) ───
+  const timelineFilledRef = useRef<HTMLDivElement>(null);
+  const timelineDotRef    = useRef<HTMLDivElement>(null);
+  const timelineCurRef    = useRef<HTMLSpanElement>(null);
+  const timelineEndRef    = useRef<HTMLSpanElement>(null);
+
   const disposeAudio = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; audioRef.current = null; }
     if (audioUrlRef.current) { URL.revokeObjectURL(audioUrlRef.current); audioUrlRef.current = null; }
@@ -301,6 +313,24 @@ export default function StoriesSheet({
     audio.addEventListener('timeupdate', onTimeUpdate);
     return () => audio.removeEventListener('timeupdate', onTimeUpdate);
   }, [isPlaying, storyLines.length]);
+
+  // ── Timeline DOM updates (direct mutation — no React re-render per tick) ─
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!isPlaying || !audio) return;
+    const onUpdate = () => {
+      const t = audio.currentTime;
+      const d = audio.duration;
+      if (!d || !isFinite(d)) return;
+      const pct = Math.min(t / d, 1) * 100;
+      if (timelineFilledRef.current) timelineFilledRef.current.style.width = `${pct}%`;
+      if (timelineDotRef.current)    timelineDotRef.current.style.left    = `${pct}%`;
+      if (timelineCurRef.current)    timelineCurRef.current.textContent   = formatTime(t);
+      if (timelineEndRef.current)    timelineEndRef.current.textContent   = formatTime(d);
+    };
+    audio.addEventListener('timeupdate', onUpdate);
+    return () => audio.removeEventListener('timeupdate', onUpdate);
+  }, [isPlaying]);
 
   // ── Fetch available claim types + tagged names when sheet opens ──────────
   useEffect(() => {
@@ -811,7 +841,7 @@ export default function StoriesSheet({
           </div>
 
           {/* Mic visualizer */}
-          <div className="flex justify-center mb-4 w-full" style={{ minHeight: 20 }}>
+          <div className="flex justify-center mb-3 w-full" style={{ minHeight: 20 }}>
             {isPlaying ? (
               <MicLevelMeter
                 analyser={analyserRef.current}
@@ -821,6 +851,51 @@ export default function StoriesSheet({
               />
             ) : null}
           </div>
+
+          {/* Playback timeline */}
+          {isPlaying ? (
+            <div className="w-full px-2 mb-3 pointer-events-none">
+              {/* Track */}
+              <div className="relative w-full rounded-full" style={{ height: 3, background: 'rgba(255,255,255,0.12)' }}>
+                {/* Filled */}
+                <div
+                  ref={timelineFilledRef}
+                  className="absolute left-0 top-0 bottom-0 rounded-full"
+                  style={{ width: '0%', background: vizColor, transition: 'width 0.25s linear' }}
+                />
+                {/* Segment tick marks */}
+                {displaySegments && displaySegments.map((seg, i) => {
+                  const audio = audioRef.current;
+                  const dur = audio?.duration;
+                  if (!dur || !isFinite(dur)) return null;
+                  const pct = Math.min((seg.cumStart / dur) * 100, 100);
+                  return (
+                    <div
+                      key={i}
+                      className="absolute top-0 bottom-0"
+                      style={{
+                        left: `${pct}%`,
+                        width: 2,
+                        background: seg.speaker ? '#4ade80' : 'rgba(255,255,255,0.35)',
+                        borderRadius: 1,
+                      }}
+                    />
+                  );
+                })}
+                {/* Playback dot */}
+                <div
+                  ref={timelineDotRef}
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full"
+                  style={{ left: '0%', width: 10, height: 10, background: 'white', boxShadow: '0 0 4px rgba(0,0,0,0.4)' }}
+                />
+              </div>
+              {/* Time labels */}
+              <div className="flex justify-between mt-1">
+                <span ref={timelineCurRef} style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', fontVariantNumeric: 'tabular-nums' }}>0:00</span>
+                <span ref={timelineEndRef} style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', fontVariantNumeric: 'tabular-nums' }}>--:--</span>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Facet / person chips */}
