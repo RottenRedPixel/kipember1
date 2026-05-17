@@ -100,10 +100,13 @@ async function renderSnapshotAudio({
 
   await fs.mkdir(renderDir, { recursive: true });
 
-  // Cache hit — return cached audio + cached durations (if available).
+  // Cache hit — only short-circuit when BOTH audio AND durations are present.
+  // If the durations file is missing (e.g. rendered before this version), fall
+  // through so we re-probe segments and write the durations cache.
   try {
     await fs.access(outputPath);
-    const durJson = await fs.readFile(durationsPath, 'utf8').catch(() => '[]');
+    await fs.access(durationsPath);
+    const durJson = await fs.readFile(durationsPath, 'utf8');
     const segmentDurations = JSON.parse(durJson) as SegmentDuration[];
     return { outputPath, segmentDurations };
   } catch {
