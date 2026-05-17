@@ -117,10 +117,10 @@ export default function StoriesSheet({
 
   // Capture the last displayed text just before playback ends
   useEffect(() => {
-    if (!isPlaying && !done) return;
+    if (status !== 'playing' && !done) return;
     const text = displaySegments && curSeg ? curSeg.text : scriptLines[0] ?? '';
     if (text) setLastText(text);
-  }, [isPlaying, done, curSeg, displaySegments, scriptLines]);
+  }, [status, done, curSeg, displaySegments, scriptLines]);
 
   // Fade out last phrase → black → "did you like this story?" after 3s
   useEffect(() => {
