@@ -170,10 +170,13 @@ export default function StoriesSheet({
   const displaySegments = useMemo(() => {
     if (!composedBlocks) return null;
     type B = { type: string; content?: string; speaker?: string; quote?: string; order?: number };
-    const segs: Array<{ text: string; speaker?: string }> = [];
+    const segs: Array<{ text: string; speaker?: string; isPause?: boolean }> = [];
     for (const b of (composedBlocks as B[]).slice().sort((a, bn) => (a.order ?? 0) - (bn.order ?? 0))) {
       if (b.type === 'voice' && b.content) {
         segs.push({ text: b.content });
+      } else if (b.type === 'emberpause') {
+        // Keep index alignment with the audio array — show nothing during pause
+        segs.push({ text: '', isPause: true });
       } else if (b.type === 'media' && b.quote) {
         segs.push({ text: b.quote, speaker: b.speaker });
       }
@@ -608,8 +611,13 @@ export default function StoriesSheet({
           `[${i}] ${b.type}${b.speaker ? ` (${b.speaker})` : ''}${b.mediaId ? ` mediaId=${b.mediaId}` : ''}`
         ));
 
-        const segBlobs = await Promise.all(
+        const segBlobsOrNull = await Promise.all(
           sortedBlocks.map(async (block, i) => {
+            // emberpause blocks have no audio — client handles with setTimeout
+            if (block.type === 'emberpause') {
+              console.log(`[StoriesSheet] segment ${i} is emberpause (${(block as { durationMs?: number }).durationMs ?? 2000}ms)`);
+              return null;
+            }
             console.log(`[StoriesSheet] fetching segment ${i}/${sortedBlocks.length - 1}:`, block.type, block.speaker ?? block.mediaId ?? '');
             const res = await fetch(
               `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
@@ -627,10 +635,10 @@ export default function StoriesSheet({
           })
         );
 
-        const segUrls = segBlobs.map((b) => URL.createObjectURL(b));
-        const segAudios = segUrls.map((u) => { const a = new Audio(u); a.preload = 'auto'; return a; });
-        playlistAudiosRef.current = segAudios;
-        playlistUrlsRef.current = segUrls;
+        const segUrls = segBlobsOrNull.map((b) => b ? URL.createObjectURL(b) : null);
+        const segAudios = segUrls.map((u) => u ? (() => { const a = new Audio(u); a.preload = 'auto'; return a; })() : null);
+        playlistAudiosRef.current = segAudios.filter(Boolean) as HTMLAudioElement[];
+        playlistUrlsRef.current = segUrls.filter(Boolean) as string[];
 
         // Connect first element to AudioContext for visualizer
         try {
@@ -655,9 +663,19 @@ export default function StoriesSheet({
             setPlaybackState('paused'); setDone(true); return;
           }
           const seg = segAudios[idx];
+          setCurrentSegmentIdx(idx);
+
+          // emberpause — no audio element, just wait then advance
+          if (!seg) {
+            const block = sortedBlocks[idx] as { type: string; durationMs?: number };
+            const ms = block.durationMs ?? 2000;
+            console.log(`[StoriesSheet] emberpause ${idx}: waiting ${ms}ms`);
+            setTimeout(() => playSegmentAt(idx + 1), ms);
+            return;
+          }
+
           console.log(`[StoriesSheet] playing segment ${idx}/${segAudios.length - 1}, duration=${seg.duration?.toFixed(2) ?? 'unknown'}`);
           audioRef.current = seg;
-          setCurrentSegmentIdx(idx);
           seg.addEventListener('ended', () => {
             console.log(`[StoriesSheet] segment ${idx} ended`);
             playSegmentAt(idx + 1);

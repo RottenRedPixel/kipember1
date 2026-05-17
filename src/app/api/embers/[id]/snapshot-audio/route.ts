@@ -97,6 +97,7 @@ async function renderSnapshotAudio({
       continue;
     }
 
+    if ((block as { type: string }).type === 'emberpause') continue; // client-side silence
     if (!isMediaBlock(block) || !block.mediaId) continue;
     if (block.mediaType && block.mediaType !== 'AUDIO') continue;
 

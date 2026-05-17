@@ -203,8 +203,11 @@ export async function POST(
     // ElevenLabs at speed=0.96 speaks at roughly 2.5 WPS.
     const NARRATOR_WPS = 2.5;
 
+    const EMBER_PAUSE_MS = 2000;
+
     type SnapshotBlock =
       | { type: 'voice'; content: string; order: number; durationMs: number }
+      | { type: 'emberpause'; durationMs: number; order: number }
       | { type: 'media'; mediaId: string; mediaType: string; clipKind: 'voice' | 'call'; speaker: string; quote: string; clipStartMs?: number; clipEndMs?: number; order: number; durationMs: number };
 
     const clipBlock = (clip: ClipItem, ord: number): SnapshotBlock => {
@@ -235,13 +238,22 @@ export async function POST(
       durationMs: Math.round((text.trim().split(/\s+/).length / NARRATOR_WPS) * 1000),
     });
 
-    // Assemble blocks from LLM segments
+    // Assemble blocks from LLM segments.
+    // Insert an emberpause between every narrator intro and its following clip
+    // so the listener has a beat before the contributor's voice plays.
     const blocks: SnapshotBlock[] = [];
     let order = 1;
 
-    for (const seg of segments) {
+    for (let i = 0; i < segments.length; i++) {
+      const seg = segments[i];
+      const nextSeg = segments[i + 1];
+
       if (seg.type === 'narration' && seg.text) {
         blocks.push(narratorBlock(seg.text, order++));
+        // Add a pause when the next segment is a clip
+        if (nextSeg?.type === 'clip') {
+          blocks.push({ type: 'emberpause', durationMs: EMBER_PAUSE_MS, order: order++ });
+        }
       } else if (seg.type === 'clip') {
         const clip = ranked[seg.index];
         if (clip) blocks.push(clipBlock(clip, order++));

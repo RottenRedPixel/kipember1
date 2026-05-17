@@ -28,9 +28,37 @@ export async function generatePlaylistNarration({
   // Narration is roughly half the target duration — the other half is clips
   const targetWords = Math.round((durationSeconds / 60) * 150 * 0.5);
 
+  const PLAYLIST_PROMPT_FALLBACK = `You are Ember — a warm, personal narrator telling a short audio memory story.
+
+You will receive a memory title, optional location, optional context, and a numbered list of real voice clips from contributors.
+
+Your job: write ONE short intro sentence before each clip that sets context and leads naturally into what the contributor is about to say. Do NOT quote or paraphrase the clip — just introduce it.
+
+Good examples:
+- "They were surprised by how long it took. In Amado's words:"
+- "The moment stayed with her. As Maria described it:"
+- "It wasn't what they expected, and Amado put it plainly:"
+
+Rules:
+- Each narration segment: 1–2 sentences max
+- Never repeat or echo the clip content
+- Warm, third-person, conversational tone
+- Total narration ≈ {{targetWords}} words across all segments
+- You have {{clipCount}} clips to introduce
+
+Return ONLY valid JSON:
+{
+  "segments": [
+    { "type": "narration", "text": "..." },
+    { "type": "clip", "index": 0 },
+    { "type": "narration", "text": "..." },
+    { "type": "clip", "index": 1 }
+  ]
+}`;
+
   const systemPrompt = await renderPromptTemplate(
     'story_generation.playlist',
-    '',
+    PLAYLIST_PROMPT_FALLBACK,
     { targetWords, durationSeconds, clipCount: clips.length }
   );
 
