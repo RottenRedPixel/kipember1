@@ -166,10 +166,9 @@ export default function StoriesSheet({
 
   // Playlist mode: ordered segments with cumulative estimated durations.
   // durationMs from the playlist route — clips are exact Whisper timestamps,
-  // narrator is a word-count estimate. We also store totalEstSec so the
-  // timeupdate handler can normalise cumStart against actual audio.duration,
-  // correcting for narrator TTS speed variance without needing ffprobe.
-  const displaySegmentsRef  = useRef<Array<{ text: string; speaker?: string; cumStart: number }> | null>(null);
+  // narrator is a word-count estimate. durationSec is stored per-segment so
+  // the timeupdate handler can hold on contributor clips for their full duration.
+  const displaySegmentsRef  = useRef<Array<{ text: string; speaker?: string; cumStart: number; durationSec: number }> | null>(null);
   const totalEstSecRef       = useRef(0);
   const displaySegments = useMemo(() => {
     if (!composedBlocks) { displaySegmentsRef.current = null; totalEstSecRef.current = 0; return null; }
@@ -184,13 +183,13 @@ export default function StoriesSheet({
       order?: number;
     };
     let cumSec = 0;
-    const segs: Array<{ text: string; speaker?: string; cumStart: number }> = [];
+    const segs: Array<{ text: string; speaker?: string; cumStart: number; durationSec: number }> = [];
     for (const b of (composedBlocks as B[]).slice().sort((a, bn) => (a.order ?? 0) - (bn.order ?? 0))) {
       if (b.type === 'voice' && b.content) {
         const dur = b.durationMs != null
           ? b.durationMs / 1000
           : Math.max(0.5, b.content.trim().split(/\s+/).length / 2.5);
-        segs.push({ text: b.content, cumStart: cumSec });
+        segs.push({ text: b.content, cumStart: cumSec, durationSec: dur });
         cumSec += dur;
       } else if (b.type === 'media' && b.quote) {
         const dur = b.durationMs != null
@@ -198,7 +197,7 @@ export default function StoriesSheet({
           : b.clipStartMs != null && b.clipEndMs != null
             ? Math.max(0.5, (b.clipEndMs - b.clipStartMs) / 1000)
             : Math.max(0.5, b.quote.trim().split(/\s+/).length / 2.0);
-        segs.push({ text: b.quote, speaker: b.speaker, cumStart: cumSec });
+        segs.push({ text: b.quote, speaker: b.speaker, cumStart: cumSec, durationSec: dur });
         cumSec += dur;
       }
     }
@@ -226,6 +225,14 @@ export default function StoriesSheet({
   const timelineDotRef    = useRef<HTMLDivElement>(null);
   const timelineCurRef    = useRef<HTMLSpanElement>(null);
   const timelineEndRef    = useRef<HTMLSpanElement>(null);
+
+  // ── Clip-hold refs — track which segment is active and when a clip started ─
+  // currentSegmentIdxRef mirrors the currentSegmentIdx state so the timeupdate
+  // handler can read the latest value without a stale closure.
+  // clipEnteredAtRef holds the audio.currentTime when we first entered a
+  // contributor clip; -1 means we're in a narrator segment (no hold needed).
+  const currentSegmentIdxRef = useRef(0);
+  const clipEnteredAtRef     = useRef(-1);
 
   const disposeAudio = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; audioRef.current = null; }
@@ -289,28 +296,56 @@ export default function StoriesSheet({
   }, [fading, storyLines.length]);
 
   // ── Audio-driven text sync ────────────────────────────────────────────────
-  // Reads refs directly — no closure over stale React state.
-  // Playlist mode uses proportional mapping: estimated cumStart / totalEstSec
-  // is compared against actual currentTime / duration. This corrects for
-  // narrator TTS speed variance without needing server-side probing.
+  // Playlist mode logic:
+  //  • Narrator segments advance via proportional mapping
+  //    (estimated cumStart / totalEstSec vs actual currentTime / duration).
+  //  • Contributor clip segments are held for their full Whisper-measured
+  //    durationSec from the moment they first become active. This prevents
+  //    narrator drift from skipping over real voice/call clips.
   useEffect(() => {
     const audio = audioRef.current;
     if (!isPlaying || !audio) return;
+
     const onTimeUpdate = () => {
       const t = audio.currentTime;
       const segs = displaySegmentsRef.current;
       const totalEst = totalEstSecRef.current;
+
       if (segs && totalEst > 0) {
         const dur = audio.duration;
         if (!dur || !isFinite(dur)) return;
-        // progress 0→1 through actual audio
+
+        const curIdx = currentSegmentIdxRef.current;
+        const curSeg = segs[curIdx];
+
+        // ── Clip-hold: if we're on a contributor segment, don't advance
+        // until the clip's full Whisper duration has elapsed.
+        if (curSeg?.speaker) {
+          if (clipEnteredAtRef.current < 0) {
+            // First timeupdate tick inside this clip — record the start time.
+            clipEnteredAtRef.current = t;
+          }
+          if (t < clipEnteredAtRef.current + curSeg.durationSec) {
+            return; // Clip still playing — hold here.
+          }
+        }
+
+        // ── Proportional advancement for narrator (or after clip finishes) ──
         const progress = t / dur;
-        // find last segment whose estimated start-ratio <= progress
         let idx = 0;
         for (let i = segs.length - 1; i >= 0; i--) {
           if (progress >= segs[i].cumStart / totalEst) { idx = i; break; }
         }
-        setCurrentSegmentIdx((prev) => (prev === idx ? prev : idx));
+        // Never go backwards (clip-hold can leave progress ahead of cumStart).
+        idx = Math.max(idx, curIdx);
+
+        if (idx !== curIdx) {
+          // Reset clip tracking for the new segment (will be recorded on the
+          // first tick if the new segment is also a clip).
+          clipEnteredAtRef.current = -1;
+          currentSegmentIdxRef.current = idx;
+          setCurrentSegmentIdx(idx);
+        }
       } else if (storyLines.length > 0) {
         // Single-script mode: proportional line advance
         const dur = audio.duration;
@@ -433,6 +468,8 @@ export default function StoriesSheet({
       setSelectedKeys(new Set(['snapshot']));
       setError('');
       setCurrentSegmentIdx(0);
+      currentSegmentIdxRef.current = 0;
+      clipEnteredAtRef.current = -1;
       savedRef.current = false;
     }
   }, [isOpen, disposeAudio]);
@@ -466,6 +503,8 @@ export default function StoriesSheet({
     setDone(false);
     setError('');
     setCurrentSegmentIdx(0);
+    currentSegmentIdxRef.current = 0;
+    clipEnteredAtRef.current = -1;
     savedRef.current = false;
   }, [disposeAudio]);
 
@@ -642,6 +681,10 @@ export default function StoriesSheet({
       }
       const blob = await response.blob();
       const audio = await buildAudioFromBlob(blob);
+      // Reset clip-hold state for a fresh play session.
+      currentSegmentIdxRef.current = 0;
+      clipEnteredAtRef.current = -1;
+      setCurrentSegmentIdx(0);
       await audio.play();
       if (script) {
         void saveStory(script);
