@@ -31,6 +31,11 @@ export async function transcodeAudioToM4a({
   }
 }
 
+// Padding added around ASR word timestamps so clips don't cut off the leading
+// consonant or trailing resonance of the boundary words.
+const CLIP_PAD_START_S = 0.15; // 150 ms before first word
+const CLIP_PAD_END_S   = 0.30; // 300 ms after  last  word
+
 export async function extractAudioClipToM4a({
   input,
   outputPath,
@@ -42,8 +47,8 @@ export async function extractAudioClipToM4a({
   startMs: number;
   endMs: number;
 }) {
-  const clipStart = Math.max(0, startMs / 1000);
-  const clipEnd = Math.max(clipStart, endMs / 1000);
+  const clipStart = Math.max(0, startMs / 1000 - CLIP_PAD_START_S);
+  const clipEnd   = endMs / 1000 + CLIP_PAD_END_S;
   const clipDuration = Math.max(0.25, clipEnd - clipStart);
 
   try {

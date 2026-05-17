@@ -15,7 +15,7 @@ import { normalizeTextForSpeech } from '@/lib/narration';
 import { getUploadsDir } from '@/lib/uploads';
 import { getVoiceEntry } from '@/lib/voice-catalog';
 
-const STORY_CUT_AUDIO_RENDER_VERSION = 'v2';
+const STORY_CUT_AUDIO_RENDER_VERSION = 'v3'; // v3: clips re-extracted with padding
 
 // Returns true when the token is a valid contributor token OR the ember's
 // share token for the given emberId. Used by both GET and POST so guests

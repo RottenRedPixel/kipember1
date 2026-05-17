@@ -5,7 +5,7 @@ import { extractAudioClipToM4a, transcodeAudioToM4a } from '@/lib/audio-processi
 import { prisma } from '@/lib/db';
 import { getUploadFallbackUrl, getUploadPath, getUploadsDir, readUploadBuffer } from '@/lib/uploads';
 
-const AUDIO_SEGMENT_VERSION = 'v2';
+const AUDIO_SEGMENT_VERSION = 'v3'; // v3: +150ms lead / +300ms trail padding on all clips
 
 export type ResolvedAudioSource = {
   source: string;
