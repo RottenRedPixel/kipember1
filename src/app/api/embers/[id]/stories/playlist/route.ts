@@ -193,11 +193,19 @@ export async function POST(
     // clipKind / speaker / quote are included so the client can build a
     // structured story script that interleaves narrator text with contributor
     // transcripts (used when persisting the played story to EmberStory).
+    // Words-per-second rate used to estimate narrator TTS duration.
+    // ElevenLabs at speed=0.96 speaks at roughly 2.5 WPS.
+    const NARRATOR_WPS = 2.5;
+
     type SnapshotBlock =
-      | { type: 'voice'; content: string; order: number }
-      | { type: 'media'; mediaId: string; mediaType: string; clipKind: 'voice' | 'call'; speaker: string; quote: string; clipStartMs?: number; clipEndMs?: number; order: number };
+      | { type: 'voice'; content: string; order: number; durationMs: number }
+      | { type: 'media'; mediaId: string; mediaType: string; clipKind: 'voice' | 'call'; speaker: string; quote: string; clipStartMs?: number; clipEndMs?: number; order: number; durationMs: number };
 
     const clipBlock = (clip: ClipItem, ord: number): SnapshotBlock => {
+      const exactMs =
+        clip.startMs != null && clip.endMs != null && clip.endMs > clip.startMs
+          ? clip.endMs - clip.startMs
+          : Math.round((clip.quote.trim().split(/\s+/).length / NARRATOR_WPS) * 1000);
       const base = {
         type: 'media' as const,
         mediaId: clip.id,
@@ -206,6 +214,7 @@ export async function POST(
         speaker: clip.speaker || 'Contributor',
         quote: clip.quote,
         order: ord,
+        durationMs: exactMs,
       };
       if (clip.startMs != null && clip.endMs != null && clip.endMs > clip.startMs) {
         return { ...base, clipStartMs: clip.startMs, clipEndMs: clip.endMs };
@@ -213,13 +222,20 @@ export async function POST(
       return base;
     };
 
+    const narratorBlock = (text: string, ord: number): SnapshotBlock => ({
+      type: 'voice',
+      content: text,
+      order: ord,
+      durationMs: Math.round((text.trim().split(/\s+/).length / NARRATOR_WPS) * 1000),
+    });
+
     // Assemble blocks from LLM segments
     const blocks: SnapshotBlock[] = [];
     let order = 1;
 
     for (const seg of segments) {
       if (seg.type === 'narration' && seg.text) {
-        blocks.push({ type: 'voice', content: seg.text, order: order++ });
+        blocks.push(narratorBlock(seg.text, order++));
       } else if (seg.type === 'clip') {
         const clip = ranked[seg.index];
         if (clip) blocks.push(clipBlock(clip, order++));

@@ -99,9 +99,6 @@ export default function StoriesSheet({
   // Playlist blocks (narration + clips) — set when playlist mode was used.
   // Mutually exclusive with composedScript.
   const [composedBlocks, setComposedBlocks] = useState<unknown[] | null>(null);
-  // Actual per-block durations returned by the server after rendering audio.
-  // When available these replace word-count estimates in displaySegments.
-  const [segmentDurations, setSegmentDurations] = useState<{ order: number; durationMs: number }[] | null>(null);
 
   const durationSeconds = 7; // fixed short-form story length
 
@@ -162,38 +159,35 @@ export default function StoriesSheet({
   const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
 
   // Playlist mode: ordered segments with cumulative audio start times.
-  // Uses server-probed durations (segmentDurations) when available;
-  // falls back to word-count estimates until the header arrives.
+  // durationMs comes directly from the playlist route — clips use exact
+  // Whisper timestamps (endMs - startMs), narrator uses a word-count estimate.
+  // Stored in a ref so the timeupdate handler always reads the current value
+  // without depending on React's async render cycle.
+  const displaySegmentsRef = useRef<Array<{ text: string; speaker?: string; cumStart: number }> | null>(null);
   const displaySegments = useMemo(() => {
-    if (!composedBlocks) return null;
+    if (!composedBlocks) { displaySegmentsRef.current = null; return null; }
     type B = {
       type: string;
       content?: string;
       speaker?: string;
       quote?: string;
+      durationMs?: number;
       clipStartMs?: number;
       clipEndMs?: number;
       order?: number;
     };
-    // Build order → actual duration (seconds) lookup from server data.
-    const durMap = new Map<number, number>();
-    if (segmentDurations) {
-      for (const { order, durationMs } of segmentDurations) {
-        durMap.set(order, durationMs / 1000);
-      }
-    }
     let cumSec = 0;
     const segs: Array<{ text: string; speaker?: string; cumStart: number }> = [];
     for (const b of (composedBlocks as B[]).slice().sort((a, bn) => (a.order ?? 0) - (bn.order ?? 0))) {
       if (b.type === 'voice' && b.content) {
-        const dur = durMap.has(b.order ?? -1)
-          ? durMap.get(b.order!)!
+        const dur = b.durationMs != null
+          ? b.durationMs / 1000
           : Math.max(0.5, b.content.trim().split(/\s+/).length / 2.5);
         segs.push({ text: b.content, cumStart: cumSec });
         cumSec += dur;
       } else if (b.type === 'media' && b.quote) {
-        const dur = durMap.has(b.order ?? -1)
-          ? durMap.get(b.order!)!
+        const dur = b.durationMs != null
+          ? b.durationMs / 1000
           : b.clipStartMs != null && b.clipEndMs != null
             ? Math.max(0.5, (b.clipEndMs - b.clipStartMs) / 1000)
             : Math.max(0.5, b.quote.trim().split(/\s+/).length / 2.0);
@@ -201,8 +195,10 @@ export default function StoriesSheet({
         cumSec += dur;
       }
     }
-    return segs.length > 0 ? segs : null;
-  }, [composedBlocks, segmentDurations]);
+    const result = segs.length > 0 ? segs : null;
+    displaySegmentsRef.current = result;
+    return result;
+  }, [composedBlocks]);
 
   const [currentSegmentIdx, setCurrentSegmentIdx] = useState(0);
 
@@ -279,16 +275,18 @@ export default function StoriesSheet({
   }, [fading, storyLines.length]);
 
   // ── Audio-driven text sync ────────────────────────────────────────────────
+  // Reads displaySegmentsRef directly — no closure over stale React state.
   useEffect(() => {
     const audio = audioRef.current;
     if (!isPlaying || !audio) return;
     const onTimeUpdate = () => {
       const t = audio.currentTime;
-      if (displaySegments) {
+      const segs = displaySegmentsRef.current;
+      if (segs) {
         // Playlist mode: find the last segment whose cumStart <= current time
         let idx = 0;
-        for (let i = displaySegments.length - 1; i >= 0; i--) {
-          if (t >= displaySegments[i].cumStart) { idx = i; break; }
+        for (let i = segs.length - 1; i >= 0; i--) {
+          if (t >= segs[i].cumStart) { idx = i; break; }
         }
         setCurrentSegmentIdx((prev) => (prev === idx ? prev : idx));
       } else if (storyLines.length > 0) {
@@ -302,7 +300,7 @@ export default function StoriesSheet({
     };
     audio.addEventListener('timeupdate', onTimeUpdate);
     return () => audio.removeEventListener('timeupdate', onTimeUpdate);
-  }, [isPlaying, displaySegments, storyLines.length]);
+  }, [isPlaying, storyLines.length]);
 
   // ── Fetch available claim types + tagged names when sheet opens ──────────
   useEffect(() => {
@@ -395,7 +393,6 @@ export default function StoriesSheet({
       setSelectedKeys(new Set(['snapshot']));
       setError('');
       setCurrentSegmentIdx(0);
-      setSegmentDurations(null);
       savedRef.current = false;
     }
   }, [isOpen, disposeAudio]);
@@ -429,7 +426,6 @@ export default function StoriesSheet({
     setDone(false);
     setError('');
     setCurrentSegmentIdx(0);
-    setSegmentDurations(null);
     savedRef.current = false;
   }, [disposeAudio]);
 
@@ -605,12 +601,6 @@ export default function StoriesSheet({
         throw new Error(p?.error ?? 'Audio not available.');
       }
       const blob = await response.blob();
-      // Read server-probed per-block durations before starting playback so
-      // displaySegments has accurate cumStart values on the very first timeupdate.
-      const durHeader = response.headers.get('X-Segment-Durations');
-      if (durHeader) {
-        try { setSegmentDurations(JSON.parse(durHeader) as { order: number; durationMs: number }[]); } catch { /* ignore */ }
-      }
       const audio = await buildAudioFromBlob(blob);
       await audio.play();
       if (script) {
