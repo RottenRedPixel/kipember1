@@ -63,10 +63,11 @@ export default function StoriesSheet({
   const [showing, setShowing] = useState(isOpen);
 
   // ── Playback ──
-  const [status, setStatus]   = useState<Status>('idle');
-  const [segIdx, setSegIdx]   = useState(0);
-  const [done, setDone]       = useState(false);
-  const [error, setError]     = useState('');
+  const [status, setStatus]         = useState<Status>('idle');
+  const [segIdx, setSegIdx]         = useState(0);
+  const [done, setDone]             = useState(false);
+  const [showDoneMsg, setShowDoneMsg] = useState(false);
+  const [error, setError]           = useState('');
 
   // ── Composition cache (cleared when chips change) ──
   const [blocks, setBlocks] = useState<Block[] | null>(null);
@@ -111,6 +112,13 @@ export default function StoriesSheet({
   }, []);
 
   useEffect(() => () => { dispose(); }, [dispose]);
+
+  // 3-second blackout before revealing the end-of-story message
+  useEffect(() => {
+    if (!done) { setShowDoneMsg(false); return; }
+    const t = setTimeout(() => setShowDoneMsg(true), 3000);
+    return () => clearTimeout(t);
+  }, [done]);
 
   // ─── Sequential playback engine ──────────────────────────────────────────
   // playFrom is called with the generation token captured at session start.
@@ -608,11 +616,11 @@ export default function StoriesSheet({
         {/* Story text — vertically centered, visualizer never affects its position */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center pointer-events-none">
-            {done ? (
+            {showDoneMsg ? (
               <p className="font-medium leading-snug" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.6)' }}>
                 did you like this story?
               </p>
-            ) : isPlaying ? (
+            ) : isPlaying || (done && !showDoneMsg) ? (
               displaySegments && curSeg ? (
                 <>
                   <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)' }}>
