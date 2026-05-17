@@ -5,244 +5,544 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
 const SHEET_H = '40vh';
 const SNAP_MS = 320;
 
-function formatTime(secs: number) {
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
+const ORANGE = 'rgba(249,115,22,0.6)';
+const BLUE   = 'rgba(96,165,250,0.6)';
+const RED    = 'rgba(248,113,113,0.6)';
+const PURPLE = 'rgba(167,139,250,0.6)';
 
-// Facet definition — what shows in the chip row.
-type Facet = {
-  key: string;       // claimType key OR person first-name OR 'snapshot'
-  label: string;     // display text
-  color: string;     // highlight background when selected
-  vizColor: string;  // play-button / visualizer colour
-  isPerson?: boolean;
-  isSnapshot?: boolean;
-};
-
-const ORANGE  = 'rgba(249,115,22,0.6)';
-const BLUE    = 'rgba(96,165,250,0.6)';
-const RED     = 'rgba(248,113,113,0.6)';
-const PURPLE  = 'rgba(167,139,250,0.6)';
-
-// Static topic facets — all blue.
-const TOPIC_FACETS: Omit<Facet, 'key'>[] & { key: string }[] = [
+const TOPIC_FACETS = [
   { key: 'why',         label: 'why',       color: BLUE, vizColor: '#60a5fa' },
   { key: 'emotion',     label: 'feelings',  color: BLUE, vizColor: '#60a5fa' },
   { key: 'extra_story', label: 'anecdotes', color: BLUE, vizColor: '#60a5fa' },
   { key: 'place',       label: 'place',     color: BLUE, vizColor: '#60a5fa' },
+] as const;
+
+const SNAPSHOT_FACET = { key: 'snapshot', label: 'snapshot', color: ORANGE, vizColor: 'var(--color-accent)', isSnapshot: true };
+
+const IDLE_PROMPTS = [
+  'choose your own adventure...',
+  'listen to different versions...',
+  'remix the memory...',
+  'have fun and enjoy these stories...',
 ];
 
-const SNAPSHOT_FACET: Facet = {
-  key: 'snapshot',
-  label: 'snapshot',
-  color: ORANGE,
-  vizColor: 'var(--color-accent)',
-  isSnapshot: true,
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Status = 'idle' | 'loading' | 'playing' | 'paused';
+
+type Facet = {
+  key: string; label: string; color: string; vizColor: string;
+  isPerson?: boolean; isSnapshot?: boolean;
 };
 
-type PlaybackState = 'idle' | 'composing' | 'loading' | 'playing' | 'paused';
+type Block = {
+  type: string;
+  content?: string; speaker?: string; quote?: string;
+  mediaId?: string; mediaType?: string;
+  order?: number; durationMs?: number;
+  clipStartMs?: number; clipEndMs?: number;
+  clipKind?: 'voice' | 'call';
+};
 
-function buildStoryLines(value: string | null | undefined) {
-  const text = value?.replace(/\s+/g, ' ').trim();
-  if (!text) return [];
-  const sentences = text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
-  const chunks: string[] = [];
-  for (const sentence of sentences) {
-    const words = sentence.split(' ').filter(Boolean);
-    let current = '';
-    for (const word of words) {
-      const next = current ? `${current} ${word}` : word;
-      if (next.length > 40 && current) { chunks.push(current); current = word; }
-      else { current = next; }
-    }
-    if (current) chunks.push(current);
-  }
-  return chunks.slice(0, 6);
-}
+type DebugEntry = { ts: string; color: string; text: string };
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function StoriesSheet({
-  isOpen,
-  onClose,
-  emberId,
-  storyScript,
-  accessToken,
+  isOpen, onClose, emberId, storyScript, accessToken,
 }: {
-  isOpen: boolean;
-  onClose: () => void;
-  emberId: string | null;
-  storyScript: string | null;
-  accessToken?: string;
+  isOpen: boolean; onClose: () => void;
+  emberId: string | null; storyScript: string | null; accessToken?: string;
 }) {
-  const [showing, setShowing] = useState(isOpen);
-  const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   useResetZoomOnOpen(isOpen);
-  const [error, setError] = useState('');
-  const [lineIndex, setLineIndex] = useState(0);
-  const [fading, setFading] = useState(false);
-  const [done, setDone] = useState(false);
 
-  // Available facets — built from claim types that have data + tagged people.
+  // ── Slide-in ──
+  const [showing, setShowing] = useState(isOpen);
+
+  // ── Playback ──
+  const [status, setStatus]   = useState<Status>('idle');
+  const [segIdx, setSegIdx]   = useState(0);
+  const [done, setDone]       = useState(false);
+  const [error, setError]     = useState('');
+
+  // ── Composition cache (cleared when chips change) ──
+  const [blocks, setBlocks] = useState<Block[] | null>(null);
+  const [script, setScript] = useState<string | null>(null);
+
+  // ── Chip / facet data ──
   const [availableClaimTypes, setAvailableClaimTypes] = useState<Set<string>>(new Set());
-  const [taggedNames, setTaggedNames] = useState<string[]>([]);
+  const [taggedNames,         setTaggedNames]         = useState<string[]>([]);
   const [hasConfirmedLocation, setHasConfirmedLocation] = useState(false);
+  const [voiceClipSpeakers,   setVoiceClipSpeakers]   = useState<string[]>([]);
+  const [callClipSpeakers,    setCallClipSpeakers]     = useState<string[]>([]);
+  const [selectedKeys,        setSelectedKeys]         = useState<Set<string>>(new Set(['snapshot']));
 
-  // Speakers split by clip type — used to show the right icon on person chips
-  // and to gate the playlist-mode hard-stop when clips exist.
-  const [voiceClipSpeakers, setVoiceClipSpeakers] = useState<string[]>([]);
-  const [callClipSpeakers,  setCallClipSpeakers]  = useState<string[]>([]);
-
-  // Which facet keys the user has selected.
-  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set(['snapshot']));
-
-  // The composed script for the current selection (null = not yet composed).
-  const [composedScript, setComposedScript] = useState<string | null>(null);
-
-  // Playlist blocks (narration + clips) — set when playlist mode was used.
-  // Mutually exclusive with composedScript.
-  const [composedBlocks, setComposedBlocks] = useState<unknown[] | null>(null);
-
-  const durationSeconds = 7; // fixed short-form story length
-
-  const savedRef = useRef(false); // prevent double-save per play session
-
-  // ── Debug log ────────────────────────────────────────────────────────────
-  type DebugEntry = { ts: string; color: string; text: string };
+  // ── Debug log ──
   const [debugLog, setDebugLog] = useState<DebugEntry[]>([]);
-  const dbg = useCallback((text: string, color = 'rgba(255,255,255,0.6)') => {
-    const ts = new Date().toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setDebugLog((prev) => [...prev.slice(-30), { ts, color, text }]);
-  }, []);
 
-  const IDLE_PROMPTS = useMemo(() => [
-    'choose your own adventure...',
-    'listen to different versions...',
-    'remix the memory...',
-    'have fun and enjoy these stories...',
-  ], []);
-  const [idlePromptIdx, setIdlePromptIdx] = useState(() => Math.floor(Math.random() * 4));
+  // ── Idle prompt ──
+  const [idlePromptIdx,     setIdlePromptIdx]     = useState(() => Math.floor(Math.random() * IDLE_PROMPTS.length));
   const [idlePromptVisible, setIdlePromptVisible] = useState(true);
 
-  // Build the chip row: topic facets with data → person chips → snapshot at tail.
+  // ── Playback refs (mutated directly, not in React state) ──
+  const genRef         = useRef(0);                          // cancel token for active session
+  const audiosRef      = useRef<(HTMLAudioElement | null)[]>([]); // one per block (null = pause/skip)
+  const urlsRef        = useRef<string[]>([]);               // blob URLs to revoke
+  const blocksRef      = useRef<Block[]>([]);                // blocks for the active session
+  const currentAudio   = useRef<HTMLAudioElement | null>(null);
+  const analyserRef    = useRef<AnalyserNode | null>(null);
+  const audioCtxRef    = useRef<AudioContext | null>(null);
+  const savedRef       = useRef(false);
+
+  const durationSeconds = 7;
+
+  // ─── Debug helper ────────────────────────────────────────────────────────
+
+  const dbg = useCallback((text: string, color = 'rgba(255,255,255,0.6)') => {
+    const ts = new Date().toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setDebugLog((prev) => [...prev.slice(-40), { ts, color, text }]);
+  }, []);
+
+  // ─── Dispose — kills the active session and frees all resources ──────────
+
+  const dispose = useCallback(() => {
+    genRef.current += 1; // invalidates all in-flight playFrom callbacks
+    if (currentAudio.current) { currentAudio.current.pause(); currentAudio.current = null; }
+    for (const a of audiosRef.current) { if (a) { try { a.pause(); a.src = ''; } catch { /* ignore */ } } }
+    for (const u of urlsRef.current) URL.revokeObjectURL(u);
+    audiosRef.current = [];
+    urlsRef.current = [];
+    blocksRef.current = [];
+    if (audioCtxRef.current) { void audioCtxRef.current.close().catch(() => undefined); audioCtxRef.current = null; }
+    analyserRef.current = null;
+  }, []);
+
+  useEffect(() => () => { dispose(); }, [dispose]);
+
+  // ─── Sequential playback engine ──────────────────────────────────────────
+  // playFrom is called with the generation token captured at session start.
+  // If genRef has advanced past that token, the session was cancelled — bail.
+
+  const playFrom = useCallback((idx: number, gen: number) => {
+    if (gen !== genRef.current) return; // session cancelled
+
+    const segs   = audiosRef.current;
+    const blks   = blocksRef.current;
+
+    if (idx >= segs.length) {
+      dbg('■ done', '#a78bfa');
+      setStatus('paused');
+      setDone(true);
+      return;
+    }
+
+    setSegIdx(idx);
+    const audio = segs[idx];
+
+    if (!audio) {
+      // emberpause or a media block that failed to fetch — just wait and advance
+      const ms = blks[idx]?.durationMs ?? 2000;
+      const label = blks[idx]?.type === 'emberpause' ? `⏸ pause ${ms}ms` : `⏭ skipped`;
+      dbg(`  [${idx}] ${label}`, '#60a5fa');
+      setTimeout(() => playFrom(idx + 1, gen), ms);
+      return;
+    }
+
+    currentAudio.current = audio;
+    dbg(`  [${idx}] ▶ playing`, '#4ade80');
+
+    audio.addEventListener('ended', () => {
+      dbg(`  [${idx}] ✓ ended`, '#4ade80');
+      playFrom(idx + 1, gen);
+    }, { once: true });
+
+    audio.addEventListener('error', () => {
+      dbg(`  [${idx}] ✗ audio error`, '#f87171');
+      playFrom(idx + 1, gen);
+    }, { once: true });
+
+    audio.play().catch((e: unknown) => {
+      dbg(`  [${idx}] ✗ play() rejected: ${e instanceof Error ? e.message : String(e)}`, '#f87171');
+      playFrom(idx + 1, gen);
+    });
+  }, [dbg]);
+
+  // ─── Save story to DB ────────────────────────────────────────────────────
+
+  const saveStory = useCallback(async (content: string) => {
+    if (!emberId || savedRef.current) return;
+    savedRef.current = true;
+    const facetKeys  = Array.from(selectedKeys).filter((k) => k !== 'snapshot' && !taggedNames.includes(k));
+    const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
+    const tqs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+    try {
+      await fetch(`/api/embers/${encodeURIComponent(emberId)}/stories${tqs}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script: content, facets: facetKeys, people: personKeys, durationSeconds }),
+      });
+    } catch { /* non-blocking */ }
+  }, [emberId, accessToken, selectedKeys, taggedNames, durationSeconds]);
+
+  // ─── Main toggle handler ─────────────────────────────────────────────────
+
+  const handleToggle = useCallback(async () => {
+    if (status === 'loading') return;
+
+    // Pause
+    if (status === 'playing') {
+      currentAudio.current?.pause();
+      setStatus('paused');
+      return;
+    }
+
+    // Resume (mid-playback, not done)
+    if (status === 'paused' && !done && currentAudio.current) {
+      currentAudio.current.play().catch(() => {});
+      setStatus('playing');
+      return;
+    }
+
+    // ── Start a fresh session ──────────────────────────────────────────────
+    if (!emberId) return;
+
+    dispose(); // increment gen, stop old audio, free old URLs
+    setError('');
+    setDone(false);
+    setDebugLog([]);
+    savedRef.current = false;
+
+    const gen = genRef.current; // capture AFTER dispose() so it matches
+    const tqs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+
+    const facetKeys  = Array.from(selectedKeys).filter((k) => k !== 'snapshot' && !taggedNames.includes(k));
+    const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
+    const isSnapshot = selectedKeys.has('snapshot') && selectedKeys.size === 1;
+
+    setStatus('loading');
+
+    // ── Step 1: get blocks (playlist) or script ────────────────────────────
+    let activeBlocks = blocks;
+    let activeScript = script;
+
+    if (!activeBlocks && !activeScript) {
+      if (isSnapshot) {
+        if (!storyScript) { setError('No snapshot yet.'); setStatus('idle'); return; }
+        activeScript = storyScript;
+        setScript(activeScript);
+      } else {
+        if (facetKeys.length === 0 && personKeys.length === 0) {
+          setError('Select at least one facet or person.');
+          setStatus('idle');
+          return;
+        }
+
+        // Try playlist (clips + narration) when a person is selected
+        if (personKeys.length > 0) {
+          try {
+            const res = await fetch(
+              `/api/embers/${encodeURIComponent(emberId)}/stories/playlist${tqs}`,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }) }
+            );
+            if (res.ok) {
+              const payload = await res.json().catch(() => null) as { blocks?: Block[] | null } | null;
+              if (Array.isArray(payload?.blocks) && payload.blocks.length > 0) {
+                activeBlocks = payload.blocks;
+                setBlocks(activeBlocks);
+                dbg(`▶ playlist: ${activeBlocks.length} blocks`, '#a78bfa');
+              }
+            }
+          } catch { /* fall through to compose */ }
+        }
+
+        // Fall back to pure narration
+        if (!activeBlocks) {
+          try {
+            const res = await fetch(
+              `/api/embers/${encodeURIComponent(emberId)}/stories/compose${tqs}`,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }) }
+            );
+            const payload = await res.json().catch(() => null) as { script?: string } | null;
+            if (!res.ok) throw new Error(payload?.script ?? 'Failed to compose story.');
+            activeScript = payload?.script ?? '';
+            setScript(activeScript);
+            dbg('▶ compose: script ready', '#a78bfa');
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to compose story.');
+            setStatus('idle');
+            return;
+          }
+        }
+      }
+    }
+
+    if (gen !== genRef.current) return; // cancelled while composing
+
+    // ── Step 2: fetch audio ────────────────────────────────────────────────
+
+    if (activeBlocks) {
+      // Playlist mode — fetch each block's audio individually, in parallel
+      const sorted = [...activeBlocks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      blocksRef.current = sorted;
+
+      dbg(`fetching ${sorted.length} segments…`, 'rgba(255,255,255,0.4)');
+      sorted.forEach((b, i) => {
+        const lbl = b.type === 'voice'      ? `voice "${(b.content ?? '').slice(0, 35)}…"`
+                  : b.type === 'emberpause' ? `pause ${b.durationMs ?? 2000}ms`
+                  : `media [${b.speaker ?? b.mediaId?.slice(0, 8) ?? '?'}]`;
+        dbg(`  [${i}] ${lbl}`, 'rgba(255,255,255,0.3)');
+      });
+
+      const blobsOrNull = await Promise.all(
+        sorted.map(async (block, i) => {
+          if (block.type === 'emberpause') return null;
+          try {
+            const res = await fetch(
+              `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tqs}`,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ blocks: [block] }) }
+            );
+            if (!res.ok) {
+              const p = await res.json().catch(() => null) as { error?: string } | null;
+              dbg(`  [${i}] ✗ ${(p?.error ?? `HTTP ${res.status}`).slice(0, 100)}`, '#f87171');
+              return null;
+            }
+            const blob = await res.blob();
+            dbg(`  [${i}] ✓ ${(blob.size / 1024).toFixed(0)} KB`, '#4ade80');
+            return blob;
+          } catch (e) {
+            dbg(`  [${i}] ✗ ${e instanceof Error ? e.message : String(e)}`.slice(0, 100), '#f87171');
+            return null;
+          }
+        })
+      );
+
+      if (gen !== genRef.current) return; // cancelled while fetching
+
+      if (!blobsOrNull.some(Boolean)) {
+        setError('All audio segments failed to load.');
+        setStatus('idle');
+        return;
+      }
+
+      const urls   = blobsOrNull.map((b) => b ? URL.createObjectURL(b) : null);
+      const audios = urls.map((u) => {
+        if (!u) return null;
+        const a = new Audio(u); a.preload = 'auto'; return a;
+      });
+
+      audiosRef.current = audios;
+      urlsRef.current   = urls.filter(Boolean) as string[];
+
+      // Wire first real audio element to AudioContext for the visualizer
+      const firstReal = audios.find(Boolean);
+      if (firstReal) {
+        try {
+          const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (Ctor) {
+            const ctx = new Ctor();
+            const src = ctx.createMediaElementSource(firstReal);
+            const an  = ctx.createAnalyser(); an.fftSize = 256; an.smoothingTimeConstant = 0.8;
+            src.connect(an); an.connect(ctx.destination);
+            audioCtxRef.current = ctx; analyserRef.current = an;
+          }
+        } catch { /* no visualizer */ }
+      }
+
+      setStatus('playing');
+      playFrom(0, gen);
+
+      // Save story (non-blocking)
+      const segments = sorted
+        .filter((b) => b.type === 'voice' || b.type === 'media')
+        .map((b) => b.type === 'voice'
+          ? { type: 'narration', text: b.content ?? '' }
+          : { type: b.clipKind === 'call' ? 'call-clip' : 'voice-clip', speaker: b.speaker ?? 'Contributor', text: b.quote ?? '' }
+        );
+      if (segments.length > 0) void saveStory(JSON.stringify(segments));
+
+    } else if (activeScript) {
+      // Single-script mode — one concatenated audio file
+      dbg('fetching single-script audio…', 'rgba(255,255,255,0.4)');
+      try {
+        const res = await fetch(
+          `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tqs}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ script: activeScript }) }
+        );
+        if (!res.ok) {
+          const p = await res.json().catch(() => null) as { error?: string } | null;
+          throw new Error(p?.error ?? `HTTP ${res.status}`);
+        }
+        const blob = await res.blob();
+        dbg(`✓ ${(blob.size / 1024).toFixed(0)} KB`, '#4ade80');
+
+        if (gen !== genRef.current) return;
+
+        const url   = URL.createObjectURL(blob);
+        const audio = new Audio(url); audio.preload = 'auto';
+
+        urlsRef.current   = [url];
+        audiosRef.current = [audio];
+        blocksRef.current = [{ type: 'voice', content: activeScript, durationMs: 0 }];
+
+        try {
+          const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (Ctor) {
+            const ctx = new Ctor();
+            const src = ctx.createMediaElementSource(audio);
+            const an  = ctx.createAnalyser(); an.fftSize = 256; an.smoothingTimeConstant = 0.8;
+            src.connect(an); an.connect(ctx.destination);
+            audioCtxRef.current = ctx; analyserRef.current = an;
+          }
+        } catch { /* no visualizer */ }
+
+        setStatus('playing');
+        playFrom(0, gen);
+        void saveStory(activeScript);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load audio.');
+        setStatus('idle');
+      }
+    }
+  }, [
+    status, done, emberId, accessToken, selectedKeys, taggedNames,
+    blocks, script, storyScript, durationSeconds,
+    dispose, playFrom, saveStory, dbg,
+  ]);
+
+  // ─── Derived display data ─────────────────────────────────────────────────
+
+  // Segments to display (playlist mode only) — parallel to audiosRef
+  const displaySegments = useMemo(() => {
+    if (!blocks) return null;
+    return [...blocks]
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map((b) =>
+        b.type === 'voice'      ? { text: b.content ?? '', speaker: undefined } :
+        b.type === 'media'      ? { text: b.quote   ?? '', speaker: b.speaker } :
+        /* emberpause */          { text: '',              speaker: undefined }
+      );
+  }, [blocks]);
+
+  // Single-script display lines
+  const scriptLines = useMemo(() => {
+    const text = script?.replace(/\s+/g, ' ').trim();
+    if (!text) return [];
+    const chunks: string[] = [];
+    for (const sentence of text.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean)) {
+      let cur = '';
+      for (const word of sentence.split(' ').filter(Boolean)) {
+        const next = cur ? `${cur} ${word}` : word;
+        if (next.length > 40 && cur) { chunks.push(cur); cur = word; } else { cur = next; }
+      }
+      if (cur) chunks.push(cur);
+    }
+    return chunks.slice(0, 6);
+  }, [script]);
+
   const facets: Facet[] = useMemo(() => {
     const result: Facet[] = [];
     for (const tf of TOPIC_FACETS) {
-      // Place chip shows if confirmed location exists OR extractor place claims exist.
       const available = tf.key === 'place'
         ? (availableClaimTypes.has('place') || hasConfirmedLocation)
         : availableClaimTypes.has(tf.key);
-      if (available) result.push(tf);
+      if (available) result.push({ ...tf });
     }
     for (const name of taggedNames) {
-      result.push({
-        key: name,
-        label: name,
-        color: RED,
-        vizColor: '#f87171',
-        isPerson: true,
-      });
+      result.push({ key: name, label: name, color: RED, vizColor: '#f87171', isPerson: true });
     }
     if (storyScript) result.push(SNAPSHOT_FACET);
     return result;
   }, [availableClaimTypes, taggedNames, storyScript, hasConfirmedLocation]);
 
-  // Play button colour:
-  //   snapshot only      → orange
-  //   topics only        → blue
-  //   names only         → red
-  //   topics + names mix → purple
   const vizColor = useMemo(() => {
     if (selectedKeys.has('snapshot')) return SNAPSHOT_FACET.vizColor;
-    const hasTopics  = facets.some((f) => !f.isPerson && !f.isSnapshot && selectedKeys.has(f.key));
-    const hasPersons = facets.some((f) => f.isPerson && selectedKeys.has(f.key));
-    if (hasTopics && hasPersons) return '#a78bfa'; // purple
-    if (hasTopics)  return '#60a5fa'; // blue
-    if (hasPersons) return '#f87171'; // red
-    return SNAPSHOT_FACET.vizColor;  // nothing selected — default orange
+    const hasTopic  = facets.some((f) => !f.isPerson && !f.isSnapshot && selectedKeys.has(f.key));
+    const hasPerson = facets.some((f) =>  f.isPerson && selectedKeys.has(f.key));
+    if (hasTopic && hasPerson) return '#a78bfa';
+    if (hasTopic)  return '#60a5fa';
+    if (hasPerson) return '#f87171';
+    return SNAPSHOT_FACET.vizColor;
   }, [facets, selectedKeys]);
 
-  // Single-script display (snapshot / compose modes) — flat text split into lines.
-  const activeScript = useMemo(() => {
-    if (composedScript) return composedScript;
-    return null;
-  }, [composedScript]);
-  const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
+  // ─── Effects ─────────────────────────────────────────────────────────────
 
-  // Playlist mode: ordered text segments for display only.
-  // Sequential audio playback (one element per block, ended → advance) means
-  // we don't need any timing estimates here — just text + speaker per block.
-  const displaySegments = useMemo(() => {
-    if (!composedBlocks) return null;
-    type B = { type: string; content?: string; speaker?: string; quote?: string; order?: number };
-    const segs: Array<{ text: string; speaker?: string; isPause?: boolean }> = [];
-    for (const b of (composedBlocks as B[]).slice().sort((a, bn) => (a.order ?? 0) - (bn.order ?? 0))) {
-      if (b.type === 'voice' && b.content) {
-        segs.push({ text: b.content });
-      } else if (b.type === 'emberpause') {
-        // Keep index alignment with the audio array — show nothing during pause
-        segs.push({ text: '', isPause: true });
-      } else if (b.type === 'media' && b.quote) {
-        segs.push({ text: b.quote, speaker: b.speaker });
-      }
-    }
-    return segs.length > 0 ? segs : null;
-  }, [composedBlocks]);
-
-  const [currentSegmentIdx, setCurrentSegmentIdx] = useState(0);
-
-  // Timer-based line scroll is only used for single-script mode.
-  // In playlist mode the timeupdate effect drives both paths.
-  const shouldAnimate = playbackState === 'playing' && !done && !displaySegments;
-  const isPlaying = playbackState === 'playing';
-
-  // ── Audio refs ───────────────────────────────────────────────────────────
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioUrlRef = useRef<string | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-
-  // ── Timeline refs (DOM-mutated directly to avoid per-frame re-renders) ───
-  const timelineFilledRef = useRef<HTMLDivElement>(null);
-  const timelineDotRef    = useRef<HTMLDivElement>(null);
-  const timelineCurRef    = useRef<HTMLSpanElement>(null);
-  const timelineEndRef    = useRef<HTMLSpanElement>(null);
-
-  // ── Playlist sequential-playback refs ────────────────────────────────────
-  // One audio element + one object URL per block. Played one at a time;
-  // each element's 'ended' event advances to the next.
-  const playlistAudiosRef = useRef<HTMLAudioElement[]>([]);
-  const playlistUrlsRef   = useRef<string[]>([]);
-  // Generation counter — incremented each time a fresh session starts.
-  // playSegmentAt closures check this before acting so stale setTimeout
-  // callbacks from old sessions can't drive playback after a new one starts.
-  const playGenRef = useRef(0);
-
-  const disposeAudio = useCallback(() => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; audioRef.current = null; }
-    if (audioUrlRef.current) { URL.revokeObjectURL(audioUrlRef.current); audioUrlRef.current = null; }
-    for (const a of playlistAudiosRef.current) { try { a.pause(); a.src = ''; } catch { /* ignore */ } }
-    for (const u of playlistUrlsRef.current) { URL.revokeObjectURL(u); }
-    playlistAudiosRef.current = [];
-    playlistUrlsRef.current = [];
-    analyserRef.current = null;
-    if (audioCtxRef.current) { void audioCtxRef.current.close().catch(() => undefined); audioCtxRef.current = null; }
-  }, []);
-
-  useEffect(() => () => { disposeAudio(); }, [disposeAudio]);
-
-  // ── Story text fade-in ───────────────────────────────────────────────────
-  const [storyEntered, setStoryEntered] = useState(false);
+  // Fetch chip data when sheet opens
   useEffect(() => {
-    if (!isPlaying) { setStoryEntered(false); return; }
-    const raf = requestAnimationFrame(() => setStoryEntered(true));
-    return () => cancelAnimationFrame(raf);
-  }, [isPlaying]);
+    if (!isOpen || !emberId) return;
+    let cancelled = false;
+    const tqs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
 
-  // ── Idle prompt cycling ──────────────────────────────────────────────────
+    fetch(`/api/embers/${encodeURIComponent(emberId)}/reconciliation${tqs}`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { claims?: Array<{ claimType: string }> } | null) => {
+        if (cancelled || !d?.claims) return;
+        setAvailableClaimTypes(new Set(d.claims.map((c) => c.claimType)));
+      }).catch(() => {});
+
+    fetch(`/api/embers/${encodeURIComponent(emberId)}/stories/clips-availability${tqs}`, { cache: 'no-store' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: { voiceSpeakers?: string[]; callSpeakers?: string[] } | null) => {
+        if (cancelled) return;
+        if (d?.voiceSpeakers) setVoiceClipSpeakers(d.voiceSpeakers);
+        if (d?.callSpeakers)  setCallClipSpeakers(d.callSpeakers);
+      }).catch(() => {});
+
+    fetch(`/api/embers/${encodeURIComponent(emberId)}${tqs}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: {
+        tags?: Array<{ user?: { firstName?: string | null } | null; emberContributor?: { user?: { firstName?: string | null } | null } | null; label?: string | null }>;
+        contributors?: Array<{ name?: string | null; voiceCalls?: unknown[]; conversation?: unknown }>;
+        analysis?: { confirmedLocation?: { label?: string | null } | null; latitude?: number | null; longitude?: number | null } | null;
+      }) => {
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const names: string[] = [];
+        const addName = (raw?: string | null) => {
+          const first = (raw ?? '').trim().split(/\s+/)[0];
+          if (!first) return;
+          const key = first.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key); names.push(first);
+        };
+        for (const t of d?.tags ?? []) addName(t.user?.firstName ?? t.emberContributor?.user?.firstName ?? t.label);
+        for (const c of d?.contributors ?? []) {
+          if (c.name && (Array.isArray(c.voiceCalls) && c.voiceCalls.length > 0 || c.conversation != null))
+            addName(c.name);
+        }
+        setTaggedNames(names);
+        setHasConfirmedLocation(
+          Boolean(d?.analysis?.confirmedLocation?.label) ||
+          (d?.analysis?.latitude != null && d?.analysis?.longitude != null)
+        );
+      }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [isOpen, emberId, accessToken]);
+
+  // Slide in/out + full reset on close
+  useEffect(() => {
+    if (isOpen) {
+      setShowing(true);
+    } else {
+      setShowing(false);
+      dispose();
+      setStatus('idle'); setError(''); setDone(false);
+      setSegIdx(0); setScript(null); setBlocks(null);
+      setSelectedKeys(new Set(['snapshot']));
+      setDebugLog([]);
+      savedRef.current = false;
+    }
+  }, [isOpen, dispose]);
+
+  // Idle prompt cycling
   const wasOpenRef = useRef(false);
   useEffect(() => {
     if (!isOpen) { wasOpenRef.current = false; return; }
@@ -254,636 +554,92 @@ export default function StoriesSheet({
       setIdlePromptVisible(true);
     }, 600);
     return () => clearTimeout(t);
-  }, [isOpen, IDLE_PROMPTS.length]);
+  }, [isOpen]);
 
-  const isPlayingPrevRef = useRef(isPlaying);
-  useEffect(() => {
-    if (isPlayingPrevRef.current === isPlaying) return;
-    isPlayingPrevRef.current = isPlaying;
-    setIdlePromptVisible(false);
-    const t = setTimeout(() => {
-      setIdlePromptIdx((i) => { let n = Math.floor(Math.random() * IDLE_PROMPTS.length); if (n === i) n = (i + 1) % IDLE_PROMPTS.length; return n; });
-      setIdlePromptVisible(true);
-    }, 600);
-    return () => clearTimeout(t);
-  }, [isPlaying, IDLE_PROMPTS.length]);
+  // ─── Chip toggle ─────────────────────────────────────────────────────────
 
-  // ── Line advance animation ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!shouldAnimate || fading) return;
-    const hasNextPair = lineIndex + 2 < storyLines.length;
-    const delay = hasNextPair ? 2800 : 2500;
-    const timer = setTimeout(() => { if (hasNextPair) setFading(true); else setDone(true); }, delay);
-    return () => clearTimeout(timer);
-  }, [fading, lineIndex, shouldAnimate, storyLines.length]);
-
-  useEffect(() => {
-    if (!fading) return;
-    const timer = setTimeout(() => {
-      setLineIndex((c) => Math.min(c + 2, Math.max(storyLines.length - 1, 0)));
-      setFading(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [fading, storyLines.length]);
-
-  // ── Audio-driven text sync (single-script mode only) ─────────────────────
-  // Playlist mode text advances via the 'ended' event on each segment's
-  // individual audio element — no timeupdate sync needed there.
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!isPlaying || !audio || displaySegments) return; // skip in playlist mode
-    const onTimeUpdate = () => {
-      const t = audio.currentTime;
-      const dur = audio.duration;
-      if (!dur || !isFinite(dur)) return;
-      const pairs = Math.ceil(storyLines.length / 2);
-      const targetPair = Math.min(Math.floor((t / dur) * pairs), pairs - 1);
-      setLineIndex(targetPair * 2);
-    };
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    return () => audio.removeEventListener('timeupdate', onTimeUpdate);
-  }, [isPlaying, storyLines.length, displaySegments]);
-
-  // ── Timeline DOM updates (direct mutation — no React re-render per tick) ─
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!isPlaying || !audio) return;
-    const onUpdate = () => {
-      const t = audio.currentTime;
-      const d = audio.duration;
-      if (!d || !isFinite(d)) return;
-      const pct = Math.min(t / d, 1) * 100;
-      if (timelineFilledRef.current) timelineFilledRef.current.style.width = `${pct}%`;
-      if (timelineDotRef.current)    timelineDotRef.current.style.left    = `${pct}%`;
-      if (timelineCurRef.current)    timelineCurRef.current.textContent   = formatTime(t);
-      if (timelineEndRef.current)    timelineEndRef.current.textContent   = formatTime(d);
-    };
-    audio.addEventListener('timeupdate', onUpdate);
-    return () => audio.removeEventListener('timeupdate', onUpdate);
-  }, [isPlaying]);
-
-  // ── Fetch available claim types + tagged names when sheet opens ──────────
-  useEffect(() => {
-    if (!isOpen || !emberId) return;
-    let cancelled = false;
-
-    const tqs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
-
-    // Fetch claim types from reconciliation endpoint
-    fetch(`/api/embers/${encodeURIComponent(emberId)}/reconciliation${tqs}`, { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d: { claims?: Array<{ claimType: string }> } | null) => {
-        if (cancelled || !d?.claims) return;
-        setAvailableClaimTypes(new Set(d.claims.map((c) => c.claimType)));
-      })
-      .catch(() => {});
-
-    // Fetch which speakers have real recorded clips, split by clip type
-    fetch(`/api/embers/${encodeURIComponent(emberId)}/stories/clips-availability${tqs}`, { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d: { voiceSpeakers?: string[]; callSpeakers?: string[] } | null) => {
-        if (cancelled) return;
-        if (d?.voiceSpeakers) setVoiceClipSpeakers(d.voiceSpeakers);
-        if (d?.callSpeakers)  setCallClipSpeakers(d.callSpeakers);
-      })
-      .catch(() => {});
-
-    // Fetch tagged people names + contributor names + confirmed location
-    fetch(`/api/embers/${encodeURIComponent(emberId)}${tqs}`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((d: {
-        tags?: Array<{ user?: { firstName?: string | null } | null; emberContributor?: { user?: { firstName?: string | null } | null } | null; label?: string | null }>;
-        contributors?: Array<{ name?: string | null; voiceCalls?: unknown[]; conversation?: unknown }>;
-        analysis?: { confirmedLocation?: { label?: string | null } | null; latitude?: number | null; longitude?: number | null } | null;
-      }) => {
-        if (cancelled) return;
-
-        const seen = new Set<string>();
-        const names: string[] = [];
-
-        const addName = (raw: string | null | undefined) => {
-          const first = (raw ?? '').toString().trim().split(/\s+/)[0];
-          if (!first) return;
-          const key = first.toLowerCase();
-          if (seen.has(key)) return;
-          seen.add(key);
-          names.push(first);
-        };
-
-        // Tagged people in the photo
-        for (const t of Array.isArray(d?.tags) ? d.tags : []) {
-          addName(t.user?.firstName ?? t.emberContributor?.user?.firstName ?? t.label);
-        }
-
-        // Contributors who have left chat, voice, or call contributions.
-        // Only include if they have voiceCalls OR a conversation session —
-        // this filters out invited-but-never-contributed people.
-        for (const c of Array.isArray(d?.contributors) ? d.contributors : []) {
-          const hasCall = Array.isArray(c.voiceCalls) && c.voiceCalls.length > 0;
-          const hasSession = c.conversation !== null && c.conversation !== undefined;
-          if (c.name && (hasCall || hasSession)) addName(c.name);
-        }
-
-        setTaggedNames(names);
-        // Show place chip if the location was explicitly confirmed OR if GPS
-        // coordinates are present (wiki resolves place from coords via reverse geocoding).
-        setHasConfirmedLocation(
-          Boolean(d?.analysis?.confirmedLocation?.label) ||
-          (d?.analysis?.latitude != null && d?.analysis?.longitude != null)
-        );
-      })
-      .catch(() => {});
-
-    return () => { cancelled = true; };
-  }, [isOpen, emberId, accessToken]);
-
-  // ── Reset on close ───────────────────────────────────────────────────────
-  useEffect(() => {
-    if (isOpen) {
-      setShowing(true);
-    } else {
-      setShowing(false);
-      disposeAudio();
-      setPlaybackState('idle');
-      setLineIndex(0);
-      setFading(false);
-      setDone(false);
-      setComposedScript(null);
-      setComposedBlocks(null);
-      setSelectedKeys(new Set(['snapshot']));
-      setError('');
-      setCurrentSegmentIdx(0);
-      savedRef.current = false;
-    }
-  }, [isOpen, disposeAudio]);
-
-  // ── Chip toggle — resets composition when selection changes ─────────────
   const toggleKey = useCallback((key: string) => {
     setSelectedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
+      if (next.has(key)) { next.delete(key); }
+      else {
         next.add(key);
-        // snapshot is mutually exclusive with everything else
-        if (key === 'snapshot') {
-          for (const k of next) { if (k !== 'snapshot') next.delete(k); }
-        } else {
-          next.delete('snapshot');
-        }
+        if (key === 'snapshot') { for (const k of next) { if (k !== 'snapshot') next.delete(k); } }
+        else { next.delete('snapshot'); }
       }
-      // Never leave the selection empty — fall back to snapshot.
       if (next.size === 0) next.add('snapshot');
       return next;
     });
-    // Changing selection invalidates any cached composition.
-    disposeAudio();
-    setPlaybackState('idle');
-    setComposedScript(null);
-    setComposedBlocks(null);
-    setLineIndex(0);
-    setFading(false);
-    setDone(false);
-    setError('');
-    setCurrentSegmentIdx(0);
-    savedRef.current = false;
-  }, [disposeAudio]);
-
-  // ── Build audio element from a blob ──────────────────────────────────────
-  const buildAudioFromBlob = useCallback(async (blob: Blob) => {
-    const audioUrl = URL.createObjectURL(blob);
-    const audio = new Audio(audioUrl);
-    audio.preload = 'auto';
-    audio.addEventListener('play', () => setPlaybackState('playing'));
-    audio.addEventListener('pause', () => setPlaybackState((c) => c === 'loading' ? c : 'paused'));
-    audio.addEventListener('ended', () => { setPlaybackState('paused'); setDone(true); });
-    audio.addEventListener('error', () => setPlaybackState('paused'));
-    audioRef.current = audio;
-    audioUrlRef.current = audioUrl;
-    try {
-      const AudioCtor =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (AudioCtor) {
-        const ctx = new AudioCtor();
-        const source = ctx.createMediaElementSource(audio);
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.8;
-        source.connect(analyser);
-        analyser.connect(ctx.destination);
-        audioCtxRef.current = ctx;
-        analyserRef.current = analyser;
-      }
-    } catch { /* visualizer unavailable */ }
-    return audio;
-  }, []);
-
-  // ── Save a played story to the DB ────────────────────────────────────────
-  const saveStory = useCallback(async (script: string) => {
-    if (!emberId || savedRef.current) return;
-    savedRef.current = true;
-    const facetKeys = Array.from(selectedKeys).filter((k) => k !== 'snapshot' && !taggedNames.includes(k));
-    const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
-    const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
-    try {
-      await fetch(`/api/embers/${encodeURIComponent(emberId)}/stories${tokenQs}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ script, facets: facetKeys, people: personKeys, durationSeconds }),
-      });
-    } catch { /* non-blocking */ }
-  }, [emberId, accessToken, selectedKeys, taggedNames, durationSeconds]);
-
-  // ── Main play handler ─────────────────────────────────────────────────────
-  const handleToggle = useCallback(async () => {
-    if (playbackState === 'composing' || playbackState === 'loading') return;
-
-    // Pause if already playing
-    if (playbackState === 'playing') {
-      audioRef.current?.pause();
-      setPlaybackState('paused');
-      return;
-    }
-
-    // Resume if paused mid-playback (not done) and audio already built
-    if (audioRef.current && playbackState === 'paused' && !done) {
-      try { await audioRef.current.play(); setPlaybackState('playing'); } catch { /* ignore */ }
-      return;
-    }
-
-    // ── Need to start fresh ──
-    if (!emberId) return;
-    setError('');
-    setDone(false);
-    // Cancel any stale playSegmentAt timeouts from a previous session and
-    // tear down old audio elements before building new ones.
-    playGenRef.current += 1;
-    disposeAudio();
-
-    const isSnapshotMode = selectedKeys.has('snapshot') && selectedKeys.size === 1;
-    const hasNonSnapshot = Array.from(selectedKeys).some((k) => k !== 'snapshot');
-
-    const facetKeys = Array.from(selectedKeys).filter((k) => k !== 'snapshot' && !taggedNames.includes(k));
-    const personKeys = Array.from(selectedKeys).filter((k) => taggedNames.includes(k));
-
-    let script = composedScript;
-    let blocks = composedBlocks;
-
-
-    if (!script && !blocks) {
-      if (isSnapshotMode || (!hasNonSnapshot && storyScript)) {
-        // Snapshot shortcut — use the pre-generated script
-        if (!storyScript) { setError('No snapshot yet.'); return; }
-        script = storyScript;
-        setComposedScript(script);
-      } else {
-        if (facetKeys.length === 0 && personKeys.length === 0) {
-          setError('Select at least one facet or person.');
-          return;
-        }
-
-        setPlaybackState('composing');
-
-        // Determine if any selected person has real recorded clips.
-        // When clips exist, using them is MANDATORY — we never fall back to
-        // pure narration for a contributor who has left real audio.
-        const allClipSpeakers = [...voiceClipSpeakers, ...callClipSpeakers];
-        const selectedHaveClips = personKeys.some((p) =>
-          allClipSpeakers.some((s) => s.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(s.toLowerCase().split(' ')[0]))
-        );
-
-        // Only call the playlist (clip-interleaving) endpoint when at least one
-        // person chip is selected. Clips from a contributor are NEVER inserted
-        // unless that contributor's chip is explicitly chosen.
-        if (personKeys.length > 0) {
-          try {
-            const playlistTokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
-            const playlistRes = await fetch(
-              `/api/embers/${encodeURIComponent(emberId)}/stories/playlist${playlistTokenQs}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }),
-              }
-            );
-            if (playlistRes.ok) {
-              const playlistPayload = await playlistRes.json().catch(() => null) as { blocks?: unknown[] | null } | null;
-              if (Array.isArray(playlistPayload?.blocks) && playlistPayload.blocks.length > 0) {
-                blocks = playlistPayload.blocks;
-                setComposedBlocks(blocks);
-              }
-            }
-          } catch { /* non-fatal */ }
-        }
-
-        // If selected person has clips but playlist failed — hard stop.
-        // Do NOT silently drop to a clip-free narration.
-        if (!blocks && selectedHaveClips) {
-          setPlaybackState('idle');
-          setError('Could not load voice clips. Please try again.');
-          return;
-        }
-
-        // No clips for this selection — compose pure narration
-        if (!blocks) {
-          try {
-            const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
-            const response = await fetch(
-              `/api/embers/${encodeURIComponent(emberId)}/stories/compose${tokenQs}`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ facets: facetKeys, people: personKeys, durationSeconds }),
-              }
-            );
-            const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload?.error ?? 'Failed to compose story.');
-            script = payload.script as string;
-            setComposedScript(script);
-          } catch (err) {
-            setPlaybackState('idle');
-            setError(err instanceof Error ? err.message : 'Failed to compose story.');
-            return;
-          }
-        }
-      }
-    }
-
-    // Fetch audio — playlist mode fetches each block individually and plays
-    // them sequentially (ended → next). Single-script mode fetches one file.
-    setPlaybackState('loading');
+    dispose();
+    setStatus('idle'); setError(''); setDone(false);
+    setSegIdx(0); setScript(null); setBlocks(null);
     setDebugLog([]);
-    try {
-      const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+    savedRef.current = false;
+  }, [dispose]);
 
-      if (blocks) {
-        // ── Playlist mode: sequential per-block audio ──────────────────────
-        // Each block gets its own audio element. 'ended' advances to the next.
-        // No timing estimation needed — clips play fully before the next starts.
-        type DebugBlock = { type: string; content?: string; speaker?: string; quote?: string; mediaId?: string; order?: number; durationMs?: number };
-        const sortedBlocks = [...(blocks as Array<DebugBlock>)]
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  // ─── Render ───────────────────────────────────────────────────────────────
 
-        dbg(`▶ ${sortedBlocks.length} blocks`, '#a78bfa');
-        sortedBlocks.forEach((b, i) => {
-          const label = b.type === 'voice' ? `voice: "${(b.content ?? '').slice(0, 40)}"`
-            : b.type === 'emberpause' ? `pause ${b.durationMs ?? 2000}ms`
-            : `media [${b.speaker ?? '?'}] id=${b.mediaId?.slice(0, 8) ?? '?'}`;
-          dbg(`  [${i}] ${label}`, 'rgba(255,255,255,0.4)');
-        });
-        console.log('[StoriesSheet] playlist blocks:', sortedBlocks.map((b, i) =>
-          `[${i}] ${b.type}${b.speaker ? ` (${b.speaker})` : ''}${b.mediaId ? ` mediaId=${b.mediaId}` : ''}`
-        ));
-
-        const segBlobsOrNull = await Promise.all(
-          sortedBlocks.map(async (block, i) => {
-            // emberpause blocks have no audio — client handles with setTimeout
-            if (block.type === 'emberpause') {
-              dbg(`  [${i}] ⏸ emberpause ${block.durationMs ?? 2000}ms`, '#60a5fa');
-              console.log(`[StoriesSheet] segment ${i} is emberpause (${block.durationMs ?? 2000}ms)`);
-              return null;
-            }
-            const label = block.type === 'voice'
-              ? `voice "${(block.content ?? '').slice(0, 30)}…"`
-              : `media ${block.speaker ?? block.mediaId?.slice(0, 8) ?? '?'}`;
-            dbg(`  [${i}] fetching ${label}…`, 'rgba(255,255,255,0.5)');
-            console.log(`[StoriesSheet] fetching segment ${i}/${sortedBlocks.length - 1}:`, block.type, block.speaker ?? block.mediaId ?? '');
-            try {
-              const res = await fetch(
-                `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
-                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blocks: [block] }) }
-              );
-              if (!res.ok) {
-                const p = await res.json().catch(() => null);
-                const msg = p?.error ?? `HTTP ${res.status}`;
-                dbg(`  [${i}] ✗ SKIP — ${msg.slice(0, 80)}`, '#f87171');
-                console.error(`[StoriesSheet] segment ${i} fetch failed (skipping):`, msg, block);
-                return null; // skip unresolvable segments; narrator blocks still play
-              }
-              const blob = await res.blob();
-              dbg(`  [${i}] ✓ ok ${(blob.size / 1024).toFixed(0)} KB`, '#4ade80');
-              console.log(`[StoriesSheet] segment ${i} fetched ok, size=${blob.size}`);
-              return blob;
-            } catch (fetchErr) {
-              const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
-              dbg(`  [${i}] ✗ SKIP — ${msg.slice(0, 80)}`, '#f87171');
-              console.error(`[StoriesSheet] segment ${i} unexpected error (skipping):`, fetchErr, block);
-              return null;
-            }
-          })
-        );
-
-        // If every segment failed (no audio at all), surface an error
-        const hasAnyAudio = segBlobsOrNull.some((b) => b !== null);
-        if (!hasAnyAudio) {
-          dbg('✗ ALL segments failed', '#f87171');
-          throw new Error('All audio segments failed to load');
-        }
-
-        const segUrls = segBlobsOrNull.map((b) => b ? URL.createObjectURL(b) : null);
-        const segAudios = segUrls.map((u) => u ? (() => { const a = new Audio(u); a.preload = 'auto'; return a; })() : null);
-        playlistAudiosRef.current = segAudios.filter(Boolean) as HTMLAudioElement[];
-        playlistUrlsRef.current = segUrls.filter(Boolean) as string[];
-
-        // Connect first element to AudioContext for visualizer
-        try {
-          const AudioCtor = window.AudioContext ||
-            (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-          if (AudioCtor && segAudios[0]) {
-            const ctx = new AudioCtor();
-            const src = ctx.createMediaElementSource(segAudios[0]);
-            const an = ctx.createAnalyser();
-            an.fftSize = 256; an.smoothingTimeConstant = 0.8;
-            src.connect(an); an.connect(ctx.destination);
-            audioCtxRef.current = ctx; analyserRef.current = an;
-          }
-        } catch { /* no visualizer */ }
-
-        setCurrentSegmentIdx(0);
-        setPlaybackState('playing');
-        dbg('▶ playback started', '#a78bfa');
-
-        // Capture the generation at the moment this session starts.
-        // Any setTimeout callback that fires after playGenRef increments
-        // (new session started or component disposed) is a no-op.
-        const sessionGen = playGenRef.current;
-
-        const playSegmentAt = (idx: number) => {
-          // Abort if this session has been superseded or torn down
-          if (playGenRef.current !== sessionGen) return;
-
-          if (idx >= segAudios.length) {
-            dbg('■ done', '#a78bfa');
-            console.log('[StoriesSheet] playlist finished');
-            setPlaybackState('paused'); setDone(true); return;
-          }
-          const seg = segAudios[idx];
-          setCurrentSegmentIdx(idx);
-
-          // emberpause or skipped segment — no audio, just wait then advance
-          if (!seg) {
-            const block = sortedBlocks[idx] as { type: string; durationMs?: number };
-            const ms = block.durationMs ?? 2000;
-            if (block.type === 'emberpause') dbg(`  [${idx}] ⏸ pause ${ms}ms`, '#60a5fa');
-            else dbg(`  [${idx}] ⏭ skipped (no audio)`, '#f97316');
-            console.log(`[StoriesSheet] emberpause/skip ${idx}: waiting ${ms}ms`);
-            setTimeout(() => playSegmentAt(idx + 1), ms);
-            return;
-          }
-
-          dbg(`  [${idx}] ▶ playing dur=${seg.duration?.toFixed(1) ?? '?'}s`, '#4ade80');
-          console.log(`[StoriesSheet] playing segment ${idx}/${segAudios.length - 1}, duration=${seg.duration?.toFixed(2) ?? 'unknown'}`);
-          audioRef.current = seg;
-          seg.addEventListener('ended', () => {
-            dbg(`  [${idx}] ✓ ended`, '#4ade80');
-            console.log(`[StoriesSheet] segment ${idx} ended`);
-            playSegmentAt(idx + 1);
-          }, { once: true });
-          seg.addEventListener('error', (e) => {
-            const errMsg = (e as ErrorEvent).message || `code=${seg.error?.code ?? '?'}`;
-            dbg(`  [${idx}] ✗ audio error: ${errMsg}`, '#f87171');
-            console.error(`[StoriesSheet] segment ${idx} audio error:`, errMsg, seg.error);
-            playSegmentAt(idx + 1);
-          }, { once: true });
-          seg.play().catch((e) => {
-            dbg(`  [${idx}] ✗ play() rejected: ${e instanceof Error ? e.message : e}`, '#f87171');
-            console.error(`[StoriesSheet] segment ${idx} play() rejected:`, e);
-            playSegmentAt(idx + 1);
-          });
-        };
-        playSegmentAt(0);
-
-        // Save the playlist as a structured JSON story
-        type PlaylistBlock =
-          | { type: 'voice'; content?: string; order?: number }
-          | { type: 'media'; clipKind?: 'voice' | 'call'; speaker?: string; quote?: string; order?: number };
-        const segments = (blocks as PlaylistBlock[])
-          .slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-          .flatMap((b): { type: string; speaker?: string; text: string }[] => {
-            if (b.type === 'voice' && b.content) return [{ type: 'narration', text: b.content }];
-            if (b.type === 'media' && b.quote) return [{ type: b.clipKind === 'call' ? 'call-clip' : 'voice-clip', speaker: b.speaker ?? 'Contributor', text: b.quote }];
-            return [];
-          });
-        if (segments.length > 0) void saveStory(JSON.stringify(segments));
-
-      } else {
-        // ── Single-script mode: one concatenated audio file ─────────────────
-        console.log('[StoriesSheet] single-script mode, fetching audio');
-        const response = await fetch(
-          `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ script }) }
-        );
-        if (!response.ok) {
-          const p = await response.json().catch(() => null);
-          const msg = p?.error ?? `HTTP ${response.status}`;
-          console.error('[StoriesSheet] single-script audio fetch failed:', msg);
-          throw new Error(msg);
-        }
-        const blob = await response.blob();
-        console.log('[StoriesSheet] single-script audio ok, size=', blob.size);
-        const audio = await buildAudioFromBlob(blob);
-        await audio.play();
-        if (script) void saveStory(script);
-      }
-    } catch (err) {
-      console.error('[StoriesSheet] playback error:', err);
-      setPlaybackState('paused');
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, [
-    playbackState, emberId, selectedKeys, composedScript, composedBlocks,
-    storyScript, taggedNames, durationSeconds, accessToken,
-    buildAudioFromBlob, saveStory, dbg,
-  ]);
-
-  function handleClose() {
-    setShowing(false);
-    setTimeout(onClose, SNAP_MS);
-  }
-
-  const statusLabel =
-    playbackState === 'composing' ? 'writing story…' :
-    playbackState === 'loading'   ? 'preparing audio…' :
-    null;
-
-  const hasSelection = selectedKeys.size > 0;
+  const isPlaying  = status === 'playing';
+  const isLoading  = status === 'loading';
+  const curSeg     = displaySegments?.[segIdx];
 
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-10 flex flex-col"
       style={{
-        height: SHEET_H,
-        background: 'var(--bg-sheets)',
-        borderTop: '1px solid var(--border-subtle)',
-        borderRadius: '20px 20px 0 0',
+        height: SHEET_H, background: 'var(--bg-sheets)',
+        borderTop: '1px solid var(--border-subtle)', borderRadius: '20px 20px 0 0',
         transform: showing ? 'translateY(0)' : 'translateY(100%)',
-        transition: `transform ${SNAP_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+        transition: `transform ${SNAP_MS}ms cubic-bezier(0.4,0,0.2,1)`,
       }}
     >
-      {/* Play / Pause button — floats on the sheet's top edge */}
+      {/* ── Play / pause button ── */}
       {isOpen ? (
         <button
           type="button"
           onClick={() => void handleToggle()}
-          disabled={playbackState === 'composing' || playbackState === 'loading'}
+          disabled={isLoading}
           className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full [@media(hover:hover)]:hover:brightness-110 [@media(hover:hover)]:hover:scale-105 transition-[filter,transform,background] duration-150"
-          style={{
-            top: -24,
-            width: 48,
-            height: 48,
-            background: vizColor,
-            border: '6px solid var(--bg-sheets)',
-            cursor: playbackState === 'composing' || playbackState === 'loading' ? 'default' : 'pointer',
-          }}
+          style={{ top: -24, width: 48, height: 48, background: vizColor, border: '6px solid var(--bg-sheets)', cursor: isLoading ? 'default' : 'pointer' }}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
-          {playbackState === 'composing' || playbackState === 'loading' ? (
+          {isLoading ? (
             <svg width={20} height={20} viewBox="0 0 72 72" fill="white" className="animate-spin">
               <circle cx="36" cy="36" r="7.2" />
-              <rect x="32.4" y="3.18" width="7.2" height="21.6" rx="3.6" ry="3.6" />
-              <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" ry="3.6" />
-              <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
-              <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(22.02 94.02) rotate(-90)" />
-              <rect x="47.97" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(29.55 -30.48) rotate(45)" />
-              <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(42.45 .66) rotate(45)" />
-              <rect x="16.83" y="9.63" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
-              <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" ry="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
+              <rect x="32.4" y="3.18"  width="7.2" height="21.6" rx="3.6" />
+              <rect x="32.4" y="47.22" width="7.2" height="21.6" rx="3.6" />
+              <rect x="10.38" y="25.2" width="7.2" height="21.6" rx="3.6" transform="translate(-22.02 49.98) rotate(-90)" />
+              <rect x="54.42" y="25.2" width="7.2" height="21.6" rx="3.6" transform="translate(22.02 94.02) rotate(-90)" />
+              <rect x="47.97" y="9.63"  width="7.2" height="21.6" rx="3.6" transform="translate(29.55 -30.48) rotate(45)" />
+              <rect x="16.83" y="40.77" width="7.2" height="21.6" rx="3.6" transform="translate(42.45 .66) rotate(45)" />
+              <rect x="16.83" y="9.63"  width="7.2" height="21.6" rx="3.6" transform="translate(-8.46 20.43) rotate(-45)" />
+              <rect x="47.97" y="40.77" width="7.2" height="21.6" rx="3.6" transform="translate(-21.36 51.57) rotate(-45)" />
             </svg>
           ) : isPlaying ? (
             <Pause size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
           ) : (
-            <Play size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
+            <Play  size={18} color="#ffffff" strokeWidth={2} fill="#ffffff" />
           )}
         </button>
       ) : null}
 
-      {/* Status label under play button */}
-      {isOpen && statusLabel ? (
-        <p
-          className="absolute left-0 right-0 text-center pointer-events-none text-xs"
-          style={{ top: 30, color: 'rgba(255,255,255,0.45)' }}
-        >
-          {statusLabel}
-        </p>
-      ) : null}
-
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex items-center px-4 pt-4 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-header)' }}>
         <Flame size={18} color="white" strokeWidth={1.6} />
         <span className="flex-1 ml-2 text-white font-semibold text-base">stories</span>
-        <button type="button" className="cursor-pointer" onClick={handleClose}>
+        <button type="button" className="cursor-pointer" onClick={() => { setShowing(false); setTimeout(onClose, SNAP_MS); }}>
           <X size={20} color="var(--text-secondary)" strokeWidth={1.8} />
         </button>
       </div>
 
+      {/* ── Error ── */}
       {error ? (
         <p className="text-xs text-center px-4 mt-1 flex-shrink-0" style={{ color: 'rgba(255,100,100,0.8)' }}>
           {error}
         </p>
       ) : null}
 
-      {/* ── Debug log panel ─────────────────────────────────────────────── */}
+      {/* ── Debug log ── */}
       {debugLog.length > 0 ? (
         <div
           className="flex-shrink-0 mx-3 mt-1 rounded-lg overflow-y-auto"
@@ -898,148 +654,57 @@ export default function StoriesSheet({
         </div>
       ) : null}
 
-      {/* Body — story text + visualizer + chips */}
-      <div
-        className="absolute left-0 right-0 bottom-0 px-4 flex flex-col pointer-events-none [&_button]:pointer-events-auto"
-        style={{ top: 56 }}
-      >
-        {/* Story text / idle prompt */}
+      {/* ── Body ── */}
+      <div className="absolute left-0 right-0 bottom-0 px-4 flex flex-col pointer-events-none [&_button]:pointer-events-auto" style={{ top: 56 }}>
+
+        {/* Story text */}
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="text-center mb-5 pointer-events-none">
             {isPlaying ? (
-              <div style={{ opacity: storyEntered ? 1 : 0, transition: 'opacity 0.8s ease' }}>
-                {displaySegments ? (
-                  // Playlist mode — show the current segment, colour-coded by speaker type
-                  (() => {
-                    const seg = displaySegments[currentSegmentIdx];
-                    if (!seg) return <p style={{ fontSize: '1.2rem', color: 'transparent' }}>&nbsp;</p>;
-                    const segColor = seg.speaker ? '#4ade80' : 'rgba(255,255,255,0.85)';
-                    return (
-                      <>
-                        {seg.speaker ? (
-                          <p
-                            className="font-normal leading-snug w-full text-center mb-1"
-                            style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}
-                          >
-                            {seg.speaker}
-                          </p>
-                        ) : null}
-                        <p
-                          className="font-medium leading-snug w-full text-center"
-                          style={{ fontSize: '1.2rem', color: segColor, transition: 'color 0.4s ease' }}
-                        >
-                          {seg.text}
-                        </p>
-                        {/* DEBUG: segment counter */}
-                        <div className="flex items-center justify-center gap-3 mt-2 pointer-events-auto">
-                          <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)' }}>
-                            {currentSegmentIdx + 1} / {displaySegments.length}
-                            {audioRef.current ? ` · t=${audioRef.current.currentTime.toFixed(1)}s / ${(audioRef.current.duration || 0).toFixed(1)}s` : ''}
-                          </span>
-                        </div>
-                      </>
-                    );
-                  })()
-                ) : (
-                  // Single-script mode — timer-driven two-line scroll
-                  <>
-                    <p
-                      className="font-medium leading-snug w-full truncate"
-                      style={{ fontSize: '1.2rem', color: !fading ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
-                    >
-                      {storyLines[lineIndex] ?? ' '}
+              displaySegments && curSeg ? (
+                <>
+                  {curSeg.speaker ? (
+                    <p className="font-normal leading-snug text-center mb-1" style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
+                      {curSeg.speaker}
                     </p>
-                    <p
-                      className="font-medium leading-snug w-full truncate"
-                      style={{ fontSize: '1.2rem', color: !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent', transition: 'color 0.8s ease' }}
-                    >
-                      {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
-                    </p>
-                  </>
-                )}
-              </div>
+                  ) : null}
+                  <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: curSeg.speaker ? '#4ade80' : 'rgba(255,255,255,0.85)' }}>
+                    {curSeg.text}
+                  </p>
+                  <p style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
+                    {segIdx + 1} / {displaySegments.length}
+                  </p>
+                </>
+              ) : scriptLines.length > 0 ? (
+                <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)' }}>
+                  {scriptLines[0]}
+                </p>
+              ) : null
             ) : (
-              <p
-                className="font-medium leading-snug w-full"
-                style={{
-                  fontSize: '1.2rem',
-                  color: 'rgba(255,255,255,0.6)',
-                  opacity: idlePromptVisible ? 1 : 0,
-                  transition: 'opacity 0.6s ease',
-                }}
-              >
+              <p className="font-medium leading-snug" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.6)', opacity: idlePromptVisible ? 1 : 0, transition: 'opacity 0.6s ease' }}>
                 {IDLE_PROMPTS[idlePromptIdx]}
               </p>
             )}
           </div>
 
-          {/* Mic visualizer */}
+          {/* Visualizer */}
           <div className="flex justify-center mb-3 w-full" style={{ minHeight: 20 }}>
             {isPlaying ? (
-              <MicLevelMeter
-                analyser={analyserRef.current}
-                color={vizColor}
-                bars={22}
-                className="w-[70%] h-5"
-              />
+              <MicLevelMeter analyser={analyserRef.current} color={vizColor} bars={22} className="w-[70%] h-5" />
             ) : null}
           </div>
-
-          {/* Playback timeline */}
-          {isPlaying ? (
-            <div className="w-full px-2 mb-3 pointer-events-none">
-              {/* Track */}
-              <div className="relative w-full rounded-full" style={{ height: 3, background: 'rgba(255,255,255,0.12)' }}>
-                {/* Filled */}
-                <div
-                  ref={timelineFilledRef}
-                  className="absolute left-0 top-0 bottom-0 rounded-full"
-                  style={{ width: '0%', background: vizColor, transition: 'width 0.25s linear' }}
-                />
-                {/* Segment tick marks — evenly spaced in playlist mode */}
-                {displaySegments && displaySegments.map((seg, i) => {
-                  const pct = (i / displaySegments.length) * 100;
-                  return (
-                    <div
-                      key={i}
-                      className="absolute top-0 bottom-0"
-                      style={{
-                        left: `${pct}%`,
-                        width: 2,
-                        background: seg.speaker ? '#4ade80' : 'rgba(255,255,255,0.35)',
-                        borderRadius: 1,
-                      }}
-                    />
-                  );
-                })}
-                {/* Playback dot */}
-                <div
-                  ref={timelineDotRef}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full"
-                  style={{ left: '0%', width: 10, height: 10, background: 'white', boxShadow: '0 0 4px rgba(0,0,0,0.4)' }}
-                />
-              </div>
-              {/* Time labels */}
-              <div className="flex justify-between mt-1">
-                <span ref={timelineCurRef} style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', fontVariantNumeric: 'tabular-nums' }}>0:00</span>
-                <span ref={timelineEndRef} style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.35)', fontVariantNumeric: 'tabular-nums' }}>--:--</span>
-              </div>
-            </div>
-          ) : null}
         </div>
 
-        {/* Facet / person chips */}
+        {/* Chip row */}
         <div className="flex flex-wrap justify-center gap-2 pb-4">
           {facets.map((facet) => {
             const isSelected = selectedKeys.has(facet.key);
             const matchesSpeaker = (list: string[]) =>
-              facet.isPerson && list.some((s) => {
-                const speakerFirst = s.toLowerCase().split(' ')[0];
-                const chipFirst = facet.key.toLowerCase().split(' ')[0];
-                return speakerFirst === chipFirst || s.toLowerCase().includes(facet.key.toLowerCase());
+              !!facet.isPerson && list.some((s) => {
+                const sf = s.toLowerCase().split(' ')[0];
+                const cf = facet.key.toLowerCase().split(' ')[0];
+                return sf === cf || s.toLowerCase().includes(facet.key.toLowerCase());
               });
-            const hasVoiceClip = matchesSpeaker(voiceClipSpeakers);
-            const hasCallClip  = matchesSpeaker(callClipSpeakers);
             return (
               <button
                 key={facet.key}
@@ -1049,13 +714,12 @@ export default function StoriesSheet({
                 style={{
                   height: 26,
                   background: isSelected ? (vizColor === '#a78bfa' ? PURPLE : facet.color) : 'var(--bg-drill-blocks)',
-                  border: '1px solid var(--border-subtle)',
-                  color: 'rgba(255,255,255,0.7)',
+                  border: '1px solid var(--border-subtle)', color: 'rgba(255,255,255,0.7)',
                 }}
               >
                 {facet.isSnapshot ? <ScanEye size={12} strokeWidth={2} /> : null}
-                {hasCallClip  ? <Phone size={11} strokeWidth={2} style={{ opacity: 0.7 }} /> : null}
-                {hasVoiceClip ? <Mic   size={11} strokeWidth={2} style={{ opacity: 0.7 }} /> : null}
+                {matchesSpeaker(callClipSpeakers)  ? <Phone size={11} strokeWidth={2} style={{ opacity: 0.7 }} /> : null}
+                {matchesSpeaker(voiceClipSpeakers) ? <Mic   size={11} strokeWidth={2} style={{ opacity: 0.7 }} /> : null}
                 {facet.label}
               </button>
             );
