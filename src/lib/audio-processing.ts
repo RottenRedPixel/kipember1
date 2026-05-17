@@ -17,23 +17,18 @@ export async function transcodeAudioToM4a({
   inputPath: string;
   outputPath: string;
 }) {
-  await execFileAsync(FFMPEG_BINARY, [
-    '-y',
-    '-i',
-    inputPath,
-    '-vn',
-    '-c:a',
-    'aac',
-    '-b:a',
-    '128k',
-    '-ar',
-    '44100',
-    '-ac',
-    '1',
-    '-movflags',
-    '+faststart',
-    outputPath,
-  ]);
+  try {
+    await execFileAsync(FFMPEG_BINARY, [
+      '-y', '-i', inputPath,
+      '-vn', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '1',
+      '-movflags', '+faststart',
+      outputPath,
+    ]);
+  } catch (err) {
+    // Remove any partial output so it doesn't get treated as a valid cache entry
+    await fs.unlink(outputPath).catch(() => undefined);
+    throw err;
+  }
 }
 
 export async function extractAudioClipToM4a({
@@ -51,27 +46,18 @@ export async function extractAudioClipToM4a({
   const clipEnd = Math.max(clipStart, endMs / 1000);
   const clipDuration = Math.max(0.25, clipEnd - clipStart);
 
-  await execFileAsync(FFMPEG_BINARY, [
-    '-y',
-    '-i',
-    input,
-    '-ss',
-    clipStart.toFixed(3),
-    '-t',
-    clipDuration.toFixed(3),
-    '-vn',
-    '-c:a',
-    'aac',
-    '-b:a',
-    '128k',
-    '-ar',
-    '44100',
-    '-ac',
-    '1',
-    '-movflags',
-    '+faststart',
-    outputPath,
-  ]);
+  try {
+    await execFileAsync(FFMPEG_BINARY, [
+      '-y', '-i', input,
+      '-ss', clipStart.toFixed(3), '-t', clipDuration.toFixed(3),
+      '-vn', '-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '1',
+      '-movflags', '+faststart',
+      outputPath,
+    ]);
+  } catch (err) {
+    await fs.unlink(outputPath).catch(() => undefined);
+    throw err;
+  }
 }
 
 export async function concatenateAudioSegmentsToM4a({

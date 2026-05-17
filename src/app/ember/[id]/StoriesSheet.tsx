@@ -216,6 +216,10 @@ export default function StoriesSheet({
   // each element's 'ended' event advances to the next.
   const playlistAudiosRef = useRef<HTMLAudioElement[]>([]);
   const playlistUrlsRef   = useRef<string[]>([]);
+  // Generation counter — incremented each time a fresh session starts.
+  // playSegmentAt closures check this before acting so stale setTimeout
+  // callbacks from old sessions can't drive playback after a new one starts.
+  const playGenRef = useRef(0);
 
   const disposeAudio = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; audioRef.current = null; }
@@ -502,15 +506,20 @@ export default function StoriesSheet({
       return;
     }
 
-    // Resume if paused and audio already built
-    if (audioRef.current && playbackState === 'paused') {
-      try { await audioRef.current.play(); } catch { /* ignore */ }
+    // Resume if paused mid-playback (not done) and audio already built
+    if (audioRef.current && playbackState === 'paused' && !done) {
+      try { await audioRef.current.play(); setPlaybackState('playing'); } catch { /* ignore */ }
       return;
     }
 
     // ── Need to start fresh ──
     if (!emberId) return;
     setError('');
+    setDone(false);
+    // Cancel any stale playSegmentAt timeouts from a previous session and
+    // tear down old audio elements before building new ones.
+    playGenRef.current += 1;
+    disposeAudio();
 
     const isSnapshotMode = selectedKeys.has('snapshot') && selectedKeys.size === 1;
     const hasNonSnapshot = Array.from(selectedKeys).some((k) => k !== 'snapshot');
@@ -695,7 +704,15 @@ export default function StoriesSheet({
         setPlaybackState('playing');
         dbg('▶ playback started', '#a78bfa');
 
+        // Capture the generation at the moment this session starts.
+        // Any setTimeout callback that fires after playGenRef increments
+        // (new session started or component disposed) is a no-op.
+        const sessionGen = playGenRef.current;
+
         const playSegmentAt = (idx: number) => {
+          // Abort if this session has been superseded or torn down
+          if (playGenRef.current !== sessionGen) return;
+
           if (idx >= segAudios.length) {
             dbg('■ done', '#a78bfa');
             console.log('[StoriesSheet] playlist finished');
@@ -704,7 +721,7 @@ export default function StoriesSheet({
           const seg = segAudios[idx];
           setCurrentSegmentIdx(idx);
 
-          // emberpause — no audio element, just wait then advance
+          // emberpause or skipped segment — no audio, just wait then advance
           if (!seg) {
             const block = sortedBlocks[idx] as { type: string; durationMs?: number };
             const ms = block.durationMs ?? 2000;
