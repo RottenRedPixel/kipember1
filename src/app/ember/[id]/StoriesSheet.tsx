@@ -533,9 +533,10 @@ export default function StoriesSheet({
           allClipSpeakers.some((s) => s.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(s.toLowerCase().split(' ')[0]))
         );
 
-        // Always try the playlist endpoint when people are selected —
-        // it guarantees clips are included if they exist.
-        if (personKeys.length > 0 || facetKeys.length > 0) {
+        // Only call the playlist (clip-interleaving) endpoint when at least one
+        // person chip is selected. Clips from a contributor are NEVER inserted
+        // unless that contributor's chip is explicitly chosen.
+        if (personKeys.length > 0) {
           try {
             const playlistTokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
             const playlistRes = await fetch(

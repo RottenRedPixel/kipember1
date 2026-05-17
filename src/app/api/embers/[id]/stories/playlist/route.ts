@@ -75,6 +75,12 @@ export async function POST(
         ? body.durationSeconds
         : 7;
 
+    // Hard rule: clips are ONLY included when a person chip is explicitly
+    // selected. No person selected → no clips → fall back to pure narration.
+    if (people.length === 0) {
+      return NextResponse.json({ blocks: null });
+    }
+
     // Load ember context + all clips in parallel
     const [emberRecord, voiceClips, callClips] = await Promise.all([
       prisma.ember.findUnique({
