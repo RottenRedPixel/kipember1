@@ -156,15 +156,24 @@ export async function POST(
     // Fall back to people-only filter if facet filter wiped everything out
     const filtered = facetsFiltered.length > 0 ? facetsFiltered : peopleFiltered;
 
-    // Dedup: if one clip's quote is fully contained within another's, drop the
-    // shorter one — always lean towards the longer, more complete clip.
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+    // Dedup: drop a clip when all its meaningful words appear in a longer clip.
+    // Uses word-set containment (order-independent) so fragments like
+    // "was the favorite part of the trip" are caught even when the longer clip
+    // has those same words in a different sequence.
+    const stopWords = new Set(['a','an','the','and','or','but','in','on','at','to','for','of','with','is','was','it','that','this','i','we','they','he','she','you','my','our','their','its','be','been','have','had','do','did','so','as','by','from','up','out','not','are','were','what','when','how','all','just','also','if','then','than','s','t']);
+    const normWords = (s: string) =>
+      s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !stopWords.has(w));
+
     const selected = filtered.filter((c) => {
-      const cn = norm(c.quote);
+      const cWords = new Set(normWords(c.quote));
+      if (cWords.size === 0) return true;
       return !filtered.some((other) => {
         if (other.id === c.id) return false;
-        const on = norm(other.quote);
-        return on.includes(cn) && on.length > cn.length;
+        if (other.quote.length <= c.quote.length) return false;
+        const oWords = new Set(normWords(other.quote));
+        // Drop c if ≥80% of its meaningful words are in the longer clip
+        const overlap = [...cWords].filter((w) => oWords.has(w)).length;
+        return overlap / cWords.size >= 0.8;
       });
     });
 
