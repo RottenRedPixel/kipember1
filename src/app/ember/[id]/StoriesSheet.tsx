@@ -608,7 +608,11 @@ export default function StoriesSheet({
         {/* Story text — vertically centered, visualizer never affects its position */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center pointer-events-none">
-            {isPlaying ? (
+            {done ? (
+              <p className="font-medium leading-snug" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.6)' }}>
+                did you like this story?
+              </p>
+            ) : isPlaying ? (
               displaySegments && curSeg ? (
                 <>
                   <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)' }}>
