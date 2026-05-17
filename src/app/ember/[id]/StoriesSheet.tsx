@@ -742,7 +742,6 @@ export default function StoriesSheet({
                   (() => {
                     const seg = displaySegments[currentSegmentIdx];
                     if (!seg) return <p style={{ fontSize: '1.2rem', color: 'transparent' }}>&nbsp;</p>;
-                    // Determine colour: contributor quote vs narrator
                     const segColor = seg.speaker ? '#4ade80' : 'rgba(255,255,255,0.85)';
                     return (
                       <>
@@ -760,6 +759,21 @@ export default function StoriesSheet({
                         >
                           {seg.text}
                         </p>
+                        {/* DEBUG: manual advance */}
+                        <div className="flex items-center justify-center gap-3 mt-2 pointer-events-auto">
+                          <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)' }}>
+                            {currentSegmentIdx + 1} / {displaySegments.length}
+                            {audioRef.current ? ` · t=${audioRef.current.currentTime.toFixed(1)}s` : ''}
+                            {seg.cumStart != null ? ` · cue=${(seg as { cumStart: number }).cumStart.toFixed(1)}s` : ''}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentSegmentIdx((i) => Math.min(i + 1, displaySegments.length - 1))}
+                            style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}
+                          >
+                            next →
+                          </button>
+                        </div>
                       </>
                     );
                   })()
