@@ -619,21 +619,32 @@ export default function StoriesSheet({
               return null;
             }
             console.log(`[StoriesSheet] fetching segment ${i}/${sortedBlocks.length - 1}:`, block.type, block.speaker ?? block.mediaId ?? '');
-            const res = await fetch(
-              `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
-              { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blocks: [block] }) }
-            );
-            if (!res.ok) {
-              const p = await res.json().catch(() => null);
-              const msg = p?.error ?? `HTTP ${res.status}`;
-              console.error(`[StoriesSheet] segment ${i} fetch failed:`, msg, block);
-              throw new Error(`Segment ${i} (${block.type}${block.speaker ? ` / ${block.speaker}` : ''}): ${msg}`);
+            try {
+              const res = await fetch(
+                `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
+                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blocks: [block] }) }
+              );
+              if (!res.ok) {
+                const p = await res.json().catch(() => null);
+                const msg = p?.error ?? `HTTP ${res.status}`;
+                console.error(`[StoriesSheet] segment ${i} fetch failed (skipping):`, msg, block);
+                return null; // skip unresolvable segments; narrator blocks still play
+              }
+              const blob = await res.blob();
+              console.log(`[StoriesSheet] segment ${i} fetched ok, size=${blob.size}`);
+              return blob;
+            } catch (fetchErr) {
+              console.error(`[StoriesSheet] segment ${i} unexpected error (skipping):`, fetchErr, block);
+              return null;
             }
-            const blob = await res.blob();
-            console.log(`[StoriesSheet] segment ${i} fetched ok, size=${blob.size}`);
-            return blob;
           })
         );
+
+        // If every segment failed (no audio at all), surface an error
+        const hasAnyAudio = segBlobsOrNull.some((b) => b !== null);
+        if (!hasAnyAudio) {
+          throw new Error('All audio segments failed to load');
+        }
 
         const segUrls = segBlobsOrNull.map((b) => b ? URL.createObjectURL(b) : null);
         const segAudios = segUrls.map((u) => u ? (() => { const a = new Audio(u); a.preload = 'auto'; return a; })() : null);
