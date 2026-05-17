@@ -356,6 +356,7 @@ export async function POST(
     });
   } catch (error) {
     console.error('Draft Story Cut audio render error:', error);
-    return NextResponse.json({ error: 'Failed to prepare story cut audio' }, { status: 500 });
+    const detail = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: `Failed to prepare story cut audio: ${detail}` }, { status: 500 });
   }
 }

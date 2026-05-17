@@ -81,6 +81,7 @@ export async function resolveAudioSourceForMedia(
       .filter((u): u is string => Boolean(u));
     const localUrl = candidates.find((u) => u.startsWith('/api/uploads/'));
     const chosen = localUrl ?? candidates[0];
+    console.log(`[audio-segments] EmberCallClip ${voiceClip.id}: candidates=${JSON.stringify(candidates)}, chosen=${chosen ?? 'NONE'}`);
     if (!chosen) {
       console.warn('[audio-segments] EmberCallClip has no usable audioUrl', voiceClip.id);
       return null;
@@ -94,6 +95,7 @@ export async function resolveAudioSourceForMedia(
     } else {
       source = chosen;
     }
+    console.log(`[audio-segments] EmberCallClip ${voiceClip.id}: source=${source}`);
     return {
       source,
       fallbackStartMs: voiceClip.startMs ?? null,
@@ -107,18 +109,23 @@ export async function resolveAudioSourceForMedia(
     // directly without going through the HTTP uploads route. Write it back
     // to local disk so ffmpeg always gets a real file path, not a URL.
     const localPath = getUploadPath(voiceMessageClip.audioFilename);
+    console.log(`[audio-segments] EmberVoiceClip ${voiceMessageClip.id}: audioFilename=${voiceMessageClip.audioFilename}, localPath=${localPath}`);
     let source = localPath;
     try {
       await fs.access(localPath);
+      console.log(`[audio-segments] EmberVoiceClip ${voiceMessageClip.id}: found on disk`);
     } catch {
+      console.warn(`[audio-segments] EmberVoiceClip ${voiceMessageClip.id}: not on disk, trying readUploadBuffer…`);
       try {
         const buffer = await readUploadBuffer(voiceMessageClip.audioFilename);
         await fs.mkdir(dirname(localPath), { recursive: true });
         await fs.writeFile(localPath, buffer);
+        console.log(`[audio-segments] EmberVoiceClip ${voiceMessageClip.id}: restored from buffer (${buffer.length} bytes)`);
         source = localPath;
-      } catch {
+      } catch (bufErr) {
         // Last resort: URL fallback (may or may not work for ffmpeg)
         const fallbackUrl = getUploadFallbackUrl(voiceMessageClip.audioFilename);
+        console.error(`[audio-segments] EmberVoiceClip ${voiceMessageClip.id}: readUploadBuffer failed (${bufErr instanceof Error ? bufErr.message : bufErr}), fallbackUrl=${fallbackUrl ?? 'NONE'}`);
         if (fallbackUrl) source = fallbackUrl;
       }
     }
@@ -129,6 +136,7 @@ export async function resolveAudioSourceForMedia(
     };
   }
 
+  console.warn(`[audio-segments] resolveAudioSourceForMedia: no record found for emberId=${emberId} mediaId=${mediaId}`);
   return null;
 }
 
