@@ -99,6 +99,9 @@ export default function StoriesSheet({
   // Playlist blocks (narration + clips) — set when playlist mode was used.
   // Mutually exclusive with composedScript.
   const [composedBlocks, setComposedBlocks] = useState<unknown[] | null>(null);
+  // Actual per-block durations returned by the server after rendering audio.
+  // When available these replace word-count estimates in displaySegments.
+  const [segmentDurations, setSegmentDurations] = useState<{ order: number; durationMs: number }[] | null>(null);
 
   const durationSeconds = 7; // fixed short-form story length
 
@@ -158,9 +161,9 @@ export default function StoriesSheet({
   }, [composedScript]);
   const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
 
-  // Playlist mode: ordered segments with estimated cumulative audio start times.
-  // Narrator blocks use ~150 WPM; clip blocks use actual clip length when
-  // available, otherwise ~120 WPM estimate.
+  // Playlist mode: ordered segments with cumulative audio start times.
+  // Uses server-probed durations (segmentDurations) when available;
+  // falls back to word-count estimates until the header arrives.
   const displaySegments = useMemo(() => {
     if (!composedBlocks) return null;
     type B = {
@@ -172,17 +175,26 @@ export default function StoriesSheet({
       clipEndMs?: number;
       order?: number;
     };
+    // Build order → actual duration (seconds) lookup from server data.
+    const durMap = new Map<number, number>();
+    if (segmentDurations) {
+      for (const { order, durationMs } of segmentDurations) {
+        durMap.set(order, durationMs / 1000);
+      }
+    }
     let cumSec = 0;
     const segs: Array<{ text: string; speaker?: string; cumStart: number }> = [];
     for (const b of (composedBlocks as B[]).slice().sort((a, bn) => (a.order ?? 0) - (bn.order ?? 0))) {
       if (b.type === 'voice' && b.content) {
-        const words = b.content.trim().split(/\s+/).length;
-        const dur = Math.max(0.5, words / 2.5);
+        const dur = durMap.has(b.order ?? -1)
+          ? durMap.get(b.order!)!
+          : Math.max(0.5, b.content.trim().split(/\s+/).length / 2.5);
         segs.push({ text: b.content, cumStart: cumSec });
         cumSec += dur;
       } else if (b.type === 'media' && b.quote) {
-        const dur =
-          b.clipStartMs != null && b.clipEndMs != null
+        const dur = durMap.has(b.order ?? -1)
+          ? durMap.get(b.order!)!
+          : b.clipStartMs != null && b.clipEndMs != null
             ? Math.max(0.5, (b.clipEndMs - b.clipStartMs) / 1000)
             : Math.max(0.5, b.quote.trim().split(/\s+/).length / 2.0);
         segs.push({ text: b.quote, speaker: b.speaker, cumStart: cumSec });
@@ -190,7 +202,7 @@ export default function StoriesSheet({
       }
     }
     return segs.length > 0 ? segs : null;
-  }, [composedBlocks]);
+  }, [composedBlocks, segmentDurations]);
 
   const [currentSegmentIdx, setCurrentSegmentIdx] = useState(0);
 
@@ -383,6 +395,7 @@ export default function StoriesSheet({
       setSelectedKeys(new Set(['snapshot']));
       setError('');
       setCurrentSegmentIdx(0);
+      setSegmentDurations(null);
       savedRef.current = false;
     }
   }, [isOpen, disposeAudio]);
@@ -416,6 +429,7 @@ export default function StoriesSheet({
     setDone(false);
     setError('');
     setCurrentSegmentIdx(0);
+    setSegmentDurations(null);
     savedRef.current = false;
   }, [disposeAudio]);
 
@@ -591,6 +605,12 @@ export default function StoriesSheet({
         throw new Error(p?.error ?? 'Audio not available.');
       }
       const blob = await response.blob();
+      // Read server-probed per-block durations before starting playback so
+      // displaySegments has accurate cumStart values on the very first timeupdate.
+      const durHeader = response.headers.get('X-Segment-Durations');
+      if (durHeader) {
+        try { setSegmentDurations(JSON.parse(durHeader) as { order: number; durationMs: number }[]); } catch { /* ignore */ }
+      }
       const audio = await buildAudioFromBlob(blob);
       await audio.play();
       if (script) {

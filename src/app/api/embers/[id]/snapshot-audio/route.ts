@@ -1,5 +1,7 @@
 import { createHash } from 'crypto';
 import { createReadStream, promises as fs } from 'fs';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { join } from 'path';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
@@ -14,6 +16,26 @@ import { prisma } from '@/lib/db';
 import { normalizeTextForSpeech } from '@/lib/narration';
 import { getUploadsDir } from '@/lib/uploads';
 import { getVoiceEntry } from '@/lib/voice-catalog';
+
+const execFileAsync = promisify(execFile);
+const FFPROBE_BINARY = process.env.FFPROBE_PATH || 'ffprobe';
+
+/** Returns the duration of an audio file in milliseconds via ffprobe. */
+async function probeAudioDurationMs(filePath: string): Promise<number> {
+  try {
+    const { stdout } = await execFileAsync(FFPROBE_BINARY, [
+      '-v', 'error',
+      '-print_format', 'json',
+      '-show_entries', 'format=duration',
+      filePath,
+    ]);
+    const parsed = JSON.parse(stdout) as { format?: { duration?: string } };
+    const secs = parseFloat(parsed.format?.duration ?? '0');
+    return Number.isFinite(secs) ? Math.round(secs * 1000) : 0;
+  } catch {
+    return 0;
+  }
+}
 
 const STORY_CUT_AUDIO_RENDER_VERSION = 'v2';
 
@@ -56,6 +78,8 @@ function isMediaBlock(block: SnapshotBlock): block is Extract<SnapshotBlock, { t
   return block.type === 'media';
 }
 
+export type SegmentDuration = { order: number; durationMs: number };
+
 async function renderSnapshotAudio({
   emberId,
   blocks,
@@ -68,16 +92,20 @@ async function renderSnapshotAudio({
   voiceId: string;
   cachePayload: unknown;
   fallbackScript: string;
-}) {
+}): Promise<{ outputPath: string; segmentDurations: SegmentDuration[] }> {
   const cacheKey = createHash('sha1').update(JSON.stringify(cachePayload)).digest('hex');
   const renderDir = join(getUploadsDir(), '.snapshot-renders');
   const outputPath = join(renderDir, `${cacheKey}.m4a`);
+  const durationsPath = join(renderDir, `${cacheKey}.durations.json`);
 
   await fs.mkdir(renderDir, { recursive: true });
 
+  // Cache hit — return cached audio + cached durations (if available).
   try {
     await fs.access(outputPath);
-    return outputPath;
+    const durJson = await fs.readFile(durationsPath, 'utf8').catch(() => '[]');
+    const segmentDurations = JSON.parse(durJson) as SegmentDuration[];
+    return { outputPath, segmentDurations };
   } catch {
     // render below
   }
@@ -93,30 +121,20 @@ async function renderSnapshotAudio({
           },
         ];
 
-  const segmentPaths: string[] = [];
+  // Track { order, path } so we can probe each segment's actual duration.
+  const segmentEntries: { order: number; path: string }[] = [];
 
   for (const block of playbackBlocks) {
     if (isVoiceBlock(block)) {
       const line = block.content?.trim() || '';
-      if (!line) {
-        continue;
-      }
-      segmentPaths.push(
-        await getOrCreateTtsSegmentPath({
-          text: line,
-          voiceId,
-        })
-      );
+      if (!line) continue;
+      const path = await getOrCreateTtsSegmentPath({ text: line, voiceId });
+      segmentEntries.push({ order: block.order ?? 0, path });
       continue;
     }
 
-    if (!isMediaBlock(block) || !block.mediaId) {
-      continue;
-    }
-
-    if (block.mediaType && block.mediaType !== 'AUDIO') {
-      continue;
-    }
+    if (!isMediaBlock(block) || !block.mediaId) continue;
+    if (block.mediaType && block.mediaType !== 'AUDIO') continue;
 
     const clipStartMs =
       typeof block.clipStartMs === 'number' && Number.isFinite(block.clipStartMs)
@@ -128,39 +146,44 @@ async function renderSnapshotAudio({
         : null;
 
     try {
+      let path: string;
       if (clipStartMs != null && clipEndMs != null && clipEndMs > clipStartMs) {
-        segmentPaths.push(
-          await getOrCreateAudioSegmentPath({
-            emberId,
-            mediaId: block.mediaId,
-            startMs: clipStartMs,
-            endMs: clipEndMs,
-          })
-        );
-        continue;
-      }
-
-      segmentPaths.push(
-        await getOrCreateNormalizedAudioPath({
+        path = await getOrCreateAudioSegmentPath({
           emberId,
           mediaId: block.mediaId,
-        })
-      );
+          startMs: clipStartMs,
+          endMs: clipEndMs,
+        });
+      } else {
+        path = await getOrCreateNormalizedAudioPath({ emberId, mediaId: block.mediaId });
+      }
+      segmentEntries.push({ order: block.order ?? 0, path });
     } catch (segmentError) {
       console.error('Skipping non-playable story cut media block:', segmentError);
     }
   }
 
-  if (segmentPaths.length === 0) {
+  if (segmentEntries.length === 0) {
     throw new Error('Story Cut has no playable audio blocks');
   }
 
+  // Probe each segment's actual duration so the client can sync text accurately.
+  const segmentDurations: SegmentDuration[] = await Promise.all(
+    segmentEntries.map(async ({ order, path }) => ({
+      order,
+      durationMs: await probeAudioDurationMs(path),
+    }))
+  );
+
   await concatenateAudioSegmentsToM4a({
-    inputPaths: segmentPaths,
+    inputPaths: segmentEntries.map((e) => e.path),
     outputPath,
   });
 
-  return outputPath;
+  // Cache durations alongside the audio file.
+  await fs.writeFile(durationsPath, JSON.stringify(segmentDurations)).catch(() => undefined);
+
+  return { outputPath, segmentDurations };
 }
 
 async function getOrCreateTtsSegmentPath({
@@ -283,7 +306,7 @@ export async function GET(
     const blocks = Array.isArray(parsedBlocks) ? (parsedBlocks as SnapshotBlock[]) : [];
     const sortedBlocks = [...blocks].sort((left, right) => Number(left.order || 0) - Number(right.order || 0));
     const voiceId = getVoiceEntry(ember.owner?.voicePreferenceId).elevenLabsId;
-    const outputPath = await renderSnapshotAudio({
+    const { outputPath, segmentDurations } = await renderSnapshotAudio({
       emberId: id,
       blocks: sortedBlocks,
       voiceId,
@@ -306,6 +329,8 @@ export async function GET(
         'Content-Type': 'audio/mp4',
         'Content-Length': String(stat.size),
         'Cache-Control': 'private, max-age=3600',
+        'X-Segment-Durations': JSON.stringify(segmentDurations),
+        'Access-Control-Expose-Headers': 'X-Segment-Durations',
       },
     });
   } catch (error) {
@@ -358,7 +383,7 @@ export async function POST(
       return NextResponse.json({ error: 'Story Cut has no playable content' }, { status: 400 });
     }
 
-    const outputPath = await renderSnapshotAudio({
+    const { outputPath, segmentDurations } = await renderSnapshotAudio({
       emberId: id,
       blocks,
       voiceId,
@@ -381,6 +406,8 @@ export async function POST(
         'Content-Type': 'audio/mp4',
         'Content-Length': String(stat.size),
         'Cache-Control': 'private, max-age=3600',
+        'X-Segment-Durations': JSON.stringify(segmentDurations),
+        'Access-Control-Expose-Headers': 'X-Segment-Durations',
       },
     });
   } catch (error) {
