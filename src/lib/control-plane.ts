@@ -4,12 +4,12 @@ import {
   getPromptAliasChain,
 } from '@/lib/prompt-registry';
 
-const PROMPT_OVERRIDE_CACHE_TTL_MS = 60_000;
+const PROMPT_CACHE_TTL_MS = 60_000;
 export const PROMPT_REMOVED_MESSAGE = 'prompt removed';
 
-let overrideCache: Map<string, string> | null = null;
-let overrideCacheExpiresAt = 0;
-let inFlightOverrides: Promise<Map<string, string>> | null = null;
+let promptCache: Map<string, string> | null = null;
+let promptCacheExpiresAt = 0;
+let inFlightPrompts: Promise<Map<string, string>> | null = null;
 
 export class PromptRemovedError extends Error {
   constructor() {
@@ -25,8 +25,8 @@ export function isPromptRemovedError(error: unknown) {
   );
 }
 
-async function fetchPromptOverrides(): Promise<Map<string, string>> {
-  const rows = await prisma.promptOverride.findMany({
+async function fetchPrompts(): Promise<Map<string, string>> {
+  const rows = await prisma.prompt.findMany({
     select: { key: true, body: true },
   });
   const map = new Map<string, string>();
@@ -39,39 +39,39 @@ async function fetchPromptOverrides(): Promise<Map<string, string>> {
   return map;
 }
 
-export async function getPromptOverrides(): Promise<Map<string, string>> {
+export async function getPrompts(): Promise<Map<string, string>> {
   const now = Date.now();
-  if (overrideCache && now < overrideCacheExpiresAt) {
-    return overrideCache;
+  if (promptCache && now < promptCacheExpiresAt) {
+    return promptCache;
   }
 
-  if (!inFlightOverrides) {
-    inFlightOverrides = fetchPromptOverrides()
+  if (!inFlightPrompts) {
+    inFlightPrompts = fetchPrompts()
       .then((map) => {
-        overrideCache = map;
-        overrideCacheExpiresAt = Date.now() + PROMPT_OVERRIDE_CACHE_TTL_MS;
+        promptCache = map;
+        promptCacheExpiresAt = Date.now() + PROMPT_CACHE_TTL_MS;
         return map;
       })
       .catch((error) => {
-        console.error('Prompt override fetch failed:', error);
-        return overrideCache || new Map<string, string>();
+        console.error('Prompt fetch failed:', error);
+        return promptCache || new Map<string, string>();
       })
       .finally(() => {
-        inFlightOverrides = null;
+        inFlightPrompts = null;
       });
   }
 
-  return inFlightOverrides;
+  return inFlightPrompts;
 }
 
-export function invalidatePromptOverrideCache() {
-  overrideCache = null;
-  overrideCacheExpiresAt = 0;
+export function invalidatePromptCache() {
+  promptCache = null;
+  promptCacheExpiresAt = 0;
 }
 
 export type PromptResolution = {
   body: string;
-  source: 'override' | 'override-alias';
+  source: 'db' | 'db-alias';
   resolvedKey: string;
 };
 
@@ -80,16 +80,16 @@ export async function resolvePrompt(promptKey: string): Promise<PromptResolution
     throw new Error(`Prompt key "${promptKey}" is not registered. Add it to PROMPT_REGISTRY.`);
   }
 
-  const overrides = await getPromptOverrides();
+  const prompts = await getPrompts();
   const chain = getPromptAliasChain(promptKey);
 
   for (let index = 0; index < chain.length; index += 1) {
     const candidate = chain[index];
-    const overrideBody = overrides.get(candidate)?.trim();
-    if (overrideBody) {
+    const body = prompts.get(candidate)?.trim();
+    if (body) {
       return {
-        body: overrideBody,
-        source: index > 0 ? 'override-alias' : 'override',
+        body,
+        source: index > 0 ? 'db-alias' : 'db',
         resolvedKey: candidate,
       };
     }

@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { prisma } from '../src/lib/db';
 
 async function main() {
-  const dropped = await prisma.promptOverride
+  const dropped = await prisma.prompt
     .delete({ where: { key: 'title_generation.initial' } })
     .catch(() => null);
   console.log(dropped ? 'Dropped title_generation.initial' : 'No title_generation.initial row to drop');

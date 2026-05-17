@@ -12,7 +12,7 @@ export type PlaylistSegment =
  * pre-recorded contributor clips. Returns an ordered array of narration
  * segments and clip references so the caller can assemble snapshot blocks.
  *
- * Prompt MUST exist in the DB (PromptOverride key: story_generation.playlist).
+ * Prompt MUST exist in the DB (Prompt key: story_generation.playlist).
  * No hardcoded fallback — missing prompt throws and the caller surfaces the error.
  */
 export async function generatePlaylistNarration({
@@ -74,7 +74,7 @@ export async function generatePlaylistNarration({
 /**
  * Generate a short narration script for a facet-composed Story.
  *
- * Prompt MUST exist in the DB (PromptOverride key: story_generation.compose).
+ * Prompt MUST exist in the DB (Prompt key: story_generation.compose).
  * No hardcoded fallback — missing prompt throws and the caller surfaces the error.
  */
 export async function generateStoryScript({

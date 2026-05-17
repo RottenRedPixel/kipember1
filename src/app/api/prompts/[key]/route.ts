@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentAuth } from '@/lib/auth-server';
-import { invalidatePromptOverrideCache } from '@/lib/control-plane';
+import { invalidatePromptCache } from '@/lib/control-plane';
 import { prisma } from '@/lib/db';
 import { APPROVED_PROMPT_KEYS } from '@/lib/prompt-registry';
 import { RETELL_PROMPT_KEYS, syncRetellAgent } from '@/lib/retell-sync';
@@ -39,7 +39,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'unknown prompt key' }, { status: 404 });
   }
 
-  const row = await prisma.promptOverride.findUnique({
+  const row = await prisma.prompt.findUnique({
     where: { key },
     select: { key: true, body: true, updatedAt: true, updatedBy: true },
   });
@@ -81,13 +81,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'body cannot be empty' }, { status: 400 });
   }
 
-  const saved = await prisma.promptOverride.upsert({
+  const saved = await prisma.prompt.upsert({
     where: { key },
     create: { key, body, updatedBy: authResult.user.email },
     update: { body, updatedBy: authResult.user.email },
   });
 
-  invalidatePromptOverrideCache();
+  invalidatePromptCache();
   syncRetellInBackground(key);
 
   return NextResponse.json({
@@ -106,11 +106,11 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'unknown prompt key' }, { status: 404 });
   }
 
-  await prisma.promptOverride
+  await prisma.prompt
     .delete({ where: { key } })
     .catch(() => undefined);
 
-  invalidatePromptOverrideCache();
+  invalidatePromptCache();
   syncRetellInBackground(key);
 
   return NextResponse.json({ ok: true });

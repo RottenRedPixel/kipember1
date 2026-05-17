@@ -1,4 +1,4 @@
-// Upsert a PromptOverride row directly into the database. Use this when you
+// Upsert a Prompt row directly into the database. Use this when you
 // want to update a saved prompt body without going through the admin UI.
 //
 //   npx tsx scripts/set-prompt.ts <prompt_key> <body_file_path> [--by <email>]
@@ -70,7 +70,7 @@ async function main() {
     process.exit(1);
   }
 
-  const saved = await prisma.promptOverride.upsert({
+  const saved = await prisma.prompt.upsert({
     where: { key },
     create: { key, body, updatedBy: updatedBy ?? null },
     update: { body, updatedBy: updatedBy ?? null },
