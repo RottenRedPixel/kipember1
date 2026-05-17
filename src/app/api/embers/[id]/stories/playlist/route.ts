@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiUser } from '@/lib/auth-server';
-import { ensureEmberOwnerAccess, getEmberAccessType } from '@/lib/ember';
+import { getEmberAccessType } from '@/lib/ember';
 import { prisma } from '@/lib/db';
 import { generatePlaylistNarration } from '@/lib/story-generator';
 import { getEmberTitle } from '@/lib/ember-title';
@@ -27,6 +27,11 @@ type ClipItem = {
   startMs: number | null;
   endMs: number | null;
 };
+
+/** Returns true when a URL points to audio we own on local storage (not an external/expiring link). */
+function isLocalUrl(url: string | null | undefined): boolean {
+  return typeof url === 'string' && url.startsWith('/api/uploads/');
+}
 
 /**
  * POST /api/embers/[id]/stories/playlist
@@ -102,17 +107,28 @@ export async function POST(
       }),
       prisma.emberCallClip.findMany({
         where: { emberId: id },
-        select: { id: true, speaker: true, quote: true, significance: true, startMs: true, endMs: true },
+        select: {
+          id: true, speaker: true, quote: true, significance: true, startMs: true, endMs: true,
+          audioUrl: true,
+          voiceCall: { select: { recordingUrl: true } },
+        },
         orderBy: { sortOrder: 'asc' },
       }),
     ]);
 
     if (!emberRecord) return NextResponse.json({ error: 'Ember not found' }, { status: 404 });
 
-    // Merge all clips into a single typed list
+    // Merge all clips into a single typed list.
+    // Call clips are only included when audio is confirmed in our own storage —
+    // external Retell URLs expire and will fail ffmpeg at render time.
+    // Voice clips always have audioFilename so they're always safe.
+    const safeCallClips = callClips.filter(
+      (c) => isLocalUrl(c.audioUrl) || isLocalUrl(c.voiceCall?.recordingUrl)
+    );
+
     const allClips: ClipItem[] = [
       ...voiceClips.map((c) => ({ ...c, kind: 'voice' as const, speaker: c.speaker ?? '' })),
-      ...callClips.map((c) => ({ ...c, kind: 'call' as const, speaker: c.speaker ?? '' })),
+      ...safeCallClips.map((c) => ({ ...c, kind: 'call' as const, speaker: c.speaker ?? '' })),
     ];
 
     // Filter by selected people (speaker name contains any selected first name)

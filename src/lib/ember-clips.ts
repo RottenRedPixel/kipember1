@@ -62,6 +62,18 @@ export type ExtractedEmberVoiceClip = {
   endMs: number;
 };
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/** Audio clips shorter than this are useless for playback — the LLM tends to
+ *  pull single-word fragments ("disappointment") that work as factual claims
+ *  but sound absurd when played as audio. Clips are validated against this
+ *  threshold at every extraction point (LLM output, claim-sync fallback). */
+const MIN_CLIP_WORDS = 4;
+
+function hasMinWords(quote: string): boolean {
+  return quote.trim().split(/\s+/).filter(Boolean).length >= MIN_CLIP_WORDS;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function asArray<T>(value: unknown): T[] {
@@ -211,6 +223,7 @@ Return JSON: {"clips": [{"title": "short label (3–6 words)", "quote": "exact v
 
 Rules:
 - quote must be verbatim — never paraphrase or summarise
+- quote must be at least 4 words — single words or short fragments are NOT valid clips; they work as facts but sound absurd when played as audio
 - one clip per sentence/thought — do not merge multiple sentences into one clip
 - canUseForTitle: true only if the quote could stand alone as an ember title
 - Return {"clips": []} only if the contributor said absolutely nothing`;
@@ -258,7 +271,7 @@ export async function extractImportantEmberCallClips({
   return clips.flatMap((clip, i) => {
     const quote = typeof clip.quote === 'string' ? normalizeText(clip.quote) : '';
     const title = typeof clip.title === 'string' ? normalizeText(clip.title) : quote.slice(0, 60);
-    if (!quote) return [];
+    if (!quote || !hasMinWords(quote)) return [];
 
     const segIdx = typeof clip.segmentIndex === 'number' ? clip.segmentIndex : -1;
     const segment = segments.find((s) => s.index === segIdx && s.role === 'user')
@@ -319,7 +332,7 @@ export async function extractImportantEmberVoiceClips({
   return clips.flatMap((clip, i) => {
     const quote = typeof clip.quote === 'string' ? normalizeText(clip.quote) : '';
     const title = typeof clip.title === 'string' ? normalizeText(clip.title) : quote.slice(0, 60);
-    if (!quote || words.length === 0) return [];
+    if (!quote || !hasMinWords(quote) || words.length === 0) return [];
 
     const quoteTokens = normalizeForMatch(quote).split(' ').filter(Boolean);
     const wordTokens = words.map((w) => normalizeForMatch(w.text));
@@ -516,7 +529,7 @@ export async function syncVoiceClipsFromClaims({
     const claim = claims[i];
     // Prefer rawText (closer to verbatim) then value
     const searchText = (claim.rawText?.trim() || claim.value?.trim() || '').slice(0, 200);
-    if (!searchText || isCovered(searchText)) continue;
+    if (!searchText || !hasMinWords(searchText) || isCovered(searchText)) continue;
 
     const timing = findTiming(searchText);
     if (!timing) continue;

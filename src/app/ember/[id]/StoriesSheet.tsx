@@ -49,8 +49,6 @@ type Block = {
   clipKind?: 'voice' | 'call';
 };
 
-type DebugEntry = { ts: string; color: string; text: string };
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function StoriesSheet({
@@ -82,9 +80,6 @@ export default function StoriesSheet({
   const [callClipSpeakers,    setCallClipSpeakers]     = useState<string[]>([]);
   const [selectedKeys,        setSelectedKeys]         = useState<Set<string>>(new Set(['snapshot']));
 
-  // ── Debug log ──
-  const [debugLog, setDebugLog] = useState<DebugEntry[]>([]);
-
   // ── Idle prompt ──
   const [idlePromptIdx,     setIdlePromptIdx]     = useState(() => Math.floor(Math.random() * IDLE_PROMPTS.length));
   const [idlePromptVisible, setIdlePromptVisible] = useState(true);
@@ -100,13 +95,6 @@ export default function StoriesSheet({
   const savedRef       = useRef(false);
 
   const durationSeconds = 7;
-
-  // ─── Debug helper ────────────────────────────────────────────────────────
-
-  const dbg = useCallback((text: string, color = 'rgba(255,255,255,0.6)') => {
-    const ts = new Date().toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    setDebugLog((prev) => [...prev.slice(-40), { ts, color, text }]);
-  }, []);
 
   // ─── Dispose — kills the active session and frees all resources ──────────
 
@@ -135,7 +123,6 @@ export default function StoriesSheet({
     const blks   = blocksRef.current;
 
     if (idx >= segs.length) {
-      dbg('■ done', '#a78bfa');
       setStatus('paused');
       setDone(true);
       return;
@@ -147,30 +134,16 @@ export default function StoriesSheet({
     if (!audio) {
       // emberpause or a media block that failed to fetch — just wait and advance
       const ms = blks[idx]?.durationMs ?? 2000;
-      const label = blks[idx]?.type === 'emberpause' ? `⏸ pause ${ms}ms` : `⏭ skipped`;
-      dbg(`  [${idx}] ${label}`, '#60a5fa');
       setTimeout(() => playFrom(idx + 1, gen), ms);
       return;
     }
 
     currentAudio.current = audio;
-    dbg(`  [${idx}] ▶ playing`, '#4ade80');
 
-    audio.addEventListener('ended', () => {
-      dbg(`  [${idx}] ✓ ended`, '#4ade80');
-      playFrom(idx + 1, gen);
-    }, { once: true });
-
-    audio.addEventListener('error', () => {
-      dbg(`  [${idx}] ✗ audio error`, '#f87171');
-      playFrom(idx + 1, gen);
-    }, { once: true });
-
-    audio.play().catch((e: unknown) => {
-      dbg(`  [${idx}] ✗ play() rejected: ${e instanceof Error ? e.message : String(e)}`, '#f87171');
-      playFrom(idx + 1, gen);
-    });
-  }, [dbg]);
+    audio.addEventListener('ended', () => playFrom(idx + 1, gen), { once: true });
+    audio.addEventListener('error', () => playFrom(idx + 1, gen), { once: true });
+    audio.play().catch(() => playFrom(idx + 1, gen));
+  }, []);
 
   // ─── Save story to DB ────────────────────────────────────────────────────
 
@@ -213,7 +186,6 @@ export default function StoriesSheet({
     dispose(); // increment gen, stop old audio, free old URLs
     setError('');
     setDone(false);
-    setDebugLog([]);
     savedRef.current = false;
 
     const gen = genRef.current; // capture AFTER dispose() so it matches
@@ -254,7 +226,6 @@ export default function StoriesSheet({
               if (Array.isArray(payload?.blocks) && payload.blocks.length > 0) {
                 activeBlocks = payload.blocks;
                 setBlocks(activeBlocks);
-                dbg(`▶ playlist: ${activeBlocks.length} blocks`, '#a78bfa');
               }
             }
           } catch { /* fall through to compose */ }
@@ -272,7 +243,6 @@ export default function StoriesSheet({
             if (!res.ok) throw new Error(payload?.script ?? 'Failed to compose story.');
             activeScript = payload?.script ?? '';
             setScript(activeScript);
-            dbg('▶ compose: script ready', '#a78bfa');
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to compose story.');
             setStatus('idle');
@@ -291,14 +261,6 @@ export default function StoriesSheet({
       const sorted = [...activeBlocks].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       blocksRef.current = sorted;
 
-      dbg(`fetching ${sorted.length} segments…`, 'rgba(255,255,255,0.4)');
-      sorted.forEach((b, i) => {
-        const lbl = b.type === 'voice'      ? `voice "${(b.content ?? '').slice(0, 35)}…"`
-                  : b.type === 'emberpause' ? `pause ${b.durationMs ?? 2000}ms`
-                  : `media [${b.speaker ?? b.mediaId?.slice(0, 8) ?? '?'}]`;
-        dbg(`  [${i}] ${lbl}`, 'rgba(255,255,255,0.3)');
-      });
-
       const blobsOrNull = await Promise.all(
         sorted.map(async (block, i) => {
           if (block.type === 'emberpause') return null;
@@ -308,16 +270,9 @@ export default function StoriesSheet({
               { method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ blocks: [block] }) }
             );
-            if (!res.ok) {
-              const p = await res.json().catch(() => null) as { error?: string } | null;
-              dbg(`  [${i}] ✗ ${(p?.error ?? `HTTP ${res.status}`).slice(0, 100)}`, '#f87171');
-              return null;
-            }
-            const blob = await res.blob();
-            dbg(`  [${i}] ✓ ${(blob.size / 1024).toFixed(0)} KB`, '#4ade80');
-            return blob;
-          } catch (e) {
-            dbg(`  [${i}] ✗ ${e instanceof Error ? e.message : String(e)}`.slice(0, 100), '#f87171');
+            if (!res.ok) return null;
+            return res.blob();
+          } catch {
             return null;
           }
         })
@@ -369,7 +324,6 @@ export default function StoriesSheet({
 
     } else if (activeScript) {
       // Single-script mode — one concatenated audio file
-      dbg('fetching single-script audio…', 'rgba(255,255,255,0.4)');
       try {
         const res = await fetch(
           `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tqs}`,
@@ -381,7 +335,6 @@ export default function StoriesSheet({
           throw new Error(p?.error ?? `HTTP ${res.status}`);
         }
         const blob = await res.blob();
-        dbg(`✓ ${(blob.size / 1024).toFixed(0)} KB`, '#4ade80');
 
         if (gen !== genRef.current) return;
 
@@ -414,7 +367,7 @@ export default function StoriesSheet({
   }, [
     status, done, emberId, accessToken, selectedKeys, taggedNames,
     blocks, script, storyScript, durationSeconds,
-    dispose, playFrom, saveStory, dbg,
+    dispose, playFrom, saveStory,
   ]);
 
   // ─── Derived display data ─────────────────────────────────────────────────
@@ -537,7 +490,6 @@ export default function StoriesSheet({
       setStatus('idle'); setError(''); setDone(false);
       setSegIdx(0); setScript(null); setBlocks(null);
       setSelectedKeys(new Set(['snapshot']));
-      setDebugLog([]);
       savedRef.current = false;
     }
   }, [isOpen, dispose]);
@@ -573,7 +525,6 @@ export default function StoriesSheet({
     dispose();
     setStatus('idle'); setError(''); setDone(false);
     setSegIdx(0); setScript(null); setBlocks(null);
-    setDebugLog([]);
     savedRef.current = false;
   }, [dispose]);
 
@@ -639,21 +590,6 @@ export default function StoriesSheet({
         </p>
       ) : null}
 
-      {/* ── Debug log ── */}
-      {debugLog.length > 0 ? (
-        <div
-          className="flex-shrink-0 mx-3 mt-1 rounded-lg overflow-y-auto"
-          style={{ maxHeight: 160, background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.08)', padding: '6px 8px' }}
-        >
-          {debugLog.map((e, i) => (
-            <div key={i} style={{ display: 'flex', gap: 6, lineHeight: 1.35 }}>
-              <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', flexShrink: 0, fontVariantNumeric: 'tabular-nums', paddingTop: 1 }}>{e.ts}</span>
-              <span style={{ fontSize: '0.65rem', color: e.color, wordBreak: 'break-all' }}>{e.text}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
       {/* ── Body ── */}
       <div className="absolute left-0 right-0 bottom-0 px-4 flex flex-col pointer-events-none [&_button]:pointer-events-auto" style={{ top: 56 }}>
 
@@ -670,9 +606,6 @@ export default function StoriesSheet({
                   ) : null}
                   <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: curSeg.speaker ? '#4ade80' : 'rgba(255,255,255,0.85)' }}>
                     {curSeg.text}
-                  </p>
-                  <p style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', marginTop: 4 }}>
-                    {segIdx + 1} / {displaySegments.length}
                   </p>
                 </>
               ) : scriptLines.length > 0 ? (
