@@ -977,11 +977,19 @@ export async function pullRetellRecordingToStorage(voiceCallId: string): Promise
   // Upload to object storage
   await uploadLocalFileToObjectStorage({ filename: outFilename, filePath: outPath });
 
-  // Point the DB record at our own URL
-  await prisma.voiceCall.update({
-    where: { id: voiceCallId },
-    data: { recordingUrl: getUploadUrl(outFilename) },
-  });
+  const ownUrl = getUploadUrl(outFilename);
 
-  console.log(`Retell recording migrated → ${getUploadUrl(outFilename)} (call ${voiceCallId})`);
+  // Point the VoiceCall record and all its EmberCallClip rows at our own URL
+  await Promise.all([
+    prisma.voiceCall.update({
+      where: { id: voiceCallId },
+      data: { recordingUrl: ownUrl },
+    }),
+    prisma.emberCallClip.updateMany({
+      where: { voiceCallId },
+      data: { audioUrl: ownUrl },
+    }),
+  ]);
+
+  console.log(`Retell recording migrated → ${ownUrl} (call ${voiceCallId})`);
 }
