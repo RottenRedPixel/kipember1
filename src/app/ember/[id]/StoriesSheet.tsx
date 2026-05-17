@@ -599,20 +599,30 @@ export default function StoriesSheet({
         // ── Playlist mode: sequential per-block audio ──────────────────────
         // Each block gets its own audio element. 'ended' advances to the next.
         // No timing estimation needed — clips play fully before the next starts.
-        const sortedBlocks = [...(blocks as Array<{ order?: number }>)]
+        type DebugBlock = { type: string; speaker?: string; mediaId?: string; order?: number };
+        const sortedBlocks = [...(blocks as Array<DebugBlock>)]
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
+        console.log('[StoriesSheet] playlist blocks:', sortedBlocks.map((b, i) =>
+          `[${i}] ${b.type}${b.speaker ? ` (${b.speaker})` : ''}${b.mediaId ? ` mediaId=${b.mediaId}` : ''}`
+        ));
+
         const segBlobs = await Promise.all(
-          sortedBlocks.map(async (block) => {
+          sortedBlocks.map(async (block, i) => {
+            console.log(`[StoriesSheet] fetching segment ${i}/${sortedBlocks.length - 1}:`, block.type, block.speaker ?? block.mediaId ?? '');
             const res = await fetch(
               `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
               { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blocks: [block] }) }
             );
             if (!res.ok) {
               const p = await res.json().catch(() => null);
-              throw new Error(p?.error ?? 'Segment audio unavailable.');
+              const msg = p?.error ?? `HTTP ${res.status}`;
+              console.error(`[StoriesSheet] segment ${i} fetch failed:`, msg, block);
+              throw new Error(`Segment ${i} (${block.type}${block.speaker ? ` / ${block.speaker}` : ''}): ${msg}`);
             }
-            return res.blob();
+            const blob = await res.blob();
+            console.log(`[StoriesSheet] segment ${i} fetched ok, size=${blob.size}`);
+            return blob;
           })
         );
 
@@ -639,13 +649,26 @@ export default function StoriesSheet({
         setPlaybackState('playing');
 
         const playSegmentAt = (idx: number) => {
-          if (idx >= segAudios.length) { setPlaybackState('paused'); setDone(true); return; }
+          if (idx >= segAudios.length) {
+            console.log('[StoriesSheet] playlist finished');
+            setPlaybackState('paused'); setDone(true); return;
+          }
           const seg = segAudios[idx];
+          console.log(`[StoriesSheet] playing segment ${idx}/${segAudios.length - 1}, duration=${seg.duration?.toFixed(2) ?? 'unknown'}`);
           audioRef.current = seg;
           setCurrentSegmentIdx(idx);
-          seg.addEventListener('ended', () => playSegmentAt(idx + 1), { once: true });
-          seg.addEventListener('error', () => playSegmentAt(idx + 1), { once: true });
-          seg.play().catch(() => playSegmentAt(idx + 1));
+          seg.addEventListener('ended', () => {
+            console.log(`[StoriesSheet] segment ${idx} ended`);
+            playSegmentAt(idx + 1);
+          }, { once: true });
+          seg.addEventListener('error', (e) => {
+            console.error(`[StoriesSheet] segment ${idx} audio error:`, (e as ErrorEvent).message ?? e, seg.error);
+            playSegmentAt(idx + 1);
+          }, { once: true });
+          seg.play().catch((e) => {
+            console.error(`[StoriesSheet] segment ${idx} play() rejected:`, e);
+            playSegmentAt(idx + 1);
+          });
         };
         playSegmentAt(0);
 
@@ -664,22 +687,27 @@ export default function StoriesSheet({
 
       } else {
         // ── Single-script mode: one concatenated audio file ─────────────────
+        console.log('[StoriesSheet] single-script mode, fetching audio');
         const response = await fetch(
           `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ script }) }
         );
         if (!response.ok) {
           const p = await response.json().catch(() => null);
-          throw new Error(p?.error ?? 'Audio not available.');
+          const msg = p?.error ?? `HTTP ${response.status}`;
+          console.error('[StoriesSheet] single-script audio fetch failed:', msg);
+          throw new Error(msg);
         }
         const blob = await response.blob();
+        console.log('[StoriesSheet] single-script audio ok, size=', blob.size);
         const audio = await buildAudioFromBlob(blob);
         await audio.play();
         if (script) void saveStory(script);
       }
     } catch (err) {
+      console.error('[StoriesSheet] playback error:', err);
       setPlaybackState('paused');
-      setError(err instanceof Error ? err.message : 'Audio could not be played.');
+      setError(err instanceof Error ? err.message : String(err));
     }
   }, [
     playbackState, emberId, selectedKeys, composedScript, composedBlocks,
