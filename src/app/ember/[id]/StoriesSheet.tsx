@@ -164,14 +164,15 @@ export default function StoriesSheet({
   }, [composedScript]);
   const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
 
-  // Playlist mode: ordered segments with cumulative audio start times.
-  // durationMs comes directly from the playlist route — clips use exact
-  // Whisper timestamps (endMs - startMs), narrator uses a word-count estimate.
-  // Stored in a ref so the timeupdate handler always reads the current value
-  // without depending on React's async render cycle.
-  const displaySegmentsRef = useRef<Array<{ text: string; speaker?: string; cumStart: number }> | null>(null);
+  // Playlist mode: ordered segments with cumulative estimated durations.
+  // durationMs from the playlist route — clips are exact Whisper timestamps,
+  // narrator is a word-count estimate. We also store totalEstSec so the
+  // timeupdate handler can normalise cumStart against actual audio.duration,
+  // correcting for narrator TTS speed variance without needing ffprobe.
+  const displaySegmentsRef  = useRef<Array<{ text: string; speaker?: string; cumStart: number }> | null>(null);
+  const totalEstSecRef       = useRef(0);
   const displaySegments = useMemo(() => {
-    if (!composedBlocks) { displaySegmentsRef.current = null; return null; }
+    if (!composedBlocks) { displaySegmentsRef.current = null; totalEstSecRef.current = 0; return null; }
     type B = {
       type: string;
       content?: string;
@@ -201,6 +202,7 @@ export default function StoriesSheet({
         cumSec += dur;
       }
     }
+    totalEstSecRef.current = cumSec;
     const result = segs.length > 0 ? segs : null;
     displaySegmentsRef.current = result;
     return result;
@@ -287,22 +289,30 @@ export default function StoriesSheet({
   }, [fading, storyLines.length]);
 
   // ── Audio-driven text sync ────────────────────────────────────────────────
-  // Reads displaySegmentsRef directly — no closure over stale React state.
+  // Reads refs directly — no closure over stale React state.
+  // Playlist mode uses proportional mapping: estimated cumStart / totalEstSec
+  // is compared against actual currentTime / duration. This corrects for
+  // narrator TTS speed variance without needing server-side probing.
   useEffect(() => {
     const audio = audioRef.current;
     if (!isPlaying || !audio) return;
     const onTimeUpdate = () => {
       const t = audio.currentTime;
       const segs = displaySegmentsRef.current;
-      if (segs) {
-        // Playlist mode: find the last segment whose cumStart <= current time
+      const totalEst = totalEstSecRef.current;
+      if (segs && totalEst > 0) {
+        const dur = audio.duration;
+        if (!dur || !isFinite(dur)) return;
+        // progress 0→1 through actual audio
+        const progress = t / dur;
+        // find last segment whose estimated start-ratio <= progress
         let idx = 0;
         for (let i = segs.length - 1; i >= 0; i--) {
-          if (t >= segs[i].cumStart) { idx = i; break; }
+          if (progress >= segs[i].cumStart / totalEst) { idx = i; break; }
         }
         setCurrentSegmentIdx((prev) => (prev === idx ? prev : idx));
       } else if (storyLines.length > 0) {
-        // Single-script mode: advance lines proportionally through the audio
+        // Single-script mode: proportional line advance
         const dur = audio.duration;
         if (!dur || !isFinite(dur)) return;
         const pairs = Math.ceil(storyLines.length / 2);
@@ -793,8 +803,8 @@ export default function StoriesSheet({
                         <div className="flex items-center justify-center gap-3 mt-2 pointer-events-auto">
                           <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)' }}>
                             {currentSegmentIdx + 1} / {displaySegments.length}
-                            {audioRef.current ? ` · t=${audioRef.current.currentTime.toFixed(1)}s` : ''}
-                            {seg.cumStart != null ? ` · cue=${(seg as { cumStart: number }).cumStart.toFixed(1)}s` : ''}
+                            {audioRef.current ? ` · t=${audioRef.current.currentTime.toFixed(1)}s / ${(audioRef.current.duration || 0).toFixed(1)}s` : ''}
+                            {` · ratio=${((seg as { cumStart: number }).cumStart / Math.max(totalEstSecRef.current, 1)).toFixed(2)}`}
                           </span>
                           <button
                             type="button"
