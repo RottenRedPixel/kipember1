@@ -164,47 +164,21 @@ export default function StoriesSheet({
   }, [composedScript]);
   const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
 
-  // Playlist mode: ordered segments with cumulative estimated durations.
-  // durationMs from the playlist route — clips are exact Whisper timestamps,
-  // narrator is a word-count estimate. durationSec is stored per-segment so
-  // the timeupdate handler can hold on contributor clips for their full duration.
-  const displaySegmentsRef  = useRef<Array<{ text: string; speaker?: string; cumStart: number; durationSec: number }> | null>(null);
-  const totalEstSecRef       = useRef(0);
+  // Playlist mode: ordered text segments for display only.
+  // Sequential audio playback (one element per block, ended → advance) means
+  // we don't need any timing estimates here — just text + speaker per block.
   const displaySegments = useMemo(() => {
-    if (!composedBlocks) { displaySegmentsRef.current = null; totalEstSecRef.current = 0; return null; }
-    type B = {
-      type: string;
-      content?: string;
-      speaker?: string;
-      quote?: string;
-      durationMs?: number;
-      clipStartMs?: number;
-      clipEndMs?: number;
-      order?: number;
-    };
-    let cumSec = 0;
-    const segs: Array<{ text: string; speaker?: string; cumStart: number; durationSec: number }> = [];
+    if (!composedBlocks) return null;
+    type B = { type: string; content?: string; speaker?: string; quote?: string; order?: number };
+    const segs: Array<{ text: string; speaker?: string }> = [];
     for (const b of (composedBlocks as B[]).slice().sort((a, bn) => (a.order ?? 0) - (bn.order ?? 0))) {
       if (b.type === 'voice' && b.content) {
-        const dur = b.durationMs != null
-          ? b.durationMs / 1000
-          : Math.max(0.5, b.content.trim().split(/\s+/).length / 2.5);
-        segs.push({ text: b.content, cumStart: cumSec, durationSec: dur });
-        cumSec += dur;
+        segs.push({ text: b.content });
       } else if (b.type === 'media' && b.quote) {
-        const dur = b.durationMs != null
-          ? b.durationMs / 1000
-          : b.clipStartMs != null && b.clipEndMs != null
-            ? Math.max(0.5, (b.clipEndMs - b.clipStartMs) / 1000)
-            : Math.max(0.5, b.quote.trim().split(/\s+/).length / 2.0);
-        segs.push({ text: b.quote, speaker: b.speaker, cumStart: cumSec, durationSec: dur });
-        cumSec += dur;
+        segs.push({ text: b.quote, speaker: b.speaker });
       }
     }
-    totalEstSecRef.current = cumSec;
-    const result = segs.length > 0 ? segs : null;
-    displaySegmentsRef.current = result;
-    return result;
+    return segs.length > 0 ? segs : null;
   }, [composedBlocks]);
 
   const [currentSegmentIdx, setCurrentSegmentIdx] = useState(0);
@@ -226,17 +200,19 @@ export default function StoriesSheet({
   const timelineCurRef    = useRef<HTMLSpanElement>(null);
   const timelineEndRef    = useRef<HTMLSpanElement>(null);
 
-  // ── Clip-hold refs — track which segment is active and when a clip started ─
-  // currentSegmentIdxRef mirrors the currentSegmentIdx state so the timeupdate
-  // handler can read the latest value without a stale closure.
-  // clipEnteredAtRef holds the audio.currentTime when we first entered a
-  // contributor clip; -1 means we're in a narrator segment (no hold needed).
-  const currentSegmentIdxRef = useRef(0);
-  const clipEnteredAtRef     = useRef(-1);
+  // ── Playlist sequential-playback refs ────────────────────────────────────
+  // One audio element + one object URL per block. Played one at a time;
+  // each element's 'ended' event advances to the next.
+  const playlistAudiosRef = useRef<HTMLAudioElement[]>([]);
+  const playlistUrlsRef   = useRef<string[]>([]);
 
   const disposeAudio = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current.src = ''; audioRef.current = null; }
     if (audioUrlRef.current) { URL.revokeObjectURL(audioUrlRef.current); audioUrlRef.current = null; }
+    for (const a of playlistAudiosRef.current) { try { a.pause(); a.src = ''; } catch { /* ignore */ } }
+    for (const u of playlistUrlsRef.current) { URL.revokeObjectURL(u); }
+    playlistAudiosRef.current = [];
+    playlistUrlsRef.current = [];
     analyserRef.current = null;
     if (audioCtxRef.current) { void audioCtxRef.current.close().catch(() => undefined); audioCtxRef.current = null; }
   }, []);
@@ -295,69 +271,23 @@ export default function StoriesSheet({
     return () => clearTimeout(timer);
   }, [fading, storyLines.length]);
 
-  // ── Audio-driven text sync ────────────────────────────────────────────────
-  // Playlist mode logic:
-  //  • Narrator segments advance via proportional mapping
-  //    (estimated cumStart / totalEstSec vs actual currentTime / duration).
-  //  • Contributor clip segments are held for their full Whisper-measured
-  //    durationSec from the moment they first become active. This prevents
-  //    narrator drift from skipping over real voice/call clips.
+  // ── Audio-driven text sync (single-script mode only) ─────────────────────
+  // Playlist mode text advances via the 'ended' event on each segment's
+  // individual audio element — no timeupdate sync needed there.
   useEffect(() => {
     const audio = audioRef.current;
-    if (!isPlaying || !audio) return;
-
+    if (!isPlaying || !audio || displaySegments) return; // skip in playlist mode
     const onTimeUpdate = () => {
       const t = audio.currentTime;
-      const segs = displaySegmentsRef.current;
-      const totalEst = totalEstSecRef.current;
-
-      if (segs && totalEst > 0) {
-        const dur = audio.duration;
-        if (!dur || !isFinite(dur)) return;
-
-        const curIdx = currentSegmentIdxRef.current;
-        const curSeg = segs[curIdx];
-
-        // ── Clip-hold: if we're on a contributor segment, don't advance
-        // until the clip's full Whisper duration has elapsed.
-        if (curSeg?.speaker) {
-          if (clipEnteredAtRef.current < 0) {
-            // First timeupdate tick inside this clip — record the start time.
-            clipEnteredAtRef.current = t;
-          }
-          if (t < clipEnteredAtRef.current + curSeg.durationSec) {
-            return; // Clip still playing — hold here.
-          }
-        }
-
-        // ── Proportional advancement for narrator (or after clip finishes) ──
-        const progress = t / dur;
-        let idx = 0;
-        for (let i = segs.length - 1; i >= 0; i--) {
-          if (progress >= segs[i].cumStart / totalEst) { idx = i; break; }
-        }
-        // Never go backwards (clip-hold can leave progress ahead of cumStart).
-        idx = Math.max(idx, curIdx);
-
-        if (idx !== curIdx) {
-          // Reset clip tracking for the new segment (will be recorded on the
-          // first tick if the new segment is also a clip).
-          clipEnteredAtRef.current = -1;
-          currentSegmentIdxRef.current = idx;
-          setCurrentSegmentIdx(idx);
-        }
-      } else if (storyLines.length > 0) {
-        // Single-script mode: proportional line advance
-        const dur = audio.duration;
-        if (!dur || !isFinite(dur)) return;
-        const pairs = Math.ceil(storyLines.length / 2);
-        const targetPair = Math.min(Math.floor((t / dur) * pairs), pairs - 1);
-        setLineIndex(targetPair * 2);
-      }
+      const dur = audio.duration;
+      if (!dur || !isFinite(dur)) return;
+      const pairs = Math.ceil(storyLines.length / 2);
+      const targetPair = Math.min(Math.floor((t / dur) * pairs), pairs - 1);
+      setLineIndex(targetPair * 2);
     };
     audio.addEventListener('timeupdate', onTimeUpdate);
     return () => audio.removeEventListener('timeupdate', onTimeUpdate);
-  }, [isPlaying, storyLines.length]);
+  }, [isPlaying, storyLines.length, displaySegments]);
 
   // ── Timeline DOM updates (direct mutation — no React re-render per tick) ─
   useEffect(() => {
@@ -468,8 +398,6 @@ export default function StoriesSheet({
       setSelectedKeys(new Set(['snapshot']));
       setError('');
       setCurrentSegmentIdx(0);
-      currentSegmentIdxRef.current = 0;
-      clipEnteredAtRef.current = -1;
       savedRef.current = false;
     }
   }, [isOpen, disposeAudio]);
@@ -503,8 +431,6 @@ export default function StoriesSheet({
     setDone(false);
     setError('');
     setCurrentSegmentIdx(0);
-    currentSegmentIdxRef.current = 0;
-    clipEnteredAtRef.current = -1;
     savedRef.current = false;
   }, [disposeAudio]);
 
@@ -559,8 +485,9 @@ export default function StoriesSheet({
     if (playbackState === 'composing' || playbackState === 'loading') return;
 
     // Pause if already playing
-    if (audioRef.current && playbackState === 'playing') {
-      audioRef.current.pause();
+    if (playbackState === 'playing') {
+      audioRef.current?.pause();
+      setPlaybackState('paused');
       return;
     }
 
@@ -662,57 +589,93 @@ export default function StoriesSheet({
       }
     }
 
-    // Fetch audio — pass blocks if we have them, otherwise a plain script
+    // Fetch audio — playlist mode fetches each block individually and plays
+    // them sequentially (ended → next). Single-script mode fetches one file.
     setPlaybackState('loading');
     try {
       const tokenQs = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
-      const audioBody = blocks ? { blocks } : { script };
-      const response = await fetch(
-        `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(audioBody),
-        }
-      );
-      if (!response.ok) {
-        const p = await response.json().catch(() => null);
-        throw new Error(p?.error ?? 'Audio not available.');
-      }
-      const blob = await response.blob();
-      const audio = await buildAudioFromBlob(blob);
-      // Reset clip-hold state for a fresh play session.
-      currentSegmentIdxRef.current = 0;
-      clipEnteredAtRef.current = -1;
-      setCurrentSegmentIdx(0);
-      await audio.play();
-      if (script) {
-        void saveStory(script);
-      } else if (blocks) {
-        // Playlist mode — build a structured script that interleaves Ember
-        // narrator text with contributor voice/call transcripts, sorted by
-        // playback order. Saved as JSON so the wiki can render each segment
-        // with its own colour (narrator = muted, voice-clip = green, call-clip = blue).
+
+      if (blocks) {
+        // ── Playlist mode: sequential per-block audio ──────────────────────
+        // Each block gets its own audio element. 'ended' advances to the next.
+        // No timing estimation needed — clips play fully before the next starts.
+        const sortedBlocks = [...(blocks as Array<{ order?: number }>)]
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+        const segBlobs = await Promise.all(
+          sortedBlocks.map(async (block) => {
+            const res = await fetch(
+              `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blocks: [block] }) }
+            );
+            if (!res.ok) {
+              const p = await res.json().catch(() => null);
+              throw new Error(p?.error ?? 'Segment audio unavailable.');
+            }
+            return res.blob();
+          })
+        );
+
+        const segUrls = segBlobs.map((b) => URL.createObjectURL(b));
+        const segAudios = segUrls.map((u) => { const a = new Audio(u); a.preload = 'auto'; return a; });
+        playlistAudiosRef.current = segAudios;
+        playlistUrlsRef.current = segUrls;
+
+        // Connect first element to AudioContext for visualizer
+        try {
+          const AudioCtor = window.AudioContext ||
+            (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (AudioCtor && segAudios[0]) {
+            const ctx = new AudioCtor();
+            const src = ctx.createMediaElementSource(segAudios[0]);
+            const an = ctx.createAnalyser();
+            an.fftSize = 256; an.smoothingTimeConstant = 0.8;
+            src.connect(an); an.connect(ctx.destination);
+            audioCtxRef.current = ctx; analyserRef.current = an;
+          }
+        } catch { /* no visualizer */ }
+
+        setCurrentSegmentIdx(0);
+        setPlaybackState('playing');
+
+        const playSegmentAt = (idx: number) => {
+          if (idx >= segAudios.length) { setPlaybackState('paused'); setDone(true); return; }
+          const seg = segAudios[idx];
+          audioRef.current = seg;
+          setCurrentSegmentIdx(idx);
+          seg.addEventListener('ended', () => playSegmentAt(idx + 1), { once: true });
+          seg.addEventListener('error', () => playSegmentAt(idx + 1), { once: true });
+          seg.play().catch(() => playSegmentAt(idx + 1));
+        };
+        playSegmentAt(0);
+
+        // Save the playlist as a structured JSON story
         type PlaylistBlock =
           | { type: 'voice'; content?: string; order?: number }
           | { type: 'media'; clipKind?: 'voice' | 'call'; speaker?: string; quote?: string; order?: number };
         const segments = (blocks as PlaylistBlock[])
-          .slice()
-          .sort((a, b) => ((a.order ?? 0) - (b.order ?? 0)))
+          .slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .flatMap((b): { type: string; speaker?: string; text: string }[] => {
-            if (b.type === 'voice' && b.content) {
-              return [{ type: 'narration', text: b.content }];
-            }
-            if (b.type === 'media' && b.quote) {
-              return [{
-                type: b.clipKind === 'call' ? 'call-clip' : 'voice-clip',
-                speaker: b.speaker ?? 'Contributor',
-                text: b.quote,
-              }];
-            }
+            if (b.type === 'voice' && b.content) return [{ type: 'narration', text: b.content }];
+            if (b.type === 'media' && b.quote) return [{ type: b.clipKind === 'call' ? 'call-clip' : 'voice-clip', speaker: b.speaker ?? 'Contributor', text: b.quote }];
             return [];
           });
         if (segments.length > 0) void saveStory(JSON.stringify(segments));
+
+      } else {
+        // ── Single-script mode: one concatenated audio file ─────────────────
+        const response = await fetch(
+          `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tokenQs}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ script }) }
+        );
+        if (!response.ok) {
+          const p = await response.json().catch(() => null);
+          throw new Error(p?.error ?? 'Audio not available.');
+        }
+        const blob = await response.blob();
+        const audio = await buildAudioFromBlob(blob);
+        await audio.play();
+        if (script) void saveStory(script);
       }
     } catch (err) {
       setPlaybackState('paused');
@@ -842,20 +805,12 @@ export default function StoriesSheet({
                         >
                           {seg.text}
                         </p>
-                        {/* DEBUG: manual advance */}
+                        {/* DEBUG: segment counter */}
                         <div className="flex items-center justify-center gap-3 mt-2 pointer-events-auto">
                           <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)' }}>
                             {currentSegmentIdx + 1} / {displaySegments.length}
                             {audioRef.current ? ` · t=${audioRef.current.currentTime.toFixed(1)}s / ${(audioRef.current.duration || 0).toFixed(1)}s` : ''}
-                            {` · ratio=${((seg as { cumStart: number }).cumStart / Math.max(totalEstSecRef.current, 1)).toFixed(2)}`}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentSegmentIdx((i) => Math.min(i + 1, displaySegments.length - 1))}
-                            style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.08)', borderRadius: 6, padding: '2px 8px' }}
-                          >
-                            next →
-                          </button>
                         </div>
                       </>
                     );
@@ -916,12 +871,9 @@ export default function StoriesSheet({
                   className="absolute left-0 top-0 bottom-0 rounded-full"
                   style={{ width: '0%', background: vizColor, transition: 'width 0.25s linear' }}
                 />
-                {/* Segment tick marks */}
+                {/* Segment tick marks — evenly spaced in playlist mode */}
                 {displaySegments && displaySegments.map((seg, i) => {
-                  const audio = audioRef.current;
-                  const dur = audio?.duration;
-                  if (!dur || !isFinite(dur)) return null;
-                  const pct = Math.min((seg.cumStart / dur) * 100, 100);
+                  const pct = (i / displaySegments.length) * 100;
                   return (
                     <div
                       key={i}
