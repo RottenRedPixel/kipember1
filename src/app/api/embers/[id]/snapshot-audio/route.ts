@@ -116,12 +116,15 @@ async function renderSnapshotAudio({
         segmentPaths.push(await getOrCreateNormalizedAudioPath({ emberId, mediaId: block.mediaId }));
       }
     } catch (segmentError) {
-      console.error('Skipping non-playable story cut media block:', segmentError);
+      console.error(
+        `Skipping non-playable media block (mediaId=${block.mediaId}, startMs=${clipStartMs}, endMs=${clipEndMs}):`,
+        segmentError instanceof Error ? segmentError.message : segmentError,
+      );
     }
   }
 
   if (segmentPaths.length === 0) {
-    throw new Error('Story Cut has no playable audio blocks');
+    throw new Error('No playable audio blocks — all media segments failed to resolve');
   }
 
   await concatenateAudioSegmentsToM4a({ inputPaths: segmentPaths, outputPath });
@@ -276,7 +279,8 @@ export async function GET(
     });
   } catch (error) {
     console.error('Story Cut audio render error:', error);
-    return NextResponse.json({ error: 'Failed to prepare story cut audio' }, { status: 500 });
+    const detail = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: `Failed to prepare story cut audio: ${detail}` }, { status: 500 });
   }
 }
 

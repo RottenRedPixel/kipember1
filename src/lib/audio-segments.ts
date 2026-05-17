@@ -43,7 +43,13 @@ export async function resolveAudioSourceForMedia(
       .catch(() => null),
     prisma.emberCallClip.findFirst({
       where: { emberId, id: mediaId },
-      select: { id: true, audioUrl: true, startMs: true, endMs: true },
+      select: {
+        id: true,
+        audioUrl: true,
+        startMs: true,
+        endMs: true,
+        voiceCall: { select: { recordingUrl: true } },
+      },
     }),
     prisma.emberVoiceClip.findFirst({
       where: { emberId, id: mediaId },
@@ -67,9 +73,29 @@ export async function resolveAudioSourceForMedia(
     };
   }
 
-  if (voiceClip?.audioUrl) {
+  if (voiceClip) {
+    // Prefer a URL we own (/api/uploads/…) over an external Retell URL which
+    // may be expired. Also check the parent VoiceCall.recordingUrl — after
+    // pullRetellRecordingToStorage runs it points to our local storage.
+    const candidates = [voiceClip.audioUrl, voiceClip.voiceCall?.recordingUrl]
+      .filter((u): u is string => Boolean(u));
+    const localUrl = candidates.find((u) => u.startsWith('/api/uploads/'));
+    const chosen = localUrl ?? candidates[0];
+    if (!chosen) {
+      console.warn('[audio-segments] EmberCallClip has no usable audioUrl', voiceClip.id);
+      return null;
+    }
+    // Translate /api/uploads/<filename> → absolute disk path so ffmpeg gets a
+    // real file rather than an HTTP URL. External URLs are passed through as-is.
+    let source: string;
+    if (chosen.startsWith('/api/uploads/')) {
+      const filename = chosen.replace(/^\/api\/uploads\//, '');
+      source = getUploadPath(filename);
+    } else {
+      source = chosen;
+    }
     return {
-      source: voiceClip.audioUrl,
+      source,
       fallbackStartMs: voiceClip.startMs ?? null,
       fallbackEndMs: voiceClip.endMs ?? null,
     };
