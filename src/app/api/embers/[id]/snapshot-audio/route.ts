@@ -15,7 +15,48 @@ import { normalizeTextForSpeech } from '@/lib/narration';
 import { getUploadsDir } from '@/lib/uploads';
 import { getVoiceEntry } from '@/lib/voice-catalog';
 
-const STORY_CUT_AUDIO_RENDER_VERSION = 'v3'; // v3: clips re-extracted with padding
+const STORY_CUT_AUDIO_RENDER_VERSION = 'v4'; // v4: with-timestamps TTS + word sidecar
+
+// Per-word timing for the rendered narration. Karaoke captions in the
+// StoriesOverlay use this to highlight the word currently being spoken.
+type WordTiming = { text: string; startMs: number; endMs: number };
+
+function groupCharactersToWords(alignment: {
+  characters?: unknown;
+  character_start_times_seconds?: unknown;
+  character_end_times_seconds?: unknown;
+}): WordTiming[] {
+  const chars = Array.isArray(alignment.characters) ? alignment.characters as unknown[] : [];
+  const starts = Array.isArray(alignment.character_start_times_seconds) ? alignment.character_start_times_seconds as unknown[] : [];
+  const ends = Array.isArray(alignment.character_end_times_seconds) ? alignment.character_end_times_seconds as unknown[] : [];
+  if (chars.length === 0 || chars.length !== starts.length || chars.length !== ends.length) return [];
+
+  const words: WordTiming[] = [];
+  let current: { text: string; startMs: number; endMs: number } | null = null;
+  for (let i = 0; i < chars.length; i++) {
+    const ch = typeof chars[i] === 'string' ? (chars[i] as string) : '';
+    const s = typeof starts[i] === 'number' ? Math.round((starts[i] as number) * 1000) : null;
+    const e = typeof ends[i] === 'number' ? Math.round((ends[i] as number) * 1000) : null;
+    if (!ch) continue;
+
+    const isSpace = /\s/.test(ch);
+    if (isSpace) {
+      if (current) {
+        words.push(current);
+        current = null;
+      }
+      continue;
+    }
+    if (!current) {
+      current = { text: ch, startMs: s ?? 0, endMs: e ?? s ?? 0 };
+    } else {
+      current.text += ch;
+      if (e !== null) current.endMs = e;
+    }
+  }
+  if (current) words.push(current);
+  return words;
+}
 
 // Returns true when the token is a valid contributor token OR the ember's
 // share token for the given emberId. Used by both GET and POST so guests
@@ -88,12 +129,18 @@ async function renderSnapshotAudio({
       : [{ type: 'voice' as const, content: fallbackScript, order: 1 }];
 
   const segmentPaths: string[] = [];
+  const segmentWords: Array<{ words: WordTiming[]; durationMs: number }> = [];
 
   for (const block of playbackBlocks) {
     if (isVoiceBlock(block)) {
       const line = block.content?.trim() || '';
       if (!line) continue;
-      segmentPaths.push(await getOrCreateTtsSegmentPath({ text: line, voiceId }));
+      const { audioPath, words } = await getOrCreateTtsSegmentPath({ text: line, voiceId });
+      segmentPaths.push(audioPath);
+      // Segment duration = last word's endMs. If timings are missing we still
+      // play the audio, we just lose word-sync for that segment.
+      const durationMs = words.length > 0 ? words[words.length - 1].endMs : 0;
+      segmentWords.push({ words, durationMs });
       continue;
     }
 
@@ -113,8 +160,10 @@ async function renderSnapshotAudio({
         segmentPaths.push(await getOrCreateAudioSegmentPath({
           emberId, mediaId: block.mediaId, startMs: clipStartMs, endMs: clipEndMs,
         }));
+        segmentWords.push({ words: [], durationMs: Math.max(0, clipEndMs - clipStartMs) });
       } else {
         segmentPaths.push(await getOrCreateNormalizedAudioPath({ emberId, mediaId: block.mediaId }));
+        segmentWords.push({ words: [], durationMs: 0 });
       }
     } catch (segmentError) {
       console.error(
@@ -130,6 +179,19 @@ async function renderSnapshotAudio({
 
   await concatenateAudioSegmentsToM4a({ inputPaths: segmentPaths, outputPath });
 
+  // Unified word timings across all segments. Offsets each segment's words by
+  // the cumulative duration of preceding segments so the timing references the
+  // final concatenated file, not the per-segment file.
+  const unified: WordTiming[] = [];
+  let offsetMs = 0;
+  for (const seg of segmentWords) {
+    for (const w of seg.words) {
+      unified.push({ text: w.text, startMs: w.startMs + offsetMs, endMs: w.endMs + offsetMs });
+    }
+    offsetMs += seg.durationMs;
+  }
+  await fs.writeFile(`${outputPath}.words.json`, JSON.stringify(unified));
+
   return outputPath;
 }
 
@@ -139,7 +201,7 @@ async function getOrCreateTtsSegmentPath({
 }: {
   text: string;
   voiceId: string;
-}) {
+}): Promise<{ audioPath: string; words: WordTiming[] }> {
   const apiKey = getElevenLabsApiKey();
   if (!apiKey) {
     throw new Error('ElevenLabs is not configured for narration.');
@@ -147,49 +209,73 @@ async function getOrCreateTtsSegmentPath({
 
   const speechText = normalizeTextForSpeech(text);
   const cacheKey = createHash('sha1')
-    .update(`${voiceId}:${getElevenLabsModelId()}:${speechText}`)
+    .update(`${voiceId}:${getElevenLabsModelId()}:wts:${speechText}`)
     .digest('hex');
   const segmentDir = join(getUploadsDir(), '.snapshot-tts');
   const outputPath = join(segmentDir, `${cacheKey}.m4a`);
+  const wordsPath = join(segmentDir, `${cacheKey}.words.json`);
   const tempMp3Path = join(segmentDir, `${cacheKey}.mp3`);
 
   await fs.mkdir(segmentDir, { recursive: true });
 
   try {
     await fs.access(outputPath);
-    return outputPath;
+    const cachedWords = await fs
+      .readFile(wordsPath, 'utf8')
+      .then((text) => JSON.parse(text) as WordTiming[])
+      .catch(() => []);
+    return { audioPath: outputPath, words: cachedWords };
   } catch {
-    // fall through
+    // fall through to render
   }
 
-  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': apiKey,
-      Accept: 'audio/mpeg',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      text: speechText,
-      model_id: getElevenLabsModelId(),
-      output_format: 'mp3_44100_128',
-      voice_settings: {
-        stability: 0.46,
-        similarity_boost: 0.76,
-        style: 0.28,
-        speed: 0.96,
-        use_speaker_boost: true,
+  // ElevenLabs `/with-timestamps` returns JSON: { audio_base64, alignment: {
+  // characters, character_start_times_seconds, character_end_times_seconds } }.
+  // We use the alignment to derive per-word timings for karaoke captions.
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/with-timestamps`,
+    {
+      method: 'POST',
+      headers: {
+        'xi-api-key': apiKey,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
       },
-    }),
-    cache: 'no-store',
-  });
+      body: JSON.stringify({
+        text: speechText,
+        model_id: getElevenLabsModelId(),
+        output_format: 'mp3_44100_128',
+        voice_settings: {
+          stability: 0.46,
+          similarity_boost: 0.76,
+          style: 0.28,
+          speed: 0.96,
+          use_speaker_boost: true,
+        },
+      }),
+      cache: 'no-store',
+    },
+  );
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => '');
     throw new Error(errorText || 'Failed to generate story cut narration');
   }
 
-  const audioBuffer = Buffer.from(await response.arrayBuffer());
+  const payload = (await response.json()) as {
+    audio_base64?: string;
+    alignment?: {
+      characters?: unknown;
+      character_start_times_seconds?: unknown;
+      character_end_times_seconds?: unknown;
+    };
+  };
+
+  if (!payload.audio_base64) {
+    throw new Error('ElevenLabs with-timestamps response missing audio_base64');
+  }
+
+  const audioBuffer = Buffer.from(payload.audio_base64, 'base64');
   await fs.writeFile(tempMp3Path, audioBuffer);
 
   try {
@@ -201,7 +287,10 @@ async function getOrCreateTtsSegmentPath({
     await fs.unlink(tempMp3Path).catch(() => undefined);
   }
 
-  return outputPath;
+  const words = payload.alignment ? groupCharactersToWords(payload.alignment) : [];
+  await fs.writeFile(wordsPath, JSON.stringify(words));
+
+  return { audioPath: outputPath, words };
 }
 
 export async function GET(
@@ -267,6 +356,17 @@ export async function GET(
         blocks: sortedBlocks,
       },
     });
+
+    // When ?timings=1 is set, return the unified word timings JSON for
+    // karaoke captions instead of the audio bytes. The render is already
+    // complete (cached) so this is just a file read.
+    if (request.nextUrl.searchParams.get('timings') === '1') {
+      const words = await fs
+        .readFile(`${outputPath}.words.json`, 'utf8')
+        .then((text) => JSON.parse(text) as WordTiming[])
+        .catch(() => []);
+      return NextResponse.json({ words });
+    }
 
     const stat = await fs.stat(outputPath);
     const stream = createReadStream(outputPath);
@@ -343,6 +443,14 @@ export async function POST(
         blocks,
       },
     });
+
+    if (request.nextUrl.searchParams.get('timings') === '1') {
+      const words = await fs
+        .readFile(`${outputPath}.words.json`, 'utf8')
+        .then((text) => JSON.parse(text) as WordTiming[])
+        .catch(() => []);
+      return NextResponse.json({ words });
+    }
 
     const stat = await fs.stat(outputPath);
     const stream = createReadStream(outputPath);

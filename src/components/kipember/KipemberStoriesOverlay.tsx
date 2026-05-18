@@ -30,33 +30,13 @@ type KipemberStoriesOverlayProps = {
 
 type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused';
 
-function buildStoryLines(value: string | null | undefined) {
-  const text = value?.replace(/\s+/g, ' ').trim();
-  if (!text) return [];
+// Per-word timing from /snapshot-audio?timings=1 — drives karaoke captions.
+type WordTiming = { text: string; startMs: number; endMs: number };
 
-  const sentences = text
-    .split(/(?<=[.!?])\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const chunks: string[] = [];
-
-  for (const sentence of sentences) {
-    const words = sentence.split(' ').filter(Boolean);
-    let current = '';
-    for (const word of words) {
-      const next = current ? `${current} ${word}` : word;
-      if (next.length > 30 && current) {
-        chunks.push(current);
-        current = word;
-      } else {
-        current = next;
-      }
-    }
-    if (current) chunks.push(current);
-  }
-
-  return chunks.slice(0, 6);
-}
+// A word from the source script with its quote-context state and global index.
+// The line cascade renders these; karaoke uses the global index to highlight
+// the active word in sync with the audio.
+type LineWord = { text: string; quoted: boolean; globalIdx: number };
 
 function resetAudioPosition(audio: HTMLAudioElement) {
   audio.currentTime = 0;
@@ -67,31 +47,129 @@ function resetAudioPosition(audio: HTMLAudioElement) {
 // AI's bridging narration. Curly quotes are normalised first so quotes typed
 // by chat users still highlight correctly.
 const QUOTE_COLOR = '#4ade80';
+const NARRATION_COLOR = '#ffffff';
+const MAX_LINE_CHARS = 30;
 
-function renderLineWithQuotes(line: string, visible: boolean): React.ReactNode {
-  if (!line) return null;
-  const normalized = line.replace(/[“”]/g, '"');
-  const parts: Array<{ text: string; quoted: boolean }> = [];
+// Tokenize the script into a sequence of words paired with quote state +
+// global index, bucketed into short lines (~30 chars each) that match the
+// previous line-cascade layout. Quote state is tracked across the whole
+// script so quoted spans that wrap to the next line stay green.
+function tokenizeScriptToLines(value: string | null | undefined): {
+  lines: LineWord[][];
+  flatWords: LineWord[];
+} {
+  const text = value?.replace(/\s+/g, ' ').trim();
+  if (!text) return { lines: [], flatWords: [] };
+  const normalized = text.replace(/[“”]/g, '"');
+
+  // Split into sentences first so line breaks fall on natural boundaries.
+  const sentences = normalized
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const flat: LineWord[] = [];
+  const lines: LineWord[][] = [];
   let inQuote = false;
-  let buf = '';
-  for (let i = 0; i < normalized.length; i++) {
-    const ch = normalized[i];
-    if (ch === '"') {
-      if (buf) parts.push({ text: buf, quoted: inQuote });
-      buf = '';
-      inQuote = !inQuote;
-      continue;
+  let globalIdx = 0;
+
+  for (const sentence of sentences) {
+    const tokens = sentence.split(/\s+/).filter(Boolean);
+    let currentLine: LineWord[] = [];
+    let currentLen = 0;
+
+    for (const token of tokens) {
+      // The word is "quoted" if we're inside a quote when it begins.
+      const startedInQuote = inQuote;
+      for (const ch of token) {
+        if (ch === '"') inQuote = !inQuote;
+      }
+      const quoted = startedInQuote || (token.startsWith('"') && !startedInQuote);
+      const word: LineWord = { text: token, quoted, globalIdx };
+      flat.push(word);
+      globalIdx++;
+
+      const nextLen = currentLen === 0 ? token.length : currentLen + 1 + token.length;
+      if (nextLen > MAX_LINE_CHARS && currentLine.length > 0) {
+        lines.push(currentLine);
+        currentLine = [word];
+        currentLen = token.length;
+      } else {
+        currentLine.push(word);
+        currentLen = nextLen;
+      }
     }
-    buf += ch;
+    if (currentLine.length > 0) lines.push(currentLine);
   }
-  if (buf) parts.push({ text: buf, quoted: inQuote });
-  return parts.map((part, idx) =>
-    part.quoted ? (
-      <span key={idx} style={{ color: visible ? QUOTE_COLOR : 'transparent', transition: 'color 0.8s ease' }}>{`"${part.text}"`}</span>
-    ) : (
-      <span key={idx}>{part.text}</span>
-    ),
-  );
+
+  return { lines, flatWords: flat };
+}
+
+// Binary-search the timings array for the word whose [startMs, endMs] contains
+// the playhead. If we're between two words (mid-utterance gap), returns the
+// most recently completed word so the highlight doesn't flicker off.
+function findCurrentWordIdx(words: WordTiming[], currentMs: number): number | null {
+  if (words.length === 0) return null;
+  if (currentMs < words[0].startMs) return null;
+  let lo = 0;
+  let hi = words.length - 1;
+  let lastBefore: number | null = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const w = words[mid];
+    if (currentMs < w.startMs) {
+      hi = mid - 1;
+    } else if (currentMs > w.endMs) {
+      lastBefore = mid;
+      lo = mid + 1;
+    } else {
+      return mid;
+    }
+  }
+  return lastBefore;
+}
+
+// Locate which line contains a given global word index.
+function lineIdxForGlobalWord(lines: LineWord[][], gIdx: number): number {
+  for (let i = 0; i < lines.length; i++) {
+    const last = lines[i][lines[i].length - 1];
+    if (gIdx <= last.globalIdx) return i;
+  }
+  return Math.max(0, lines.length - 1);
+}
+
+// Render a line of LineWord objects, dimming words that haven't been spoken
+// yet and brightening the current one. Quoted words stay green at all times.
+function renderLineWords(
+  lineWords: LineWord[],
+  visible: boolean,
+  currentWordIdx: number | null,
+): React.ReactNode {
+  if (!lineWords || lineWords.length === 0) return null;
+  return lineWords.map((w, idx) => {
+    const isCurrent = currentWordIdx !== null && w.globalIdx === currentWordIdx;
+    const isPast = currentWordIdx !== null && w.globalIdx < currentWordIdx;
+    const isFuture = currentWordIdx !== null && w.globalIdx > currentWordIdx;
+    const baseColor = w.quoted ? QUOTE_COLOR : NARRATION_COLOR;
+    const color = visible ? baseColor : 'transparent';
+    const opacity = !visible ? 1 : isFuture ? 0.4 : 1;
+    const fontWeight = isCurrent ? 700 : 500;
+    return (
+      <span
+        key={`${w.globalIdx}-${idx}`}
+        style={{
+          color,
+          opacity,
+          fontWeight,
+          transition: 'color 0.4s ease, opacity 0.2s ease, font-weight 0.1s linear',
+        }}
+      >
+        {w.text}
+        {idx < lineWords.length - 1 ? ' ' : ''}
+      </span>
+    );
+    void isPast;
+  });
 }
 
 export default function KipemberStoriesOverlay({
@@ -119,9 +197,15 @@ export default function KipemberStoriesOverlay({
 
   const activeScript = selectedBadge === 2 ? storyScript : FACET_SCRIPTS[selectedBadge];
   const hasPlayableContent = Boolean(emberId) && Boolean(activeScript ?? (selectedBadge === 2 ? storyScript : null));
-  const storyLines = useMemo(() => buildStoryLines(activeScript), [activeScript]);
+  const { lines: storyLines } = useMemo(() => tokenizeScriptToLines(activeScript), [activeScript]);
   const shouldAnimate = playbackState === 'playing' && !done;
   const isPlaying = playbackState === 'playing';
+
+  // Karaoke state — word timings from /snapshot-audio?timings=1, and the
+  // current word index updated each animation frame from audio.currentTime.
+  const wordsRef = useRef<WordTiming[]>([]);
+  const rafRef = useRef<number | null>(null);
+  const [currentWordIdx, setCurrentWordIdx] = useState<number | null>(null);
 
   const disposeAudio = useCallback(() => {
     if (audioRef.current) {
@@ -142,16 +226,65 @@ export default function KipemberStoriesOverlay({
 
   useEffect(() => () => { disposeAudio(); }, [disposeAudio]);
 
+  // Karaoke loop: poll the audio element each frame, find the active word,
+  // update `currentWordIdx`. Auto-advance the visible line pair when the
+  // active word moves past the current line. Falls back to a time-based
+  // cascade when no timings are available (cached old renders, etc).
   useEffect(() => {
-    if (!shouldAnimate || fading) return;
-    const hasNextPair = lineIndex + 2 < storyLines.length;
-    const delay = hasNextPair ? 2800 : 2500;
-    const timer = setTimeout(() => {
-      if (hasNextPair) setFading(true);
-      else setDone(true);
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [fading, lineIndex, shouldAnimate, storyLines.length]);
+    if (!shouldAnimate) return;
+
+    const hasTimings = wordsRef.current.length > 0;
+
+    if (!hasTimings) {
+      // Fallback: original timer-driven cascade so playback still feels like
+      // something is happening even when word timings can't be loaded.
+      if (fading) return;
+      const hasNextPair = lineIndex + 2 < storyLines.length;
+      const delay = hasNextPair ? 2800 : 2500;
+      const timer = setTimeout(() => {
+        if (hasNextPair) setFading(true);
+        else setDone(true);
+      }, delay);
+      return () => clearTimeout(timer);
+    }
+
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      const audio = audioRef.current;
+      const words = wordsRef.current;
+      if (audio && words.length > 0) {
+        const currentMs = audio.currentTime * 1000;
+        const idx = findCurrentWordIdx(words, currentMs);
+        if (idx !== currentWordIdx) setCurrentWordIdx(idx);
+
+        if (idx !== null && storyLines.length > 0) {
+          const targetLine = lineIdxForGlobalWord(storyLines, idx);
+          // Cascade in pairs: jump lineIndex by 2 so the bottom slot becomes
+          // the new top. When the active word passes the bottom line, move on.
+          const visibleEnd = lineIndex + 1;
+          if (targetLine > visibleEnd) {
+            const nextLine = targetLine % 2 === 0 ? targetLine : targetLine - 1;
+            setLineIndex(Math.max(0, nextLine));
+          }
+        }
+
+        if (!audio.paused && audio.ended) {
+          setDone(true);
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      cancelled = true;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [shouldAnimate, fading, lineIndex, storyLines, currentWordIdx]);
 
   useEffect(() => {
     if (!fading) return;
@@ -192,8 +325,48 @@ export default function KipemberStoriesOverlay({
     throw new Error(typeof payload?.error === 'string' ? payload.error : 'Story audio is not available yet.');
   }, [emberId, storyScript, guestToken]);
 
+  // Second request to the same render URL with `?timings=1` — returns the
+  // cached word-timing JSON instead of audio bytes. Best-effort: returns []
+  // if the renderer didn't (or couldn't) write a sidecar, in which case the
+  // overlay falls back to the timer-based line cascade.
+  const fetchTimings = useCallback(async (): Promise<WordTiming[]> => {
+    if (!emberId) return [];
+    const badge = selectedBadgeRef.current;
+    const facetScript = FACET_SCRIPTS[badge];
+    try {
+      if (facetScript) {
+        const url = guestToken
+          ? `/api/embers/${emberId}/snapshot-audio?timings=1&token=${encodeURIComponent(guestToken)}`
+          : `/api/embers/${emberId}/snapshot-audio?timings=1`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ script: facetScript }),
+        });
+        if (!res.ok) return [];
+        const json = (await res.json().catch(() => null)) as { words?: WordTiming[] } | null;
+        return Array.isArray(json?.words) ? json.words : [];
+      }
+      const url = guestToken
+        ? `/api/embers/${emberId}/snapshot-audio?timings=1&token=${encodeURIComponent(guestToken)}`
+        : `/api/embers/${emberId}/snapshot-audio?timings=1`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return [];
+      const json = (await res.json().catch(() => null)) as { words?: WordTiming[] } | null;
+      return Array.isArray(json?.words) ? json.words : [];
+    } catch {
+      return [];
+    }
+  }, [emberId, guestToken]);
+
   const buildAudio = useCallback(async () => {
     const audioBlob = await fetchAudioBlob();
+    // Kick off the timings fetch in parallel — the audio render is already
+    // cached by the time the audio blob arrives, so the sidecar JSON is just
+    // a quick file read on the server.
+    void fetchTimings().then((words) => {
+      wordsRef.current = words;
+    });
     const audioUrl = URL.createObjectURL(audioBlob);
     const audio = new Audio(audioUrl);
     audio.preload = 'auto';
@@ -230,7 +403,7 @@ export default function KipemberStoriesOverlay({
     }
 
     return audio;
-  }, [fetchAudioBlob]);
+  }, [fetchAudioBlob, fetchTimings]);
 
   const startPlayback = useCallback(
     async ({ restart = false }: { restart?: boolean } = {}) => {
@@ -244,6 +417,7 @@ export default function KipemberStoriesOverlay({
           setLineIndex(0);
           setFading(false);
           setDone(false);
+          setCurrentWordIdx(null);
         }
         await audio.play();
       } catch (playError) {
@@ -273,11 +447,13 @@ export default function KipemberStoriesOverlay({
 
   const switchBadge = useCallback((i: number) => {
     disposeAudio();
+    wordsRef.current = [];
     setPlaybackState('idle');
     setLineIndex(0);
     setFading(false);
     setDone(false);
     setError('');
+    setCurrentWordIdx(null);
     setSelectedBadge(i);
   }, [disposeAudio]);
 
@@ -296,7 +472,7 @@ export default function KipemberStoriesOverlay({
               transition: 'color 0.8s ease',
             }}
           >
-            {storyLines[lineIndex] ? renderLineWithQuotes(storyLines[lineIndex], isPlaying && !fading) : ' '}
+            {storyLines[lineIndex] ? renderLineWords(storyLines[lineIndex], isPlaying && !fading, currentWordIdx) : ' '}
           </p>
           <p
             className="font-medium leading-snug w-full truncate"
@@ -307,7 +483,7 @@ export default function KipemberStoriesOverlay({
               transition: 'color 0.8s ease',
             }}
           >
-            {storyLines[lineIndex + 1] ? <>{renderLineWithQuotes(storyLines[lineIndex + 1], isPlaying && !fading)}...</> : ' '}
+            {storyLines[lineIndex + 1] ? <>{renderLineWords(storyLines[lineIndex + 1], isPlaying && !fading, currentWordIdx)}...</> : ' '}
           </p>
         </div>
 
