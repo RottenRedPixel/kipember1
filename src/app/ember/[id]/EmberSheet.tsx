@@ -371,7 +371,13 @@ export default function EmberSheet({
       {/* Content area */}
       <div ref={contentRef} className="flex-1 min-h-0 overflow-y-auto px-4 pt-1 pb-2 no-scrollbar">
         {surface === 'voice' ? (
-          <VoiceMessageList messages={voice.messages} isUploading={voice.isUploading} selfLabel={selfLabel} onPlaybackChange={setManualAnalyser} />
+          <VoiceMessageList
+            messages={voice.messages}
+            isUploading={voice.isUploading}
+            selfLabel={selfLabel}
+            emptyHint={`Hi again, ${selfLabel}. In voice mode, you can chat with me by tapping the green mic button — give it a try and ask me a question!`}
+            onPlaybackChange={setManualAnalyser}
+          />
         ) : surface === 'calls' ? (
           callBlocks.length === 0 ? (
             <p className="text-sm text-center mt-8 px-6" style={{ color: 'rgba(255,255,255,0.35)' }}>Tap the phone to have ember call you.</p>

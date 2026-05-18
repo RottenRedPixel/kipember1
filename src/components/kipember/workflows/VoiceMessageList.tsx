@@ -81,7 +81,7 @@ function AudioPlayButton({
       >
         {playing ? <Pause size={9} className="text-white" /> : <Play size={9} className="text-white" />}
       </button>
-      <span className="text-white/30 text-xs">{playing ? 'Playing…' : 'Voice recording'}</span>
+      <span className="text-white/30 text-xs">{playing ? 'Playing…' : 'Play Message'}</span>
     </div>
   );
 }
@@ -110,7 +110,18 @@ export default function VoiceMessageList({
   return (
     <div className="flex flex-col gap-4">
       {messages.length === 0 && !isUploading ? (
-        <p className="text-white/40 text-sm text-center mt-8">{emptyHint}</p>
+        <div className="flex flex-col gap-1 items-start">
+          <span className="pl-1 text-xs font-bold text-white">{emberLabel}</span>
+          <div
+            className="inline-block max-w-[85%] rounded-2xl rounded-tl-sm px-4 py-2.5"
+            style={{
+              background: 'var(--bg-ember-bubble)',
+              border: '1px solid var(--border-ember)',
+            }}
+          >
+            <p className="text-sm leading-relaxed text-white/90 whitespace-pre-wrap">{emptyHint}</p>
+          </div>
+        </div>
       ) : null}
       {messages.map((message, index) => {
         const isUser = message.role === 'user';
