@@ -5,6 +5,15 @@ import { useEffect, useState } from 'react';
 
 // ── Types owned by this module ────────────────────────────────────────────────
 
+// What the user actually said, never the LLM's paraphrase. Each claim ships
+// with zero or more of these — the UI renders one row per source with the
+// appropriate icon (chat/voice/call) and a play button when audio exists.
+export type ClaimSource =
+  | { kind: 'chat'; text: string; messageId: string }
+  | { kind: 'sms'; text: string; messageId: string }
+  | { kind: 'voice'; text: string; messageId: string; audioUrl: string | null }
+  | { kind: 'call'; text: string; voiceCallId: string; recordingUrl: string | null; startMs: number | null; endMs: number | null };
+
 export type ReconciliationClaim = {
   id: string;
   claimType: string;
@@ -22,6 +31,7 @@ export type ReconciliationClaim = {
   userId: string | null;
   metadata: unknown;
   createdAt: string;
+  sources: ClaimSource[];
 };
 
 export type ReconciliationConflict = {

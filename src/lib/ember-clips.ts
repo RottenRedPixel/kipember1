@@ -436,26 +436,14 @@ export async function persistEmberVoiceClips({
   });
 }
 
-// ── Claim-to-clip sync ───────────────────────────────────────────────────────
-// Called after claims are extracted for a voice message. Ensures every claim
-// has a corresponding audio clip — filling any gaps the LLM extraction missed.
-
-const CLAIM_SIG: Record<string, string> = {
-  why: 'why',
-  emotion: 'emotion',
-  extra_story: 'story',
-  place: 'place',
-  person: 'person',
-};
-
-export async function syncVoiceClipsFromClaims({
-  emberId,
-  emberContributorId,
-  emberMessageId,
-  speakerName,
-  audioFilename,
-  transcriptObjectJson,
-}: {
+// ── Claim-to-clip sync (deprecated, no-op) ───────────────────────────────────
+// Previously this filled "gaps" the LLM clip extractor missed by saving a
+// clip whose displayed quote was the claim's distilled paraphrase and whose
+// audio window was a fuzzy/partial-token match against the recording. That
+// presented an LLM paraphrase as if it were a verbatim recording. Replaced by
+// rendering claims with verbatim source rows pulled from the original
+// EmberMessage / VoiceCall transcript instead of synthesizing new clips.
+export async function syncVoiceClipsFromClaims(_args: {
   emberId: string;
   emberContributorId: string | null;
   emberMessageId: string;
@@ -463,107 +451,6 @@ export async function syncVoiceClipsFromClaims({
   audioFilename: string;
   transcriptObjectJson: string | null;
 }): Promise<void> {
-  const words = parseVoiceMessageWords(transcriptObjectJson);
-  if (words.length === 0) return; // no timestamps — nothing to trim
-
-  // Fetch claims and existing clips in parallel
-  const [claims, existingClips] = await Promise.all([
-    prisma.memoryClaim.findMany({
-      where: { emberMessageId },
-      select: { id: true, claimType: true, value: true, rawText: true },
-    }),
-    prisma.emberVoiceClip.findMany({
-      where: { emberMessageId },
-      select: { quote: true },
-    }),
-  ]);
-
-  if (claims.length === 0) return;
-
-  // Build set of already-covered normalised tokens (first 4 words of each clip quote)
-  const coveredTokenSets = existingClips.map((c) =>
-    normalizeForMatch(c.quote).split(' ').slice(0, 4).join(' ')
-  );
-
-  const isCovered = (text: string) => {
-    const tokens = normalizeForMatch(text).split(' ').slice(0, 4).join(' ');
-    return coveredTokenSets.some((covered) => covered === tokens || covered.includes(tokens));
-  };
-
-  // Find the verbatim span in word timestamps for a given search text.
-  // Falls back to searching key words if the full text doesn't match verbatim.
-  const findTiming = (searchText: string): { startMs: number; endMs: number } | null => {
-    const quoteTokens = normalizeForMatch(searchText).split(' ').filter(Boolean);
-    if (quoteTokens.length === 0) return null;
-    const wordTokens = words.map((w) => normalizeForMatch(w.text));
-
-    // Exact token sequence match
-    for (let j = 0; j <= wordTokens.length - quoteTokens.length; j++) {
-      if (quoteTokens.every((t, o) => wordTokens[j + o] === t)) {
-        const startMs = words[j].startMs;
-        const endMs = words[j + quoteTokens.length - 1].endMs;
-        if (startMs !== null && endMs !== null) return { startMs, endMs };
-      }
-    }
-
-    // Partial match: find the first key word (3+ chars) and grab a window around it
-    const keyToken = quoteTokens.find((t) => t.length >= 3);
-    if (!keyToken) return null;
-    const keyIdx = wordTokens.findIndex((t) => t === keyToken);
-    if (keyIdx === -1) return null;
-    const windowEnd = Math.min(keyIdx + quoteTokens.length - 1, words.length - 1);
-    const startMs = words[keyIdx].startMs;
-    const endMs = words[windowEnd].endMs;
-    if (startMs !== null && endMs !== null) return { startMs, endMs };
-    return null;
-  };
-
-  const segmentsDir = join(getUploadsDir(), '.segments');
-  await mkdir(segmentsDir, { recursive: true });
-  const sourcePath = getUploadPath(audioFilename);
-
-  let added = 0;
-  const sortBase = existingClips.length;
-
-  for (let i = 0; i < claims.length; i++) {
-    const claim = claims[i];
-    // Prefer rawText (closer to verbatim) then value
-    const searchText = (claim.rawText?.trim() || claim.value?.trim() || '').slice(0, 200);
-    if (!searchText || !hasMinWords(searchText) || isCovered(searchText)) continue;
-
-    const timing = findTiming(searchText);
-    if (!timing) continue;
-
-    const clipFilename = `${randomUUID()}.m4a`;
-    const clipPath = join(segmentsDir, clipFilename);
-    try {
-      await extractAudioClipToM4a({ input: sourcePath, outputPath: clipPath, ...timing });
-      await uploadLocalFileToObjectStorage({ filename: clipFilename, filePath: clipPath });
-    } catch (err) {
-      console.error(`[SyncVoiceClips] Failed to extract clip for claim "${claim.value}":`, err);
-      continue;
-    }
-
-    await prisma.emberVoiceClip.create({
-      data: {
-        emberId,
-        emberContributorId: emberContributorId ?? undefined,
-        emberMessageId,
-        sortOrder: sortBase + i,
-        title: searchText.slice(0, 60),
-        quote: searchText,
-        significance: CLAIM_SIG[claim.claimType] ?? claim.claimType,
-        speaker: speakerName,
-        audioFilename: clipFilename,
-        startMs: timing.startMs,
-        endMs: timing.endMs,
-      },
-    });
-    added++;
-    console.log(`[SyncVoiceClips] Created clip for claim "${claim.claimType}": "${searchText.slice(0, 50)}"`);
-  }
-
-  if (added > 0) {
-    console.log(`[SyncVoiceClips] Added ${added} claim-backed clip(s) for message ${emberMessageId}`);
-  }
+  return;
 }
+

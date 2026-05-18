@@ -103,8 +103,8 @@ import {
   WikiGroup,
   WikiSection,
 } from './wiki/atoms';
-import type { AudioClipItem } from './wiki/cards';
 import {
+  ClaimExtractionCard,
   CollapsibleAnalysisCard,
   CollapsibleChatBlock,
   CollapsibleGuestVisitorChatBlock,
@@ -114,7 +114,6 @@ import {
   PlaceCard,
   PrivacyToggles,
   StoriesCard,
-  UnifiedExtractionBlock,
   VoiceBlockCard,
 } from './wiki/cards';
 
@@ -1220,82 +1219,44 @@ export default function KipemberWikiContent({
         loading={wikiClaimsLoading}
       >
         {(() => {
-          // Convert a clip source into an AudioClipItem
-          function toItem(c: KipemberEmberVoiceClip): AudioClipItem {
-            return { id: c.id, kind: 'voice', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl, startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt };
-          }
-          function toCallItem(c: KipemberEmberCallClip): AudioClipItem {
-            return { id: c.id, kind: 'call', contributorName: c.contributorName, title: c.title, quote: c.quote, significance: c.significance, audioUrl: c.audioUrl ?? '', startMs: c.startMs, endMs: c.endMs, createdAt: c.createdAt };
-          }
-
-          // Get clips for a significance category, sorted by date
-          function clipsForSig(sig: string): AudioClipItem[] {
-            const v = (detail?.emberVoiceClips ?? []).filter(c => (c.significance ?? '').toLowerCase() === sig).map(toItem);
-            const c = (detail?.emberCallClips ?? []).filter(c => (c.significance ?? '').toLowerCase() === sig && c.audioUrl).map(toCallItem);
-            return [...v, ...c].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-          }
-
-          // Match clips to claims by contributor name (best-effort).
-          // Returns unified rows: claim+clip, claim-only, or clip-only.
-          type UnifiedRow = { key: string; clip: AudioClipItem | null; claimName: string | null; claimSubject: string | null; claimValue: string | null; claimSource: string | null; claimCreatedAt: string | null };
-          function unify(clips: AudioClipItem[], claims: ReconciliationClaim[] | null): UnifiedRow[] {
-            const usedClipIds = new Set<string>();
-            const rows: UnifiedRow[] = [];
-            for (const claim of (claims ?? [])) {
-              const name = claimSourceLabelFromMetadata(claim.metadata);
-              const match = clips.find(c => !usedClipIds.has(c.id) && c.contributorName.toLowerCase().trim() === name.toLowerCase().trim());
-              if (match) usedClipIds.add(match.id);
-              rows.push({ key: claim.id, clip: match ?? null, claimName: name, claimSubject: claim.subject || null, claimValue: claim.value, claimSource: claim.source, claimCreatedAt: claim.createdAt });
-            }
-            // Unmatched clips (no corresponding claim)
-            for (const clip of clips) {
-              if (!usedClipIds.has(clip.id)) rows.push({ key: clip.id, clip, claimName: null, claimSubject: null, claimValue: null, claimSource: null, claimCreatedAt: null });
-            }
-            return rows;
-          }
-
-          function renderCategory(icon: React.ReactNode, label: string, clips: AudioClipItem[], claims: ReconciliationClaim[] | null) {
-            const rows = unify(clips, claims);
+          // New extractions UI: one card per claim, no clip pairing. The card
+          // shows the LLM's distilled paraphrase on top and the verbatim
+          // source(s) — chat / voice / call — underneath. See ClaimExtractionCard.
+          function renderCategory(icon: React.ReactNode, label: string, claims: ReconciliationClaim[] | null) {
+            const list = claims ?? [];
             return (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
                   <h4 className="text-white/70 font-medium text-sm">{label}</h4>
                 </div>
-                {rows.length === 0 ? (
+                {list.length === 0 ? (
                   <WikiCard><p className="text-white/30 text-sm">Nothing captured yet.</p></WikiCard>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {rows.map((row) => (
-                      <UnifiedExtractionBlock
-                        key={row.key}
-                        clip={row.clip}
-                        claimName={row.claimName}
-                        claimSubject={row.claimSubject}
-                        claimValue={row.claimValue}
-                        claimSource={row.claimSource}
-                        claimCreatedAt={row.claimCreatedAt}
-                        person={row.claimName ? findPerson(row.claimName) : (row.clip ? findPerson(row.clip.contributorName) : null)}
-                      />
-                    ))}
+                    {list.map((claim) => {
+                      const name = claimSourceLabelFromMetadata(claim.metadata);
+                      return (
+                        <ClaimExtractionCard
+                          key={claim.id}
+                          claim={claim}
+                          person={name ? findPerson(name) : null}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
             );
           }
 
-          // Clips with unrecognised significance â†’ Extra Stories
-          const knownSigs = new Set(['why', 'emotion', 'story', 'place', 'person']);
-          const extraVoice = (detail?.emberVoiceClips ?? []).filter(c => !knownSigs.has((c.significance ?? '').toLowerCase())).map(toItem);
-          const extraCall = (detail?.emberCallClips ?? []).filter(c => !knownSigs.has((c.significance ?? '').toLowerCase()) && c.audioUrl).map(toCallItem);
-
           return (
             <div className="flex flex-col gap-6">
-              {renderCategory(<Lightbulb size={15} />, 'Why', clipsForSig('why'), whyClaims)}
-              {renderCategory(<Heart size={15} />, 'Emotional States', clipsForSig('emotion'), emotionClaims)}
-              {renderCategory(<Sparkles size={15} />, 'Extra Stories', [...clipsForSig('story'), ...extraVoice, ...extraCall], extraStoryClaims)}
-              {renderCategory(<MapIcon size={15} />, 'Places Mentioned', clipsForSig('place'), placeClaims)}
-              {renderCategory(<Users size={15} />, 'People Mentioned', clipsForSig('person'), personClaims)}
+              {renderCategory(<Lightbulb size={15} />, 'Why', whyClaims)}
+              {renderCategory(<Heart size={15} />, 'Emotional States', emotionClaims)}
+              {renderCategory(<Sparkles size={15} />, 'Extra Stories', extraStoryClaims)}
+              {renderCategory(<MapIcon size={15} />, 'Places Mentioned', placeClaims)}
+              {renderCategory(<Users size={15} />, 'People Mentioned', personClaims)}
             </div>
           );
         })()}

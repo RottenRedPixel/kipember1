@@ -17,13 +17,14 @@ import {
   Pause,
   Phone,
   Play,
+  Sparkles,
   Trash2,
 } from 'lucide-react';
 import EmberChatMessages from '@/components/kipember/EmberChatMessages';
 import VoiceMessageList, { type VoiceMessage } from '@/components/kipember/workflows/VoiceMessageList';
 import { pastelForContributorIdentity } from '@/lib/contributor-color';
 import type { KipemberWikiDetail } from './types';
-import type { EmberStoryRecord, ReconciliationClaim } from './hooks';
+import type { ClaimSource, EmberStoryRecord, ReconciliationClaim } from './hooks';
 import type { FindPerson, PersonIdentity } from './utils';
 import {
   OWNER_AVATAR_BG,
@@ -1385,6 +1386,183 @@ export type AudioClipItem = {
   endMs: number | null;
   createdAt: string;
 };
+
+// ── ClaimSourceRow ────────────────────────────────────────────────────────────
+// Renders one source under an extraction card. The kind of source determines
+// the icon (chat bubble / green mic / blue phone) and whether a play button
+// is rendered. The text shown is verbatim — exactly what the user typed (chat)
+// or what the transcript captured (voice/call). Never a paraphrase.
+
+function ClaimSourceRow({ source }: { source: ClaimSource }) {
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Only call source rows seek inside a shared parent recording. Voice rows
+  // play their own per-message file from the start.
+  const startSec = source.kind === 'call' && source.startMs != null ? source.startMs / 1000 : null;
+  const endSec = source.kind === 'call' && source.endMs != null ? source.endMs / 1000 : null;
+
+  function toggle() {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) { el.pause(); return; }
+    if (startSec !== null) el.currentTime = startSec;
+    void el.play();
+  }
+
+  function handleTimeUpdate() {
+    const el = audioRef.current;
+    if (!el || endSec === null) return;
+    if (el.currentTime >= endSec) {
+      el.pause();
+      if (startSec !== null) el.currentTime = startSec;
+      setPlaying(false);
+    }
+  }
+
+  const durationLabel = (() => {
+    if (source.kind !== 'call') return null;
+    if (source.startMs == null || source.endMs == null) return null;
+    const ms = source.endMs - source.startMs;
+    if (ms <= 0) return null;
+    return `${(ms / 1000).toFixed(1).replace(/\.0$/, '')}s`;
+  })();
+
+  const isChat = source.kind === 'chat' || source.kind === 'sms';
+  const isVoice = source.kind === 'voice';
+  const isCall = source.kind === 'call';
+
+  const audioUrl = isVoice ? source.audioUrl : isCall ? source.recordingUrl : null;
+  const hasAudio = Boolean(audioUrl);
+
+  const channelLabel = isCall ? 'Call' : isVoice ? 'Voice' : source.kind === 'sms' ? 'SMS' : 'Chat';
+
+  return (
+    <div className="flex items-start gap-2">
+      {hasAudio ? (
+        <button
+          type="button"
+          onClick={toggle}
+          className="rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer mt-0.5"
+          style={{
+            width: 28,
+            height: 28,
+            background: isCall ? '#2563eb' : '#22c55e',
+            border: 'none',
+          }}
+          aria-label={playing ? 'Pause' : 'Play'}
+        >
+          {playing ? <Pause size={12} className="text-white" /> : <Play size={12} className="text-white" style={{ marginLeft: 1 }} />}
+        </button>
+      ) : (
+        <div
+          className="rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{
+            width: 28,
+            height: 28,
+            background: 'rgba(249,115,22,0.85)',
+            color: '#fff',
+          }}
+          aria-label="Chat message"
+        >
+          <MessageCircle size={12} fill="currentColor" stroke="currentColor" />
+        </div>
+      )}
+      <div className="flex-1 min-w-0 pt-0.5">
+        <p className="text-white/80 text-xs italic leading-relaxed">&ldquo;{source.text}&rdquo;</p>
+        <p className="text-white/30 text-[10px] mt-0.5">
+          {channelLabel}{durationLabel ? ` · ${durationLabel}` : ''}
+        </p>
+      </div>
+      {hasAudio ? (
+        <audio
+          ref={audioRef}
+          src={audioUrl ?? undefined}
+          onPlay={() => setPlaying(true)}
+          onPause={() => setPlaying(false)}
+          onEnded={() => { setPlaying(false); if (startSec !== null && audioRef.current) audioRef.current.currentTime = startSec; }}
+          onTimeUpdate={handleTimeUpdate}
+          preload="none"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+// ── ClaimExtractionCard ──────────────────────────────────────────────────────
+// The new (truthful) extraction card. One claim per card. The header shows
+// the LLM's distilled paraphrase with an AI icon — that's clearly labeled as
+// the model's summary. Underneath, one row per verbatim source (chat text the
+// user actually typed, the audio they actually recorded, the call turn they
+// actually said). If the LLM paraphrase didn't have a verbatim hit in any
+// source (e.g. an emotion extracted from a long call but never said in those
+// exact words), the card renders the header alone — we never fabricate audio.
+
+export function ClaimExtractionCard({
+  claim,
+  person,
+}: {
+  claim: ReconciliationClaim;
+  person: PersonIdentity | null;
+}) {
+  const displayName = (() => {
+    const fromMeta = claimSourceLabelFromMetadata(claim.metadata);
+    return fromMeta || 'Someone';
+  })();
+  const avatarUrl = person?.avatarUrl ?? null;
+  const styles = avatarStylesForPerson(person, displayName);
+
+  return (
+    <div
+      className="rounded-lg px-3 py-2.5 flex flex-col gap-2.5"
+      style={{ background: 'var(--bg-ember-bubble)', border: '1px solid var(--border-ember)' }}
+    >
+      {/* AI-described header — the LLM's paraphrase, clearly attributed to the model. */}
+      <div className="flex items-center gap-2.5">
+        <div
+          className="rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ width: 29, height: 29, background: 'rgba(168,85,247,0.85)', color: '#fff' }}
+          aria-label="AI-described"
+          title="AI-described"
+        >
+          <Sparkles size={14} fill="currentColor" stroke="currentColor" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-xs font-medium">
+            {displayName}
+            {claim.subject ? <span className="text-white/50 font-normal"> on <span className="text-white/70">{claim.subject}</span></span> : null}
+          </p>
+          <p className="text-white/60 text-[11px] mt-0.5">&ldquo;{claim.value}&rdquo;</p>
+        </div>
+        <div className="flex items-center gap-1 text-white/30 text-[10px] flex-shrink-0">
+          <span>{relativeAt(claim.createdAt)}</span>
+        </div>
+      </div>
+
+      {/* Verbatim source rows — one per channel where the claim's words appear. */}
+      {claim.sources.length > 0 ? (
+        <div className="flex flex-col gap-2 pl-1">
+          {/* Small person-avatar hint to anchor the verbatim section to the speaker. */}
+          <div className="flex items-center gap-2">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt={displayName} className="rounded-full object-cover flex-shrink-0" style={{ width: 18, height: 18 }} />
+            ) : (
+              <div className="rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ width: 18, height: 18, background: styles.background, color: styles.color, fontSize: 8, fontWeight: 600 }}>
+                {initials(displayName)}
+              </div>
+            )}
+            <span className="text-white/30 text-[10px]">{displayName} said</span>
+          </div>
+          {claim.sources.map((source, i) => (
+            <ClaimSourceRow key={`${claim.id}-src-${i}`} source={source} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 // ── UnifiedExtractionBlock ────────────────────────────────────────────────────
 
