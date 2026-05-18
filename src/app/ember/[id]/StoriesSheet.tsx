@@ -5,6 +5,56 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MicLevelMeter from '@/components/kipember/workflows/MicLevelMeter';
 import { useResetZoomOnOpen } from '@/lib/reset-zoom';
 
+// ─── Karaoke helpers ─────────────────────────────────────────────────────────
+
+// Per-word timing fetched from /snapshot-audio?timings=1 — drives the
+// word-by-word highlight during playback.
+type WordTiming = { text: string; startMs: number; endMs: number };
+
+// A word from the source script with its quote-context state and a global
+// index. Quoted words render green; the active word (by globalIdx) gets the
+// karaoke spotlight.
+type LineWord = { text: string; quoted: boolean; globalIdx: number };
+
+const KARAOKE_QUOTE_COLOR = '#4ade80';
+const KARAOKE_NARR_COLOR = '#ffffff';
+const KARAOKE_WINDOW = 3;
+
+function tokenizeScriptToWords(value: string | null | undefined): LineWord[] {
+  const text = value?.replace(/\s+/g, ' ').trim();
+  if (!text) return [];
+  const normalized = text.replace(/[“”]/g, '"');
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const out: LineWord[] = [];
+  let inQuote = false;
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    const startedInQuote = inQuote;
+    for (const ch of token) {
+      if (ch === '"') inQuote = !inQuote;
+    }
+    const quoted = startedInQuote || token.startsWith('"');
+    out.push({ text: token, quoted, globalIdx: i });
+  }
+  return out;
+}
+
+function findCurrentWordIdx(words: WordTiming[], currentMs: number): number | null {
+  if (words.length === 0) return null;
+  if (currentMs < words[0].startMs) return null;
+  let lo = 0;
+  let hi = words.length - 1;
+  let lastBefore: number | null = null;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const w = words[mid];
+    if (currentMs < w.startMs) hi = mid - 1;
+    else if (currentMs > w.endMs) { lastBefore = mid; lo = mid + 1; }
+    else return mid;
+  }
+  return lastBefore;
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const SHEET_H = '40vh';
@@ -107,6 +157,12 @@ export default function StoriesSheet({
   const audioCtxRef    = useRef<AudioContext | null>(null);
   const savedRef       = useRef(false);
 
+  // ── Karaoke (word-by-word highlighting synced to TTS audio) ──
+  const wordsRef       = useRef<WordTiming[]>([]);
+  const rafRef         = useRef<number | null>(null);
+  const [currentWordIdx, setCurrentWordIdx] = useState<number | null>(null);
+  const [windowStart, setWindowStart] = useState(0);
+
   const durationSeconds = 7;
 
   // ─── Dispose — kills the active session and frees all resources ──────────
@@ -121,6 +177,10 @@ export default function StoriesSheet({
     blocksRef.current = [];
     if (audioCtxRef.current) { void audioCtxRef.current.close().catch(() => undefined); audioCtxRef.current = null; }
     analyserRef.current = null;
+    wordsRef.current = [];
+    if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    setCurrentWordIdx(null);
+    setWindowStart(0);
   }, []);
 
   useEffect(() => () => { dispose(); }, [dispose]);
@@ -349,11 +409,26 @@ export default function StoriesSheet({
     } else if (activeScript) {
       // Single-script mode — one concatenated audio file
       try {
-        const res = await fetch(
+        // Fetch audio + word timings in parallel. The audio render is the
+        // expensive call; the timings sidecar is just a small file read once
+        // the audio is cached.
+        const audioReq = fetch(
           `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tqs}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ script: activeScript }) }
         );
+        const timingsTqs = accessToken ? `?timings=1&token=${encodeURIComponent(accessToken)}` : '?timings=1';
+        const timingsReq = fetch(
+          `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${timingsTqs}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ script: activeScript }) }
+        ).then((r) => (r.ok ? r.json().catch(() => null) : null))
+         .then((j) => (j && Array.isArray((j as { words?: WordTiming[] }).words)
+            ? (j as { words: WordTiming[] }).words
+            : []))
+         .catch(() => [] as WordTiming[]);
+
+        const res = await audioReq;
         if (!res.ok) {
           const p = await res.json().catch(() => null) as { error?: string } | null;
           throw new Error(p?.error ?? `HTTP ${res.status}`);
@@ -361,6 +436,14 @@ export default function StoriesSheet({
         const blob = await res.blob();
 
         if (gen !== genRef.current) return;
+
+        // Drop timings into the ref as soon as they arrive — the RAF loop
+        // is keyed off wordsRef so we don't need to wait on this before
+        // starting playback.
+        void timingsReq.then((words) => {
+          if (gen !== genRef.current) return;
+          wordsRef.current = words;
+        });
 
         const url   = URL.createObjectURL(blob);
         const audio = new Audio(url); audio.preload = 'auto';
@@ -423,6 +506,46 @@ export default function StoriesSheet({
     }
     return chunks.slice(0, 6);
   }, [script]);
+
+  // Karaoke: flat list of words from the current script, each carrying quote
+  // state + global index. Indices are 1:1 with the WordTiming array the
+  // server returns, so we can map "active timing → highlight this word".
+  const flatWords = useMemo(() => tokenizeScriptToWords(script), [script]);
+
+  // RAF loop while playing: poll currentAudio.current.currentTime, find the
+  // active word in wordsRef.current, slide the 3-word window forward when
+  // the active word crosses out of it.
+  useEffect(() => {
+    if (status !== 'playing') return;
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      const audio = currentAudio.current;
+      const words = wordsRef.current;
+      if (audio && words.length > 0) {
+        const currentMs = audio.currentTime * 1000;
+        const idx = findCurrentWordIdx(words, currentMs);
+        if (idx !== currentWordIdx) setCurrentWordIdx(idx);
+        if (idx !== null) {
+          const visibleEnd = windowStart + KARAOKE_WINDOW - 1;
+          if (idx > visibleEnd) {
+            const nextStart = Math.floor(idx / KARAOKE_WINDOW) * KARAOKE_WINDOW;
+            const maxStart = Math.max(0, flatWords.length - KARAOKE_WINDOW);
+            setWindowStart(Math.max(0, Math.min(nextStart, maxStart)));
+          }
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [status, flatWords, currentWordIdx, windowStart]);
 
   const facets: Facet[] = useMemo(() => {
     const result: Facet[] = [];
@@ -653,15 +776,44 @@ export default function StoriesSheet({
               </p>
             ) : isPlaying ? (
               displaySegments && curSeg ? (
-                <>
-                  <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)' }}>
-                    {curSeg.text}
-                  </p>
-                </>
-              ) : scriptLines.length > 0 ? (
+                // Playlist mode (multi-segment): show the current segment's
+                // text. No karaoke here — playlist audio is fetched per-block
+                // so we don't have unified word timings.
                 <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)' }}>
-                  {scriptLines[0]}
+                  {curSeg.text}
                 </p>
+              ) : flatWords.length > 0 ? (
+                // Single-script mode: 3-word karaoke ribbon. Window slides
+                // forward as the active word crosses out (see RAF loop).
+                (() => {
+                  const maxStart = Math.max(0, flatWords.length - KARAOKE_WINDOW);
+                  const start = Math.max(0, Math.min(windowStart, maxStart));
+                  const visible = flatWords.slice(start, start + KARAOKE_WINDOW);
+                  return (
+                    <p className="font-semibold leading-snug flex justify-center items-baseline gap-3" style={{ fontSize: 'clamp(1.4rem, 5vw, 2rem)' }}>
+                      {visible.map((w) => {
+                        const isCurrent = currentWordIdx !== null && w.globalIdx === currentWordIdx;
+                        const isPast = currentWordIdx !== null && w.globalIdx < currentWordIdx;
+                        const base = w.quoted ? KARAOKE_QUOTE_COLOR : KARAOKE_NARR_COLOR;
+                        return (
+                          <span
+                            key={w.globalIdx}
+                            style={{
+                              color: base,
+                              opacity: isCurrent ? 1 : isPast ? 0.55 : 0.35,
+                              transform: isCurrent ? 'scale(1.18)' : 'scale(1)',
+                              fontWeight: isCurrent ? 800 : 600,
+                              transition: 'opacity 0.18s ease, transform 0.18s ease, font-weight 0.1s linear',
+                              display: 'inline-block',
+                            }}
+                          >
+                            {w.text}
+                          </span>
+                        );
+                      })}
+                    </p>
+                  );
+                })()
               ) : null
             ) : (
               <p className="font-medium leading-snug" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.6)', opacity: idlePromptVisible ? 1 : 0, transition: 'opacity 0.6s ease' }}>
