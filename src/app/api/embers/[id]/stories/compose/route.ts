@@ -6,6 +6,7 @@ import { generateStoryScript } from '@/lib/story-generator';
 import { getEmberTitle } from '@/lib/ember-title';
 import { parseConfirmedLocationContext } from '@/lib/location-suggestions';
 import { getUserDisplayName } from '@/lib/user-name';
+import { parseCallTranscriptSegments } from '@/lib/ember-clips';
 
 export const runtime = 'nodejs';
 
@@ -82,17 +83,20 @@ export async function POST(
             emberSession: {
               include: {
                 messages: {
-                  where: { role: 'user', questionType: { not: null } },
+                  where: { role: 'user' },
                   orderBy: { createdAt: 'asc' },
                   select: { questionType: true, content: true, source: true },
                 },
               },
             },
             voiceCalls: {
-              where: { callSummary: { not: null } },
               orderBy: { createdAt: 'desc' },
               take: 3,
-              select: { callSummary: true },
+              select: {
+                callSummary: true,
+                transcript: true,
+                transcriptObjectJson: true,
+              },
             },
           },
         },
@@ -159,37 +163,52 @@ export async function POST(
       .map(([h, lines]) => `${h}:\n${lines.join('\n')}`)
       .join('\n\n');
 
-    // Format contributor memories, optionally filtered by people
-    const allMemories = emberRecord.emberContributors.flatMap((ec) => {
+    // Build VERBATIM QUOTES — the actual words people typed or said, attributed
+    // and channel-labeled. This is the raw material the prompt is required to
+    // quote from. Filtered by selected people when the user picked any.
+    const peopleFilter = (name: string) =>
+      people.length === 0 ||
+      people.some((p) => name.toLowerCase().includes(p.toLowerCase()));
+
+    const verbatimLines: string[] = [];
+    const callSummaryLines: string[] = [];
+
+    for (const ec of emberRecord.emberContributors) {
       const name =
         getUserDisplayName(ec.user) ||
         ec.user?.email ||
         ec.user?.phoneNumber ||
         'Contributor';
-      if (people.length > 0 && !people.some((p) => name.toLowerCase().includes(p.toLowerCase()))) {
-        return [];
+      if (!peopleFilter(name)) continue;
+
+      // Chat / voice / sms messages (each EmberMessage with role='user')
+      for (const m of ec.emberSession?.messages ?? []) {
+        const text = m.content?.trim();
+        if (!text) continue;
+        const channel = m.source === 'voice' ? 'voice' : m.source === 'sms' ? 'sms' : 'chat';
+        verbatimLines.push(`[${channel}] ${name}: "${text.replace(/"/g, "'")}"`);
       }
-      const msgs = [
-        ...(ec.emberSession?.messages ?? []),
-        ...ec.voiceCalls.flatMap(() => []),
-      ];
-      return msgs.map((m) => `${name} (${m.questionType}): ${m.content}`);
-    });
-    const callSummaryLines = emberRecord.emberContributors.flatMap((ec) => {
-      const name =
-        getUserDisplayName(ec.user) ||
-        ec.user?.email ||
-        ec.user?.phoneNumber ||
-        'Contributor';
-      if (people.length > 0 && !people.some((p) => name.toLowerCase().includes(p.toLowerCase()))) {
-        return [];
+
+      // Call transcripts — every user-role turn becomes a verbatim line
+      for (const v of ec.voiceCalls) {
+        const segments = parseCallTranscriptSegments({
+          transcript: v.transcript,
+          transcriptObjectJson: v.transcriptObjectJson,
+          contributorName: name,
+        });
+        for (const seg of segments) {
+          if (seg.role !== 'user') continue;
+          const text = seg.content?.trim();
+          if (!text) continue;
+          verbatimLines.push(`[call] ${name}: "${text.replace(/"/g, "'")}"`);
+        }
+        const summary = v.callSummary?.trim();
+        if (summary) callSummaryLines.push(`${name}: ${summary}`);
       }
-      return ec.voiceCalls
-        .map((v) => v.callSummary?.trim())
-        .filter((s): s is string => Boolean(s))
-        .map((s) => `${name}: ${s}`);
-    });
-    const contributorMemoriesContext = [...allMemories, ...callSummaryLines].join('\n');
+    }
+
+    const verbatimQuotes = verbatimLines.join('\n');
+    const contributorMemoriesContext = callSummaryLines.join('\n');
 
     const script = await generateStoryScript({
       title,
@@ -200,6 +219,7 @@ export async function POST(
       claimsContext,
       contributorMemoriesContext,
       wikiContent,
+      verbatimQuotes,
     });
 
     if (!script.trim()) {

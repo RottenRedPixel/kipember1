@@ -86,6 +86,7 @@ export async function generateStoryScript({
   claimsContext,
   contributorMemoriesContext,
   wikiContent = null,
+  verbatimQuotes = '',
 }: {
   title: string;
   location: string | null;
@@ -95,6 +96,12 @@ export async function generateStoryScript({
   claimsContext: string;
   contributorMemoriesContext: string;
   wikiContent?: string | null;
+  // Raw verbatim text the LLM should quote from — chat messages typed by
+  // users, voice transcripts, and call-turn transcripts. Each line is
+  // attributed: `[chat|voice|call] <Name>: "<exact words they said>"`.
+  // The compose prompt is required to use these as direct quotes for the
+  // majority of the output so the narration is anchored to real words.
+  verbatimQuotes?: string;
 }): Promise<string> {
   const targetWords = Math.round((durationSeconds / 60) * 150);
 
@@ -114,7 +121,10 @@ export async function generateStoryScript({
     `MEMORY TITLE\n${title}`,
     taggedPeople.length > 0 ? `PEOPLE IN THIS MEMORY\n${taggedPeople.join(', ')}` : null,
     location ? `LOCATION\n${location}` : null,
-    claimsContext ? `WHAT PEOPLE HAVE SAID\n${claimsContext}` : null,
+    verbatimQuotes
+      ? `VERBATIM QUOTES — use these as direct quotes; wrap each one you use in straight double quotes "…" and attribute the speaker. These are the actual words people typed or said; preserve them exactly.\n${verbatimQuotes}`
+      : null,
+    claimsContext ? `WHAT PEOPLE HAVE SAID (paraphrased)\n${claimsContext}` : null,
     contributorMemoriesContext ? `CONTRIBUTOR MEMORIES\n${contributorMemoriesContext}` : null,
     wikiContent && !claimsContext ? `MEMORY WIKI\n${wikiContent.slice(0, 4000)}` : null,
   ]

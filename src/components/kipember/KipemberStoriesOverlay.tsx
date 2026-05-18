@@ -62,6 +62,38 @@ function resetAudioPosition(audio: HTMLAudioElement) {
   audio.currentTime = 0;
 }
 
+// Text inside straight double quotes is verbatim contributor speech and is
+// rendered in green to make clear which words came from real people vs the
+// AI's bridging narration. Curly quotes are normalised first so quotes typed
+// by chat users still highlight correctly.
+const QUOTE_COLOR = '#4ade80';
+
+function renderLineWithQuotes(line: string, visible: boolean): React.ReactNode {
+  if (!line) return null;
+  const normalized = line.replace(/[“”]/g, '"');
+  const parts: Array<{ text: string; quoted: boolean }> = [];
+  let inQuote = false;
+  let buf = '';
+  for (let i = 0; i < normalized.length; i++) {
+    const ch = normalized[i];
+    if (ch === '"') {
+      if (buf) parts.push({ text: buf, quoted: inQuote });
+      buf = '';
+      inQuote = !inQuote;
+      continue;
+    }
+    buf += ch;
+  }
+  if (buf) parts.push({ text: buf, quoted: inQuote });
+  return parts.map((part, idx) =>
+    part.quoted ? (
+      <span key={idx} style={{ color: visible ? QUOTE_COLOR : 'transparent', transition: 'color 0.8s ease' }}>{`"${part.text}"`}</span>
+    ) : (
+      <span key={idx}>{part.text}</span>
+    ),
+  );
+}
+
 export default function KipemberStoriesOverlay({
   closeHref,
   emberId,
@@ -264,7 +296,7 @@ export default function KipemberStoriesOverlay({
               transition: 'color 0.8s ease',
             }}
           >
-            {storyLines[lineIndex] ?? ' '}
+            {storyLines[lineIndex] ? renderLineWithQuotes(storyLines[lineIndex], isPlaying && !fading) : ' '}
           </p>
           <p
             className="font-medium leading-snug w-full truncate"
@@ -275,7 +307,7 @@ export default function KipemberStoriesOverlay({
               transition: 'color 0.8s ease',
             }}
           >
-            {storyLines[lineIndex + 1] ? `${storyLines[lineIndex + 1]}...` : ' '}
+            {storyLines[lineIndex + 1] ? <>{renderLineWithQuotes(storyLines[lineIndex + 1], isPlaying && !fading)}...</> : ' '}
           </p>
         </div>
 
