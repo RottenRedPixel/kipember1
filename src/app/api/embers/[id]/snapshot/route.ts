@@ -59,6 +59,21 @@ export async function POST(
       return NextResponse.json({ error: 'Could not generate snapshot text' }, { status: 500 });
     }
 
+    // Regen returns the generated text without persisting — the user reviews
+    // it in the Edit Snapshot slider and clicks Save (PATCH) to commit.
+    // Only persist when the client provided a manual script (Save path that
+    // routes through POST because no snapshot row exists yet).
+    if (!manualScript) {
+      return NextResponse.json({
+        snapshot: {
+          title,
+          script,
+          wordCount: script.split(/\s+/).filter(Boolean).length,
+          updatedAt: null,
+        },
+      });
+    }
+
     const snapshot = await prisma.snapshot.upsert({
       where: { emberId: id },
       update: {

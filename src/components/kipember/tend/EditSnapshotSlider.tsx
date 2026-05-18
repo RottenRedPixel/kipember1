@@ -203,7 +203,9 @@ export default function EditSnapshotSlider({
       const generated = payload?.snapshot;
       if (generated?.script) setScriptDraft(generated.script);
       setSavedMessage('Snapshot regenerated.');
-      await refreshDetail();
+      // Don't refreshDetail() here — regen no longer persists, so the saved
+      // version in detail.snapshot.script is still the old one. Refreshing
+      // would re-run the [detail] useEffect and clobber the new draft.
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to regenerate snapshot';
       setError(message);
