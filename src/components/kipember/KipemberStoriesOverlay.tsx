@@ -129,48 +129,6 @@ function findCurrentWordIdx(words: WordTiming[], currentMs: number): number | nu
   return lastBefore;
 }
 
-// Locate which line contains a given global word index.
-function lineIdxForGlobalWord(lines: LineWord[][], gIdx: number): number {
-  for (let i = 0; i < lines.length; i++) {
-    const last = lines[i][lines[i].length - 1];
-    if (gIdx <= last.globalIdx) return i;
-  }
-  return Math.max(0, lines.length - 1);
-}
-
-// Render a line of LineWord objects, dimming words that haven't been spoken
-// yet and brightening the current one. Quoted words stay green at all times.
-function renderLineWords(
-  lineWords: LineWord[],
-  visible: boolean,
-  currentWordIdx: number | null,
-): React.ReactNode {
-  if (!lineWords || lineWords.length === 0) return null;
-  return lineWords.map((w, idx) => {
-    const isCurrent = currentWordIdx !== null && w.globalIdx === currentWordIdx;
-    const isPast = currentWordIdx !== null && w.globalIdx < currentWordIdx;
-    const isFuture = currentWordIdx !== null && w.globalIdx > currentWordIdx;
-    const baseColor = w.quoted ? QUOTE_COLOR : NARRATION_COLOR;
-    const color = visible ? baseColor : 'transparent';
-    const opacity = !visible ? 1 : isFuture ? 0.4 : 1;
-    const fontWeight = isCurrent ? 700 : 500;
-    return (
-      <span
-        key={`${w.globalIdx}-${idx}`}
-        style={{
-          color,
-          opacity,
-          fontWeight,
-          transition: 'color 0.4s ease, opacity 0.2s ease, font-weight 0.1s linear',
-        }}
-      >
-        {w.text}
-        {idx < lineWords.length - 1 ? ' ' : ''}
-      </span>
-    );
-    void isPast;
-  });
-}
 
 export default function KipemberStoriesOverlay({
   closeHref,
@@ -187,8 +145,6 @@ export default function KipemberStoriesOverlay({
 
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [error, setError] = useState('');
-  const [lineIndex, setLineIndex] = useState(0);
-  const [fading, setFading] = useState(false);
   const [done, setDone] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState(2);
 
@@ -197,7 +153,7 @@ export default function KipemberStoriesOverlay({
 
   const activeScript = selectedBadge === 2 ? storyScript : FACET_SCRIPTS[selectedBadge];
   const hasPlayableContent = Boolean(emberId) && Boolean(activeScript ?? (selectedBadge === 2 ? storyScript : null));
-  const { lines: storyLines } = useMemo(() => tokenizeScriptToLines(activeScript), [activeScript]);
+  const { flatWords } = useMemo(() => tokenizeScriptToLines(activeScript), [activeScript]);
   const shouldAnimate = playbackState === 'playing' && !done;
   const isPlaying = playbackState === 'playing';
 
@@ -206,6 +162,11 @@ export default function KipemberStoriesOverlay({
   const wordsRef = useRef<WordTiming[]>([]);
   const rafRef = useRef<number | null>(null);
   const [currentWordIdx, setCurrentWordIdx] = useState<number | null>(null);
+  // Window of 3 words shown on screen at a time, sliding forward as the
+  // narrator speaks. Tracked separately from currentWordIdx so the window
+  // only shifts when we cross out of it (not on every word change).
+  const [windowStart, setWindowStart] = useState(0);
+  const WORDS_PER_WINDOW = 3;
 
   const disposeAudio = useCallback(() => {
     if (audioRef.current) {
@@ -227,25 +188,29 @@ export default function KipemberStoriesOverlay({
   useEffect(() => () => { disposeAudio(); }, [disposeAudio]);
 
   // Karaoke loop: poll the audio element each frame, find the active word,
-  // update `currentWordIdx`. Auto-advance the visible line pair when the
-  // active word moves past the current line. Falls back to a time-based
-  // cascade when no timings are available (cached old renders, etc).
+  // and slide the 3-word window forward when the active word moves past the
+  // visible group. Falls back to a fixed-interval window advance when no
+  // timings are available (old cached renders, error cases).
   useEffect(() => {
     if (!shouldAnimate) return;
 
     const hasTimings = wordsRef.current.length > 0;
+    const totalWords = flatWords.length;
 
     if (!hasTimings) {
-      // Fallback: original timer-driven cascade so playback still feels like
-      // something is happening even when word timings can't be loaded.
-      if (fading) return;
-      const hasNextPair = lineIndex + 2 < storyLines.length;
-      const delay = hasNextPair ? 2800 : 2500;
-      const timer = setTimeout(() => {
-        if (hasNextPair) setFading(true);
-        else setDone(true);
-      }, delay);
-      return () => clearTimeout(timer);
+      // Fallback: advance window every ~650ms.
+      if (totalWords === 0) return;
+      const timer = setInterval(() => {
+        setWindowStart((current) => {
+          const next = current + WORDS_PER_WINDOW;
+          if (next >= totalWords) {
+            setDone(true);
+            return current;
+          }
+          return next;
+        });
+      }, 650);
+      return () => clearInterval(timer);
     }
 
     let cancelled = false;
@@ -258,14 +223,14 @@ export default function KipemberStoriesOverlay({
         const idx = findCurrentWordIdx(words, currentMs);
         if (idx !== currentWordIdx) setCurrentWordIdx(idx);
 
-        if (idx !== null && storyLines.length > 0) {
-          const targetLine = lineIdxForGlobalWord(storyLines, idx);
-          // Cascade in pairs: jump lineIndex by 2 so the bottom slot becomes
-          // the new top. When the active word passes the bottom line, move on.
-          const visibleEnd = lineIndex + 1;
-          if (targetLine > visibleEnd) {
-            const nextLine = targetLine % 2 === 0 ? targetLine : targetLine - 1;
-            setLineIndex(Math.max(0, nextLine));
+        if (idx !== null) {
+          // Slide the window forward when the active word reaches the last
+          // visible slot. Snap to a multiple of WORDS_PER_WINDOW so groups
+          // swap cleanly rather than shifting one word at a time.
+          const visibleEnd = windowStart + WORDS_PER_WINDOW - 1;
+          if (idx > visibleEnd) {
+            const nextStart = Math.floor(idx / WORDS_PER_WINDOW) * WORDS_PER_WINDOW;
+            setWindowStart(Math.max(0, Math.min(nextStart, Math.max(0, totalWords - WORDS_PER_WINDOW))));
           }
         }
 
@@ -284,16 +249,7 @@ export default function KipemberStoriesOverlay({
         rafRef.current = null;
       }
     };
-  }, [shouldAnimate, fading, lineIndex, storyLines, currentWordIdx]);
-
-  useEffect(() => {
-    if (!fading) return;
-    const timer = setTimeout(() => {
-      setLineIndex((current) => Math.min(current + 2, Math.max(storyLines.length - 1, 0)));
-      setFading(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [fading, storyLines.length]);
+  }, [shouldAnimate, flatWords, currentWordIdx, windowStart]);
 
   const fetchAudioBlob = useCallback(async () => {
     if (!emberId) throw new Error('No ember selected.');
@@ -414,8 +370,7 @@ export default function KipemberStoriesOverlay({
         const audio = audioRef.current || (await buildAudio());
         if (restart) {
           resetAudioPosition(audio);
-          setLineIndex(0);
-          setFading(false);
+          setWindowStart(0);
           setDone(false);
           setCurrentWordIdx(null);
         }
@@ -449,8 +404,7 @@ export default function KipemberStoriesOverlay({
     disposeAudio();
     wordsRef.current = [];
     setPlaybackState('idle');
-    setLineIndex(0);
-    setFading(false);
+    setWindowStart(0);
     setDone(false);
     setError('');
     setCurrentWordIdx(null);
@@ -462,29 +416,51 @@ export default function KipemberStoriesOverlay({
       <Link href={closeHref} className="fixed inset-0" style={{ zIndex: 29 }} aria-label="Close" />
       <div className="absolute left-0 right-0 z-30 flex flex-col items-center px-4 gap-3" style={{ bottom: 24 }}>
 
-        <div className="w-full max-w-md text-center px-2">
-          <p
-            className="font-medium leading-snug w-full truncate"
-            style={{
-              fontSize: '1.43rem',
-              color: isPlaying && !fading ? '#ffffff' : 'transparent',
-              textShadow: isPlaying ? '0 1px 8px rgba(0,0,0,0.9)' : 'none',
-              transition: 'color 0.8s ease',
-            }}
-          >
-            {storyLines[lineIndex] ? renderLineWords(storyLines[lineIndex], isPlaying && !fading, currentWordIdx) : ' '}
-          </p>
-          <p
-            className="font-medium leading-snug w-full truncate"
-            style={{
-              fontSize: '1.43rem',
-              color: isPlaying && !fading && storyLines[lineIndex + 1] ? '#ffffff' : 'transparent',
-              textShadow: isPlaying ? '0 1px 8px rgba(0,0,0,0.9)' : 'none',
-              transition: 'color 0.8s ease',
-            }}
-          >
-            {storyLines[lineIndex + 1] ? <>{renderLineWords(storyLines[lineIndex + 1], isPlaying && !fading, currentWordIdx)}...</> : ' '}
-          </p>
+        <div className="w-full max-w-md text-center px-2" style={{ minHeight: '3.2rem' }}>
+          {(() => {
+            // Visible 3-word window. While playing we slide the window to keep
+            // the current word inside it (see karaoke loop above). Idle/preview
+            // shows the first three words so the area isn't blank.
+            const start = Math.max(
+              0,
+              Math.min(windowStart, Math.max(0, flatWords.length - WORDS_PER_WINDOW)),
+            );
+            const visible = flatWords.slice(start, start + WORDS_PER_WINDOW);
+            const visibleArea = isPlaying;
+            return (
+              <p
+                className="font-semibold leading-snug w-full flex justify-center items-baseline gap-3"
+                style={{
+                  fontSize: 'clamp(1.6rem, 5vw, 2.2rem)',
+                  color: visibleArea ? '#ffffff' : 'transparent',
+                  textShadow: visibleArea ? '0 1px 8px rgba(0,0,0,0.9)' : 'none',
+                  transition: 'color 0.4s ease',
+                }}
+              >
+                {visible.map((w) => {
+                  const isCurrent = currentWordIdx !== null && w.globalIdx === currentWordIdx;
+                  const isPast = currentWordIdx !== null && w.globalIdx < currentWordIdx;
+                  const base = w.quoted ? QUOTE_COLOR : NARRATION_COLOR;
+                  return (
+                    <span
+                      key={w.globalIdx}
+                      style={{
+                        color: visibleArea ? base : 'transparent',
+                        opacity: !visibleArea ? 1 : isCurrent ? 1 : isPast ? 0.55 : 0.35,
+                        transform: isCurrent ? 'scale(1.18)' : 'scale(1)',
+                        fontWeight: isCurrent ? 800 : 600,
+                        transition:
+                          'opacity 0.18s ease, transform 0.18s ease, font-weight 0.1s linear, color 0.4s ease',
+                        display: 'inline-block',
+                      }}
+                    >
+                      {w.text}
+                    </span>
+                  );
+                })}
+              </p>
+            );
+          })()}
         </div>
 
         <div
