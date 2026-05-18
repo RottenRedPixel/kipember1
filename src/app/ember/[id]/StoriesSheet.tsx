@@ -795,12 +795,8 @@ export default function StoriesSheet({
               <p className="font-medium leading-snug" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.6)' }}>
                 did you like this story?
               </p>
-            ) : done ? (
-              <p className="font-medium leading-snug text-center" style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.85)', opacity: fadingOut ? 0 : 1, transition: 'opacity 0.7s ease' }}>
-                {lastText}
-              </p>
-            ) : isPlaying ? (
-              displaySegments && curSeg ? (
+            ) : (done || isPlaying) ? (
+              displaySegments && curSeg && isPlaying ? (
                 // Playlist mode (multi-segment): show the current segment's
                 // text. No karaoke here — playlist audio is fetched per-block
                 // so we don't have unified word timings.
@@ -810,19 +806,33 @@ export default function StoriesSheet({
               ) : flatWords.length > 0 ? (
                 // Single-script mode: 3-word karaoke ribbon. Window slides
                 // forward as the active word crosses out (see RAF loop).
+                // When playback ends (done), the ribbon stays on its final
+                // window and fades out — no full-phrase flash.
                 (() => {
                   const maxStart = Math.max(0, flatWords.length - KARAOKE_WINDOW);
-                  const start = Math.max(0, Math.min(windowStart, maxStart));
+                  // When done, snap the window to the very end so the user
+                  // sees the last 3 words land before fade-out.
+                  const desiredStart = done ? maxStart : windowStart;
+                  const start = Math.max(0, Math.min(desiredStart, maxStart));
                   const visible = flatWords.slice(start, start + KARAOKE_WINDOW);
-                  const noHighlightYet = currentWordIdx === null;
+                  const noHighlightYet = currentWordIdx === null && !done;
                   return (
-                    <p className="font-semibold leading-snug flex justify-center items-baseline gap-2" style={{ fontSize: 'clamp(1rem, 3.5vw, 1.4rem)' }}>
+                    <p
+                      className="font-semibold leading-snug flex justify-center items-baseline gap-2"
+                      style={{
+                        fontSize: 'clamp(1rem, 3.5vw, 1.4rem)',
+                        opacity: done && fadingOut ? 0 : 1,
+                        transition: 'opacity 0.7s ease',
+                      }}
+                    >
                       {visible.map((w) => {
-                        const isCurrent = !noHighlightYet && w.globalIdx === currentWordIdx;
-                        const isPast = !noHighlightYet && currentWordIdx !== null && w.globalIdx < currentWordIdx;
+                        // After done, treat the final word as "current" so it
+                        // gets the spotlight before fading.
+                        const finalIdx = flatWords[flatWords.length - 1]?.globalIdx ?? -1;
+                        const effectiveCurrent = done ? finalIdx : currentWordIdx;
+                        const isCurrent = !noHighlightYet && w.globalIdx === effectiveCurrent;
+                        const isPast = !noHighlightYet && effectiveCurrent !== null && w.globalIdx < effectiveCurrent;
                         const base = w.quoted ? KARAOKE_QUOTE_COLOR : KARAOKE_NARR_COLOR;
-                        // Before the first highlight lands, show all visible
-                        // words at full opacity so the screen isn't dim.
                         const opacity = noHighlightYet ? 0.85 : isCurrent ? 1 : isPast ? 0.55 : 0.35;
                         return (
                           <span
@@ -830,7 +840,7 @@ export default function StoriesSheet({
                             style={{
                               color: base,
                               opacity,
-                              transform: isCurrent ? 'scale(1.18)' : 'scale(1)',
+                              transform: isCurrent ? 'scale(1.13)' : 'scale(1)',
                               fontWeight: isCurrent ? 800 : 600,
                               transition: 'opacity 0.18s ease, transform 0.18s ease, font-weight 0.1s linear',
                               display: 'inline-block',
