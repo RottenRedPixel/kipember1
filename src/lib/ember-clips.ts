@@ -101,23 +101,30 @@ function parseTranscriptRole(value: unknown): TranscriptRole | null {
   return value === 'agent' || value === 'user' || value === 'transfer_target' ? value : null;
 }
 
-function findQuoteTimingInSegment(segment: TranscriptSegment, quote: string) {
-  if (segment.words.length === 0) return { startMs: segment.startMs, endMs: segment.endMs };
+function findQuoteTimingInSegment(
+  segment: TranscriptSegment,
+  quote: string,
+): { startMs: number; endMs: number } | null {
+  if (segment.words.length === 0) return null;
 
   const quoteTokens = normalizeForMatch(quote).split(' ').filter(Boolean);
   const wordTokens = segment.words.map((w) => normalizeForMatch(w.text));
 
-  if (quoteTokens.length === 0) return { startMs: segment.startMs, endMs: segment.endMs };
+  if (quoteTokens.length === 0) return null;
 
   for (let i = 0; i <= wordTokens.length - quoteTokens.length; i++) {
     if (quoteTokens.every((token, offset) => wordTokens[i + offset] === token)) {
-      return {
-        startMs: segment.words[i].startMs ?? segment.startMs,
-        endMs: segment.words[i + quoteTokens.length - 1].endMs ?? segment.endMs,
-      };
+      const startMs = segment.words[i].startMs ?? segment.startMs;
+      const endMs = segment.words[i + quoteTokens.length - 1].endMs ?? segment.endMs;
+      if (startMs === null || endMs === null) return null;
+      return { startMs, endMs };
     }
   }
-  return { startMs: segment.startMs, endMs: segment.endMs };
+  // Strict verbatim: no match → no clip. We refuse to fall back to the
+  // segment's whole bounds, because that produced clips whose displayed quote
+  // was the LLM's paraphrase but whose audio played the start of an unrelated
+  // turn (typically "Hello?" / "Yeah").
+  return null;
 }
 
 // ── EmberCall transcript parser (from Retell transcriptObjectJson) ────────────
@@ -277,7 +284,11 @@ export async function extractImportantEmberCallClips({
     const segment = segments.find((s) => s.index === segIdx && s.role === 'user')
       ?? contributorSegments.find((s) => s.content.toLowerCase().includes(normalizeForMatch(quote).split(' ')[0] ?? ''));
 
-    const timing = segment ? findQuoteTimingInSegment(segment, quote) : { startMs: null, endMs: null };
+    if (!segment) return [];
+    const timing = findQuoteTimingInSegment(segment, quote);
+    // Strict verbatim: drop the clip if the quote isn't a contiguous token
+    // sequence in the picked segment. Mirrors the voice extractor's behavior.
+    if (!timing) return [];
 
     return [{
       sortOrder: i,
