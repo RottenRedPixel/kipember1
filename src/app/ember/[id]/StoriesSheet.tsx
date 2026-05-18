@@ -409,26 +409,11 @@ export default function StoriesSheet({
     } else if (activeScript) {
       // Single-script mode — one concatenated audio file
       try {
-        // Fetch audio + word timings in parallel. The audio render is the
-        // expensive call; the timings sidecar is just a small file read once
-        // the audio is cached.
-        const audioReq = fetch(
+        const res = await fetch(
           `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${tqs}`,
           { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ script: activeScript }) }
         );
-        const timingsTqs = accessToken ? `?timings=1&token=${encodeURIComponent(accessToken)}` : '?timings=1';
-        const timingsReq = fetch(
-          `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${timingsTqs}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ script: activeScript }) }
-        ).then((r) => (r.ok ? r.json().catch(() => null) : null))
-         .then((j) => (j && Array.isArray((j as { words?: WordTiming[] }).words)
-            ? (j as { words: WordTiming[] }).words
-            : []))
-         .catch(() => [] as WordTiming[]);
-
-        const res = await audioReq;
         if (!res.ok) {
           const p = await res.json().catch(() => null) as { error?: string } | null;
           throw new Error(p?.error ?? `HTTP ${res.status}`);
@@ -437,13 +422,23 @@ export default function StoriesSheet({
 
         if (gen !== genRef.current) return;
 
-        // Drop timings into the ref as soon as they arrive — the RAF loop
-        // is keyed off wordsRef so we don't need to wait on this before
-        // starting playback.
-        void timingsReq.then((words) => {
-          if (gen !== genRef.current) return;
-          wordsRef.current = words;
-        });
+        // Audio render is now cached on the server (writing the m4a + the
+        // .words.json sidecar is awaited in renderSnapshotAudio). Fire the
+        // timings fetch now — it's just a small file read, returns fast.
+        const timingsTqs = accessToken ? `?timings=1&token=${encodeURIComponent(accessToken)}` : '?timings=1';
+        void fetch(
+          `/api/embers/${encodeURIComponent(emberId)}/snapshot-audio${timingsTqs}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ script: activeScript }) }
+        ).then((r) => (r.ok ? r.json().catch(() => null) : null))
+         .then((j) => {
+            if (gen !== genRef.current) return;
+            const words = j && Array.isArray((j as { words?: WordTiming[] }).words)
+              ? (j as { words: WordTiming[] }).words
+              : [];
+            wordsRef.current = words;
+          })
+         .catch(() => undefined);
 
         const url   = URL.createObjectURL(blob);
         const audio = new Audio(url); audio.preload = 'auto';
@@ -512,17 +507,34 @@ export default function StoriesSheet({
   // server returns, so we can map "active timing → highlight this word".
   const flatWords = useMemo(() => tokenizeScriptToWords(script), [script]);
 
-  // RAF loop while playing: poll currentAudio.current.currentTime, find the
-  // active word in wordsRef.current, slide the 3-word window forward when
-  // the active word crosses out of it.
+  // While playing: drive the karaoke window from audio.currentTime once
+  // timings arrive. Until they do, slide the window forward on a steady
+  // timer so the user always sees words moving — never a static screen.
   useEffect(() => {
     if (status !== 'playing') return;
     let cancelled = false;
+    let intervalTimer: ReturnType<typeof setInterval> | null = null;
+    const totalWords = flatWords.length;
+    const maxStart = Math.max(0, totalWords - KARAOKE_WINDOW);
+
+    // Estimate per-word duration from the audio file's reported duration
+    // (falls back to ~400ms/word when duration isn't known yet).
+    function estimatedMsPerWord(): number {
+      const audio = currentAudio.current;
+      if (audio && Number.isFinite(audio.duration) && audio.duration > 0 && totalWords > 0) {
+        return (audio.duration * 1000) / totalWords;
+      }
+      return 400;
+    }
+
     const tick = () => {
       if (cancelled) return;
       const audio = currentAudio.current;
       const words = wordsRef.current;
+
       if (audio && words.length > 0) {
+        // Timings available — true karaoke sync.
+        if (intervalTimer !== null) { clearInterval(intervalTimer); intervalTimer = null; }
         const currentMs = audio.currentTime * 1000;
         const idx = findCurrentWordIdx(words, currentMs);
         if (idx !== currentWordIdx) setCurrentWordIdx(idx);
@@ -530,20 +542,33 @@ export default function StoriesSheet({
           const visibleEnd = windowStart + KARAOKE_WINDOW - 1;
           if (idx > visibleEnd) {
             const nextStart = Math.floor(idx / KARAOKE_WINDOW) * KARAOKE_WINDOW;
-            const maxStart = Math.max(0, flatWords.length - KARAOKE_WINDOW);
             setWindowStart(Math.max(0, Math.min(nextStart, maxStart)));
           }
         }
+      } else if (audio && totalWords > 0) {
+        // No timings yet — fall back to time-based estimation. As soon as
+        // wordsRef.current is populated, the branch above takes over.
+        const currentMs = audio.currentTime * 1000;
+        const estIdx = Math.min(totalWords - 1, Math.floor(currentMs / estimatedMsPerWord()));
+        if (estIdx !== currentWordIdx) setCurrentWordIdx(estIdx);
+        const visibleEnd = windowStart + KARAOKE_WINDOW - 1;
+        if (estIdx > visibleEnd) {
+          const nextStart = Math.floor(estIdx / KARAOKE_WINDOW) * KARAOKE_WINDOW;
+          setWindowStart(Math.max(0, Math.min(nextStart, maxStart)));
+        }
       }
+
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
+
     return () => {
       cancelled = true;
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
+      if (intervalTimer !== null) clearInterval(intervalTimer);
     };
   }, [status, flatWords, currentWordIdx, windowStart]);
 
@@ -789,18 +814,22 @@ export default function StoriesSheet({
                   const maxStart = Math.max(0, flatWords.length - KARAOKE_WINDOW);
                   const start = Math.max(0, Math.min(windowStart, maxStart));
                   const visible = flatWords.slice(start, start + KARAOKE_WINDOW);
+                  const noHighlightYet = currentWordIdx === null;
                   return (
-                    <p className="font-semibold leading-snug flex justify-center items-baseline gap-3" style={{ fontSize: 'clamp(1.4rem, 5vw, 2rem)' }}>
+                    <p className="font-semibold leading-snug flex justify-center items-baseline gap-2" style={{ fontSize: 'clamp(1rem, 3.5vw, 1.4rem)' }}>
                       {visible.map((w) => {
-                        const isCurrent = currentWordIdx !== null && w.globalIdx === currentWordIdx;
-                        const isPast = currentWordIdx !== null && w.globalIdx < currentWordIdx;
+                        const isCurrent = !noHighlightYet && w.globalIdx === currentWordIdx;
+                        const isPast = !noHighlightYet && currentWordIdx !== null && w.globalIdx < currentWordIdx;
                         const base = w.quoted ? KARAOKE_QUOTE_COLOR : KARAOKE_NARR_COLOR;
+                        // Before the first highlight lands, show all visible
+                        // words at full opacity so the screen isn't dim.
+                        const opacity = noHighlightYet ? 0.85 : isCurrent ? 1 : isPast ? 0.55 : 0.35;
                         return (
                           <span
                             key={w.globalIdx}
                             style={{
                               color: base,
-                              opacity: isCurrent ? 1 : isPast ? 0.55 : 0.35,
+                              opacity,
                               transform: isCurrent ? 'scale(1.18)' : 'scale(1)',
                               fontWeight: isCurrent ? 800 : 600,
                               transition: 'opacity 0.18s ease, transform 0.18s ease, font-weight 0.1s linear',
