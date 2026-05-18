@@ -87,6 +87,7 @@ export async function generateStoryScript({
   contributorMemoriesContext,
   wikiContent = null,
   verbatimQuotes = '',
+  requiredQuotesInstruction = '',
 }: {
   title: string;
   location: string | null;
@@ -99,9 +100,12 @@ export async function generateStoryScript({
   // Raw verbatim text the LLM should quote from — chat messages typed by
   // users, voice transcripts, and call-turn transcripts. Each line is
   // attributed: `[chat|voice|call] <Name>: "<exact words they said>"`.
-  // The compose prompt is required to use these as direct quotes for the
-  // majority of the output so the narration is anchored to real words.
   verbatimQuotes?: string;
+  // Hard requirement passed in when the user explicitly selected people who
+  // have verbatim material — e.g. "REQUIRED: include at least one direct
+  // verbatim quote from each of these speakers: Amado, Zia." Empty when no
+  // requirement applies.
+  requiredQuotesInstruction?: string;
 }): Promise<string> {
   const targetWords = Math.round((durationSeconds / 60) * 150);
 
@@ -121,6 +125,7 @@ export async function generateStoryScript({
     `MEMORY TITLE\n${title}`,
     taggedPeople.length > 0 ? `PEOPLE IN THIS MEMORY\n${taggedPeople.join(', ')}` : null,
     location ? `LOCATION\n${location}` : null,
+    requiredQuotesInstruction ? requiredQuotesInstruction : null,
     verbatimQuotes
       ? `VERBATIM QUOTES — use these as direct quotes; wrap each one you use in straight double quotes "…" and attribute the speaker. These are the actual words people typed or said; preserve them exactly.\n${verbatimQuotes}`
       : null,

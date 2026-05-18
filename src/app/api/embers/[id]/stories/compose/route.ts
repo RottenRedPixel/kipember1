@@ -210,6 +210,20 @@ export async function POST(
     const verbatimQuotes = verbatimLines.join('\n');
     const contributorMemoriesContext = callSummaryLines.join('\n');
 
+    // If the user explicitly selected one or more people, REQUIRE at least
+    // one direct quote per selected speaker who actually has verbatim
+    // material on file. The prompt enforces it. We compute the set here so
+    // we don't ask for impossible quotes (selected person with no recorded
+    // chat / voice / call content).
+    const requiredQuoteSpeakers = people.length === 0
+      ? []
+      : people.filter((p) =>
+          verbatimLines.some((line) => line.toLowerCase().includes(p.toLowerCase())),
+        );
+    const requiredQuotesInstruction = requiredQuoteSpeakers.length > 0
+      ? `REQUIRED: include at least one direct verbatim quote (in straight double quotes "...") from each of these speakers, copied EXACTLY from the VERBATIM QUOTES section: ${requiredQuoteSpeakers.join(', ')}.`
+      : '';
+
     const script = await generateStoryScript({
       title,
       location,
@@ -220,6 +234,7 @@ export async function POST(
       contributorMemoriesContext,
       wikiContent,
       verbatimQuotes,
+      requiredQuotesInstruction,
     });
 
     if (!script.trim()) {
