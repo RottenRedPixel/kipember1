@@ -574,12 +574,33 @@ export async function chat(
     options.capabilityKey || 'ask_ember.answer',
     options.fallbackModel || DEFAULT_CLAUDE_MODEL
   );
+  // Mark the system prompt as cacheable. The system prompt typically embeds the
+  // Ember wiki + context (loadEmberContext) and repeats verbatim across turns in
+  // a conversation. With ephemeral cache_control, repeat calls within the 5-min
+  // TTL skip re-reading the prefix and bill cached tokens at ~10% the rate.
+  // Blocks under the per-model minimum (1024 tok on Sonnet) are simply not
+  // cached — no error.
   const response = await anthropic.messages.create({
     model,
     max_tokens: options.maxTokens || 1024,
-    system: systemPrompt,
+    system: [
+      {
+        type: 'text',
+        text: systemPrompt,
+        cache_control: { type: 'ephemeral' },
+      },
+    ],
     messages: messages,
   });
+
+  const usage = response.usage as
+    | { cache_read_input_tokens?: number; cache_creation_input_tokens?: number; input_tokens?: number }
+    | undefined;
+  if (usage && (usage.cache_read_input_tokens || usage.cache_creation_input_tokens)) {
+    console.log(
+      `[claude.chat] cache hit=${usage.cache_read_input_tokens ?? 0} write=${usage.cache_creation_input_tokens ?? 0} fresh=${usage.input_tokens ?? 0} capability=${options.capabilityKey ?? 'ask_ember.answer'}`
+    );
+  }
 
   const textBlock = response.content.find((block) => block.type === 'text');
   return textBlock?.type === 'text' ? textBlock.text : '';
