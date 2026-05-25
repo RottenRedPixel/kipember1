@@ -229,6 +229,7 @@ export async function POST(
       location,
       taggedPeople,
       selectedPeople: people,
+      selectedFacets: facets,
       durationSeconds,
       claimsContext,
       contributorMemoriesContext,

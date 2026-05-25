@@ -18,7 +18,7 @@ type LineWord = { text: string; quoted: boolean; globalIdx: number };
 
 const KARAOKE_QUOTE_COLOR = '#4ade80';
 const KARAOKE_NARR_COLOR = '#ffffff';
-const KARAOKE_WINDOW = 3;
+const KARAOKE_WINDOW = 6;
 
 function tokenizeScriptToWords(value: string | null | undefined): LineWord[] {
   const text = value?.replace(/\s+/g, ' ').trim();
@@ -818,35 +818,31 @@ export default function StoriesSheet({
                   const noHighlightYet = currentWordIdx === null && !done;
                   return (
                     <p
-                      className="font-semibold leading-snug flex justify-center items-baseline gap-2"
+                      className="font-semibold leading-snug text-center"
                       style={{
-                        fontSize: 'clamp(1rem, 3.5vw, 1.4rem)',
+                        fontSize: '1.2rem',
                         opacity: done && fadingOut ? 0 : 1,
                         transition: 'opacity 0.7s ease',
                       }}
                     >
-                      {visible.map((w) => {
-                        // After done, treat the final word as "current" so it
-                        // gets the spotlight before fading.
-                        const finalIdx = flatWords[flatWords.length - 1]?.globalIdx ?? -1;
-                        const effectiveCurrent = done ? finalIdx : currentWordIdx;
-                        const isCurrent = !noHighlightYet && w.globalIdx === effectiveCurrent;
-                        const isPast = !noHighlightYet && effectiveCurrent !== null && w.globalIdx < effectiveCurrent;
+                      {/* Native inline flow — words wrap naturally and use the
+                          browser's normal word-spacing instead of a flex gap.
+                          Each word fades in (karaokeFadeIn) when its span
+                          mounts as the 6-word window slides forward. */}
+                      {visible.map((w, i) => {
                         const base = w.quoted ? KARAOKE_QUOTE_COLOR : KARAOKE_NARR_COLOR;
-                        const opacity = noHighlightYet ? 0.85 : isCurrent ? 1 : isPast ? 0.55 : 0.35;
                         return (
-                          <span
-                            key={w.globalIdx}
-                            style={{
-                              color: base,
-                              opacity,
-                              transform: isCurrent ? 'scale(1.13)' : 'scale(1)',
-                              fontWeight: isCurrent ? 800 : 600,
-                              transition: 'opacity 0.18s ease, transform 0.18s ease, font-weight 0.1s linear',
-                              display: 'inline-block',
-                            }}
-                          >
-                            {w.text}
+                          <span key={w.globalIdx}>
+                            {i > 0 ? ' ' : ''}
+                            <span
+                              style={{
+                                color: base,
+                                fontWeight: 600,
+                                animation: 'karaokeFadeIn 0.35s ease both',
+                              }}
+                            >
+                              {w.text}
+                            </span>
                           </span>
                         );
                       })}

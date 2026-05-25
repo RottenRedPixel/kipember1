@@ -184,6 +184,11 @@ body {
 }
 }
 
+@keyframes karaokeFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes slideInRight {
   from {
     transform: translateX(100%);
