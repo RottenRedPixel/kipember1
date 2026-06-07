@@ -267,9 +267,11 @@ function truncateDynamicValue(value: string | null, maxLength: number): string |
 
 async function buildPriorMemoryContext({
   emberContributorId,
+  emberId,
   emberSessionId,
 }: {
   emberContributorId: string;
+  emberId: string;
   emberSessionId?: string | null;
 }): Promise<PriorMemoryContext> {
   const sessionFilters = [
@@ -284,7 +286,7 @@ async function buildPriorMemoryContext({
     },
   ];
 
-  const [sessions, voiceCalls] = await Promise.all([
+  const [sessions, voiceCalls, emberSignals] = await Promise.all([
     prisma.emberSession.findMany({
       where: {
         OR: sessionFilters,
@@ -311,6 +313,22 @@ async function buildPriorMemoryContext({
         callSummary: true,
       },
     }),
+    // Broaden the "what's already known" picture to include everything the
+    // wiki sees, not just structured EmberMessage Q&A. Without this, claims
+    // that landed via chat / voice / unstructured call answers were invisible
+    // to follow-up planning and the agent would re-ask those topics.
+    prisma.ember.findUnique({
+      where: { id: emberId },
+      select: {
+        analysis: { select: { capturedAt: true, latitude: true, longitude: true, metadataJson: true } },
+        tags: { select: { id: true }, take: 1 },
+        memoryClaims: {
+          where: { status: 'active' },
+          select: { claimType: true, value: true, subject: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    }),
   ]);
 
   const latestResponseByQuestion = new Map<QuestionType, string>();
@@ -326,14 +344,54 @@ async function buildPriorMemoryContext({
     }
   }
 
+  // Mark topics as covered based on broader signals (wiki / claims / photo
+  // metadata), not just structured Q&A. Order: claim-derived → metadata.
+  const claims = emberSignals?.memoryClaims ?? [];
+  const claimByType = new Map<string, { value: string; subject: string | null }>();
+  for (const claim of claims) {
+    if (!claimByType.has(claim.claimType) && claim.value?.trim()) {
+      claimByType.set(claim.claimType, { value: claim.value.trim(), subject: claim.subject ?? null });
+    }
+  }
+  const hasTaggedPeople = (emberSignals?.tags?.length ?? 0) > 0;
+  const hasCapturedAt = Boolean(emberSignals?.analysis?.capturedAt);
+  const hasResolvedLocation = (() => {
+    const analysis = emberSignals?.analysis;
+    if (!analysis) return false;
+    if (analysis.metadataJson && analysis.metadataJson.trim()) return true;
+    return analysis.latitude != null && analysis.longitude != null;
+  })();
+
+  const coveredTopics = new Set<QuestionType>(latestResponseByQuestion.keys());
+  if (hasTaggedPeople || claimByType.has('person')) coveredTopics.add('who');
+  if (hasCapturedAt) coveredTopics.add('when');
+  if (hasResolvedLocation || claimByType.has('place')) coveredTopics.add('where');
+  if (claimByType.has('why')) coveredTopics.add('why');
+  if (claimByType.has('extra_story')) coveredTopics.add('what');
+
   const previousSummaryParts = FOLLOW_UP_QUESTION_ORDER.flatMap((questionType) => {
     const answer = latestResponseByQuestion.get(questionType);
-    if (!answer) {
-      return [];
+    if (answer) {
+      const label = questionType[0].toUpperCase() + questionType.slice(1);
+      return [`${label}: ${summarizeAnswer(answer)}`];
     }
-
-    const label = questionType[0].toUpperCase() + questionType.slice(1);
-    return [`${label}: ${summarizeAnswer(answer)}`];
+    // Fallback: surface claim-derived coverage so the agent has something
+    // concrete to reference in its "Last time you mentioned..." opener.
+    const claimTypeForTopic =
+      questionType === 'why' ? 'why'
+      : questionType === 'where' ? 'place'
+      : questionType === 'what' ? 'extra_story'
+      : questionType === 'who' ? 'person'
+      : null;
+    if (claimTypeForTopic) {
+      const claim = claimByType.get(claimTypeForTopic);
+      if (claim) {
+        const label = questionType[0].toUpperCase() + questionType.slice(1);
+        const text = claim.subject ? `${claim.subject} — ${claim.value}` : claim.value;
+        return [`${label}: ${summarizeAnswer(text)}`];
+      }
+    }
+    return [];
   });
 
   const recentVoiceSummaries = voiceCalls
@@ -347,7 +405,7 @@ async function buildPriorMemoryContext({
   }
 
   const missingTopics = FOLLOW_UP_QUESTION_ORDER.filter(
-    (questionType) => !latestResponseByQuestion.has(questionType)
+    (questionType) => !coveredTopics.has(questionType)
   );
 
   let followUpFocus: string | null = null;
@@ -356,13 +414,20 @@ async function buildPriorMemoryContext({
     followUpFocus = `If they are open to adding more, focus on the biggest missing topics: ${missingTopics
       .map((questionType) => questionType)
       .join(', ')}.`;
-  } else if (latestResponseByQuestion.size > 0) {
+  } else if (coveredTopics.size > 0) {
     followUpFocus =
       'Start by asking whether they have any follow-up tidbits, corrections, or one extra vivid detail to add. If they say no, wrap up without repeating the full interview.';
   }
 
+  // Treat any prior signal (synced voice call, structured Q&A, or extracted
+  // claim) as evidence this isn't a first-time interview, so the "follow-up
+  // call" opener can fire instead of "first-time call" when only chat / voice
+  // claims exist.
+  const hasAnyPriorSignal =
+    voiceCalls.length > 0 || latestResponseByQuestion.size > 0 || claimByType.size > 0;
+
   return {
-    priorInterviewCount: Math.max(voiceCalls.length, latestResponseByQuestion.size > 0 ? 1 : 0),
+    priorInterviewCount: Math.max(voiceCalls.length, hasAnyPriorSignal ? 1 : 0),
     previousMemorySummary: truncateDynamicValue(
       previousSummaryParts.length > 0 ? previousSummaryParts.join(' | ') : null,
       900
@@ -743,6 +808,7 @@ async function prepareVoiceCallContext(emberContributorId: string) {
   const [priorMemoryContext, emberContext] = await Promise.all([
     buildPriorMemoryContext({
       emberContributorId: emberContributor.id,
+      emberId: emberContributor.emberId,
       emberSessionId: session.id,
     }),
     loadEmberContext(emberContributor.emberId),
