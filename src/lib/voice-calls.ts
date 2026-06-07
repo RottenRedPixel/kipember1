@@ -770,6 +770,9 @@ async function prepareVoiceCallContext(emberContributorId: string) {
     location: emberContext.location,
     captured_at: emberContext.capturedAt,
     claims: emberContext.claims,
+    snapshot: emberContext.snapshot,
+    visual_scene: emberContext.visualScene,
+    emotional_context: emberContext.emotionalContext,
   });
 
   return {
