@@ -502,7 +502,7 @@ async function rankLocationSuggestions({
     ],
     {
       capabilityKey: 'image_analysis.location_resolution',
-      fallbackModel: 'claude-sonnet-4-20250514',
+      fallbackModel: 'claude-sonnet-4-6',
       maxTokens: 900,
     }
   );

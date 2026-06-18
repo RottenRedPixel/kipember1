@@ -49,7 +49,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const DEFAULT_FACE_MATCH_MODEL = 'claude-sonnet-4-20250514';
+const DEFAULT_FACE_MATCH_MODEL = 'claude-sonnet-4-6';
 
 async function getFaceMatchModel() {
   return getCapabilityModel(

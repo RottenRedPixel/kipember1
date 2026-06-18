@@ -557,7 +557,7 @@ function parseStructuredMemoryResponse(responseText: string): StructuredMemory {
   return parsed;
 }
 
-const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 type ClaudeChatOptions = {
   capabilityKey?: string;
